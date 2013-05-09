@@ -115,6 +115,8 @@ private:
 
     //! Packets waiting for transmission to the host.
     os_mq_t tx_queue_;
+
+    os_timer_t sync_packet_timer_;
 };
 
 #endif // _HOST_PACKET_H_

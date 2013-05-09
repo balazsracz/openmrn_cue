@@ -4,7 +4,7 @@
 #include "os/os.h"
 #include "host_packet.h"
 
-
+#include "usb_proto.h"
 
 PacketQueue* PacketQueue::instance_ = NULL;
 
@@ -24,12 +24,24 @@ void* rx_thread(void* p) {
     return NULL;
 }
 
+const uint8_t syncpacket[] = {
+  CMD_SYNC, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+
+static long long sync_packet_callback(void*, void*) {
+    PacketBase pkt(CMD_SYNC_LEN);
+    memcpy(pkt.buf(), syncpacket, pkt.size());
+    PacketQueue::instance()->TransmitPacket(pkt);
+    return SEC_TO_NSEC(1);
+}
+
 PacketQueue::PacketQueue(int fd) : fd_(fd) {
     tx_queue_ = os_mq_create(PACKET_TX_QUEUE_LENGTH, sizeof(PacketBase));
     os_thread_create(NULL, "host_pkt_tx", 0, PACKET_TX_THREAD_STACK_SIZE,
 		     tx_thread, this);
     os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
+    sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
+    //os_timer_start(sync_packet_timer_, SEC_TO_NSEC(1));
 }
 
 void PacketQueue::RxThreadBody() {
