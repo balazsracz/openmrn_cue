@@ -50,7 +50,7 @@
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
 const char *nmranet_software_rev = "0.1";
-const size_t main_stack_size = 2048;
+const size_t main_stack_size = 2560;
 const int main_priority = 0;
 const size_t ALIAS_POOL_SIZE = 2;
 const size_t DOWNSTREAM_ALIAS_CACHE_SIZE = 2;
@@ -92,7 +92,7 @@ void* out_blinker_thread(void*) {
  * @return 0, should never return
  */
 int appl_main(int argc, char *argv[]) {
-  PacketQueue::initialize("/dev/serUSB0");
+  //PacketQueue::initialize("/dev/serUSB0");
 
   NMRAnetIF *nmranet_if;
 
