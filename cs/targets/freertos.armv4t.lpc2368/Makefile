@@ -26,6 +26,8 @@ else
 OBJEXTRA = $(OPENMRNPATH)/targets/freertos.armv4t/freertos_drivers/mbed_can.o \
 	$(OPENMRNPATH)/targets/freertos.armv4t/freertos_drivers/mbed_usbserial.o
 
+INCLUDES+= -I../../src
+
 include $(OPENMRNPATH)/etc/prog.mk
 
 all: $(EXECUTABLE).bin $(EXECUTABLE).lst

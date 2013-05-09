@@ -45,6 +45,8 @@
 #include "core/nmranet_datagram.h"
 #include "nmranet_config.h"
 
+#include "host_packet.h"
+
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
 const char *nmranet_software_rev = "0.1";
@@ -90,7 +92,7 @@ void* out_blinker_thread(void*) {
  * @return 0, should never return
  */
 int appl_main(int argc, char *argv[]) {
-  printf("hello world\n");
+  PacketQueue::initialize("/dev/serUSB0");
 
   NMRAnetIF *nmranet_if;
 
