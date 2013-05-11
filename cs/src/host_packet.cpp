@@ -5,6 +5,7 @@
 #include "host_packet.h"
 
 #include "usb_proto.h"
+#include "automata_control.h"
 
 PacketQueue* PacketQueue::instance_ = NULL;
 
@@ -59,6 +60,10 @@ void PacketQueue::RxThreadBody() {
     }
 }
 
+const uint8_t state_cleared[] = { 2, CMD_SYSLOG, LOG_STATE_CLEARED };
+const uint8_t log_illegal_argument[] = { 2, CMD_SYSLOG, LOG_ILLEGAL_ARGUMENT };
+const uint8_t mod_state_success[] = {1, CMD_MOD_STATE};
+
 void PacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
     switch (in_pkt[0]) {
@@ -67,10 +72,85 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	pongpacket[0] = CMD_PONG;
 	pongpacket[1] = in_pkt[1] + 1;
 	PacketQueue::instance()->TransmitPacket(pongpacket);
-	delete pkt;
-	return;
+	break;
     }
+    case CMD_CLEAR_STATE: {
+	resetrpchandler();
+	PacketQueue::instance()->TransmitConstPacket(state_cleared);
+	break;
     }
+    case CMD_RPC: {
+	PacketBase pongpacket(3);
+	pongpacket[0] = CMD_RPC_RESPONSE;
+	// TODO(balazs.racz): there was a custom handling for address 0 here:
+	//if (in_pkt[1] == 0 && in_pkt[2] == CMD_QUERYBITS) {
+        //r = clients[0].savedata[in_pkt[3]]; else genrpc()
+	unsigned r = genrpc(in_pkt[1], in_pkt.buf() + 2, in_pkt.size() - 2);
+	pongpacket[1] = r & 0xff;
+	pongpacket[2] = r >> 8;
+	PacketQueue::instance()->TransmitPacket(pongpacket);
+	break;
+    }
+    case CMD_GET_OR_SET_ADDRESS: {
+	if (in_pkt.size() > 1) {
+	    if (in_pkt[1]) {
+		suspend_all_automata();
+	    } else {
+		resume_all_automata();
+	    }
+	}
+	PacketBase response(2);
+	response[0] = CMD_CURRENT_ADDRESS;
+	response[1] = automata_running() ? 0 : 255;
+	PacketQueue::instance()->TransmitPacket(response);
+	break;
+    }
+    case CMD_MOD_STATE: {
+	if (in_pkt.size() != 3) {
+	    PacketQueue::instance()->TransmitConstPacket(log_illegal_argument);
+	    break;
+	}
+	*get_state_byte(in_pkt[1] >> 5, in_pkt[1] & 31) = in_pkt[2];
+	PacketQueue::instance()->TransmitConstPacket(mod_state_success);
+	break;
+    }
+    case CMD_BIT_MODIFY_STATE: {
+	if (in_pkt.size() != 4) {
+	    PacketQueue::instance()->TransmitConstPacket(log_illegal_argument);
+	    break;
+	}
+	uint8_t* ptr = get_state_byte(in_pkt[1] >> 5, in_pkt[1] & 31);
+	taskENTER_CRITICAL();
+	*ptr |= in_pkt[2];
+	*ptr &= ~in_pkt[3];
+	taskEXIT_CRITICAL();
+	PacketBase response(2);
+	response[0] = CMD_BIT_MODIFY_STATE;
+	response[1] = *ptr;
+	PacketQueue::instance()->TransmitPacket(response);
+	break;
+    }
+    case CMD_GET_STATE: {
+	if (in_pkt.size() != 3 || in_pkt[2] > 8) {
+	    PacketQueue::instance()->TransmitConstPacket(log_illegal_argument);
+	    break;
+	}
+	PacketBase response(2 + in_pkt[2]);
+	response[0] = CMD_STATE;
+	response[1] = in_pkt[1];
+	int i = 2;
+	for (int arg = in_pkt[1]; arg < in_pkt[1] + in_pkt[2]; ++arg) {
+	    response[i++] = *get_state_byte(arg >> 5, arg & 31);
+	}
+	PacketQueue::instance()->TransmitPacket(response);
+	break;
+    }
+    case CMD_SYNC: {
+	break;
+    }
+	
+    } // switch
+
     delete pkt;
 }
 

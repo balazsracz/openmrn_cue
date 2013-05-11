@@ -43,6 +43,11 @@ public:
 	return data_;
     }
 
+    const uint8_t* buf() const {
+	ASSERT(data_);
+	return data_;
+    }
+
     size_t size() const {
 	return size_;
     }
