@@ -58,8 +58,8 @@ const size_t UPSTREAM_ALIAS_CACHE_SIZE = 2;
 const size_t DATAGRAM_POOL_SIZE = 10;
 const size_t CAN_RX_BUFFER_SIZE = 1;
 const size_t CAN_TX_BUFFER_SIZE = 32;
-const size_t SERIAL_RX_BUFFER_SIZE = 16;
-const size_t SERIAL_TX_BUFFER_SIZE = 16;
+const size_t SERIAL_RX_BUFFER_SIZE = 128;
+const size_t SERIAL_TX_BUFFER_SIZE = 130;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 512;
 const size_t CAN_IF_READ_THREAD_STACK_SIZE = 1024;
 
@@ -92,7 +92,7 @@ void* out_blinker_thread(void*) {
  * @return 0, should never return
  */
 int appl_main(int argc, char *argv[]) {
-  //PacketQueue::initialize("/dev/serUSB0");
+  PacketQueue::initialize("/dev/serUSB0");
 
   NMRAnetIF *nmranet_if;
 
@@ -115,6 +115,8 @@ int appl_main(int argc, char *argv[]) {
   nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
   nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
   nmranet_node_initialized(node);
+
+  os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
 
   for (;;) {
     int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
