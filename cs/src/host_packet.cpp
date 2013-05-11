@@ -1,11 +1,17 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "cmsis.h"
+
 #include "os/os.h"
 #include "host_packet.h"
 
 #include "usb_proto.h"
 #include "automata_control.h"
+#include "extender_node.h"
+
+// Reset vector. Note that this does not go back to the bootloader.
+extern "C" { void start(void); }
 
 PacketQueue* PacketQueue::instance_ = NULL;
 
@@ -63,6 +69,7 @@ void PacketQueue::RxThreadBody() {
 const uint8_t state_cleared[] = { 2, CMD_SYSLOG, LOG_STATE_CLEARED };
 const uint8_t log_illegal_argument[] = { 2, CMD_SYSLOG, LOG_ILLEGAL_ARGUMENT };
 const uint8_t mod_state_success[] = {1, CMD_MOD_STATE};
+const uint8_t packet_misc_invalidarg[] = { 4, CMD_UMISC, 0x00, 0xff, 0x01 };
 
 void PacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
@@ -148,10 +155,91 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
     case CMD_SYNC: {
 	break;
     }
-	
+    case CMD_UMISC: {
+	if (in_pkt.size() < 2) {
+	  PacketQueue::instance()->TransmitConstPacket(packet_misc_invalidarg);
+	  break;
+	}
+	HandleMiscPacket(*pkt);
+	break;
+    }
+
     } // switch
 
     delete pkt;
+}
+
+
+void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
+    PacketBase miscpacket(5);
+    miscpacket[1] = CMD_UMISC;
+    miscpacket[2] = in_pkt[1];
+    miscpacket[3] = 0; // no error.
+    miscpacket[4] = 0; // retval
+    miscpacket[5] = 0; // retval
+    switch(in_pkt[1]) {
+    case CMDUM_POWERON:
+    case CMDUM_POWEROFF:
+    case CMDUM_GETPOWER:
+    case CMDUM_MEASUREREF:
+    case CMDUM_MEASURECUR:
+    case CMDUM_GETCURRENT:
+    case CMDUM_CURRENTSENSE_TICK_LIMIT:
+    case CMDUM_CURRENTSENSE_THRESHOLD:
+    case CMDUM_CURRENTSENSE_THRESHOLD_2: {
+	// These commands are related to the ADC-based current sensing for the
+	// AUX power district. We blindly forward them to the canbus target.
+	PacketBase remote_packet(in_pkt.size() - 1);
+	memcpy(remote_packet.buf(), in_pkt.buf() + 1, in_pkt.size());
+	aux_power_node->SendCommand(remote_packet);
+	return;
+    }
+    case CMDUM_RESET: {
+#ifdef TARGET_LPC2368	
+	// Clears all possible interrupt sources.
+	NVIC->IntEnClr = NVIC->IntEnable;
+	start();
+#else
+#error Define how to reset your chip.
+#endif
+	return;
+    }
+
+    case CMDUM_SETTRAINAT: {
+	if (in_pkt[2] > MAX_TRAIN_LOCATION) {
+            miscpacket[3] = 0xff; // invalid argument.
+            break;
+	}
+	train_ids[in_pkt[2]] = in_pkt[3];
+	break;
+    }
+    case CMDUM_GETTRAINAT: {
+	if (in_pkt[2] > MAX_TRAIN_LOCATION) {
+            miscpacket[3] = 0xff; // invalid argument.
+            break;
+	}
+	miscpacket[4] = in_pkt[2];
+	miscpacket[5] = train_ids[in_pkt[2]];
+	break;
+    }
+    case CMDUM_SETRELSPEED: {
+	DccLoop_SetLocoRelativeSpeed(in_pkt[2], in_pkt[3]);
+	//fallthrough
+    }
+    case CMDUM_GETRELSPEED: {
+	if (DccLoop_IsUnknownLoco(in_pkt[2])) {
+            miscpacket[3] = 0xff; // invalid argument.
+            break;
+	}
+	miscpacket[4] = in_pkt[2];
+	miscpacket[5] = DccLoop_GetLocoRelativeSpeed(in_pkt[2]);
+	break;
+    }
+
+
+
+    }
+
 }
 
 void PacketQueue::TxThreadBody() {

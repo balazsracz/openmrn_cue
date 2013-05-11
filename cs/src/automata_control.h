@@ -26,6 +26,10 @@ bool automata_running();
 
 uint8_t* get_state_byte(int client, int offset);
 
+// Array holding the mapping of train location -> train ID.
+extern uint8_t* train_ids;
+
+
 #ifdef __cplusplus
 }
 #endif

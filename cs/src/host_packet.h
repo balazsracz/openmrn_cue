@@ -16,7 +16,7 @@ public:
 	: size_(0),
 	  data_(NULL) {}
 
-    PacketBase(int size)
+    explicit PacketBase(int size)
 	: size_(size),
 	  data_(static_cast<uint8_t*>(malloc(size))) {
 	ASSERT(data_);
@@ -115,6 +115,8 @@ private:
 
     //! Called on every incoming packet. Takes ownership of pkt.
     void ProcessPacket(PacketBase* pkt);
+    //! Handles incoming CMD_UMISC packets.
+    void HandleMiscPacket(const PacketBase& in_pkt);
 
     friend void* tx_thread(void* p);
     friend void* rx_thread(void* p);
