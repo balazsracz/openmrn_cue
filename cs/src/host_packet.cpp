@@ -31,7 +31,7 @@ static long long sync_packet_callback(void*, void*) {
     PacketBase pkt(CMD_SYNC_LEN);
     memcpy(pkt.buf(), syncpacket, pkt.size());
     PacketQueue::instance()->TransmitPacket(pkt);
-    return SEC_TO_NSEC(1);
+    return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
 PacketQueue::PacketQueue(int fd) : fd_(fd) {
@@ -41,7 +41,7 @@ PacketQueue::PacketQueue(int fd) : fd_(fd) {
     os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
-    //os_timer_start(sync_packet_timer_, SEC_TO_NSEC(1));
+    os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(250));
 }
 
 void PacketQueue::RxThreadBody() {
@@ -62,6 +62,17 @@ void PacketQueue::RxThreadBody() {
 }
 
 void PacketQueue::ProcessPacket(PacketBase* pkt) {
+    const PacketBase& in_pkt(*pkt);
+    switch (in_pkt[0]) {
+    case CMD_PING: {
+	PacketBase pongpacket(2);
+	pongpacket[0] = CMD_PONG;
+	pongpacket[1] = in_pkt[1] + 1;
+	PacketQueue::instance()->TransmitPacket(pongpacket);
+	delete pkt;
+	return;
+    }
+    }
     delete pkt;
 }
 
