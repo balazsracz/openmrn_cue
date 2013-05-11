@@ -86,6 +86,10 @@ public:
     //! Makes packet empty when done.
     void TransmitPacket(PacketBase& packet);
 
+    //! Transmits a packet from const memory. The first byte of the packet is
+    //! the length, and that many following byte will be transmitted.
+    void TransmitConstPacket(const uint8_t *packet);
+
     void TransmitPacketFromISR(PacketBase* packet) {
 	diewith(CS_DIE_UNSUPPORTED);
     }

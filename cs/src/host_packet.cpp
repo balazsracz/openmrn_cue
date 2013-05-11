@@ -25,12 +25,10 @@ void* rx_thread(void* p) {
 }
 
 const uint8_t syncpacket[] = {
-  CMD_SYNC, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+    CMD_SYNC_LEN, CMD_SYNC, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 
 static long long sync_packet_callback(void*, void*) {
-    PacketBase pkt(CMD_SYNC_LEN);
-    memcpy(pkt.buf(), syncpacket, pkt.size());
-    PacketQueue::instance()->TransmitPacket(pkt);
+    PacketQueue::instance()->TransmitConstPacket(syncpacket);
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
@@ -98,3 +96,10 @@ void PacketQueue::TransmitPacket(PacketBase& packet) {
     os_mq_send(tx_queue_, &packet);
     packet.release(); // The memory is now owned by the queue.
 }
+
+void PacketQueue::TransmitConstPacket(const uint8_t* packet) {
+    PacketBase pkt(packet[0]);
+    memcpy(pkt.buf(), &packet[1], pkt.size());
+    TransmitPacket(pkt);
+}
+
