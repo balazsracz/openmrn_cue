@@ -41,6 +41,9 @@
   - Are there cases when packets are routed within differnet components using
     the CAN broker?
 
+  - There are some mutex-unprotected calls into the dcc master from the USB
+    packet loop thread.
+
  */
 
 // Reset vector. Note that this does not go back to the bootloader.
