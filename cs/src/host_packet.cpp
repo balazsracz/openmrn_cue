@@ -164,7 +164,16 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	HandleMiscPacket(*pkt);
 	break;
     }
-
+    case CMD_CAN_PKT: {
+	// TODO(bracz): This memory copy could be avoided by rescaling
+	// CAN_START, CAN_D0, CAN_EIDH etc. to be at offset 1 instead.
+	PacketBase can_buf(in_pkt.size() + 1);
+	memcpy(can_buf.buf() + CAN_START, in_pkt.buf() + 1, in_pkt.size() - 1);
+	CANQueue_SendPacket(can_buf.buf(), O_SKIP_TWO_BYTES);
+	DccLoop_HandlePacket(can_buf);
+	// Strange that mosta-master does not need this packet.
+	break;
+    }
     } // switch
 
     delete pkt;
@@ -173,11 +182,11 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 
 void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     PacketBase miscpacket(5);
-    miscpacket[1] = CMD_UMISC;
-    miscpacket[2] = in_pkt[1];
-    miscpacket[3] = 0; // no error.
+    miscpacket[0] = CMD_UMISC;
+    miscpacket[1] = in_pkt[1];
+    miscpacket[2] = 0; // no error.
+    miscpacket[3] = 0; // retval
     miscpacket[4] = 0; // retval
-    miscpacket[5] = 0; // retval
     switch(in_pkt[1]) {
     case CMDUM_POWERON:
     case CMDUM_POWEROFF:
@@ -208,7 +217,7 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 
     case CMDUM_SETTRAINAT: {
 	if (in_pkt[2] > MAX_TRAIN_LOCATION) {
-            miscpacket[3] = 0xff; // invalid argument.
+            miscpacket[2] = 0xff; // invalid argument.
             break;
 	}
 	train_ids[in_pkt[2]] = in_pkt[3];
@@ -216,11 +225,11 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     }
     case CMDUM_GETTRAINAT: {
 	if (in_pkt[2] > MAX_TRAIN_LOCATION) {
-            miscpacket[3] = 0xff; // invalid argument.
+            miscpacket[2] = 0xff; // invalid argument.
             break;
 	}
-	miscpacket[4] = in_pkt[2];
-	miscpacket[5] = train_ids[in_pkt[2]];
+	miscpacket[3] = in_pkt[2];
+	miscpacket[4] = train_ids[in_pkt[2]];
 	break;
     }
     case CMDUM_SETRELSPEED: {
@@ -229,18 +238,33 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     }
     case CMDUM_GETRELSPEED: {
 	if (DccLoop_IsUnknownLoco(in_pkt[2])) {
-            miscpacket[3] = 0xff; // invalid argument.
+            miscpacket[2] = 0xff; // invalid argument.
             break;
 	}
-	miscpacket[4] = in_pkt[2];
-	miscpacket[5] = DccLoop_GetLocoRelativeSpeed(in_pkt[2]);
+	miscpacket[3] = in_pkt[2];
+	miscpacket[4] = DccLoop_GetLocoRelativeSpeed(in_pkt[2]);
 	break;
     }
-
-
-
+    case CMDUM_GET_LOCK_INFO: {
+	PacketBase miscpacket(6);
+	miscpacket[0] = CMD_UMISC;
+	miscpacket[1] = in_pkt[1];
+	miscpacket[2] = 0; // no error.
+	miscpacket[3] = 0; // retval
+	miscpacket[4] = 0; // retval
+	
+	miscpacket[3] = *get_state_byte(0, OFS_GLOBAL_BITS);
+	miscpacket[4] = locks[in_pkt[2]] >> 8;
+	miscpacket[5] = locks[in_pkt[2]] & 0xff;
+	PacketQueue::instance()->TransmitPacket(miscpacket);
+	return;
     }
-
+    case CMDUM_REL_ALL_LOCK: {
+	*get_state_byte(0, OFS_GLOBAL_BITS) = 0;
+	break;
+    }
+    } // switch packet cmd
+    PacketQueue::instance()->TransmitPacket(miscpacket);
 }
 
 void PacketQueue::TxThreadBody() {

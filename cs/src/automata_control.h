@@ -32,6 +32,8 @@ uint8_t* get_state_byte(int client, int offset);
 // Array holding the mapping of train location -> train ID.
 extern uint8_t* train_ids;
 
+// Holds owner information for automata mutexes.
+extern volatile uint16_t* locks;
 
 #ifdef __cplusplus
 }
