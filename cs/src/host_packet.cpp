@@ -9,6 +9,7 @@
 #include "usb_proto.h"
 #include "automata_control.h"
 #include "extender_node.h"
+#include "dcc-master.h"
 
 // Reset vector. Note that this does not go back to the bootloader.
 extern "C" { void start(void); }

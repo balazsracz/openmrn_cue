@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+
+#define MAX_TRAIN_LOCATION 32
+
 //! Clears all state of all automatas.
 void resetrpchandler();
 
