@@ -14,7 +14,7 @@
 #define DCC_NUM_LOCO 16
 
 void DccLoop_Init(void);
-void DccLoop_HandlePacket(void);
+void DccLoop_HandlePacket(const PacketBase& can_buf);
 void DccLoop_ProcessIO(void);
 void DccLoop_Timer(void);
 void DccLoop_EmergencyStop(void);

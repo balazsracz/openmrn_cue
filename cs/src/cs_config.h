@@ -27,5 +27,10 @@ extern uint32_t blinker_pattern;
 //! maintain. Each entry costs 8 bytes.
 #define PACKET_TX_QUEUE_LENGTH 10
 
+///////////
+
+#define DCC_CAN_THREAD_CAN_STACK_SIZE 2048
+
+
 
 #endif // _CS_CONFIG_H_

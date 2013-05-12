@@ -46,6 +46,7 @@
 #include "nmranet_config.h"
 
 #include "host_packet.h"
+#include "can-queue.h"
 
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
@@ -93,6 +94,9 @@ void* out_blinker_thread(void*) {
  */
 int appl_main(int argc, char *argv[]) {
   PacketQueue::initialize("/dev/serUSB0");
+  int fd = open("/dev/can0", O_RDWR);
+  ASSERT(fd >= 0);
+  dcc_can_init(fd);
 
   NMRAnetIF *nmranet_if;
 

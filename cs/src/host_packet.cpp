@@ -10,6 +10,38 @@
 #include "automata_control.h"
 #include "extender_node.h"
 #include "dcc-master.h"
+#include "pic_can.h"
+#include "can-queue.h"
+
+/*
+
+  Features that need to be copied over:
+
+  - Timer. Call mostamaster_timer approximately 15 times per second. Set HZ to
+    the frequency of calls.
+
+  - Wii controller.
+
+  - the lock bits are sent back to the host once every second. There is also a
+    once-per second "tick" command that sends some parameters that noone looked
+    at previously. It is sent back with a fake RPCLOG message.
+
+  - Blink LEDs by usb status.
+
+  - There is a request_emergency_stop RPC command in the assembler language. It
+    sets a gllobal bit, and in the next processing loop it causes packets to be
+    sent out to stop the mosta-master and DCC booster.
+
+  - in the case of some HandlePacket I have commented out "if
+    (!canISDestination(CDST_FOO)) return;" commands. Is it okay to remove these?
+    Or are there can packets coming in that would cause confusion?
+
+  - in main() there is a reset_train_map() call.
+    
+  - Are there cases when packets are routed within differnet components using
+    the CAN broker?
+
+ */
 
 // Reset vector. Note that this does not go back to the bootloader.
 extern "C" { void start(void); }
@@ -170,7 +202,11 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	PacketBase can_buf(in_pkt.size() + 1);
 	memcpy(can_buf.buf() + CAN_START, in_pkt.buf() + 1, in_pkt.size() - 1);
 	CANQueue_SendPacket(can_buf.buf(), O_SKIP_TWO_BYTES);
+	os_mutex_lock(&dcc_mutex);
 	DccLoop_HandlePacket(can_buf);
+	DccLoop_ProcessIO();
+	DccLoop_ProcessIO();
+	os_mutex_unlock(&dcc_mutex);
 	// Strange that mosta-master does not need this packet.
 	break;
     }
@@ -201,7 +237,7 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 	// AUX power district. We blindly forward them to the canbus target.
 	PacketBase remote_packet(in_pkt.size() - 1);
 	memcpy(remote_packet.buf(), in_pkt.buf() + 1, in_pkt.size());
-	aux_power_node->SendCommand(remote_packet);
+	//aux_power_node->SendCommand(remote_packet);
 	return;
     }
     case CMDUM_RESET: {

@@ -3,6 +3,7 @@
 #define _BRACZ_TRAIN_CAN_QUEUE_H_
 
 #include <stdint.h>
+#include "os/os.h"
 
 typedef enum {
   // Emit as a log item to the USB bus. Has two extra bytes at the beginning of
@@ -30,5 +31,9 @@ void CANQueue_SendPacket_back(const uint8_t* packet, can_opts_t opts);
 #define CANQueue_SendPacket_front(p, o) CANQueue_SendPacket_back(p, o)
 
 extern uint8_t CANQueue_eidh_mask;
+
+void dcc_can_init(int devfd);
+
+extern os_mutex_t dcc_mutex;
 
 #endif // _BRACZ_TRAIN_CAN_QUEUE_H_
