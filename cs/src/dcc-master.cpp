@@ -1,10 +1,11 @@
 #include <string.h>
 
+#include "host_packet.h"
+#include "pic_can.h"
+
 #include "dcc-master.h"
 #include "base.h"
-#include "can.h"
 #include "can-queue.h"
-#include "packet_io.h"
 #include "dcc-can-proto.h"
 
 
@@ -27,7 +28,7 @@ typedef struct {
     uint8_t raw;
   } speed;
   // function buttons. bit 0: lights. bits 1-7: f1-f7. 1=on, 0=off.
-  uint16 fn;
+  uint16_t fn;
 
   // raw speed will be multiplied with this to get the actual speed.
   uint8_t relative_speed;
@@ -180,9 +181,9 @@ const struct const_loco_db_t const_lokdb[] = {
   // id 14
   { 18, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "185 595-6", DCC_28 },
-  { 0, },
-  { 0, },
-  { 0, }
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
 };
 
 const uint8_t dcc_erstop[] = {  //
@@ -263,8 +264,6 @@ const uint8_t dlog_sent[] = { 2, CMD_CAN_LOG, '@' };
 const uint8_t dlog_newline[] = { 2, CMD_CAN_LOG, '\n' };
 
 
-static uint8_t dlog[3];
-
 void UpdateByteCounter();
 
 struct dcc_master_state_t {
@@ -323,36 +322,33 @@ static uint8_t IsTrainMovingReverse(uint8_t id) {
 // Adds an entry to the back of the priority queue. Returns 1 if added
 // successful, 0 if failed (queue full).
 static uint8_t AddToPriorityQueue(uint8_t id, uint8_t what) {
-  uint8_t ds = GIE;
-  GIE = 0;
+  taskENTER_CRITICAL();
   uint8_t myofs = dcc_master.priority_len;
+  uint8_t ret = 0;
   if (myofs < PRIORITY_SIZE) {
     dcc_master.priority_len++;
-    GIE = ds;
     dcc_master.priority[myofs].id = id;
     dcc_master.priority[myofs].what = what;
-    return 1;
-  } else {
-    GIE = ds;
-    return 0;
+    ret = 1;
   }
+  taskEXIT_CRITICAL();  
+  return ret;
 }
 
 uint8_t DccLoop_HasPower() {
   return dcc_master.alive;
 }
 
-static void DccLoop_HandlePacketToMaster() {
-  CANSetPending(CDST_DCCMASTER);
+static void DccLoop_HandlePacketToMaster(const PacketBase& can_buf) {
   uint8_t cmd = can_buf[CAN_D0];
   switch(cmd) {
     case CANCMD_KEEPALIVE: {
       SendPacket(dcc_keepalive, O_SKIP_TWO_BYTES);
       dcc_master.free_packet_count = can_buf[CAN_D1];
-      enqueue_packet((uint8_t*)dlog_ping, 0);
+      PacketQueue::instance()->TransmitConstPacket(dlog_ping);
       dcc_master.alive = can_buf[CAN_D2] ? 1 : 0;
       if (can_buf[CAN_D2]) {
-        enqueue_packet((uint8_t*)dlog_alive, 0);
+        PacketQueue::instance()->TransmitConstPacket(dlog_alive);
       }
       UpdateByteCounter();
       // Skip printing the log to the host.
@@ -378,7 +374,7 @@ static void DccLoop_HandlePacketToMaster() {
 }
 
 static void RespondLocoFnValue(uint8_t id, uint8_t what) {
-  memcpy(can_resp_buf, can_buf + CAN_START, 13);
+  uint8_t can_resp_buf[10];
   can_resp_buf[0] = 0x40;
   can_resp_buf[1] = 0x48;
   can_resp_buf[2] = 1 | (id << 2);
@@ -397,9 +393,9 @@ static void RespondLocoFnValue(uint8_t id, uint8_t what) {
     if (what >= dcc_master_loco[id].fncount) return;
     what = const_lokdb[id].function_mapping[what];
     if (dcc_master_loco[id].fn & (1<<what)) {
-      can_buf[CAN_D2] = 1;
+      can_resp_buf[7] = 1;
     } else {
-      can_buf[CAN_D2] = 0;
+      can_resp_buf[7] = 0;
     }
   }
   SendPacket(can_resp_buf, O_HOST);
@@ -492,15 +488,16 @@ void DccLoop_SetLocoReversed(uint8_t id, uint8_t is_reversed) {
   RespondLocoFnValue(id, 33);
 }
 
-void DccLoop_HandlePacket() {
-  if (!CANIsDestination(CDST_DCCMASTER)) {
-    return;
-  }
+void DccLoop_HandlePacket(const PacketBase& can_buf) {
+    // TODO(bracz): This needs some equivalent upstream.
+    //if (!CANIsDestination(CDST_DCCMASTER)) {
+    //return;
+    //}
   CANSetPending(CDST_DCCMASTER);
   if (can_buf[CAN_SIDH] == MASTER_SIDH &&
       can_buf[CAN_SIDL] == MASTER_SIDL &&
       can_buf[CAN_LEN] > 0) {
-    DccLoop_HandlePacketToMaster();
+    DccLoop_HandlePacketToMaster(can_buf);
   }
   if (SIDMATCH(0x4008) &&
       // THis accepts only from the slave (host and slave mosta). If need to
@@ -564,7 +561,7 @@ void DccLoop_HandlePacket() {
        can_buf[CAN_D0] >= 0xb)) {
     RespondLocoFnValue(can_buf[CAN_EIDH] >> 2, can_buf[CAN_D0]);
   }
-  while (SIDMATCH(0xC048) &
+  while (SIDMATCH(0xC048) &&
       can_buf[CAN_LEN] >= 5 &&
       can_buf[CAN_D0] == 1 &&
       can_buf[CAN_D1] == 2 &&
@@ -595,11 +592,10 @@ void DccLoop_HandlePacket() {
   CANSetNotPending(CDST_DCCMASTER);
 }
 
-uint8_t dcc_packet_log[15];
-
 static void SendDccPacket(uint8_t cmd, uint8_t len,
                           uint8_t d1, uint8_t d2, uint8_t d3, uint8_t d4) {
-  memcpy(can_buf + CAN_SIDH, dcc_packet_preamble + 2, 6);
+  uint8_t can_buf[15];
+  memcpy(can_buf + CAN_START, dcc_packet_preamble + 2, 6);
   can_buf[CAN_LEN] = len + 1;
   can_buf[CAN_D0] = cmd;
   can_buf[CAN_D1] = d1;
@@ -607,12 +603,18 @@ static void SendDccPacket(uint8_t cmd, uint8_t len,
   can_buf[CAN_D3] = d3;
   can_buf[CAN_D4] = d4;
 
-  CANSendPacket(CDST_CANBUS | LOG_PKT_TO_HOST);
+  can_buf[0] = 1 + 5 + (can_buf[CAN_LEN] & 0xf);
+  can_buf[1] = CMD_CAN_PKT;
+
+  can_opts_t opts = O_SKIP_TWO_BYTES;
+  if (LOG_PKT_TO_HOST) opts = (can_opts_t) (O_SKIP_TWO_BYTES | O_HOST);
+  CANQueue_SendPacket(can_buf, opts);
   --dcc_master.free_packet_count;
-  enqueue_packet((uint8_t*)dlog_sent, 0);
+  PacketQueue::instance()->TransmitConstPacket(dlog_sent);
 }
 
 static void SendMarklinPacket(uint8_t cmd, uint8_t d1, uint8_t d2, uint8_t d3) {
+  uint8_t can_buf[15];
   memcpy(can_buf + CAN_SIDH, marklin_packet_preamble + 2, 6);
   can_buf[CAN_LEN] = 3 + 1;
   can_buf[CAN_D0] = cmd;
@@ -620,9 +622,11 @@ static void SendMarklinPacket(uint8_t cmd, uint8_t d1, uint8_t d2, uint8_t d3) {
   can_buf[CAN_D2] = d2;
   can_buf[CAN_D3] = d3;
 
-  CANSendPacket(CDST_CANBUS | LOG_PKT_TO_HOST);
+  can_opts_t opts = O_SKIP_TWO_BYTES;
+  if (LOG_PKT_TO_HOST) opts = (can_opts_t) (O_SKIP_TWO_BYTES | O_HOST);
+  CANQueue_SendPacket(can_buf, opts);
   --dcc_master.free_packet_count;
-  enqueue_packet((uint8_t*)dlog_sent, 0);
+  PacketQueue::instance()->TransmitConstPacket(dlog_sent);
 }
 
 
@@ -819,6 +823,7 @@ static void SendDccLocoSpeedPacket(uint8_t loco, uint8_t prio) {
 
 
 static void SendServiceModeResponse(uint8_t code, uint8_t value) {
+  uint8_t can_buf[15];  
   memcpy(can_buf + CAN_SIDH, dcc_service_mode_response + 2, 8);
   can_buf[CAN_EIDH] |= (dcc_master.service_mode_id << 2);
   ++dcc_master.service_mode_cv;
@@ -826,7 +831,7 @@ static void SendServiceModeResponse(uint8_t code, uint8_t value) {
   can_buf[CAN_D4] = dcc_master.service_mode_cv & 0xff;
   can_buf[CAN_D5] = code;
   can_buf[CAN_D6] = value;
-  CANSendPacket(CDST_CANBUS | CDST_HOST);
+  CANQueue_SendPacket(can_buf, (can_opts_t) (O_SKIP_TWO_BYTES | O_HOST));
   dcc_master.service_mode = 0;
   dcc_master.service_mode_state = 0;
 }
@@ -842,7 +847,6 @@ static void SendServiceModeResponse(uint8_t code, uint8_t value) {
 
 
 static void HandleServiceMode() {
-  if (CANIsBufFull()) return;
   switch (dcc_master.service_mode_state) {
     case SST_WAIT_WRITE_2: {
       // This is where most of the wait will happen.
@@ -1010,25 +1014,12 @@ static void HandleServiceMode() {
       break;
     }
   }
-
-
-
-
-  if (dcc_master.free_packet_count <= 1 ||
-      CANIsBufFull()) return;
-
-  //switch (dcc_master.service_mode_state) {
-
-  //}
-
-
-
 }
 
 
-static uint8_t log_pkt[6];
 
 void DccLoop_ProcessIO() {
+  uint8_t log_pkt[6];
   if (dcc_master.alive &&
       dcc_master.service_mode) {
     log_pkt_to_host_ = CDST_HOST;
@@ -1041,13 +1032,12 @@ void DccLoop_ProcessIO() {
       log_pkt[2] = dcc_master.service_mode_value;
       log_pkt[3] = tmp;
       log_pkt[4] = dcc_master.service_mode_state;
-      enqueue_packet(&log_pkt, 0);
+      PacketQueue::instance()->TransmitConstPacket(log_pkt);
     }
   }
   if (dcc_master.alive &&
       !dcc_master.service_mode &&
-      dcc_master.free_packet_count > 0 &&
-      !CANIsBufFull()) {
+      dcc_master.free_packet_count > 0) {
 
     if (dcc_master.priority_len) {
       uint8_t id = dcc_master.priority[0].id;
@@ -1058,11 +1048,11 @@ void DccLoop_ProcessIO() {
           SendLocoFnPacket(id, dcc_master.priority[0].what, 1);
         }
       }
-      di();
+      taskENTER_CRITICAL();
       memmove(dcc_master.priority, dcc_master.priority + 1,
               (dcc_master.priority_len - 1) * sizeof(dcc_master.priority[0]));
       --dcc_master.priority_len;
-      ei();
+      taskEXIT_CRITICAL();
       return;
     }
 
@@ -1079,7 +1069,7 @@ void DccLoop_ProcessIO() {
         log_pkt[3] = dcc_master_loco[dcc_master.last_loco_id].address;
         log_pkt[4] = dcc_master_loco[dcc_master.last_loco_id].loop_at_speed;
         log_pkt[5] = dcc_master_loco[dcc_master.last_loco_id].loop_position;
-        enqueue_packet(&log_pkt, 0);
+        PacketQueue::instance()->TransmitConstPacket(log_pkt);
 #endif
         // Send next packet for current loco.
         if (dcc_master_loco[dcc_master.last_loco_id].loop_at_speed) {
@@ -1147,6 +1137,7 @@ void DccLoop_Init() {
 void DccLoop_EmergencyStop() {
   CANQueue_SendPacket_front((uint8_t*)dcc_erstop, O_LOG_AT);
   // Makes the packet be sent off right away if possible.
-  CANQueue_ProcessIO();
-  CANProcessIO();
+  // This is not needed in FreeRTOS anymore.
+  //CANQueue_ProcessIO();
+  //CANProcessIO();
 }

@@ -2,11 +2,17 @@
 #ifndef _CS_CONFIG_H_
 #define _CS_CONFIG_H_
 
+#include <stdint.h>
+
+#ifdef __cplusplus
 extern "C" {
+#endif
 void diewith(uint32_t pattern);
 void setblink(uint32_t pattern);
 extern uint32_t blinker_pattern;
+#ifdef __cplusplus
 }
+#endif
 
 #define CS_DIE_ASSERT 0x80002C2A       // 4-1-1
 #define CS_DIE_UNSUPPORTED 0x8000AC2A  // 4-1-2
