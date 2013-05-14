@@ -48,6 +48,9 @@
 #include "host_packet.h"
 #include "can-queue.h"
 
+#include "event_registry.hxx"
+#include "common_event_handlers.hxx"
+
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
 const char *nmranet_software_rev = "0.1";
@@ -67,6 +70,7 @@ const size_t CAN_IF_READ_THREAD_STACK_SIZE = 1024;
 extern "C" {
 void resetblink(uint32_t pattern);
 void diewith(uint32_t pattern);
+extern uint32_t blinker_pattern;
 }
 
 node_t node;
@@ -75,17 +79,32 @@ void* out_blinker_thread(void*) {
   resetblink(0);
   while (1) {
     usleep(200000);
-    resetblink(1);
+    //resetblink(1);
     nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
     nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_VALID);
     usleep(200000);
-    resetblink(0);
+    //resetblink(0);
     nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
     nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
   }
   return NULL;
 }
 
+EventRegistry registry;
+
+class BlinkerToggleEventHandler : public MemoryToggleEventHandler<uint32_t> {
+ public:
+  BlinkerToggleEventHandler(uint64_t event_on, uint64_t event_off)
+      : MemoryToggleEventHandler<uint32_t>(
+            event_on, event_off, 1, &blinker_pattern) {}
+
+  virtual void HandleEvent(uint64_t event) {
+    MemoryToggleEventHandler<uint32_t>::HandleEvent(event);
+    resetblink(blinker_pattern);
+  }
+};
+
+BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL, 0x0502010202650013ULL);
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -129,10 +148,7 @@ int appl_main(int argc, char *argv[]) {
       for (size_t i = nmranet_event_pending(node); i > 0; i--) {
         node_handle_t node_handle;
         uint64_t event = nmranet_event_consume(node, &node_handle);
-        event = event ? 1 : 0; /* suppress compiler warning, unused variable */
-        if ((event & 0xff000000) == 0xa8000000ULL) {
-          resetblink(event & 1);
-        }
+        registry.HandleEvent(event);
       }
       for (size_t i = nmranet_datagram_pending(node); i > 0; i--) {
         datagram_t datagram = nmranet_datagram_consume(node);
