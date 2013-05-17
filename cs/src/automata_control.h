@@ -34,8 +34,20 @@ uint8_t* get_state_byte(int client, int offset);
 // Array holding the mapping of train location -> train ID.
 extern uint8_t train_ids[];
 
+#define MAX_LOCK_ID 8
+
 // Holds owner information for automata mutexes.
 extern volatile uint16_t locks[];
+
+// Holds the aspects of the signals.
+extern uint8_t signal_aspects[];
+inline void set_signal_aspect(int offset, uint8_t aspect) {
+    // TODO(bracz) send off this value in an event or what.
+    signal_aspects[offset] = aspect;
+}
+inline uint8_t get_signal_aspect(int offset) {
+    return signal_aspects[offset];
+}
 
 #ifdef __cplusplus
 }

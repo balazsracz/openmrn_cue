@@ -16,6 +16,10 @@ extern uint32_t blinker_pattern;
 
 #define CS_DIE_ASSERT 0x80002C2A       // 4-1-1
 #define CS_DIE_UNSUPPORTED 0x8000AC2A  // 4-1-2
+#define CS_DIE_AUT_IMPORTERROR 0x8002AC2A  // 4-1-3
+#define CS_DIE_AUT_HALT 0x800AAC2A  // 4-1-4
+#define CS_DIE_AUT_WRITETIMERBIT 0x802AAC2A  // 4-1-5
+#define CS_DIE_AUT_TWOBYTEFAIL 0x80AAAC2A  // 4-1-6
 
 #define ASSERT( x ) do { if (!(x)) diewith(CS_DIE_ASSERT); } while (0)
 
@@ -30,7 +34,10 @@ extern uint32_t blinker_pattern;
 ///////////
 
 #define DCC_CAN_THREAD_CAN_STACK_SIZE 2048
+#define AUTOMATA_THREAD_STACK_SIZE 2048
 
+#define MAX_SIGNALS 64
+#define MAX_LOCKS 16
 
 
 #endif // _CS_CONFIG_H_

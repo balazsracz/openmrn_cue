@@ -50,6 +50,7 @@
 
 #include "event_registry.hxx"
 #include "common_event_handlers.hxx"
+#include "automata_runner.h"
 
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
@@ -140,6 +141,7 @@ int appl_main(int argc, char *argv[]) {
   nmranet_node_initialized(node);
 
   os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
+  AutomataRunner runner(node);
 
   for (;;) {
     int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));

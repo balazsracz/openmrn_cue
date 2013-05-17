@@ -1,4 +1,5 @@
 
+#include "cs_config.h"
 #include "automata_control.h"
 
 void resetrpchandler() {}
@@ -19,7 +20,7 @@ uint8_t clients[8][32];
 
 //! Returns a state byte from a particular client and offset. Offset is
 //! interpreted in the old system.
-// NOTE(bracz): this sees to be a special case for locks?
+// NOTE(bracz): this seems to be a special case for locks?
 //	    if (arg == ((comms_get_address()) << 5) + OFS_GLOBAL_BITS) {
 //          statepacket[i+3] = global_bits[comms_get_address()];
 uint8_t* get_state_byte(int client, int offset) {
@@ -30,5 +31,7 @@ uint8_t* get_state_byte(int client, int offset) {
 uint8_t train_ids[MAX_TRAIN_LOCATION];
 
 // Holds owner information for automata mutexes.
-volatile uint16_t locks[16];
+volatile uint16_t locks[MAX_LOCKS];
 
+
+uint8_t signal_aspects[MAX_SIGNALS];
