@@ -31,7 +31,7 @@ uint8_t* get_state_byte(int client, int offset) {
 uint8_t train_ids[MAX_TRAIN_LOCATION];
 
 // Holds owner information for automata mutexes.
-volatile uint16_t locks[MAX_LOCKS];
+volatile uint16_t locks[MAX_LOCK_ID];
 
 
 uint8_t signal_aspects[MAX_SIGNALS];

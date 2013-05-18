@@ -37,7 +37,7 @@ extern uint32_t blinker_pattern;
 #define AUTOMATA_THREAD_STACK_SIZE 2048
 
 #define MAX_SIGNALS 64
-#define MAX_LOCKS 16
+#define MAX_LOCK_ID 8
 
 
 #endif // _CS_CONFIG_H_
