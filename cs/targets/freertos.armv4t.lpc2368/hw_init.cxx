@@ -33,10 +33,14 @@
 
 #include "LPC23xx.h"
 #include "mbed.h"
-
+#include "pipe.hxx"
+#include "can.h"
 #include "FreeRTOSConfig.h"
 
 DigitalIn startpin(P1_4);
+
+DEFINE_PIPE(hcan_pipe, sizeof(struct can_frame));
+VIRTUAL_DEVTAB_ENTRY(hcan_nmra, hcan_pipe, "/dev/vcan0", 16);
 
 extern "C" {
 

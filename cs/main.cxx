@@ -39,6 +39,7 @@
 
 #include "os/os.h"
 #include "os/OS.hxx"
+#include "pipe.hxx"
 #include "if/nmranet_if.h"
 #include "core/nmranet_node.h"
 #include "core/nmranet_event.h"
@@ -76,6 +77,7 @@ extern uint32_t blinker_pattern;
 
 node_t node;
 
+
 void* out_blinker_thread(void*) {
   resetblink(0);
   while (1) {
@@ -107,6 +109,8 @@ class BlinkerToggleEventHandler : public MemoryToggleEventHandler<uint32_t> {
 
 BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL, 0x0502010202650013ULL);
 
+extern Pipe hcan_pipe;
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -118,9 +122,11 @@ int appl_main(int argc, char *argv[]) {
   ASSERT(fd >= 0);
   dcc_can_init(fd);
 
+  hcan_pipe.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
+
   NMRAnetIF *nmranet_if;
 
-  nmranet_if = nmranet_can_if_init(0x02010d000000ULL, "/dev/can1", read, write);
+  nmranet_if = nmranet_can_if_init(0x02010d000000ULL, "/dev/vcan0", read, write);
 
   if (nmranet_if == NULL)
   {
@@ -141,7 +147,7 @@ int appl_main(int argc, char *argv[]) {
   nmranet_node_initialized(node);
 
   os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
-  AutomataRunner runner(node);
+  //AutomataRunner runner(node);
 
   for (;;) {
     int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
