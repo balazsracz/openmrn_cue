@@ -109,7 +109,8 @@ class BlinkerToggleEventHandler : public MemoryToggleEventHandler<uint32_t> {
 
 BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL, 0x0502010202650013ULL);
 
-extern Pipe hcan_pipe;
+DECLARE_PIPE(can_pipe0);
+DECLARE_PIPE(can_pipe1);
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -118,15 +119,17 @@ extern Pipe hcan_pipe;
  */
 int appl_main(int argc, char *argv[]) {
   PacketQueue::initialize("/dev/serUSB0");
-  int fd = open("/dev/can0", O_RDWR);
+
+  can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
+  can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
+
+  int fd = open("/dev/canp0v0", O_RDWR);
   ASSERT(fd >= 0);
   dcc_can_init(fd);
 
-  hcan_pipe.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
-
   NMRAnetIF *nmranet_if;
 
-  nmranet_if = nmranet_can_if_init(0x02010d000000ULL, "/dev/vcan0", read, write);
+  nmranet_if = nmranet_can_if_init(0x02010d000000ULL, "/dev/canp0v1", read, write);
 
   if (nmranet_if == NULL)
   {

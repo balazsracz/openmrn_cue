@@ -39,8 +39,13 @@
 
 DigitalIn startpin(P1_4);
 
-DEFINE_PIPE(hcan_pipe, sizeof(struct can_frame));
-VIRTUAL_DEVTAB_ENTRY(hcan_nmra, hcan_pipe, "/dev/vcan0", 16);
+DEFINE_PIPE(can_pipe0, sizeof(struct can_frame));
+DEFINE_PIPE(can_pipe1, sizeof(struct can_frame));
+VIRTUAL_DEVTAB_ENTRY(canp0v0, can_pipe0, "/dev/canp0v0", 16);
+VIRTUAL_DEVTAB_ENTRY(canp0v1, can_pipe0, "/dev/canp0v1", 16);
+
+VIRTUAL_DEVTAB_ENTRY(canp1v0, can_pipe1, "/dev/canp1v0", 16);
+VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);
 
 extern "C" {
 
