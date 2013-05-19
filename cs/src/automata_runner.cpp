@@ -379,7 +379,16 @@ void* automata_thread(void* arg) {
 
 
 AutomataRunner::AutomataRunner(node_t node)
-    : openmrn_node_(node) {
+    : ip_(0),
+      aut_srcplace_(254),
+      aut_trainid_(254),
+      aut_signal_aspect_(254),
+      base_pointer_((insn_t*)0x78000),
+      current_automata_(NULL),
+      openmrn_node_(node),
+      pending_ticks_(0) {
+    memset(imported_bits_, 0, sizeof(imported_bits_));
+    os_sem_init(&automata_sem_, 0);
     os_thread_create(NULL, "automata", 0, AUTOMATA_THREAD_STACK_SIZE,
 		     automata_thread, this);
 }
