@@ -34,7 +34,7 @@ all: $(EXECUTABLE).bin $(EXECUTABLE).lst
 
 %.lst: %.elf
 	$(SIZE) $<
-	$(OBJDUMP) -d $< > $@
+	$(OBJDUMP) -d -C $< > $@
 
 %.bin: %.elf
 	$(OBJCOPY) -O binary $< $@
