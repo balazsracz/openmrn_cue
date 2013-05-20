@@ -3,8 +3,12 @@
 
 #include "cmsis.h"
 
-#include "os/os.h"
 #include "host_packet.h"
+
+
+#include "os/os.h"
+#include "pipe.hxx"
+#include "gc_pipe.hxx"
 
 #include "usb_proto.h"
 #include "automata_control.h"
@@ -46,6 +50,27 @@
 
  */
 
+DEFINE_PIPE(usb_vcom_pipe0, 1);
+DECLARE_PIPE(can_pipe0);
+
+//! Class to handle data that comes from the virtual COM pipe and is to be sent
+//! on to the USB handler.
+class VCOMPipeMember : public PipeMember {
+public:
+    VCOMPipeMember(int packet_id) : packet_id_(packet_id) {}
+
+    virtual void write(const void* buf, size_t count) {
+	PacketBase out_pkt(count + 1);
+	out_pkt[0] = packet_id_;
+	memcpy(out_pkt.buf() + 1, buf, count);
+	PacketQueue::instance()->TransmitPacket(out_pkt);
+    }
+
+private:
+    int packet_id_;
+};
+
+
 // Reset vector. Note that this does not go back to the bootloader.
 extern "C" { void start(void); }
 
@@ -83,6 +108,20 @@ PacketQueue::PacketQueue(int fd) : fd_(fd) {
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
     os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(250));
+    // Wires up packet receive from vcom0 to the USB host.
+    usb_vcom0_recv_ = new VCOMPipeMember(CMD_VCOM0);
+    usb_vcom_pipe0.RegisterMember(usb_vcom0_recv_);
+    gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_pipe0, false);
+}
+
+PacketQueue::~PacketQueue() {
+    delete gc_adapter_;
+    usb_vcom_pipe0.UnregisterMember(usb_vcom0_recv_);
+    delete usb_vcom0_recv_;
+    os_timer_delete(sync_packet_timer_);
+    // There is no way to destroy an os_mq_t.
+    // There is no way to stop a thread.
+    abort();
 }
 
 void PacketQueue::RxThreadBody() {
@@ -211,6 +250,11 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	DccLoop_ProcessIO();
 	os_mutex_unlock(&dcc_mutex);
 	// Strange that mosta-master does not need this packet.
+	break;
+    }
+    case CMD_VCOM0: {
+	usb_vcom_pipe0.WriteToAll(usb_vcom0_recv_,
+				  in_pkt.buf() + 1, in_pkt.size() - 1);
 	break;
     }
     } // switch

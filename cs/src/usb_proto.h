@@ -54,6 +54,10 @@
 
 // Next track packet that to be sent.
 #define CMD_DCCLOG 0x22
+// Virtual COM port 0. Bytes in this packet will be forwarded to the
+// virtual serial port.
+#define CMD_VCOM0 0x23
+
 
 
 #define CMDUM_POWERON 0x01

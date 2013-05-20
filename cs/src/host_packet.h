@@ -10,6 +10,9 @@
 
 #include "cs_config.h"
 
+class GCAdapterBase;
+class PipeMember;
+
 class PacketBase {
 public:
     PacketBase()
@@ -127,7 +130,14 @@ private:
     //! Packets waiting for transmission to the host.
     os_mq_t tx_queue_;
 
+    //! Timer used to generate the sync packets towards the host.
     os_timer_t sync_packet_timer_;
+
+    //! The pipe-to-pipe GridConnect converter that processes the virtual GC
+    //! protocol that runs over the specific USB packets.
+    GCAdapterBase* gc_adapter_;
+
+    PipeMember* usb_vcom0_recv_;
 };
 
 #endif // _HOST_PACKET_H_
