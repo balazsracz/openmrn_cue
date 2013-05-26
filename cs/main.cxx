@@ -39,6 +39,7 @@
 
 #include "os/os.h"
 #include "os/OS.hxx"
+#include "os/watchdog.h"
 #include "pipe.hxx"
 #include "if/nmranet_if.h"
 #include "core/nmranet_node.h"
@@ -78,36 +79,39 @@ extern uint32_t blinker_pattern;
 node_t node;
 
 
-void* out_blinker_thread(void*) {
-  resetblink(0);
-  while (1) {
-    usleep(200000);
-    //resetblink(1);
-    nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
-    nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_VALID);
-    usleep(200000);
-    //resetblink(0);
-    nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
-    nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
-  }
-  return NULL;
+void* out_blinker_thread(void*)
+{
+    resetblink(0);
+    while (1)
+    {
+        usleep(200000);
+        //resetblink(1);
+        nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+        nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_VALID);
+        usleep(200000);
+        //resetblink(0);
+        nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
+        nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
+    }
+    return NULL;
 }
 
 EventRegistry registry;
 
 class BlinkerToggleEventHandler : public MemoryToggleEventHandler<uint32_t> {
- public:
-  BlinkerToggleEventHandler(uint64_t event_on, uint64_t event_off)
-      : MemoryToggleEventHandler<uint32_t>(
+public:
+    BlinkerToggleEventHandler(uint64_t event_on, uint64_t event_off)
+        : MemoryToggleEventHandler<uint32_t>(
             event_on, event_off, 1, &blinker_pattern) {}
 
-  virtual void HandleEvent(uint64_t event) {
-    MemoryToggleEventHandler<uint32_t>::HandleEvent(event);
-    resetblink(blinker_pattern);
-  }
+    virtual void HandleEvent(uint64_t event) {
+        MemoryToggleEventHandler<uint32_t>::HandleEvent(event);
+        resetblink(blinker_pattern);
+    }
 };
 
-BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL, 0x0502010202650013ULL);
+BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL,
+                                      0x0502010202650013ULL);
 
 DECLARE_PIPE(can_pipe0);
 DECLARE_PIPE(can_pipe1);
@@ -117,57 +121,60 @@ DECLARE_PIPE(can_pipe1);
  * @param argv array of command line arguments
  * @return 0, should never return
  */
-int appl_main(int argc, char *argv[]) {
-  PacketQueue::initialize("/dev/serUSB0");
+int appl_main(int argc, char *argv[])
+{
+    
+    PacketQueue::initialize("/dev/serUSB0");
 
-  can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
-  can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
+    //can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
+    //can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
 
-  int fd = open("/dev/canp0v0", O_RDWR);
-  ASSERT(fd >= 0);
-  dcc_can_init(fd);
+    int fd = open("/dev/canp1v0", O_RDWR);
+    ASSERT(fd >= 0);
+    //dcc_can_init(fd);
 
-  NMRAnetIF *nmranet_if;
+    NMRAnetIF *nmranet_if;
 
-  nmranet_if = nmranet_can_if_init(0x02010d000000ULL, "/dev/canp0v1", read, write);
+    nmranet_if = nmranet_can_if_init(0x02010d000000ULL, "/dev/canp0v1", read, write);
 
-  if (nmranet_if == NULL)
-  {
-    diewith(0x8002CCCA);  // 3-3-1
-  }
-
-  node = nmranet_node_create(0x02010d000001ULL, nmranet_if, "Virtual Node", NULL);
-  nmranet_node_user_description(node, "Test Node");
-
-  nmranet_event_consumer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
-  nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
-  nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
-  nmranet_event_consumer(node, 0x05020102a8650013ULL, EVENT_STATE_INVALID);
-  nmranet_event_consumer(node, 0x05020102a8650012ULL, EVENT_STATE_INVALID);
-  nmranet_event_producer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
-  nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
-  nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
-  nmranet_node_initialized(node);
-
-  os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
-  //AutomataRunner runner(node);
-
-  for (;;) {
-    int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
-
-    if (result) {
-      for (size_t i = nmranet_event_pending(node); i > 0; i--) {
-        node_handle_t node_handle;
-        uint64_t event = nmranet_event_consume(node, &node_handle);
-        registry.HandleEvent(event);
-      }
-      for (size_t i = nmranet_datagram_pending(node); i > 0; i--) {
-        datagram_t datagram = nmranet_datagram_consume(node);
-        // We release unknown datagrams iwthout processing them.
-        nmranet_datagram_release(datagram);
-      }
+    if (nmranet_if == NULL)
+    {
+        diewith(0x8002CCCA);  // 3-3-1
     }
-  }
 
-  return 0;
+    node = nmranet_node_create(0x02010d000001ULL, nmranet_if, "Virtual Node", NULL);
+    nmranet_node_user_description(node, "Test Node");
+
+    nmranet_event_consumer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x05020102a8650013ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x05020102a8650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
+    nmranet_node_initialized(node);
+
+    os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
+    //AutomataRunner runner(node);
+
+    for (;;)
+    {
+        int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
+
+        if (result) {
+            for (size_t i = nmranet_event_pending(node); i > 0; i--) {
+                node_handle_t node_handle;
+                uint64_t event = nmranet_event_consume(node, &node_handle);
+                registry.HandleEvent(event);
+            }
+            for (size_t i = nmranet_datagram_pending(node); i > 0; i--) {
+                datagram_t datagram = nmranet_datagram_consume(node);
+                // We release unknown datagrams iwthout processing them.
+                nmranet_datagram_release(datagram);
+            }
+        }
+    }
+
+    return 0;
 }
