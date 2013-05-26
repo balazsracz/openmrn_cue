@@ -6,6 +6,8 @@
 #define _IF_REG 0x00
 #define _IF_REG_MASK 0x80
 
+#define _REG_1 0x40
+
 #define _IF_REG_BITNUM_MASK 0b111111
 
 
