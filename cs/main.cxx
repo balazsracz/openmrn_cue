@@ -123,7 +123,9 @@ DECLARE_PIPE(can_pipe1);
  */
 int appl_main(int argc, char *argv[])
 {
-    
+    start_watchdog(2000);
+    add_watchdog_reset_timer(500);
+
     PacketQueue::initialize("/dev/serUSB0");
 
     //can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
@@ -131,7 +133,7 @@ int appl_main(int argc, char *argv[])
 
     int fd = open("/dev/canp1v0", O_RDWR);
     ASSERT(fd >= 0);
-    //dcc_can_init(fd);
+    dcc_can_init(fd);
 
     NMRAnetIF *nmranet_if;
 
