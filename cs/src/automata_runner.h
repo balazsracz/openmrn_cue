@@ -99,6 +99,7 @@ private:
 class AutomataRunner {
 public:
     AutomataRunner(node_t node);
+    ~AutomataRunner(node_t node);
 
     AutomataRunner& ResetForAutomata(Automata* aut);
 
@@ -136,6 +137,14 @@ private:
     void eval_action(insn_t insn);
     void eval_action2(insn_t insn, insn_t arg);
 
+    // These funcitons will advance the IP as needed to read additional
+    // arguments.
+    //! Evaluates an ACT_IMPORT_VAR
+    void import_variable();
+    //! Evaluates an ACT_DEF_VAR. Returns a new variable. May use len bytes of
+    //! next instructions.
+    ReadWriteBit* create_variable(int len);
+
     //! Instruction pointer.
     aut_offset_t ip_;
 
@@ -150,7 +159,7 @@ private:
 
     typedef map<aut_offset_t, ReadWriteBit*> DeclaredBitsMap;
     //! Remembers which instruction offsets had bits declared, and the pointers
-    //! to those bits.
+    //! to those bits. TODO(bracz); who owns these objects?
     DeclaredBitsMap declared_bits_;
     //! The bits that are imported to the current automata. This gets filled up
     //! during the automata code execution.

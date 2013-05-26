@@ -102,7 +102,11 @@
 #define _ACT_MISC_MASK 0xF0
 
 #define _ACT_UP_ASPECT (_ACT_MISC_BASE | 0)
-#define _ACT_IMPORT_VAR (_ACT_MISC_BASE | 1)  // args: localvar_id, global_ofs_lsb, global_ofs_msb.
+// args: localvar_id, global_ofs_lsb, global_ofs_msb.
+#define _ACT_IMPORT_VAR (_ACT_MISC_BASE | 1) 
+// must be the last action on a line. All bytes between this and the end of the
+// current _if will be used as arguments.
+#define _ACT_DEF_VAR (_ACT_MISC_BASE | 2)
 
 // 0b0011.....
 #define _ACT_MISCA_BASE 0x30

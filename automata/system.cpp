@@ -49,7 +49,6 @@ Automata::LocalVariable& Automata::ImportVariable(GlobalVariable* var) {
     return ret;
 }
 
-
 void Automata::Render(string* output) {
     output_ = NULL;
     // This will allocate all variables without outputing anything.
