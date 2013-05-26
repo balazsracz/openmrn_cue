@@ -1,0 +1,5 @@
+*.d
+*.o
+test-aut
+core
+*.bin
