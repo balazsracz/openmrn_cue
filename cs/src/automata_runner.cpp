@@ -65,7 +65,25 @@ void AutomataRunner::Run() {
 	}
 	while (ip_ < endcond) {
 	    insn = load_insn();
-	    if ((insn & _ACT_MISCA_MASK) == _ACT_MISCA_BASE) {
+            if (insn == _ACT_IMPORT_VAR) {
+                uint8_t local_idx = load_insn();
+                uint16_t global_ofs = load_insn();
+                global_ofs |= load_insn() << 8;
+                if (ip_ > endif) {
+                    diewith(CS_DIE_AUT_TWOBYTEFAIL);                    
+                }
+                if (local_idx >= (sizeof(imported_bits_) /
+                                  sizeof(imported_bits_[0]))) {
+                    // The local variable offset is out of bounds.
+                    diewith(CS_DIE_AUT_HALT);
+                }
+                auto it = declared_bits_.find(global_ofs);
+                if (it == declared_bits_.end()) {
+                    // The global variable that it refers to is not known.
+                    diewith(CS_DIE_AUT_HALT);
+                }
+                imported_bits_[local_idx] = it->second;
+            } else if ((insn & _ACT_MISCA_MASK) == _ACT_MISCA_BASE) {
 		if (ip_ >= endcond) {
 		    diewith(CS_DIE_AUT_TWOBYTEFAIL);
 		}

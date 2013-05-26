@@ -136,7 +136,6 @@ private:
     void eval_action(insn_t insn);
     void eval_action2(insn_t insn, insn_t arg);
 
-
     //! Instruction pointer.
     aut_offset_t ip_;
 
@@ -149,9 +148,10 @@ private:
 
     slist<Automata*> all_automata_;
 
+    typedef map<aut_offset_t, ReadWriteBit*> DeclaredBitsMap;
     //! Remembers which instruction offsets had bits declared, and the pointers
     //! to those bits.
-    map<aut_offset_t, ReadWriteBit*> declared_bits_;
+    DeclaredBitsMap declared_bits_;
     //! The bits that are imported to the current automata. This gets filled up
     //! during the automata code execution.
     ReadWriteBit* imported_bits_[32];

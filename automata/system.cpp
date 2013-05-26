@@ -34,7 +34,7 @@ void Board::RenderAutomatas(string* output) {
     for (auto& a: automatas_) {
         a.offset = output->size();
         a.automata->Render(output);
-        // Put back the pointer into the table.
+        // Put back the pointer into the table. Little-endian.
         (*output)[a.ptr_offset] = a.offset & 0xff;
         (*output)[a.ptr_offset + 1] = (a.offset >> 8) & 0xff;
     }

@@ -102,6 +102,7 @@
 #define _ACT_MISC_MASK 0xF0
 
 #define _ACT_UP_ASPECT (_ACT_MISC_BASE | 0)
+#define _ACT_IMPORT_VAR (_ACT_MISC_BASE | 1)  // args: localvar_id, global_ofs_lsb, global_ofs_msb.
 
 // 0b0011.....
 #define _ACT_MISCA_BASE 0x30
