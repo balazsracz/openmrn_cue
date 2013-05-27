@@ -35,6 +35,10 @@ public:
         automatas_.push_back(AutomataInfo(*a));
     }
 
+    void AddVariable(GlobalVariable* v) {
+        global_variables_.push_back(v);
+    }
+
 private:
     void RenderPreamble(string* output);
     void RenderAutomatas(string* output);
@@ -90,23 +94,26 @@ private:
  */
 class Automata {
 public:
-    Automata() : output_(NULL) {}
+    Automata() : timer_bit_(0), output_(NULL) {
+        // We add the timer variable to the map with a fake key in order to
+        // reserve local bit 0.
+        used_variables_[NULL] = timer_bit_;
+    }
     ~Automata() {}
 
     void Render(string* output);
 
+    class Op;
+
 protected:
     virtual void Body() = 0;
-
-
-    class Op;
 
     struct LocalVariable {
     public:
         LocalVariable(): id(-1) {}
         LocalVariable(int iid): id(iid) {}
         int GetId() {
-            assert(id >= 0 && id < 64);
+            assert(id >= 0 && id < 32);
             return id;
         }
         int id;
@@ -114,6 +121,8 @@ protected:
     };
 
     LocalVariable& ImportVariable(GlobalVariable* var);
+
+    LocalVariable timer_bit_;
 
 #define Def() Op(this, output_)
 
@@ -125,7 +134,7 @@ private:
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 
-#define DefAut(name, boardref, body) class Aut##name : public Automata {public:  Aut##name() {(boardref).AddAutomata(this); } protected: virtual void Body() body } instance
+#define DefAut(name, boardref, body) class Aut##name : public Automata {public:  Aut##name() {(boardref).AddAutomata(this); } protected: virtual void Body() body } name##instance
 
 }
 

@@ -24,13 +24,19 @@ public:
     ~Op() {
         assert(ifs_.size() < 16);
         assert(acts_.size() < 16);
-        if (!output_) return;
+        CreateOperation(output_, ifs_, acts_);
+    }
+
+    static void CreateOperation(string* output,
+                                const vector<uint8_t>& ifs,
+                                const vector<uint8_t>& acts) {
+        if (!output) return;
         uint8_t hdr = 0;
-        hdr = (acts_.size() & 0xf) << 4;
-        hdr |= ifs_.size() & 0xf;
-        output_->push_back(hdr);
-        output_->append((char*)ifs_.data(), ifs_.size());
-        output_->append((char*)acts_.data(), acts_.size());
+        hdr = (acts.size() & 0xf) << 4;
+        hdr |= ifs.size() & 0xf;
+        output->push_back(hdr);
+        output->append((char*)ifs.data(), ifs.size());
+        output->append((char*)acts.data(), acts.size());
     }
 
     Op& IfState(StateRef& state) {
@@ -52,11 +58,34 @@ public:
         return *this;
     }
 
+    Op& ActReg0(Automata::LocalVariable& var) {
+        uint8_t v = _ACT_REG;
+        if (output_) v |= var.GetId();
+        acts_.push_back(v);
+        return *this;
+    }
+
+    Op& ActReg1(Automata::LocalVariable& var) {
+        uint8_t v = _ACT_REG | _REG_1;
+        if (output_) v |= var.GetId();
+        acts_.push_back(v);
+        return *this;
+    }
+
     Op& ActState(StateRef& state) {
         acts_.push_back(_ACT_STATE | state.state);
         return *this;
     }
     
+    Op& AddIf(uint8_t byte) {
+        ifs_.push_back(byte);
+        return *this;
+    }
+    Op& AddAct(uint8_t byte) {
+        acts_.push_back(byte);
+        return *this;
+    }
+
 private:
     DISALLOW_COPY_AND_ASSIGN(Op);
 

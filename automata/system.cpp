@@ -1,10 +1,11 @@
 #include "system.hxx"
+#include "../cs/src/automata_defs.h"
+#include "operations.hxx"
 
 
 namespace automata {
 
 Board::~Board() {
-    for (auto a: global_variables_) delete a;
 }
 
 void Board::Render(string* output) {
@@ -54,7 +55,23 @@ void Automata::Render(string* output) {
     // This will allocate all variables without outputing anything.
     Body();
     output_ = output;
-    // TODO(bracz) Add variable refs.
+    // Adds variable imports.
+    vector<uint8_t> op;
+    vector<uint8_t> empty;
+    for (auto& it : used_variables_) {
+        if (it.first) {
+            op.clear();
+            op.push_back(_ACT_IMPORT_VAR);
+            op.push_back(it.second.id);
+            int gofs = it.first->GetId().id;
+            op.push_back(gofs & 0xff);
+            op.push_back((gofs >> 8) & 0xff);
+            Op::CreateOperation(output, empty, op);
+        } else {
+            assert(it.second.id == 0);
+        }
+    }
+    // Actually renders the body.
     Body();
     output_ = NULL;
 }
