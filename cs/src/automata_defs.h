@@ -104,9 +104,15 @@
 #define _ACT_UP_ASPECT (_ACT_MISC_BASE | 0)
 // args: localvar_id, global_ofs_lsb, global_ofs_msb.
 #define _ACT_IMPORT_VAR (_ACT_MISC_BASE | 1) 
-// must be the last action on a line. All bytes between this and the end of the
-// current _if will be used as arguments.
+// Arguments: 0btttccccc 0baaaaabbb, where ttt is the type (0=event-based),
+// ccccc is the clientid, aaaaa is the byte offset and bbb is the bit in the
+// byte.
 #define _ACT_DEF_VAR (_ACT_MISC_BASE | 2)
+// This command has arguments.
+// Arg1: 0b0X0Y0bbb, where eventid X will be set from the current contents of
+// event Y, replacing the last bbb+1 bytes. Then bbb+1 bytes will follow for the
+// new content in big-endian form.
+#define _ACT_SET_EVENTID (_ACT_MISCA_BASE | 5)
 
 // 0b0011.....
 #define _ACT_MISCA_BASE 0x30
