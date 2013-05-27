@@ -4,9 +4,9 @@
 #include <string.h>
 
 #include <map>
-#include <ext/slist>
+#include <vector>
 using std::map;
-using __gnu_cxx::slist;
+using std::vector;
 
 #include "cs_config.h"
 #include "os/os.h"
@@ -99,7 +99,7 @@ private:
 class AutomataRunner {
 public:
     AutomataRunner(node_t node);
-    ~AutomataRunner(node_t node);
+    ~AutomataRunner();
 
     AutomataRunner& ResetForAutomata(Automata* aut);
 
@@ -124,6 +124,9 @@ public:
     //! Tells the next automata run to step the automata counters.
     void AddPendingTick();
 
+    //! Do the program-specific part of the initialization.
+    void CreateVarzAndAutomatas();
+
 private:
     ReadWriteBit* GetBit(int offset) {
 	if (!imported_bits_[offset]) {
@@ -141,9 +144,12 @@ private:
     // arguments.
     //! Evaluates an ACT_IMPORT_VAR
     void import_variable();
-    //! Evaluates an ACT_DEF_VAR. Returns a new variable. May use len bytes of
-    //! next instructions.
-    ReadWriteBit* create_variable(int len);
+    //! Evaluates an ACT_DEF_VAR. Returns a new variable. Uses load_insn() to
+    //! read arguments.
+    ReadWriteBit* create_variable();
+    
+    //! Changes one of the eventid accumulators.
+    void insn_load_event_id();
 
     //! Instruction pointer.
     aut_offset_t ip_;
@@ -152,10 +158,12 @@ private:
     uint8_t aut_trainid_;  //< train id for absolute identification of trains.
     uint8_t aut_signal_aspect_; //< signal aspect for the next set-signal cmd.
 
+    uint64_t aut_eventids[2];  //< Eventid accumulators for declaring bits.
+
     //! Points to the beginning of the automata program area.
     insn_t* base_pointer_;
 
-    slist<Automata*> all_automata_;
+    vector<Automata*> all_automata_;
 
     typedef map<aut_offset_t, ReadWriteBit*> DeclaredBitsMap;
     //! Remembers which instruction offsets had bits declared, and the pointers

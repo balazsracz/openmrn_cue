@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "cs_config.h"
+
 class EventHandler {
  public:
   virtual void HandleEvent(uint64_t event) = 0;

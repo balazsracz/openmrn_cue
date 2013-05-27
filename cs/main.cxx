@@ -147,6 +147,8 @@ int appl_main(int argc, char *argv[])
     node = nmranet_node_create(0x02010d000001ULL, nmranet_if, "Virtual Node", NULL);
     nmranet_node_user_description(node, "Test Node");
 
+    AutomataRunner* automatas = NULL;//new AutomataRunner(node);
+
     nmranet_event_consumer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
@@ -178,5 +180,6 @@ int appl_main(int argc, char *argv[])
         }
     }
 
+    delete automatas;
     return 0;
 }

@@ -1,4 +1,8 @@
 
+#include "core/nmranet_event.h"
+
+#include "common_event_handlers.hxx"
+
 #include "automata_defs.h"
 #include "automata_runner.h"
 #include "automata_control.h"
@@ -29,6 +33,20 @@ AutomataRunner& AutomataRunner::ResetForAutomata(Automata* aut) {
     memset(imported_bits_, 0, sizeof(imported_bits_));
     imported_bits_[0] = aut->GetTimerBit();
     return *this;
+}
+
+void AutomataRunner::CreateVarzAndAutomatas() {
+    ip_ = 0;
+    int id = 0;
+    do {
+        int ofs = load_insn();
+        ofs |= load_insn() << 8;
+        if (!ofs) break;
+        all_automata_.push_back(new Automata(id, ofs));
+    } while(1);
+    // This will execute all preamble commands, including the variable create
+    // commands.
+    Run();
 }
 
 void AutomataRunner::Run() {
@@ -70,11 +88,19 @@ void AutomataRunner::Run() {
                 if (ip_ > endif) {
                     diewith(CS_DIE_AUT_TWOBYTEFAIL);                    
                 }
+            } else if (insn == _ACT_SET_EVENTID) {
+                insn_load_event_id();                
+                if (ip_ > endif) {
+                    diewith(CS_DIE_AUT_TWOBYTEFAIL);                    
+                }
             } else if (insn == _ACT_DEF_VAR) {
                 int offset = ip_;
-                int len = endif - ip_;
-                
-                args = 
+                ReadWriteBit* newbit = create_variable();
+                if (ip_ > endif) {
+                    diewith(CS_DIE_AUT_TWOBYTEFAIL);                    
+                }
+                delete declared_bits_[offset];
+                declared_bits_[offset] = newbit;
             } else if ((insn & _ACT_MISCA_MASK) == _ACT_MISCA_BASE) {
 		if (ip_ >= endcond) {
 		    diewith(CS_DIE_AUT_TWOBYTEFAIL);
@@ -93,7 +119,6 @@ void AutomataRunner::import_variable() {
     uint16_t global_ofs = load_insn();
     global_ofs |= load_insn() << 8;
                 
-
     if (local_idx >= (sizeof(imported_bits_) /
                       sizeof(imported_bits_[0]))) {
         // The local variable offset is out of bounds.
@@ -107,13 +132,68 @@ void AutomataRunner::import_variable() {
     imported_bits_[local_idx] = it->second;
 }
 
-void AutomataRunner::create_variable(int len) {
-    uint8_t type = load_insn(); len--;
-    switch (type) {
-        case 
 
+class EventBit : public ReadWriteBit, MemoryToggleEventHandler<uint8_t> {
+public:
+    EventBit(node_t node,
+             uint64_t event_on, uint64_t event_off,
+             uint8_t mask, uint8_t* ptr)
+        : MemoryToggleEventHandler<uint8_t>(event_on, event_off, mask, ptr) {
+        nmranet_event_producer(node, event_on, EVENT_STATE_INVALID);
+        nmranet_event_producer(node, event_off, EVENT_STATE_INVALID);
+        nmranet_event_consumer(node, event_on, EVENT_STATE_INVALID);
+        nmranet_event_consumer(node, event_off, EVENT_STATE_INVALID);
+    }
+
+    virtual bool Read(node_t node, Automata* aut) {
+        return ((*memory_) & mask_);
+    }
+
+    virtual void Write(node_t node, Automata* aut, bool value) {
+        if (value) {
+            *memory_ |= mask_;
+            nmranet_event_producer(node, event_on_, EVENT_STATE_VALID);
+            nmranet_event_producer(node, event_off_, EVENT_STATE_INVALID);
+        } else {
+            *memory_ &= ~mask_;
+            nmranet_event_producer(node, event_on_, EVENT_STATE_INVALID);
+            nmranet_event_producer(node, event_off_, EVENT_STATE_VALID);
+        }
+    }
+};
+
+ReadWriteBit* AutomataRunner::create_variable() {
+    uint8_t arg1 = load_insn();
+    uint8_t arg2 = load_insn();
+    int type = arg1 >> 5;
+    int client = arg1 & 0b11111;
+    int offset = arg2 >> 3;
+    int bit = arg2 & 7;
+    uint8_t* ptr = get_state_byte(client, offset);
+    switch (type) {
+    case 0:
+        return new EventBit(openmrn_node_, aut_eventids[1], aut_eventids[0],
+                            (1<<bit), ptr);
+    default:
+        diewith(CS_DIE_UNSUPPORTED);
     }  // switch type
+    return NULL;
 }
+
+void AutomataRunner::insn_load_event_id() {
+    uint8_t type = load_insn();
+    int dest = (type >> 6) & 1;
+    int src = (type >> 4) & 1;
+    aut_eventids[dest] = aut_eventids[src];
+    int ofs = (type & 7) * 8;
+    while(1) {
+        aut_eventids[dest] &= ~(0xff<<ofs);
+        aut_eventids[dest] |= load_insn();
+        if (!ofs) break;
+        ofs >>= 8;
+    } while (1);
+}
+
 
 
 class LockBit : public ReadWriteBit {
@@ -415,7 +495,6 @@ void* automata_thread(void* arg) {
     return NULL;
 }
 
-
 AutomataRunner::AutomataRunner(node_t node)
     : ip_(0),
       aut_srcplace_(254),
@@ -426,7 +505,14 @@ AutomataRunner::AutomataRunner(node_t node)
       openmrn_node_(node),
       pending_ticks_(0) {
     memset(imported_bits_, 0, sizeof(imported_bits_));
+    CreateVarzAndAutomatas();
     os_sem_init(&automata_sem_, 0);
     os_thread_create(NULL, "automata", 0, AUTOMATA_THREAD_STACK_SIZE,
 		     automata_thread, this);
+}
+
+AutomataRunner::~AutomataRunner() {
+    for (auto& i : declared_bits_) {
+        delete i.second;
+    }
 }
