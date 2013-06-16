@@ -5,7 +5,7 @@
 #include "os/os.h"
 
 #include "can-queue.h"
-#include "can.h"
+//#include "can.h"
 #include "nmranet_can.h"
 #include "host_packet.h"
 #include "usb_proto.h"

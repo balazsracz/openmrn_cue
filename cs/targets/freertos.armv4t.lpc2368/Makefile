@@ -1,34 +1,17 @@
-OPENMRNPATH ?= $(shell \
-sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \
-     elif [ -d /opt/openmrn/src ]; then echo /opt/openmrn; \
-     elif [ -d ~/openmrn/src ]; then echo ~/openmrn; \
-     elif [ -d ~/train/openlcb/openmrn/src ]; then echo ~/train/openlcb/openmrn; \
-     elif [ -d ../../../src ]; then echo ../../..; \
-     else echo OPENMRNPATH not found; fi" \
-)
+APP_PATH ?= $(realpath ../..)
+
+include $(APP_PATH)/config.mk
 
 TARGET = freertos.armv4t
 
-# Find Mbed
-include $(OPENMRNPATH)/etc/mbed.mk
-
-ifndef HAVE_MBED
-
-all docs clean veryclean:
-	@echo "******************************************************************"
-	@echo "*"
-	@echo "*   Unable to build for $(TARGET), mbed unavailable"
-	@echo "*"
-	@echo "******************************************************************"
-
-else
+DEPS += HAVE_MBED
 
 OBJEXTRA = $(OPENMRNPATH)/targets/freertos.armv4t/freertos_drivers/mbed_can.o \
 	$(OPENMRNPATH)/targets/freertos.armv4t/freertos_drivers/mbed_usbserial.o
 
-INCLUDES+= -I../../src
-
 include $(OPENMRNPATH)/etc/prog.mk
+
+ifeq ($(MISSING_DEPS),)
 
 all: $(EXECUTABLE).bin $(EXECUTABLE).lst
 
@@ -47,4 +30,4 @@ $(EXECUTABLE)$(EXTENTION): depmake
 depmake:
 	make -C $(OPENMRNPATH)/targets/$(TARGET) all
 
-endif
+endif  #missing deps

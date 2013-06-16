@@ -40,19 +40,19 @@
 #include "os/os.h"
 #include "os/OS.hxx"
 #include "os/watchdog.h"
-#include "pipe.hxx"
+#include "freertos_drivers/common/pipe.hxx"
 #include "if/nmranet_if.h"
 #include "core/nmranet_node.h"
 #include "core/nmranet_event.h"
 #include "core/nmranet_datagram.h"
 #include "nmranet_config.h"
 
-#include "host_packet.h"
-#include "can-queue.h"
+#include "src/host_packet.h"
+#include "src/can-queue.h"
 
-#include "event_registry.hxx"
-#include "common_event_handlers.hxx"
-#include "automata_runner.h"
+#include "src/event_registry.hxx"
+#include "src/common_event_handlers.hxx"
+#include "src/automata_runner.h"
 
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";

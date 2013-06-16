@@ -322,7 +322,9 @@ static uint8_t IsTrainMovingReverse(uint8_t id) {
 // Adds an entry to the back of the priority queue. Returns 1 if added
 // successful, 0 if failed (queue full).
 static uint8_t AddToPriorityQueue(uint8_t id, uint8_t what) {
+#ifdef __FreeRTOS__
   taskENTER_CRITICAL();
+#endif
   uint8_t myofs = dcc_master.priority_len;
   uint8_t ret = 0;
   if (myofs < PRIORITY_SIZE) {
@@ -331,7 +333,9 @@ static uint8_t AddToPriorityQueue(uint8_t id, uint8_t what) {
     dcc_master.priority[myofs].what = what;
     ret = 1;
   }
-  taskEXIT_CRITICAL();  
+#ifdef __FreeRTOS__
+  taskEXIT_CRITICAL();
+#endif
   return ret;
 }
 
@@ -1048,11 +1052,15 @@ void DccLoop_ProcessIO() {
           SendLocoFnPacket(id, dcc_master.priority[0].what, 1);
         }
       }
+#ifdef __FreeRTOS__
       taskENTER_CRITICAL();
+#endif
       memmove(dcc_master.priority, dcc_master.priority + 1,
               (dcc_master.priority_len - 1) * sizeof(dcc_master.priority[0]));
       --dcc_master.priority_len;
+#ifdef __FreeRTOS__
       taskEXIT_CRITICAL();
+#endif
       return;
     }
 

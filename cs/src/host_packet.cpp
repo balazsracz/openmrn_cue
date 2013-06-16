@@ -1,14 +1,16 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#ifdef TARGET_LPC2368
 #include "cmsis.h"
+#endif
 
 #include "host_packet.h"
 
 
 #include "os/os.h"
-#include "pipe.hxx"
-#include "gc_pipe.hxx"
+#include "freertos_drivers/common/pipe.hxx"
+#include "freertos_drivers/common/gc_pipe.hxx"
 
 #include "usb_proto.h"
 #include "automata_control.h"
@@ -202,10 +204,14 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	    break;
 	}
 	uint8_t* ptr = get_state_byte(in_pkt[1] >> 5, in_pkt[1] & 31);
+#ifdef __FreeRTOS__
 	taskENTER_CRITICAL();
+#endif
 	*ptr |= in_pkt[2];
 	*ptr &= ~in_pkt[3];
+#ifdef __FreeRTOS__
 	taskEXIT_CRITICAL();
+#endif
 	PacketBase response(2);
 	response[0] = CMD_BIT_MODIFY_STATE;
 	response[1] = *ptr;
@@ -288,10 +294,12 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 	return;
     }
     case CMDUM_RESET: {
-#ifdef TARGET_LPC2368	
+#ifdef TARGET_LPC2368
 	// Clears all possible interrupt sources.
 	NVIC->IntEnClr = NVIC->IntEnable;
 	start();
+#elif !defined(__FreeRTOS__)
+        //We ignore the reset command on a host.
 #else
 #error Define how to reset your chip.
 #endif
@@ -378,4 +386,3 @@ void PacketQueue::TransmitConstPacket(const uint8_t* packet) {
     memcpy(pkt.buf(), &packet[1], pkt.size());
     TransmitPacket(pkt);
 }
-

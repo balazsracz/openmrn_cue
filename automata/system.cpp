@@ -73,6 +73,7 @@ void Automata::Render(string* output) {
     }
     // Actually renders the body.
     Body();
+    output->push_back(
     output_ = NULL;
 }
 
