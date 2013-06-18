@@ -1,10 +1,16 @@
-CXXFLAGS+= -std=c++0x -MMD -MF $@.d -g -ggdb
+CXXFLAGS+= -std=c++0x -MMD -MF $@.d -g -ggdb -m32
 
 OBJS=system.o
 
-all: test-aut
+all: lib test-aut
 
-include *.d
+-include *.d
+
+lib: libautomata.a
+
+
+libautomata.a: $(OBJS)
+	$(AR) cr $@ $+
 
 test-aut: $(OBJS)
 

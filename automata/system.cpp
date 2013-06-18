@@ -42,7 +42,7 @@ void Board::RenderAutomatas(string* output) {
 }
 
 Automata::LocalVariable& Automata::ImportVariable(GlobalVariable* var) {
-    int next_id = used_variables_.size(); 
+    int next_id = used_variables_.size();
     LocalVariable& ret = used_variables_[var];
     if (ret.id < 0) {
         ret.id = next_id;
@@ -73,7 +73,7 @@ void Automata::Render(string* output) {
     }
     // Actually renders the body.
     Body();
-    output->push_back(
+    output->push_back(0);  // EOF byte for the runner.
     output_ = NULL;
 }
 

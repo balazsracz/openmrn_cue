@@ -6,7 +6,11 @@
 #define _IF_REG 0x00
 #define _IF_REG_MASK 0x80
 
+
 #define _REG_1 0x40
+
+#define _IF_REG_0 _IF_REG
+#define _IF_REG_1 _IF_REG | _REG_1
 
 #define _IF_REG_BITNUM_MASK 0b111111
 
@@ -91,6 +95,11 @@
 // 0b1.......
 #define _ACT_REG 0x80
 #define _ACT_REG_MASK 0x80
+
+#define _ACT_REG_0 _ACT_REG
+#define _ACT_REG_1 _ACT_REG | _REG_1
+
+
 
 // 0b000.....
 #define _ACT_TIMER 0x00

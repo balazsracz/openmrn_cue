@@ -22,14 +22,14 @@ public:
         : parent_(parent), output_(output) {}
 
     ~Op() {
-        assert(ifs_.size() < 16);
-        assert(acts_.size() < 16);
         CreateOperation(output_, ifs_, acts_);
     }
 
     static void CreateOperation(string* output,
                                 const vector<uint8_t>& ifs,
                                 const vector<uint8_t>& acts) {
+        assert(ifs.size() < 16);
+        assert(acts.size() < 16);
         if (!output) return;
         uint8_t hdr = 0;
         hdr = (acts.size() & 0xf) << 4;
@@ -104,4 +104,3 @@ private:
 }  // namespace automata
 
 #endif // _bracz_train_automata_operations_hxx_
-

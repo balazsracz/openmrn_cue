@@ -1,3 +1,5 @@
+export APP_PATH
+
 OPENMRNPATH := $(shell \
 sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \
      elif [ -d /opt/openmrn/src ]; then echo /opt/openmrn; \
