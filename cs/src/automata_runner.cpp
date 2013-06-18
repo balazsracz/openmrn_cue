@@ -86,18 +86,18 @@ void AutomataRunner::Run() {
             if (insn == _ACT_IMPORT_VAR) {
                 import_variable();
                 if (ip_ > endif) {
-                    diewith(CS_DIE_AUT_TWOBYTEFAIL);                    
+                    diewith(CS_DIE_AUT_TWOBYTEFAIL);
                 }
             } else if (insn == _ACT_SET_EVENTID) {
-                insn_load_event_id();                
+                insn_load_event_id();
                 if (ip_ > endif) {
-                    diewith(CS_DIE_AUT_TWOBYTEFAIL);                    
+                    diewith(CS_DIE_AUT_TWOBYTEFAIL);
                 }
             } else if (insn == _ACT_DEF_VAR) {
                 int offset = ip_;
                 ReadWriteBit* newbit = create_variable();
                 if (ip_ > endif) {
-                    diewith(CS_DIE_AUT_TWOBYTEFAIL);                    
+                    diewith(CS_DIE_AUT_TWOBYTEFAIL);
                 }
                 delete declared_bits_[offset];
                 declared_bits_[offset] = newbit;
@@ -111,14 +111,14 @@ void AutomataRunner::Run() {
 		eval_action(insn);
 	    }
 	}
-    } 
+    }
 }
 
 void AutomataRunner::import_variable() {
     uint8_t local_idx = load_insn();
     uint16_t global_ofs = load_insn();
     global_ofs |= load_insn() << 8;
-                
+
     if (local_idx >= (sizeof(imported_bits_) /
                       sizeof(imported_bits_[0]))) {
         // The local variable offset is out of bounds.
@@ -228,7 +228,7 @@ bool AutomataRunner::eval_condition(insn_t insn) {
   if ((insn & _IF_REG_MASK) == _IF_REG) {
       bool value = GetBit(insn & _IF_REG_BITNUM_MASK)
 	  ->Read(openmrn_node_, current_automata_);
-      bool expected = (insn & (1<<6)); 
+      bool expected = (insn & (1<<6));
       return value == expected;
   }
   if ((insn & _GET_LOCK_MASK) == _GET_LOCK) {
