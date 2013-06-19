@@ -1,6 +1,8 @@
 APP_PATH ?= $(realpath ../..)
 include $(APP_PATH)/config.mk
 
+TEST_EXTRA_OBJS += error.o
+
 include $(OPENMRNPATH)/etc/prog.mk
 
 SYSLIBRARIES += -lautomata

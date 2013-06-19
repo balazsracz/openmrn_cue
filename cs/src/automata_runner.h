@@ -49,11 +49,12 @@ public:
 	return *timer_bit_.GetStateByte(OFS_TIMER);
     }
 
-    void SetTimer(uint8_t state) {
-	if (state == (0xff & ~_ACT_TIMER_MASK)) {
+    void SetTimer(uint8_t value) {
+      if (value == (0xff & (~_ACT_TIMER_MASK))) {
 	    *timer_bit_.GetStateByte(OFS_TIMER) = GetId() >> 3;
-	}
-	*timer_bit_.GetStateByte(OFS_TIMER) = state;
+      } else {
+	*timer_bit_.GetStateByte(OFS_TIMER) = value;
+      }
     }
     
     // Decreases any pending timer by one.
@@ -98,7 +99,7 @@ private:
 
 class AutomataRunner {
 public:
-    AutomataRunner(node_t node);
+  AutomataRunner(node_t node, insn_t* base_pointer);
     ~AutomataRunner();
 
     AutomataRunner& ResetForAutomata(Automata* aut);
@@ -126,6 +127,15 @@ public:
 
     //! Do the program-specific part of the initialization.
     void CreateVarzAndAutomatas();
+
+  //! Injects a new ReadWriteBit into the global bits that are known by this
+  //! runner. Useful for unittests.
+  //
+  //! @param offset will be the reference for this bit.
+  //
+  //! @param bit is the new bit to inject; ownership will be transferred to the
+  //! runner object.
+  void InjectBit(aut_offset_t offset, ReadWriteBit* bit);
 
 private:
     ReadWriteBit* GetBit(int offset) {
@@ -184,6 +194,10 @@ private:
     os_timer_t automata_timer_;
     //! Semaphore used for waking up the automata thread.
     os_sem_t automata_sem_;
+    //! Requests the automata runner thread to exit.
+    bool request_thread_exit_;
+    // Set to true by the runner thread exiting.
+    bool thread_exited_;
 
     friend void* automata_thread(void*);
 };

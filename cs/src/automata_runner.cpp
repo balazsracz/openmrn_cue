@@ -42,7 +42,7 @@ void AutomataRunner::CreateVarzAndAutomatas() {
         int ofs = load_insn();
         ofs |= load_insn() << 8;
         if (!ofs) break;
-        all_automata_.push_back(new Automata(id, ofs));
+        all_automata_.push_back(new Automata(id++, ofs));
     } while(1);
     // This will execute all preamble commands, including the variable create
     // commands.
@@ -152,12 +152,12 @@ public:
     virtual void Write(node_t node, Automata* aut, bool value) {
         if (value) {
             *memory_ |= mask_;
-            nmranet_event_producer(node, event_on_, EVENT_STATE_VALID);
-            nmranet_event_producer(node, event_off_, EVENT_STATE_INVALID);
+            nmranet_event_produce(node, event_on_, EVENT_STATE_VALID);
+            nmranet_event_produce(node, event_off_, EVENT_STATE_INVALID);
         } else {
             *memory_ &= ~mask_;
-            nmranet_event_producer(node, event_on_, EVENT_STATE_INVALID);
-            nmranet_event_producer(node, event_off_, EVENT_STATE_VALID);
+            nmranet_event_produce(node, event_on_, EVENT_STATE_INVALID);
+            nmranet_event_produce(node, event_off_, EVENT_STATE_VALID);
         }
     }
 };
@@ -178,6 +178,11 @@ ReadWriteBit* AutomataRunner::create_variable() {
         diewith(CS_DIE_UNSUPPORTED);
     }  // switch type
     return NULL;
+}
+
+void AutomataRunner::InjectBit(aut_offset_t offset, ReadWriteBit* bit) {
+  delete declared_bits_[offset];
+  declared_bits_[offset] = bit;
 }
 
 void AutomataRunner::insn_load_event_id() {
@@ -482,6 +487,10 @@ void* automata_thread(void* arg) {
     os_timer_start(runner->automata_timer_, MSEC_TO_NSEC(100));  // 10 HZ
     while(1) {
 	runner->WaitForWakeup();
+        if (runner->request_thread_exit_) {
+          runner->thread_exited_ = true;
+          return NULL;
+        }
 	if (runner->pending_ticks_) {
 	    for (auto aut : runner->all_automata_) {
 		aut->Tick();
@@ -495,23 +504,33 @@ void* automata_thread(void* arg) {
     return NULL;
 }
 
-AutomataRunner::AutomataRunner(node_t node)
+AutomataRunner::AutomataRunner(node_t node, insn_t* base_pointer)
     : ip_(0),
       aut_srcplace_(254),
       aut_trainid_(254),
       aut_signal_aspect_(254),
-      base_pointer_((insn_t*)0x78000),
+      base_pointer_(base_pointer),
       current_automata_(NULL),
       openmrn_node_(node),
-      pending_ticks_(0) {
+      pending_ticks_(0),
+      request_thread_exit_(false),
+      thread_exited_(false) {
     memset(imported_bits_, 0, sizeof(imported_bits_));
     CreateVarzAndAutomatas();
     os_sem_init(&automata_sem_, 0);
-    os_thread_create(NULL, "automata", 0, AUTOMATA_THREAD_STACK_SIZE,
-		     automata_thread, this);
+    os_thread_t automata_thread_handle;
+    os_thread_create(&automata_thread_handle, "automata", 0,
+                     AUTOMATA_THREAD_STACK_SIZE, automata_thread, this);
 }
 
 AutomataRunner::~AutomataRunner() {
+  request_thread_exit_ = true;
+  TriggerRun();
+  // NOTE(balazs.racz) This should call os_thread_join except that API does not
+  // exist.
+  while (!thread_exited_) {
+    // Do nothing.
+  }
     for (auto& i : declared_bits_) {
         delete i.second;
     }

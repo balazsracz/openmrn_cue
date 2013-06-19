@@ -68,6 +68,7 @@ void Automata::Render(string* output) {
             op.push_back((gofs >> 8) & 0xff);
             Op::CreateOperation(output, empty, op);
         } else {
+            // Checks that the timer bit is the NULL.
             assert(it.second.id == 0);
         }
     }

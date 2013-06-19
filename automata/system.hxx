@@ -134,7 +134,7 @@ private:
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 
-#define DefAut(name, boardref, body) class Aut##name : public Automata {public:  Aut##name() {(boardref).AddAutomata(this); } protected: virtual void Body() body } name##instance
+#define DefAut(name, boardref, body) class Aut##name : public automata::Automata {public:  Aut##name() {(boardref).AddAutomata(this); } protected: virtual void Body() body } name##instance
 
 }
 

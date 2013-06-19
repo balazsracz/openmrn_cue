@@ -1,6 +1,9 @@
 #include <string>
 
+
 #include "gtest/gtest.h"
+
+#include "os/os.h"
 
 #include "../automata/system.hxx"
 #include "../automata/operations.hxx"
@@ -168,4 +171,9 @@ TEST(BoardCompile, SingleEventBoard) {
         0,     // end of autoamta 1
       };
   EXPECT_EQ(expected, output);
+}
+
+int appl_main(int argc, char* argv[]) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
