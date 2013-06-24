@@ -98,7 +98,6 @@ TEST(RunnerTest, TrivialRunnerCreateDestroy) {
   }
 }
 
-
 TEST(RunnerTest, TrivialRunnerRun) {
   automata::Board brd;
   string output;
@@ -109,6 +108,63 @@ TEST(RunnerTest, TrivialRunnerRun) {
   }
 }
 
+class AutomataTests : public gtest::Test {
+public:
+  class MockBit : public ReadWriteBit {
+  public:
+    MockBit(AutomataTests* parent) {
+      
+    }
+    virtual ~ReadWriteBit() {}
+    virtual bool Read(node_t node, Automata* aut) {
+      return Get();
+    }
+    virtual void Write(node_t node, Automata* aut, bool value) {
+      Set(value);
+    }
+
+    bool Get() { return bit_; }
+    void Set(bool b) { bit_ = b; }
+
+  private:
+    bool bit_;
+  };
+
+  virtual void SetUp {
+    next_bit_offset_ = 4242;
+  }
+
+  void SetupRunner(automata::Board* brd) {
+    string output;
+    brd->Render(&output);
+    memcpy(program_area_, output.data(), output.size());
+    runner_ = new AutomataRunner(NULL, program_area_);
+    for (auto bit : mock_bits_)
+  }
+
+  AutomataTests() {
+    
+  }
+
+  ~AutomataTests() {
+    for (auto bit : mock_bits_) {
+      delete bit;
+    }
+    delete runner_;
+  }
+
+protected:
+  MockBit* CreateMockBit() {
+    mock_bits_.push_back(new MockBit(this, next_bit_offset_++));
+  }
+
+  AutomataRunner* runner_;
+
+private:
+  int next_bit_offset_;
+  vector<MockBit*> mock_bits_;
+  insn_t program_area_[10000];
+};
 
 TEST(RunnerTest, SingleEmptyAutomataBoard) {
   static automata::Board brd;
@@ -123,7 +179,20 @@ TEST(RunnerTest, SingleEmptyAutomataBoard) {
   }
 }
 
-
+TEST(RunnerTest, CopyAutomataBoard) {
+  static automata::Board brd;
+  DefAut(testaut1, brd, {
+      DefIf(
+    });
+  string output;
+  brd.Render(&output);
+  {
+    AutomataRunner r(NULL, output.data());
+    r.RunAllAutomata();
+    r.RunAllAutomata();
+    r.RunAllAutomata();
+  }
+}
 
 
 int appl_main(int argc, char* argv[]) {
