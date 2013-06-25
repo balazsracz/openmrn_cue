@@ -33,6 +33,7 @@ class Automata {
 public:
     Automata(int id, aut_offset_t starting_offset)
 	: timer_bit_(id), starting_offset_(starting_offset) {
+      if (0) fprintf(stderr,"created automata id %d offset %d\n", id, starting_offset_);
     }
 
     aut_offset_t GetStartingOffset() {
@@ -111,6 +112,7 @@ public:
 
     insn_t get_insn(aut_offset_t offset) {
       insn_t ret = base_pointer_[offset];
+      if (0) fprintf(stderr, "get insn[%d] = 0x%02x\n", offset, ret);
 	return ret;
     }
 

@@ -42,6 +42,7 @@ void AutomataRunner::CreateVarzAndAutomatas() {
     do {
         int ofs = load_insn();
         ofs |= load_insn() << 8;
+        if (0) fprintf(stderr, "read automata ofs: ofs %d\n", ofs);
         if (!ofs) break;
         all_automata_.push_back(new ::Automata(id++, ofs));
     } while(1);
@@ -524,6 +525,7 @@ AutomataRunner::AutomataRunner(node_t node, insn_t* base_pointer)
 }
 
 AutomataRunner::~AutomataRunner() {
+  if (0) fprintf(stderr,"Destroying automata runner.\n");
   request_thread_exit_ = true;
   TriggerRun();
   // NOTE(balazs.racz) This should call os_thread_join except that API does not
