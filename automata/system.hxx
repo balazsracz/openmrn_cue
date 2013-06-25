@@ -1,6 +1,7 @@
 #ifndef _bracz_train_automata_system_hxx_
 #define _bracz_train_automata_system_hxx_
 
+#include <stdio.h>
 #include <assert.h>
 
 #include <string>
@@ -72,7 +73,7 @@ public:
     GlobalVariable()
         : id_assigned_(false) {}
     virtual ~GlobalVariable() {}
-    GlobalVariableId GetId() {
+    virtual GlobalVariableId GetId() {
         assert(id_assigned_);
         return id_;
     }
@@ -80,7 +81,8 @@ public:
         id_assigned_ = true;
         id_.id = id;
     }
-    //! Appends the rendered version of this automata to the preamble of the 
+    //! Appends the rendered version of this variable to the preamble of the
+    //! board code.
     virtual void Render(string* output) = 0;
 
 private:
@@ -120,6 +122,10 @@ protected:
         // We purposefully allow this object to be copied.
     };
 
+    // Adds a global variable reference to the used local variables, and
+    // returns the local variable reference. The local variable reference if
+    // owned by the Automata object. The same global var can be imported
+    // multiple times (and will get the same ID).
     LocalVariable& ImportVariable(GlobalVariable* var);
 
     LocalVariable timer_bit_;
@@ -134,7 +140,7 @@ private:
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 
-#define DefAut(name, boardref, body) class Aut##name : public automata::Automata {public:  Aut##name() {(boardref).AddAutomata(this); } protected: virtual void Body() body } name##instance
+#define DefAut(name, boardref, body) class Aut##name : public automata::Automata {public:  Aut##name(decltype(boardref)* board) : board_(board) {board_->AddAutomata(this); } protected: decltype(boardref)* board_; virtual void Body() body  } name##instance(&(boardref))
 
 }
 
