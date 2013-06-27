@@ -141,7 +141,11 @@ int appl_main(int argc, char *argv[])
 
     if (nmranet_if == NULL)
     {
-        diewith(0x8002CCCA);  // 3-3-1
+#ifdef __FreeRTOS__
+        diewith(BLINK_DIE_STARTUP);  // 3-3-2
+#else
+        exit(1);
+#endif
     }
 
     node = nmranet_node_create(0x02010d000001ULL, nmranet_if, "Virtual Node", NULL);
