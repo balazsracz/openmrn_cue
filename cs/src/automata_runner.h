@@ -1,6 +1,7 @@
 #ifndef _BRACZ_TRAIN_AUTOMATA_RUNNER_H
 #define _BRACZ_TRAIN_AUTOMATA_RUNNER_H
 
+#include <stdio.h>
 #include <string.h>
 
 #include <map>
@@ -31,7 +32,9 @@ public:
 class Automata {
 public:
     Automata(int id, aut_offset_t starting_offset)
-	: timer_bit_(id), starting_offset_(starting_offset_) {}
+	: timer_bit_(id), starting_offset_(starting_offset) {
+      if (0) fprintf(stderr,"created automata id %d offset %d\n", id, starting_offset_);
+    }
 
     aut_offset_t GetStartingOffset() {
 	return starting_offset_;
@@ -56,7 +59,7 @@ public:
 	*timer_bit_.GetStateByte(OFS_TIMER) = value;
       }
     }
-    
+
     // Decreases any pending timer by one.
     void Tick() {
 	uint8_t* timer = timer_bit_.GetStateByte(OFS_TIMER);
@@ -108,7 +111,9 @@ public:
     void Run();
 
     insn_t get_insn(aut_offset_t offset) {
-	return base_pointer_[offset];
+      insn_t ret = base_pointer_[offset];
+      if (0) fprintf(stderr, "get insn[%d] = 0x%02x\n", offset, ret);
+	return ret;
     }
 
     insn_t load_insn() {
@@ -137,6 +142,11 @@ public:
   //! runner object.
   void InjectBit(aut_offset_t offset, ReadWriteBit* bit);
 
+  // Testing only - Returns detected list of automatas.
+  const vector<Automata*>& GetAllAutomatas() {
+    return all_automata_;
+  }
+
 private:
     ReadWriteBit* GetBit(int offset) {
 	if (!imported_bits_[offset]) {
@@ -157,7 +167,7 @@ private:
     //! Evaluates an ACT_DEF_VAR. Returns a new variable. Uses load_insn() to
     //! read arguments.
     ReadWriteBit* create_variable();
-    
+
     //! Changes one of the eventid accumulators.
     void insn_load_event_id();
 
@@ -196,6 +206,9 @@ private:
     os_sem_t automata_sem_;
     //! Requests the automata runner thread to exit.
     bool request_thread_exit_;
+    //! This thread will normally execute the automata code as triggered by
+    //! timers.
+    os_thread_t automata_thread_handle_;
     // Set to true by the runner thread exiting.
     bool thread_exited_;
 

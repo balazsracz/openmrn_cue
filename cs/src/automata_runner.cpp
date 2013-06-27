@@ -1,3 +1,4 @@
+#include <stdio.h>
 
 #include "core/nmranet_event.h"
 
@@ -41,8 +42,9 @@ void AutomataRunner::CreateVarzAndAutomatas() {
     do {
         int ofs = load_insn();
         ofs |= load_insn() << 8;
+        if (0) fprintf(stderr, "read automata ofs: ofs %d\n", ofs);
         if (!ofs) break;
-        all_automata_.push_back(new Automata(id++, ofs));
+        all_automata_.push_back(new ::Automata(id++, ofs));
     } while(1);
     // This will execute all preamble commands, including the variable create
     // commands.
@@ -85,18 +87,18 @@ void AutomataRunner::Run() {
 	    insn = load_insn();
             if (insn == _ACT_IMPORT_VAR) {
                 import_variable();
-                if (ip_ > endif) {
+                if (ip_ > endcond) {
                     diewith(CS_DIE_AUT_TWOBYTEFAIL);
                 }
             } else if (insn == _ACT_SET_EVENTID) {
                 insn_load_event_id();
-                if (ip_ > endif) {
+                if (ip_ > endcond) {
                     diewith(CS_DIE_AUT_TWOBYTEFAIL);
                 }
             } else if (insn == _ACT_DEF_VAR) {
                 int offset = ip_;
                 ReadWriteBit* newbit = create_variable();
-                if (ip_ > endif) {
+                if (ip_ > endcond) {
                     diewith(CS_DIE_AUT_TWOBYTEFAIL);
                 }
                 delete declared_bits_[offset];
@@ -518,12 +520,12 @@ AutomataRunner::AutomataRunner(node_t node, insn_t* base_pointer)
     memset(imported_bits_, 0, sizeof(imported_bits_));
     CreateVarzAndAutomatas();
     os_sem_init(&automata_sem_, 0);
-    os_thread_t automata_thread_handle;
-    os_thread_create(&automata_thread_handle, "automata", 0,
+    os_thread_create(&automata_thread_handle_, "automata", 0,
                      AUTOMATA_THREAD_STACK_SIZE, automata_thread, this);
 }
 
 AutomataRunner::~AutomataRunner() {
+  if (0) fprintf(stderr,"Destroying automata runner.\n");
   request_thread_exit_ = true;
   TriggerRun();
   // NOTE(balazs.racz) This should call os_thread_join except that API does not
@@ -531,7 +533,12 @@ AutomataRunner::~AutomataRunner() {
   while (!thread_exited_) {
     // Do nothing.
   }
-    for (auto& i : declared_bits_) {
-        delete i.second;
-    }
+  os_timer_delete(automata_timer_);
+  for (auto i : all_automata_) {
+    delete i;
+  }
+  for (auto& i : declared_bits_) {
+    delete i.second;
+  }
+  os_sem_destroy(&automata_sem_);
 }

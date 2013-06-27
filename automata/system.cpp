@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "system.hxx"
 #include "../cs/src/automata_defs.h"
 #include "operations.hxx"
@@ -34,6 +36,7 @@ void Board::RenderPreamble(string* output) {
 void Board::RenderAutomatas(string* output) {
     for (auto& a: automatas_) {
         a.offset = output->size();
+        assert(a.automata);
         a.automata->Render(output);
         // Put back the pointer into the table. Little-endian.
         (*output)[a.ptr_offset] = a.offset & 0xff;
