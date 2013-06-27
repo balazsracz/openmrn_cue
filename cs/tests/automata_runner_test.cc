@@ -16,6 +16,10 @@
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrictMock;
+using ::testing::Mock;
+
+using automata::Board;
+using automata::StateRef;
 
 DEFINE_PIPE(can_pipe0, sizeof(struct can_frame));
 
@@ -92,6 +96,21 @@ TEST(TimerBitTest, DiesOnWrite) {
   EXPECT_DEATH({
       bit->Write(NULL, &a, false);
     }, "802AAC2A");
+}
+
+TEST(AutObjTest, IdAndStartingOffset) {
+  Automata a(33, 1882);
+  EXPECT_EQ(33, a.GetId());
+  EXPECT_EQ(1882, a.GetStartingOffset());
+}
+
+TEST(AutObjTest, State) {
+  Automata a(33, 1882);
+  EXPECT_EQ(0, a.GetState());
+  EXPECT_EQ(0, a.GetState());
+  a.SetState(17);
+  EXPECT_EQ(17, a.GetState());
+  EXPECT_EQ(17, a.GetState());
 }
 
 TEST(RunnerTest, TrivialRunnerCreateDestroy) {
@@ -376,6 +395,102 @@ TEST_F(AutomataTests, CopyAutomataBoard) {
   EXPECT_TRUE(mbit1.Get());
   EXPECT_TRUE(mbit2.Get());
 }
+
+TEST_F(AutomataTests, ActState) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      StateRef st1(11);
+      Def().ActState(st1);
+    });
+  SetupRunner(&brd);
+  Automata* aut = runner_->GetAllAutomatas()[0];
+  aut->SetState(0);
+  EXPECT_EQ(0, aut->GetState());
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+}
+
+TEST_F(AutomataTests, IfState) {
+  Board brd;
+  static MockBit wb(this);
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      StateRef st1(11);
+      StateRef st2(12);
+      Def().IfState(st1).ActReg0(wv);
+      Def().IfState(st2).ActReg1(wv);
+    });
+  SetupRunner(&brd);
+  Automata* aut = runner_->GetAllAutomatas()[0];
+  aut->SetState(0);
+  runner_->RunAllAutomata();
+  Mock::VerifyAndClear(&wb.mock());
+
+  EXPECT_CALL(wb.mock(), Write(_, _, false));
+  aut->SetState(11);
+  runner_->RunAllAutomata();
+  Mock::VerifyAndClear(&wb.mock());
+
+  EXPECT_CALL(wb.mock(), Write(_, _, false));
+  runner_->RunAllAutomata();
+  Mock::VerifyAndClear(&wb.mock());
+
+  EXPECT_CALL(wb.mock(), Write(_, _, true));
+  aut->SetState(12);
+  runner_->RunAllAutomata();
+  Mock::VerifyAndClear(&wb.mock());
+
+  aut->SetState(3);
+  runner_->RunAllAutomata();
+  Mock::VerifyAndClear(&wb.mock());
+}
+
+TEST_F(AutomataTests, MultipleAutomata) {
+  Board brd;
+  static MockBit wb(this);
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActReg0(wv);
+    });
+  DefAut(testaut2, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActReg1(wv);
+    });
+  SetupRunner(&brd);
+  EXPECT_CALL(wb.mock(), Write(_, _, true));
+  EXPECT_CALL(wb.mock(), Write(_, _, false));
+
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, StateFlipFlop) {
+  Board brd;
+  static MockBit wb(this);
+  DefAut(testaut1, brd, {
+      StateRef st1(11);
+      StateRef st2(12);
+      // In order to flip-flop between states we need a temporary state.
+      StateRef sttmp(13);
+      Def().IfState(st2).ActState(sttmp);
+      Def().IfState(st1).ActState(st2);
+      Def().IfState(sttmp).ActState(st1);
+    });
+  SetupRunner(&brd);
+  Automata* aut = runner_->GetAllAutomatas()[0];
+  aut->SetState(0);
+
+  runner_->RunAllAutomata();
+  EXPECT_EQ(0, aut->GetState());
+
+  aut->SetState(11);
+  runner_->RunAllAutomata();
+  EXPECT_EQ(12, aut->GetState());
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+  runner_->RunAllAutomata();
+  EXPECT_EQ(12, aut->GetState());
+}
+
 
 
 int appl_main(int argc, char* argv[]) {
