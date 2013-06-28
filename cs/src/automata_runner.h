@@ -133,6 +133,8 @@ public:
     //! Do the program-specific part of the initialization.
     void CreateVarzAndAutomatas();
 
+  //===============Accessors for testing================
+
   //! Injects a new ReadWriteBit into the global bits that are known by this
   //! runner. Useful for unittests.
   //
@@ -146,6 +148,11 @@ public:
   const vector<Automata*>& GetAllAutomatas() {
     return all_automata_;
   }
+
+  uint8_t GetSrcPlace() { return aut_srcplace_; }
+  uint8_t GetTrainId() { return aut_trainid_; }
+  uint8_t GetSignalAspect() { return aut_signal_aspect_; }
+  uint64_t GetEventId(int idx) { return aut_eventids_[idx]; }
 
 private:
     ReadWriteBit* GetBit(int offset) {
@@ -178,7 +185,7 @@ private:
     uint8_t aut_trainid_;  //< train id for absolute identification of trains.
     uint8_t aut_signal_aspect_; //< signal aspect for the next set-signal cmd.
 
-    uint64_t aut_eventids[2];  //< Eventid accumulators for declaring bits.
+    uint64_t aut_eventids_[2];  //< Eventid accumulators for declaring bits.
 
     //! Points to the beginning of the automata program area.
     insn_t* base_pointer_;
