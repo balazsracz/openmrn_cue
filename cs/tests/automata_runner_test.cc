@@ -1,14 +1,18 @@
+#include <unistd.h>
+
 #include <string>
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
 #include "src/automata_runner.h"
+#include "src/event_registry.hxx"
 
 #include "../automata/system.hxx"
 #include "../automata/operations.hxx"
 #include "../automata/variables.hxx"
 
 #include "nmranet_config.h"
+#include "if/nmranet_can_if.h"
 
 #include "pipe/pipe.hxx"
 #include "nmranet_can.h"
@@ -140,7 +144,11 @@ class GMockBit : public ReadWriteBit {
 
 
 class AutomataTests : public testing::Test {
-protected:
+ public:
+  static void SetUpTestCase();
+
+
+ protected:
   class FakeBitPointer : public ReadWriteBit {
    public:
     FakeBitPointer(bool* backend)
@@ -238,13 +246,15 @@ protected:
 
   virtual void SetUp() {
     next_bit_offset_ = 4242;
+    runner_ = NULL;
+    node_ = NULL;
   }
 
   void SetupRunner(automata::Board* brd) {
     string output;
     brd->Render(&output);
     memcpy(program_area_, output.data(), output.size());
-    runner_ = new AutomataRunner(NULL, program_area_);
+    runner_ = new AutomataRunner(node_, program_area_);
     for (auto bit : mock_bits_) {
       runner_->InjectBit(bit->GetGlobalOffset(), bit->CreateBit());
     }
@@ -271,15 +281,31 @@ protected:
     return bit;
   }
 
+  // A loopback interace that reads/writes to can_pipe0.
+  static NMRAnetIF* nmranet_if_;
+  // This node will be given to the AutomataRunner in SetupRunner.
+  node_t *node_;
+  EventRegistry registry_;
   AutomataRunner* runner_;
+  insn_t program_area_[10000];
 
 private:
   // Stores the global variable offset for the next mockbit.
   int next_bit_offset_;
   // Declared mock bits. Not owned.
   vector<InjectableVar*> mock_bits_;
-  insn_t program_area_[10000];
 };
+
+
+NMRAnetIF* AutomataTests::nmranet_if_ = NULL;
+
+static void AutomataTests::SetUpTestCase() {
+  int fd[2];
+  can_pipe0.AddVirtualDeviceToPipe("can_pipe", 2048, fd);
+
+  nmranet_if_ = nmranet_can_if_fd_init(0x02010d000000ULL, fd[0], fd[1],
+                                      "can_pipe_if", read, write);
+}
 
 TEST(RunnerTest, SingleEmptyAutomataBoard) {
   static automata::Board brd;
@@ -491,7 +517,38 @@ TEST_F(AutomataTests, StateFlipFlop) {
   EXPECT_EQ(12, aut->GetState());
 }
 
+TEST_F(AutomataTests, LoadEventId) {
+  Board brd;
+  DefAut(testaut1, brd, {
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+  Automata* aut = runner_->GetAllAutomatas()[0];
+  runner_->RunAllAutomata();
+  string temp;
+  automata::EventBasedVariable::CreateEventId(0, 0x554433221166ULL, &temp);
+  temp.push_back(0);
+  memcpy(program_area_ + aut->GetStartingOffset(),
+         temp.data(),
+         temp.size());
+  runner_->RunAllAutomata();
+  EXPECT_EQ(0x554433221166ULL, runner_->GetEventId(0));
+  temp.clear();
+  automata::EventBasedVariable::CreateEventId(1, 0x443322116655ULL, &temp);
+  temp.push_back(0);
+  memcpy(program_area_ + aut->GetStartingOffset(),
+         temp.data(),
+         temp.size());
+  runner_->RunAllAutomata();
+  EXPECT_EQ(0x443322116655ULL, runner_->GetEventId(1));
+}
+
 TEST_F(AutomataTests, EventVar) {
+  node_ = nmranet_node_create(0x02010d000001ULL, nmranet_if_,
+                              "Test Node", NULL);
+  ASSERT_TRUE(node_);
+  nmranet_node_user_description(node_, "Test Node");
+
   Board brd;
   using automata::EventBasedVariable;
   EventBasedVariable led(&brd,
@@ -504,10 +561,13 @@ TEST_F(AutomataTests, EventVar) {
       auto wv = ImportVariable(var);
     });
   string output;
-  brd.Render(&output);
-  EXPECT_EQ("", output);
-  //SetupRunner(&brd);
-  //runner_->RunAllAutomata();
+  //brd.Render(&output);
+  //EXPECT_EQ("", output);
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, EmptyTest) {
 }
 
 
