@@ -491,6 +491,24 @@ TEST_F(AutomataTests, StateFlipFlop) {
   EXPECT_EQ(12, aut->GetState());
 }
 
+TEST_F(AutomataTests, EventVar) {
+  Board brd;
+  using automata::EventBasedVariable;
+  EventBasedVariable led(&brd,
+                         0x0502010202650012ULL,
+                         0x0502010202650013ULL,
+                         0, OFS_GLOBAL_BITS, 1);
+  static automata::GlobalVariable* var;
+  var = &led;
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(var);
+    });
+  string output;
+  brd.Render(&output);
+  EXPECT_EQ("", output);
+  //SetupRunner(&brd);
+  //runner_->RunAllAutomata();
+}
 
 
 int appl_main(int argc, char* argv[]) {
