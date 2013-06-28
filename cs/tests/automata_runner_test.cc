@@ -12,9 +12,12 @@
 #include "../automata/variables.hxx"
 
 #include "nmranet_config.h"
+#include "core/nmranet_event.h"
+#include "core/nmranet_datagram.h"
 #include "if/nmranet_can_if.h"
 
 #include "pipe/pipe.hxx"
+#include "pipe/gc_format.h"
 #include "nmranet_can.h"
 
 using ::testing::_;
@@ -281,11 +284,14 @@ protected:
     return bit;
   }
 
+  static void* AutomataTests::DispatchThread(void* arg);
+
+
   // A loopback interace that reads/writes to can_pipe0.
   static NMRAnetIF* nmranet_if_;
+  static EventRegistry registry_;
   // This node will be given to the AutomataRunner in SetupRunner.
-  node_t *node_;
-  EventRegistry registry_;
+  node_t node_;
   AutomataRunner* runner_;
   insn_t program_area_[10000];
 
@@ -298,13 +304,43 @@ private:
 
 
 NMRAnetIF* AutomataTests::nmranet_if_ = NULL;
+EventRegistry AutomataTests::registry_;
+
+static ssize_t mock_read(int, void*, size_t) {
+  // Never returns.
+  while(1) {
+    sleep(1);
+  }
+}
+static ssize_t mock_write(int fd, const void* buf, size_t n) {
+  can_pipe0.WriteToAll(NULL, buf, n);
+}
+
+void* AutomataTests::DispatchThread(void* arg) {
+  node_t node = (node_t)arg;
+  while(1) {
+    int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
+    if (result) {
+      for (size_t i = nmranet_event_pending(node); i > 0; i--) {
+        node_handle_t node_handle;
+        uint64_t event = nmranet_event_consume(node, &node_handle);
+        registry_.HandleEvent(event);
+      }
+      for (size_t i = nmranet_datagram_pending(node); i > 0; i--) {
+        datagram_t datagram = nmranet_datagram_consume(node);
+        // We release unknown datagrams iwthout processing them.
+        nmranet_datagram_release(datagram);
+      }
+    }
+  }
+}
 
 static void AutomataTests::SetUpTestCase() {
-  int fd[2];
-  can_pipe0.AddVirtualDeviceToPipe("can_pipe", 2048, fd);
+  int fd[2] = {0, 0};
+  // can_pipe0.AddVirtualDeviceToPipe("can_pipe", 2048, fd);
 
   nmranet_if_ = nmranet_can_if_fd_init(0x02010d000000ULL, fd[0], fd[1],
-                                      "can_pipe_if", read, write);
+                                      "can_mock_if", mock_read, mock_write);
 }
 
 TEST(RunnerTest, SingleEmptyAutomataBoard) {
@@ -548,6 +584,7 @@ TEST_F(AutomataTests, EventVar) {
                               "Test Node", NULL);
   ASSERT_TRUE(node_);
   nmranet_node_user_description(node_, "Test Node");
+  nmranet_node_initialized(node_);
 
   Board brd;
   using automata::EventBasedVariable;
@@ -566,6 +603,82 @@ TEST_F(AutomataTests, EventVar) {
   SetupRunner(&brd);
   runner_->RunAllAutomata();
 }
+
+
+class CanDebugPipeMember : public PipeMember {
+ public:
+  CanDebugPipeMember(Pipe* parent)
+      : parent_(parent) {
+    parent_->RegisterMember(this);
+  }
+
+  virtual ~CanDebugPipeMember() {
+    parent_->UnregisterMember(this);
+  }
+
+  virtual void write(const void* buf, size_t count) {
+    if (!count) return;
+    char outbuf[100];
+    const struct can_frame* frame = static_cast<const struct can_frame*>(buf);
+    while (count) {
+      assert(count >= sizeof(struct can_frame));
+      *gc_format_generate(frame, outbuf, 0) = '\0';
+      fprintf(stdout,"%s\n", outbuf);
+      count -= sizeof(*frame);
+    }
+  }
+ private:
+  Pipe* parent_;
+};
+
+CanDebugPipeMember printer(&can_pipe0);
+
+
+
+
+
+
+TEST_F(AutomataTests, EventVar2) {
+  node_ = nmranet_node_create(0x02010d000002ULL, nmranet_if_,
+                              "Test Node2", NULL);
+  ASSERT_TRUE(node_);
+  fprintf(stderr,"node_=%p\n", node_);
+  nmranet_node_user_description(node_, "Test Node2");
+
+  nmranet_event_producer(node_, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+  nmranet_event_producer(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
+  nmranet_node_initialized(node_);
+
+  os_thread_t thread;
+  os_thread_create(&thread, "event_process_thread",
+                   0, 2048, &AutomataTests::DispatchThread,
+                   node_);
+
+  nmranet_event_produce(node_, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+  nmranet_event_produce(node_, 0x0502010202650012ULL, EVENT_STATE_VALID);
+  nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_INVALID);
+  nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
+
+  Board brd;
+  using automata::EventBasedVariable;
+  EventBasedVariable led(&brd,
+                         0x0502010202650012ULL,
+                         0x0502010202650013ULL,
+                         0, OFS_GLOBAL_BITS, 1);
+  static automata::GlobalVariable* var;
+  var = &led;
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(var);
+      Def().ActReg0(wv);
+      Def().ActReg1(wv);
+    });
+  string output;
+  //brd.Render(&output);
+  //EXPECT_EQ("", output);
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
 
 TEST_F(AutomataTests, EmptyTest) {
 }
