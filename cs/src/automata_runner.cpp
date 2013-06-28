@@ -195,10 +195,10 @@ void AutomataRunner::insn_load_event_id() {
     int ofs = (type & 7) * 8;
     while(1) {
         aut_eventids[dest] &= ~(0xff<<ofs);
-        aut_eventids[dest] |= load_insn();
+        aut_eventids[dest] |= (load_insn() << ofs);
         if (!ofs) break;
-        ofs >>= 8;
-    } while (1);
+        ofs -= 8;
+    }
 }
 
 
