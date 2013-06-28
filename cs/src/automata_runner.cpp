@@ -141,6 +141,7 @@ public:
              uint64_t event_on, uint64_t event_off,
              uint8_t mask, uint8_t* ptr)
         : MemoryToggleEventHandler<uint8_t>(event_on, event_off, mask, ptr) {
+        if (0) fprintf(stderr,"event bit create on node %p\n", node);
         nmranet_event_producer(node, event_on, EVENT_STATE_INVALID);
         nmranet_event_producer(node, event_off, EVENT_STATE_INVALID);
         nmranet_event_consumer(node, event_on, EVENT_STATE_INVALID);
@@ -152,6 +153,7 @@ public:
     }
 
     virtual void Write(node_t node, Automata* aut, bool value) {
+        if (0) fprintf(stderr,"event bit write to node %p\n", node);
         if (value) {
             *memory_ |= mask_;
             nmranet_event_produce(node, event_on_, EVENT_STATE_VALID);
