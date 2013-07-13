@@ -17,6 +17,10 @@ using namespace automata;
 StateRef StateInit(0);
 StateRef StateBase(1);
 
+StateRef StateUser1(2);
+StateRef StateUser2(3);
+
+
 Board brd;
 
 EventBasedVariable led(&brd,
@@ -29,16 +33,32 @@ EventBasedVariable intev(&brd,
                          0x0502010202650023ULL,
                          0, OFS_GLOBAL_BITS, 3);
 
+EventBasedVariable repev(&brd,
+                         0x0502010202650032ULL,
+                         0x0502010202650033ULL,
+                         0, OFS_GLOBAL_BITS, 4);
+
+
 DefAut(testaut, brd, {
         Def().IfState(StateInit).ActState(StateBase);
     });
 
-DefAut(blinker, brd, {
+DefAut(copier, brd, {
         LocalVariable& ledvar(ImportVariable(&led));
         LocalVariable& intvar(ImportVariable(&intev));
         Def().IfReg1(ledvar).ActReg1(intvar);
         Def().IfReg0(ledvar).ActReg0(intvar);
     });
+
+DefAut(blinker, brd, {
+        LocalVariable& repvar(ImportVariable(&repev));
+        Def().IfState(StateInit).ActState(StateUser1);
+        Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
+        Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);
+        Def().IfState(StateUser1).ActReg1(repvar);
+        Def().IfState(StateUser2).ActReg0(repvar);
+   });
+
 
 int main(int argc, char** argv) {
     FILE* f = fopen("automata.bin", "wb");
