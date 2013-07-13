@@ -31,6 +31,8 @@
  * @date 16 September 2012
  */
 
+#define __STDC_VERSION__ 199901L
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -53,6 +55,7 @@
 #include "src/event_registry.hxx"
 #include "src/common_event_handlers.hxx"
 #include "src/automata_runner.h"
+#include "src/automata_control.h"
 
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
@@ -84,11 +87,11 @@ void* out_blinker_thread(void*)
     resetblink(0);
     while (1)
     {
-        usleep(200000);
+        usleep(500000);
         //resetblink(1);
         nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
         nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_VALID);
-        usleep(200000);
+        usleep(500000);
         //resetblink(0);
         nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
         nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
@@ -161,8 +164,9 @@ int appl_main(int argc, char *argv[])
     nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
     nmranet_node_initialized(node);
 
-    os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
+    //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
     AutomataRunner runner(node, (insn_t*)0x78000);
+    resume_all_automata();
 
     for (;;)
     {

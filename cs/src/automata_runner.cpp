@@ -1,3 +1,8 @@
+#define _ISOC99_SOURCE
+#define __STDC_VERSION__ 199901L
+
+#define LOGLEVEL VERBOSE
+
 #include <stdio.h>
 
 #include "core/nmranet_event.h"
@@ -9,6 +14,7 @@
 #include "automata_control.h"
 #include "dcc-master.h"
 
+#include "logging.h"
 
 /*
   TODOS:
@@ -42,7 +48,7 @@ void AutomataRunner::CreateVarzAndAutomatas() {
     do {
         int ofs = load_insn();
         ofs |= load_insn() << 8;
-        if (0) fprintf(stderr, "read automata ofs: ofs %d\n", ofs);
+        LOG(VERBOSE, "read automata ofs: ofs %d\n", ofs);
         if (!ofs) break;
         all_automata_.push_back(new ::Automata(id++, ofs));
     } while(1);
@@ -469,9 +475,9 @@ void AutomataRunner::AddPendingTick() {
 }
 
 void AutomataRunner::RunAllAutomata() {
-    for (auto aut : all_automata_) {
-	ResetForAutomata(aut).Run();
-    }
+  for (auto aut : all_automata_) {
+    ResetForAutomata(aut).Run();
+  }
 }
 
 static long long automata_tick_callback(void* runner, void*) {

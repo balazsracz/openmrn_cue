@@ -57,6 +57,15 @@
 // Virtual COM port 0. Bytes in this packet will be forwarded to the
 // virtual serial port.
 #define CMD_VCOM0 0x23
+// Virtual COM port 1. Bytes in this packet will be forwarded to the
+// virtual serial port.
+#define CMD_VCOM1 0x24
+// Virtual COM port 2. Bytes in this packet will be forwarded to the
+// virtual serial port.
+#define CMD_VCOM2 0x25
+// Virtual COM port 3. Bytes in this packet will be forwarded to the
+// virtual serial port.
+#define CMD_VCOM3 0x26
 
 
 
