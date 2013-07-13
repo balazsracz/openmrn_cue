@@ -76,6 +76,22 @@ public:
         acts_.push_back(_ACT_STATE | state.state);
         return *this;
     }
+
+    Op& IfTimerNotDone() {
+        return IfReg1(parent_->timer_bit_);
+    }
+
+    Op& IfTimerDone() {
+        return IfReg0(parent_->timer_bit_);
+    }
+
+    Op& ActTimer(int seconds) {
+        assert((seconds & _ACT_TIMER_MASK) == 0);
+        uint8_t v = _ACT_TIMER;
+        v |= seconds;
+        acts_.push_back(v);
+        return *this;
+    }
     
     Op& AddIf(uint8_t byte) {
         ifs_.push_back(byte);

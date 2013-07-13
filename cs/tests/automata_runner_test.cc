@@ -553,6 +553,46 @@ TEST_F(AutomataTests, StateFlipFlop) {
   EXPECT_EQ(12, aut->GetState());
 }
 
+TEST_F(AutomataTests, TimerBitCountdown) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      StateRef st1(11);
+      StateRef st2(12);
+      Def().IfState(st1).IfTimerDone().ActState(st2);
+      Def().IfState(st2).ActTimer(3).ActState(st1);
+    });
+  SetupRunner(&brd);
+  Automata* aut = runner_->GetAllAutomatas()[0];
+  aut->SetState(0);
+
+  runner_->RunAllAutomata();
+  EXPECT_EQ(0, aut->GetState());
+  EXPECT_EQ(0, aut->GetTimer());
+  
+  aut->SetState(11);
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+  EXPECT_EQ(3, aut->GetTimer());
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+  EXPECT_EQ(3, aut->GetTimer());
+  aut->Tick();
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+  EXPECT_EQ(2, aut->GetTimer());
+  aut->Tick();
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+  EXPECT_EQ(1, aut->GetTimer());
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+  EXPECT_EQ(1, aut->GetTimer());
+  aut->Tick();
+  runner_->RunAllAutomata();
+  EXPECT_EQ(11, aut->GetState());
+  EXPECT_EQ(3, aut->GetTimer());
+}
+
 TEST_F(AutomataTests, LoadEventId) {
   Board brd;
   DefAut(testaut1, brd, {
