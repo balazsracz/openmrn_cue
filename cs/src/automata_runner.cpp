@@ -160,6 +160,8 @@ public:
 
     virtual void Write(node_t node, Automata* aut, bool value) {
         if (0) fprintf(stderr,"event bit write to node %p\n", node);
+        bool last_value = !!((*memory_) & mask_);
+        if (value == last_value) return;
         if (value) {
             *memory_ |= mask_;
             nmranet_event_produce(node, event_on_, EVENT_STATE_VALID);

@@ -9,12 +9,14 @@ uint16_t genrpc(uint8_t address, const uint8_t* data, uint8_t size) {
     return 0xf000;
 }
 
+bool automata_on_ = true;
+
 //! Stops processing all automatas.
-void suspend_all_automata() {}
+void suspend_all_automata() { automata_on_ = false; }
 //! Restarts processing automatas.
-void resume_all_automata() {}
+void resume_all_automata() { automata_on_ = true; }
 //! Returns true if automata processing is enabled.
-bool automata_running() { return false; }
+bool automata_running() { return automata_on_; }
 
 uint8_t clients[8][32];
 
