@@ -33,6 +33,8 @@
   need a destructor for AutomataRunner.
  */
 
+void UpdateSlaves(void);
+
 AutomataRunner& AutomataRunner::ResetForAutomata(Automata* aut) {
     ASSERT(aut);
     current_automata_ = aut;
@@ -511,6 +513,7 @@ void* automata_thread(void* arg) {
 	}
 	if (automata_running()) {
 	    runner->RunAllAutomata();
+            UpdateSlaves();
 	}
     }
     return NULL;
