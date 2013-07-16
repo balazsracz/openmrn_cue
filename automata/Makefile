@@ -17,3 +17,6 @@ test-aut: $(OBJS)
 clean:
 	rm *.o 
 
+flash: test-aut
+	./test-aut
+	aut-flash.sh *bin
