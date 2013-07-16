@@ -20,7 +20,7 @@ extern char logbuffer[256];
 
 
 #ifndef LOGLEVEL
-#define LOGLEVEL WARNING
+#define LOGLEVEL INFO
 #endif
 
 #ifdef __cplusplus
