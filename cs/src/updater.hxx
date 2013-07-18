@@ -3,6 +3,7 @@
 #define  _BRACZ_TRAIN_UPDATER_HXX_
 
 #include <queue>
+#include <initializer_list>
 
 #include "cs_config.h"
 #include "macros.h"
@@ -21,6 +22,9 @@ public:
 class UpdateQueue {
 public:
   UpdateQueue() {}
+
+  UpdateQueue(std::initializer_list<Updatable*> entries)
+    : background_queue_(entries) {}
 
   // Adds an entry to the updater queue. This entry will be updated over and
   // over again at the normal priority. The ownership of the pointer is not
@@ -49,8 +53,10 @@ private:
 // one by one.
 class SynchronousUpdater : public Runnable {
 public:
-  SynchronousUpdater() 
-    : exit_state_(INIT) {}
+  SynchronousUpdater() : exit_state_(INIT) {}
+
+  SynchronousUpdater(std::initializer_list<Updatable*> entries)
+    : queue_(entries), exit_state_(INIT) {}
 
   virtual ~SynchronousUpdater() {
     ASSERT(exit_state_ == EXITED);
@@ -60,7 +66,7 @@ public:
     return &queue_;
   } 
 
-  virtual void Loop() {
+  virtual void Run() {
     exit_state_ = RUN;
     while (exit_state_ == RUN) {
       Updatable* next = queue_.GetNextEntry();
