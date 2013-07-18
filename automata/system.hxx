@@ -133,6 +133,10 @@ protected:
 #define Def() Op(this, output_)
 
     string* output_;
+
+    void DefCopy(LocalVariable& src, LocalVariable& dst);
+    void DefNCopy(LocalVariable& src, LocalVariable& dst);
+
 private:
     friend class Op;
 

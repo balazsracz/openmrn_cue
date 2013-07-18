@@ -81,6 +81,17 @@ void Automata::Render(string* output) {
     output_ = NULL;
 }
 
+
+void Automata::DefCopy(Automata::LocalVariable& src, Automata::LocalVariable& dst) {
+  Def().IfReg0(src).ActReg0(dst);
+  Def().IfReg1(src).ActReg1(dst);
+}
+
+void Automata::DefNCopy(Automata::LocalVariable& src, Automata::LocalVariable& dst) {
+  Def().IfReg0(src).ActReg1(dst);
+  Def().IfReg1(src).ActReg0(dst);
+}
+
 /*class MyAut : public Automata {
 
 protected:
