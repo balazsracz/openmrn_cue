@@ -56,6 +56,8 @@
 #include "src/common_event_handlers.hxx"
 #include "src/automata_runner.h"
 #include "src/automata_control.h"
+#include "src/updater.hxx"
+
 
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
@@ -80,6 +82,8 @@ extern uint32_t blinker_pattern;
 }
 
 node_t node;
+
+extern SynchronousUpdater i2c_updater;
 
 
 void* out_blinker_thread(void*)
@@ -118,6 +122,7 @@ BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL,
 
 DECLARE_PIPE(can_pipe0);
 DECLARE_PIPE(can_pipe1);
+
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -165,6 +170,8 @@ int appl_main(int argc, char *argv[])
     nmranet_node_initialized(node);
 
     //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
+    i2c_updater.RunInNewThread("i2c_update", 0, 1024);
+
     AutomataRunner runner(node, (insn_t*)0x78000);
     resume_all_automata();
 

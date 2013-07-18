@@ -43,20 +43,29 @@ EventBasedVariable repev(&brd,
 EventBasedVariable vled1(&brd,
                          0x0502010202650040ULL,
                          0x0502010202650041ULL,
-                         1, OFS_IOA, 0);
+                         1, OFS_IOA, 1);
 EventBasedVariable vled2(&brd,
                          0x0502010202650042ULL,
                          0x0502010202650043ULL,
-                         1, OFS_IOA, 1);
+                         1, OFS_IOA, 0);
 EventBasedVariable vled3(&brd,
                          0x0502010202650044ULL,
                          0x0502010202650045ULL,
-                         2, OFS_IOA, 0);
+                         2, OFS_IOA, 1);
 EventBasedVariable vled4(&brd,
                          0x0502010202650046ULL,
                          0x0502010202650047ULL,
-                         2, OFS_IOA, 1);
+                         2, OFS_IOA, 0);
 
+EventBasedVariable inpb1(&brd,
+                         0x0502010202650052ULL,
+                         0x0502010202650053ULL,
+                         1, OFS_IOB, 2);
+
+EventBasedVariable inpb2(&brd,
+                         0x0502010202650054ULL,
+                         0x0502010202650055ULL,
+                         2, OFS_IOB, 2);
 
 
 DefAut(testaut, brd, {
@@ -89,6 +98,17 @@ DefAut(copier, brd, {
         Def().IfReg0(ledvar).ActReg0(intvar);
     });
 
+DefAut(xcopier, brd, {
+        LocalVariable& ledvar(ImportVariable(&vled4));
+        LocalVariable& btnvar(ImportVariable(&inpb1));
+        DefCopy(btnvar, ledvar);
+    });
+
+DefAut(xcopier2, brd, {
+        LocalVariable& ledvar(ImportVariable(&vled2));
+        LocalVariable& btnvar(ImportVariable(&inpb2));
+        DefNCopy(btnvar, ledvar);
+    });
 
 
 int main(int argc, char** argv) {
