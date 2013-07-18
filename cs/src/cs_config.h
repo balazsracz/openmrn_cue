@@ -40,4 +40,6 @@ extern uint32_t blinker_pattern;
 #define MAX_LOCK_ID 8
 
 
+#define I2C_READ_UNCHANGED_COUNT 3
+
 #endif // _CS_CONFIG_H_
