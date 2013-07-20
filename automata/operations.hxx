@@ -18,6 +18,9 @@ struct StateRef {
 
 class Automata::Op {
 public:
+    Op(Automata* parent)
+        : parent_(parent), output_(parent->output_) {}
+
     Op(Automata* parent, string* output)
         : parent_(parent), output_(output) {}
 
