@@ -170,7 +170,9 @@ int appl_main(int argc, char *argv[])
     nmranet_node_initialized(node);
 
     //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
+#ifdef __FreeRTOS__
     i2c_updater.RunInNewThread("i2c_update", 0, 1024);
+#endif
 
     AutomataRunner runner(node, (insn_t*)0x78000);
     resume_all_automata();

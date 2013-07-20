@@ -1,7 +1,7 @@
 #include "logging.h"
 #include "automata_control.h"
 
-#ifdef __FreeRTOS__
+#ifdef nnn__FreeRTOS__
 
 #include "mbed.h"
 #include "base.h"
