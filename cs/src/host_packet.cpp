@@ -298,6 +298,9 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 	// Clears all possible interrupt sources.
 	NVIC->IntEnClr = NVIC->IntEnable;
 	start();
+#elif defined(TARGET_LPC11Cxx)
+        // TODO(bracz): define how to reset a Cortex-M0.
+        abort();
 #elif !defined(__FreeRTOS__)
         //We ignore the reset command on a host.
 #else
