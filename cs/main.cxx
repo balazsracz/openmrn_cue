@@ -79,7 +79,16 @@ extern "C" {
 void resetblink(uint32_t pattern);
 void diewith(uint32_t pattern);
 extern uint32_t blinker_pattern;
+
+#ifdef TARGET_LPC11Cxx
+void __wrap___cxa_pure_virtual(void) {
+  abort();
 }
+#endif
+
+
+}
+
 
 node_t node;
 
@@ -120,9 +129,11 @@ public:
 BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL,
                                       0x0502010202650013ULL);
 
+
+#if defined(TARGET_LPC2368)
 DECLARE_PIPE(can_pipe0);
 DECLARE_PIPE(can_pipe1);
-
+#endif
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -131,17 +142,24 @@ DECLARE_PIPE(can_pipe1);
  */
 int appl_main(int argc, char *argv[])
 {
+#if defined(TARGET_LPC2368)
     start_watchdog(2000);
     add_watchdog_reset_timer(500);
+#endif
 
+#if defined(TARGET_LPC2368)
     PacketQueue::initialize("/dev/serUSB0");
+#endif
 
     //can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
     //can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
 
+
+#if defined(TARGET_LPC2368) || defined(__linux__)
     int fd = open("/dev/canp1v0", O_RDWR);
     ASSERT(fd >= 0);
     dcc_can_init(fd);
+#endif
 
     NMRAnetIF *nmranet_if;
 
@@ -174,8 +192,11 @@ int appl_main(int argc, char *argv[])
     i2c_updater.RunInNewThread("i2c_update", 0, 1024);
 #endif
 
+
+#if defined(TARGET_LPC2368) || defined(__linux__)
     AutomataRunner runner(node, (insn_t*)0x78000);
     resume_all_automata();
+#endif
 
     for (;;)
     {
