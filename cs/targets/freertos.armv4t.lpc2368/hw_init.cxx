@@ -40,6 +40,9 @@
 #include "src/base.h"
 #include "src/automata_control.h"
 
+extern const unsigned long long NODE_ADDRESS;
+const unsigned long long NODE_ADDRESS = 0x050101011431ULL;
+
 
 DigitalIn startpin(P1_4);
 

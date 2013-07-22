@@ -7,6 +7,8 @@
 #include "src/base.h"
 #include "src/automata_control.h"
 
+extern const unsigned long long NODE_ADDRESS;
+const unsigned long long NODE_ADDRESS = 0x050101011432ULL;
 
 
 /*

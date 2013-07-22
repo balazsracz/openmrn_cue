@@ -75,6 +75,8 @@ const size_t SERIAL_TX_BUFFER_SIZE = 130;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 512;
 const size_t CAN_IF_READ_THREAD_STACK_SIZE = 1024;
 
+extern const unsigned long long NODE_ADDRESS;
+
 extern "C" {
 void resetblink(uint32_t pattern);
 void diewith(uint32_t pattern);
@@ -162,8 +164,8 @@ int appl_main(int argc, char *argv[])
 #endif
 
     NMRAnetIF *nmranet_if;
+    nmranet_if = nmranet_can_if_init(NODE_ADDRESS, "/dev/canp0v1", read, write);
 
-    nmranet_if = nmranet_can_if_init(0x02010d000000ULL, "/dev/canp0v1", read, write);
 
     if (nmranet_if == NULL)
     {
@@ -174,7 +176,7 @@ int appl_main(int argc, char *argv[])
 #endif
     }
 
-    node = nmranet_node_create(0x02010d000001ULL, nmranet_if, "Virtual Node", NULL);
+    node = nmranet_node_create(NODE_ADDRESS, nmranet_if, "Virtual Node", NULL);
     nmranet_node_user_description(node, "Test Node");
 
     nmranet_event_consumer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
