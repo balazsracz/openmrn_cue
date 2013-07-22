@@ -16,7 +16,7 @@ OBJEXTRA = $(OPENMRNPATH)/targets/freertos.armv6m/freertos_drivers/11CXX_rom_can
 
 SYSLIBRARIESEXTRA = -lmbed
 
-LDFLAGSEXTRA = -Wl,--wrap=__cxa_pure_virtual
+LDFLAGSEXTRA = -Wl,--wrap=__cxa_pure_virtual  -Wl,--wrap=__cxa_atexit
 
 include $(OPENMRNPATH)/etc/prog.mk
 
