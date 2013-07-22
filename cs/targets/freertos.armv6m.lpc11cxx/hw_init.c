@@ -49,11 +49,13 @@
 // The entry point for the C++ library startup
 //
 //*****************************************************************************
-extern "C" {
+#endif
+#endif
+
+//extern "C" {
     extern void __libc_init_array(void);
-}
-#endif
-#endif
+//}
+
 
 #define WEAK __attribute__ ((weak))
 #define ALIAS(f) __attribute__ ((weak, alias (#f)))
@@ -322,12 +324,12 @@ ResetISR(void) {
     SystemInit();
 #endif
 
-#if defined (__cplusplus)
+    //#if defined (__cplusplus)
     //
     // Call C++ library initialisation
     //
     __libc_init_array();
-#endif
+    //#endif
 
 #if defined (__REDLIB__)
     // Call the Redlib library, which in turn calls main()
