@@ -64,16 +64,20 @@ public:
 
   UpdateQueue* queue() {
     return &queue_;
-  } 
+  }
 
   virtual void Run() {
     exit_state_ = RUN;
     while (exit_state_ == RUN) {
-      Updatable* next = queue_.GetNextEntry();
-      ASSERT(next);
-      next->PerformUpdate();
+      Step();
     }
     exit_state_ = EXITED;
+  }
+
+  void Step() {
+    Updatable* next = queue_.GetNextEntry();
+    ASSERT(next);
+    next->PerformUpdate();
   }
 
   void RequestExit() {
