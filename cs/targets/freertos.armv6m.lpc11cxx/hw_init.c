@@ -439,6 +439,24 @@ void diewith(uint32_t pattern)
 }
 
 extern void modules_init(void);
+extern uint32_t *heap_end;  // Used from sbrk_r implementation.
+
+void hw_idle_hook(void)
+{
+  // We check that the main stack has not yet reached the top of heap.
+  if (*heap_end != 0xdbdbdbdb) {
+    diewith(BLINK_DIE_STACKOVERFLOW);
+  }
+}
+
+void appl_hw_init(void) {
+  // Re-initializes the top of heap space with debug bytes.
+  for (uint32_t* d = heap_end; d < &__end_ram; ++d)
+  {
+    *d = 0xdbdbdbdb;
+  }
+}
+
 
 void hw_init(void)
 {
