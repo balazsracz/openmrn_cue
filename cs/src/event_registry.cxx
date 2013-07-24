@@ -17,7 +17,6 @@ EventRegistry::EventRegistry() {
   impl_ = new Impl();
 }
 
-
 EventRegistry::~EventRegistry() {
   instance_ = NULL;
   delete impl_;
@@ -40,6 +39,11 @@ void EventRegistry::UnregisterHandler(EventHandler* handler, uint64_t event) {
 
 void EventRegistry::HandleEvent(uint64_t event) {
   auto r = impl_->handlers.equal_range(event);
+  for (auto it = r.first; it != r.second; it++) {
+    it->second->HandleEvent(event);
+  }
+  // Call global event handlers too.
+  r = impl_->handlers.equal_range(0);
   for (auto it = r.first; it != r.second; it++) {
     it->second->HandleEvent(event);
   }

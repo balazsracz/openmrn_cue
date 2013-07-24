@@ -22,6 +22,17 @@ class EventRegistry {
   //! Removes handler from handling event.
   void UnregisterHandler(EventHandler* handler, uint64_t event);
 
+  //! Adds a new global event handler. This will be called with every incoming
+  //! event. The caller retains ownership of handler.
+  void RegisterGlobalHandler(EventHandler* handler) {
+    RegisterHandler(handler, 0);
+  }
+
+  //! Removes handler from handling event.
+  void UnregisterGlobalHandler(EventHandler* handler) {
+    UnregisterHandler(handler, 0);
+  }
+
   static EventRegistry* instance() {
     ASSERT(instance_);
     return instance_;
