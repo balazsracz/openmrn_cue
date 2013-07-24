@@ -16,6 +16,14 @@ public:
   virtual void PerformUpdate() = 0;
 };
 
+// Used for registering modules that act upon input updaters' actions.
+class UpdateListener {
+ public:
+  virtual ~UpdateListener() {}
+
+  virtual void OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value) = 0;
+};
+
 // A queue managing the updates of a single channel. This class will manage
 // out-of-order updates and priority between different updates. Currently only
 // has a single loop that it goes over and over again.
