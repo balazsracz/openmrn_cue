@@ -58,7 +58,6 @@
 #include "src/automata_control.h"
 #include "src/updater.hxx"
 
-
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
 const char *nmranet_software_rev = "0.1";
@@ -123,7 +122,15 @@ int __wrap___cxa_atexit(void) {
 
 node_t node;
 
+#ifdef __FreeRTOS__
+
+#include "src/mbed_i2c_update.hxx"
+
 extern SynchronousUpdater i2c_updater;
+extern I2CInUpdater in_extender0;
+extern I2CInUpdater in_extender1;
+
+#endif
 
 
 void* out_blinker_thread(void*)
@@ -161,25 +168,13 @@ BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL,
                                       0x0502010202650013ULL);
 
 #ifdef TARGET_LPC11Cxx
-MemoryToggleEventHandler<uint8_t> l1(0x0502010202650040ULL,
-                                     0x0502010202650041ULL,
-                                     1,
-                                     get_state_byte(1, OFS_IOA));
+MemoryBitSetEventHandler l1(0x0502010202650040ULL,
+                            get_state_byte(1, OFS_IOA),
+                            8);
 
-/*MemoryToggleEventHandler<uint8_t> l2(0x0502010202650042ULL,
-                                     0x0502010202650043ULL,
-                                     0,
-                                     get_state_byte(1, OFS_IOA));
-*/
-MemoryToggleEventHandler<uint8_t> l3(0x0502010202650044ULL,
-                                     0x0502010202650045ULL,
-                                     1,
-                                     get_state_byte(2, OFS_IOA));
-
-/*MemoryToggleEventHandler<uint8_t> l4(0x0502010202650046ULL,
-                                     0x0502010202650047ULL,
-                                     0,
-                                     get_state_byte(2, OFS_IOA));*/
+MemoryBitSetEventHandler l2(0x0502010202650060ULL,
+                            get_state_byte(2, OFS_IOA),
+                            8);
 #endif
 
 
@@ -256,12 +251,37 @@ int appl_main(int argc, char *argv[])
           nmranet_event_consumer(node, 0x05020102a8650012ULL, EVENT_STATE_INVALID);*/
     nmranet_event_consumer(node, 0x0502010202650040ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650041ULL, EVENT_STATE_INVALID);
-    nmranet_event_consumer(node, 0x0502010202650044ULL, EVENT_STATE_INVALID);
-    nmranet_event_consumer(node, 0x0502010202650045ULL, EVENT_STATE_INVALID);
+    //nmranet_event_consumer(node, 0x0502010202650042ULL, EVENT_STATE_INVALID);
+    //nmranet_event_consumer(node, 0x0502010202650043ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650060ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650061ULL, EVENT_STATE_INVALID);
+    //    nmranet_event_consumer(node, 0x0502010202650062ULL, EVENT_STATE_INVALID);
+    //nmranet_event_consumer(node, 0x0502010202650063ULL, EVENT_STATE_INVALID);
     /*    nmranet_event_producer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
     nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
     nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);*/
+
+    nmranet_event_producer(node, 0x0502010202650100ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650101ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650102ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650103ULL, EVENT_STATE_INVALID);
+
+    nmranet_event_producer(node, 0x0502010202650200ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650201ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650202ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650203ULL, EVENT_STATE_INVALID);
+
+
     nmranet_node_initialized(node);
+
+#ifdef __FreeRTOS__
+    MemoryBitSetProducer produce_i2c0(node, 0x0502010202650100ULL);
+    MemoryBitSetProducer produce_i2c1(node, 0x0502010202650200ULL);
+
+    in_extender0.RegisterListener(&produce_i2c0);
+    in_extender1.RegisterListener(&produce_i2c1);
+#endif
+
 
     //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
 
