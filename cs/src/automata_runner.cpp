@@ -1,5 +1,9 @@
+#ifndef _ISOC99_SOURCE
 #define _ISOC99_SOURCE
+#endif
+#ifndef __STDC_VERSION__
 #define __STDC_VERSION__ 199901L
+#endif
 
 #define LOGLEVEL VERBOSE
 

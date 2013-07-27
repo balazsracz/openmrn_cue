@@ -100,7 +100,7 @@ void resetblink(uint32_t pattern);
 void diewith(uint32_t pattern);
 extern uint32_t blinker_pattern;
 
-#ifdef TARGET_LPC11Cxx
+#ifdef __FreeRTOS__ //TARGET_LPC11Cxx
   // This gets rid of about 50 kbytes of flash code that is unnecessarily
   // linked into the binary.
 void __wrap___cxa_pure_virtual(void) {
@@ -178,7 +178,7 @@ MemoryBitSetEventHandler l2(0x0502010202650060ULL,
 #endif
 
 
-#if defined(TARGET_LPC2368)
+#if defined(TARGET_LPC2368) || defined(TARGET_LPC1768)
 DECLARE_PIPE(can_pipe0);
 DECLARE_PIPE(can_pipe1);
 #endif
@@ -200,7 +200,7 @@ int appl_main(int argc, char *argv[])
 {
   appl_hw_init();
 
-#if defined(TARGET_LPC2368)
+#if defined(TARGET_LPC2368) || defined(TARGET_LPC1768)
     start_watchdog(2000);
     add_watchdog_reset_timer(500);
 #endif
@@ -210,6 +210,14 @@ int appl_main(int argc, char *argv[])
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
     can_pipe1.AddPhysicalDeviceToPipe("/dev/can0", "can1_rx_thread", 512);
 #endif
+
+#if defined(TARGET_LPC1768)
+    //PacketQueue::initialize("/dev/serUSB0");
+    // Uncomment the next 1 line to transmit to hardware CANbus.
+    can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
+    //can_pipe1.AddPhysicalDeviceToPipe("/dev/can0", "can1_rx_thread", 512);
+#endif
+
 
     //can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
 
@@ -223,7 +231,7 @@ int appl_main(int argc, char *argv[])
 #endif
 
 
-#if defined(TARGET_LPC2368) || defined(__linux__)
+#if defined(TARGET_LPC2368) || defined(__linux__) || defined(TARGET_LPC1768)
     nmranet_if = nmranet_can_if_init(NODE_ADDRESS, "/dev/canp0v1", read, write);
 #elif defined(TARGET_LPC11Cxx)
     nmranet_if = nmranet_can_if_init(NODE_ADDRESS, "/dev/can0", read, write);
@@ -275,7 +283,7 @@ int appl_main(int argc, char *argv[])
 
     nmranet_node_initialized(node);
 
-#ifdef __FreeRTOS__
+#ifdef TARGET_LPC2368
     MemoryBitSetProducer produce_i2c0(node, 0x0502010202650100ULL);
     MemoryBitSetProducer produce_i2c1(node, 0x0502010202650200ULL);
 
@@ -287,10 +295,15 @@ int appl_main(int argc, char *argv[])
     //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
 
 
-#if defined(TARGET_LPC2368) || defined(__linux__)
+#if defined(TARGET_LPC2368)
     AutomataRunner runner(node, (insn_t*)0x78000);
     resume_all_automata();
 #endif
+
+#if defined(TARGET_LPC1768) || defined(__linux__)
+    
+#endif
+
 
 #if defined(TARGET_LPC2368)
     i2c_updater.RunInNewThread("i2c_update", 0, 1024);
@@ -302,7 +315,7 @@ int appl_main(int argc, char *argv[])
     for (;;)
     {
 
-#if !defined(TARGET_LPC2368)
+#if defined(TARGET_LPC11Cxx)
       // This takes a bit of time (blocking).
       i2c_updater.Step();
 #else
