@@ -1,6 +1,10 @@
-CXXFLAGS+= -std=c++0x -MMD -MF $@.d -g -ggdb -m32
+CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32
 
 OBJS=system.o
+
+AUTS = rr-crossing.cpp
+OUTPUTS = $(AUTS:.cpp=.cout)
+BINS = $(AUTS:.cpp=)
 
 all: lib test-aut
 
@@ -15,8 +19,14 @@ libautomata.a: $(OBJS)
 test-aut: $(OBJS)
 
 clean:
-	rm *.o 
+	rm *.o *.cout $(BINS) *.bin
 
 flash: test-aut
 	./test-aut
 	aut-flash.sh *bin
+
+$(OUTPUTS): %.cout : %
+	./$< > $@
+
+
+$(BINS): $(OBJS)
