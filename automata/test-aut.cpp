@@ -49,22 +49,22 @@ EventBasedVariable vled2(&brd,
                          0x0502010202650043ULL,
                          1, OFS_IOA, 0);
 EventBasedVariable vled3(&brd,
-                         0x0502010202650044ULL,
-                         0x0502010202650045ULL,
+                         0x0502010202650060ULL,
+                         0x0502010202650061ULL,
                          2, OFS_IOA, 1);
 EventBasedVariable vled4(&brd,
-                         0x0502010202650046ULL,
-                         0x0502010202650047ULL,
+                         0x0502010202650062ULL,
+                         0x0502010202650063ULL,
                          2, OFS_IOA, 0);
 
 EventBasedVariable inpb1(&brd,
-                         0x0502010202650052ULL,
-                         0x0502010202650053ULL,
+                         0x0502010202650082ULL,
+                         0x0502010202650083ULL,
                          1, OFS_IOB, 2);
 
 EventBasedVariable inpb2(&brd,
-                         0x0502010202650054ULL,
-                         0x0502010202650055ULL,
+                         0x0502010202650084ULL,
+                         0x0502010202650085ULL,
                          2, OFS_IOB, 2);
 
 
@@ -101,13 +101,13 @@ DefAut(copier, brd, {
 DefAut(xcopier, brd, {
         LocalVariable& ledvar(ImportVariable(&vled4));
         LocalVariable& btnvar(ImportVariable(&inpb1));
-        DefCopy(btnvar, ledvar);
+        //DefCopy(btnvar, ledvar);
     });
 
 DefAut(xcopier2, brd, {
         LocalVariable& ledvar(ImportVariable(&vled2));
         LocalVariable& btnvar(ImportVariable(&inpb2));
-        DefNCopy(btnvar, ledvar);
+        //DefNCopy(btnvar, ledvar);
     });
 
 
