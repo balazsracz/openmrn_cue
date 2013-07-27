@@ -78,7 +78,7 @@ const size_t SERIAL_TX_BUFFER_SIZE = 16;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 256;
 const size_t CAN_IF_READ_THREAD_STACK_SIZE = 700;
 #else
-const size_t main_stack_size = 2560;
+const size_t main_stack_size = 1560;
 const int main_priority = 0;
 const size_t ALIAS_POOL_SIZE = 2;
 const size_t DOWNSTREAM_ALIAS_CACHE_SIZE = 2;
@@ -208,6 +208,7 @@ int appl_main(int argc, char *argv[])
 #if defined(TARGET_LPC2368)
     PacketQueue::initialize("/dev/serUSB0");
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
+    can_pipe1.AddPhysicalDeviceToPipe("/dev/can0", "can1_rx_thread", 512);
 #endif
 
     //can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
@@ -215,7 +216,7 @@ int appl_main(int argc, char *argv[])
 
     NMRAnetIF *nmranet_if;
 
-#if defined(TARGET_LPC2368x) || defined(__linux__)
+#if defined(TARGET_LPC2368) || defined(__linux__)
     int fd = open("/dev/canp1v0", O_RDWR);
     ASSERT(fd >= 0);
     dcc_can_init(fd);
@@ -261,15 +262,15 @@ int appl_main(int argc, char *argv[])
     nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
     nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);*/
 
-    nmranet_event_producer(node, 0x0502010202650100ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650101ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650102ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650103ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650104ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650105ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650106ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650107ULL, EVENT_STATE_INVALID);
 
-    nmranet_event_producer(node, 0x0502010202650200ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650201ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650202ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650203ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650204ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650205ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650206ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650207ULL, EVENT_STATE_INVALID);
 
 
     nmranet_node_initialized(node);
