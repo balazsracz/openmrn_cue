@@ -2,7 +2,7 @@ APP_PATH ?= $(realpath ../..)
 
 include $(APP_PATH)/config.mk
 
-TARGET = freertos.armv4t
+export TARGET := freertos.armv4t
 
 DEPS += HAVE_MBED
 
@@ -29,6 +29,6 @@ $(EXECUTABLE)$(EXTENTION): depmake
 .PHONY: depmake
 
 depmake:
-	make -C $(OPENMRNPATH)/targets/$(TARGET) all
+	+$(MAKE) -C $(OPENMRNPATH)/targets/$(TARGET) all
 
 endif  #missing deps
