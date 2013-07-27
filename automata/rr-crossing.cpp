@@ -30,31 +30,37 @@ EventBasedVariable led(&brd,
                        0x0502010202650513ULL,
                        0, OFS_GLOBAL_BITS, 1);
 
+// Negated input_pin1 variable.
+EventBasedVariable vNinput_pin(&brd,
+                               0x0502010202650301ULL,
+                               0x0502010202650300ULL,
+                               0, OFS_GLOBAL_BITS, 2);
+
 EventBasedVariable intev(&brd,
-                         0x0502010202650022ULL,
-                         0x0502010202650023ULL,
+                         0x0502010202650122ULL,
+                         0x0502010202650123ULL,
                          0, OFS_GLOBAL_BITS, 3);
 
 EventBasedVariable repev(&brd,
-                         0x0502010202650032ULL,
-                         0x0502010202650033ULL,
+                         0x0502010202650132ULL,
+                         0x0502010202650133ULL,
                          0, OFS_GLOBAL_BITS, 4);
 
 EventBasedVariable vled1(&brd,
-                         0x0502010202650040ULL,
-                         0x0502010202650041ULL,
+                         0x0502010202650140ULL,
+                         0x0502010202650141ULL,
                          1, OFS_IOA, 1);
 EventBasedVariable vled2(&brd,
-                         0x0502010202650042ULL,
-                         0x0502010202650043ULL,
+                         0x0502010202650142ULL,
+                         0x0502010202650143ULL,
                          1, OFS_IOA, 0);
 EventBasedVariable vled3(&brd,
-                         0x0502010202650060ULL,
-                         0x0502010202650061ULL,
+                         0x0502010202650160ULL,
+                         0x0502010202650161ULL,
                          2, OFS_IOA, 1);
 EventBasedVariable vled4(&brd,
-                         0x0502010202650062ULL,
-                         0x0502010202650063ULL,
+                         0x0502010202650162ULL,
+                         0x0502010202650163ULL,
                          2, OFS_IOA, 0);
 
 EventBasedVariable inpb1(&brd,
@@ -74,22 +80,25 @@ DefAut(testaut, brd, {
 
 
 DefAut(blinker, brd, {
-        LocalVariable& repvar(ImportVariable(&led));
-        LocalVariable& l1(ImportVariable(&vled1));
-        LocalVariable& l2(ImportVariable(&vled3));
-        Def().IfState(StateInit).ActState(StateUser1);
-        Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
-        Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);
-        Def().IfState(StateUser1).ActReg1(repvar);
-        Def().IfState(StateUser2).ActReg0(repvar);
+    LocalVariable& track_busy(ImportVariable(&vNinput_pin));
+    LocalVariable& l1(ImportVariable(&vled1));
+    LocalVariable& l2(ImportVariable(&vled3));
+    Def().IfState(StateInit).ActState(StateBase);
+    Def().IfReg0(track_busy).ActState(StateBase);
+    Def().IfReg1(track_busy).IfState(StateBase).ActState(StateUser1);
 
-        Def().IfState(StateUser1).ActReg1(l1);
-        Def().IfState(StateUser2).ActReg0(l1);
+    Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
+    Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);
 
-        Def().IfState(StateUser2).ActReg1(l2);
-        Def().IfState(StateUser1).ActReg0(l2);
+    Def().IfState(StateBase).ActReg0(l1);
+    Def().IfState(StateBase).ActReg0(l2);
 
-   });
+    Def().IfState(StateUser1).ActReg1(l1);
+    Def().IfState(StateUser2).ActReg0(l1);
+
+    Def().IfState(StateUser2).ActReg1(l2);
+    Def().IfState(StateUser1).ActReg0(l2);
+  });
 
 DefAut(copier, brd, {
         LocalVariable& ledvar(ImportVariable(&led));

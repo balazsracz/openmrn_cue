@@ -169,9 +169,19 @@ public:
     }
 };
 
-BlinkerToggleEventHandler led_blinker(0x0502010202650300ULL,
-                                      0x0502010202650301ULL);
+// Negated events of input_pin1
+BlinkerToggleEventHandler led_blinker(0x0502010202650301ULL,
+                                      0x0502010202650300ULL);
 
+
+#ifdef TARGET_LPC1768
+MbedGPIOListener led_l2(0x0502010202650140ULL,
+                        0x0502010202650141ULL,
+                        LED2);
+MbedGPIOListener led_l3(0x0502010202650160ULL,
+                        0x0502010202650161ULL,
+                        LED3);
+#endif
 
 #ifdef TARGET_LPC11Cxx
 MemoryBitSetEventHandler l1(0x0502010202650040ULL,
@@ -318,8 +328,8 @@ int appl_main(int argc, char *argv[])
 
 
 #if defined(TARGET_LPC1768) || defined(TARGET_LPC2368) || defined(__linux__)
-    //AutomataRunner runner(node, automata_code);
-    //resume_all_automata();
+    AutomataRunner runner(node, automata_code);
+    resume_all_automata();
 #endif
 
 #if defined(TARGET_LPC2368)
