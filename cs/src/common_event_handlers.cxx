@@ -1,3 +1,4 @@
+#include "cs_config.h"
 #include "common_event_handlers.hxx"
 #include "core/nmranet_event.h"
 
