@@ -57,6 +57,11 @@
 #include "src/automata_runner.h"
 #include "src/automata_control.h"
 #include "src/updater.hxx"
+#include "src/timer_updater.hxx"
+
+#ifdef TARGET_LPC1768
+#include "src/mbed_gpio_handlers.hxx"
+#endif
 
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
@@ -164,8 +169,9 @@ public:
     }
 };
 
-BlinkerToggleEventHandler led_blinker(0x0502010202650012ULL,
-                                      0x0502010202650013ULL);
+BlinkerToggleEventHandler led_blinker(0x0502010202650300ULL,
+                                      0x0502010202650301ULL);
+
 
 #ifdef TARGET_LPC11Cxx
 MemoryBitSetEventHandler l1(0x0502010202650040ULL,
@@ -202,7 +208,7 @@ int appl_main(int argc, char *argv[])
   appl_hw_init();
 
 #if defined(TARGET_LPC2368) || defined(TARGET_LPC1768)
-    start_watchdog(2000);
+    start_watchdog(5000);
     add_watchdog_reset_timer(500);
 #endif
 
@@ -257,6 +263,8 @@ int appl_main(int argc, char *argv[])
     //  nmranet_event_consumer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650300ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650301ULL, EVENT_STATE_INVALID);
     /*    nmranet_event_consumer(node, 0x05020102a8650013ULL, EVENT_STATE_INVALID);
           nmranet_event_consumer(node, 0x05020102a8650012ULL, EVENT_STATE_INVALID);*/
     nmranet_event_consumer(node, 0x0502010202650040ULL, EVENT_STATE_INVALID);
@@ -281,8 +289,21 @@ int appl_main(int argc, char *argv[])
     nmranet_event_producer(node, 0x0502010202650206ULL, EVENT_STATE_INVALID);
     nmranet_event_producer(node, 0x0502010202650207ULL, EVENT_STATE_INVALID);
 
+#if defined(TARGET_LPC1768)
+    MbedGPIOProducer input_pin1(
+        node, 0x0502010202650300ULL, 0x0502010202650301ULL, p15, PullUp);
+#endif
 
     nmranet_node_initialized(node);
+
+
+#if defined(TARGET_LPC1768)
+    // It is important to start this process only after the node_initialized
+    // has returned, or else the program deadlocks. See
+    // https://github.com/bakerstu/openmrn/issues/9
+    TimerUpdater upd(MSEC_TO_NSEC(50), {&input_pin1});
+#endif
+
 
 #ifdef TARGET_LPC2368
     MemoryBitSetProducer produce_i2c0(node, 0x0502010202650100ULL);
@@ -300,11 +321,6 @@ int appl_main(int argc, char *argv[])
     //AutomataRunner runner(node, automata_code);
     //resume_all_automata();
 #endif
-
-#if defined(TARGET_LPC1768) || defined(__linux__)
-    
-#endif
-
 
 #if defined(TARGET_LPC2368)
     i2c_updater.RunInNewThread("i2c_update", 0, 1024);
