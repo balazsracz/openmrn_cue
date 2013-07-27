@@ -1,6 +1,8 @@
 *.d
 *.o
 test-aut
+rr-crossing
 core
 *.bin
 *.a
+*.cout

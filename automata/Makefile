@@ -19,7 +19,7 @@ libautomata.a: $(OBJS)
 test-aut: $(OBJS)
 
 clean:
-	rm *.o *.cout $(BINS) *.bin
+	rm -f *.o *.cout $(BINS) test-aut *.d *.bin
 
 flash: test-aut
 	./test-aut
