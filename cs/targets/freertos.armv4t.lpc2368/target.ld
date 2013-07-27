@@ -19,13 +19,15 @@ GROUP(
 /* Memory Definitions: */
 MEMORY
 {
-    Flash  (rx)  : ORIGIN = 0x00005000, LENGTH = 480k
+    Flash  (rx)  : ORIGIN = 0x00005000, LENGTH = 460k
     Ram    (rwx) : ORIGIN = 0x40000000, LENGTH = 64k
     UsbRam (rw)  : ORIGIN = 0x7FD00000, LENGTH = 16k
     EthRam (rw)  : ORIGIN = 0x7FE00000, LENGTH = 16k
     CanRam (rw)  : ORIGIN = 0xE0038000, LENGTH = 2k
     BatRam (rw)  : ORIGIN = 0xE0084000, LENGTH = 2k
 }
+
+automata_code = 0x78000;
 
 /* Stack sizes: */
 UND_Stack_Size = 32;

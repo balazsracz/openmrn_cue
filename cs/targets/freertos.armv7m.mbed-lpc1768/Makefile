@@ -8,7 +8,8 @@ DEPS += HAVE_MBED
 SYSLIBRARIESEXTRA = -lmbed
 
 OBJEXTRA = $(OPENMRNPATH)/targets/$(TARGET)/freertos_drivers/mbed_can.o \
-           $(OPENMRNPATH)/targets/$(TARGET)/freertos_drivers/mbed_usbserial.o
+           $(OPENMRNPATH)/targets/$(TARGET)/freertos_drivers/mbed_usbserial.o \
+
 
 include $(OPENMRNPATH)/etc/prog.mk
 
@@ -24,11 +25,24 @@ all: $(EXECUTABLE).bin $(EXECUTABLE).lst
 	$(OBJCOPY) -O binary $< $@
 	$(CHECKSUM) -p LPC1768 -d $@
 
-$(EXECUTABLE)$(EXTENTION): depmake
+$(EXECUTABLE)$(EXTENTION): depmake rr-crossing.o
 
 .PHONY: depmake
 
 depmake:
 	+$(MAKE) -C $(OPENMRNPATH)/targets/$(TARGET) all
+
+rr-crossing.c : rr-crossing.cout
+
+.PHONY: rr-crossing.cout
+
+rr-crossing.cout :
+	+$(MAKE) -C $(APP_PATH)/../automata rr-crossing.cout
+	cp -f $(APP_PATH)/../automata/rr-crossing.cout $@
+
+cleangen:
+	rm -f rr-crossing.cout
+
+veryclean clean: cleangen
 
 endif  #MISSING_DEPS

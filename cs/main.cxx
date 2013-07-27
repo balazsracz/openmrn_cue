@@ -189,6 +189,7 @@ void appl_hw_init(void) __attribute__ ((weak));
 void appl_hw_init(void) {
 }
 
+extern insn_t automata_code[];
 }
 
 /** Entry point to application.
@@ -295,9 +296,9 @@ int appl_main(int argc, char *argv[])
     //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
 
 
-#if defined(TARGET_LPC2368)
-    AutomataRunner runner(node, (insn_t*)0x78000);
-    resume_all_automata();
+#if defined(TARGET_LPC1768) || defined(TARGET_LPC2368) || defined(__linux__)
+    //AutomataRunner runner(node, automata_code);
+    //resume_all_automata();
 #endif
 
 #if defined(TARGET_LPC1768) || defined(__linux__)
