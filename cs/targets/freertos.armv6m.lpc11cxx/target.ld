@@ -137,6 +137,9 @@ SECTIONS
         FILL(0xff)
         _data = .;
         *(vtable)
+	__impure_data_start = .;
+	*(.data.impure_data)
+	__impure_data_end = .;
         *(.data*)
 
 	/* this magic is needed for the device tables of openMRN */
@@ -173,4 +176,8 @@ SECTIONS
     PROVIDE(__cs3_heap_start = .);
     /* This pointer will be written to the SP register at reset. */
     PROVIDE(_vStackTop = __top_RamLoc8);
+
+    PROVIDE(__impure_data_size = __impure_data_end - __impure_data_start);
+
 }
+

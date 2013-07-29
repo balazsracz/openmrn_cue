@@ -28,6 +28,9 @@
 //
 //*****************************************************************************
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "LPC11xx.h"
 #include "core_cm0.h"
 #include "FreeRTOSConfig.h"
@@ -471,4 +474,18 @@ void hw_init(void)
     setblink(0x8000000A);
 
     modules_init();
+}
+
+
+extern char __impure_data_size;
+
+struct _reent* allocate_reent(void)
+{
+  int reent_size = (int) &__impure_data_size;
+  struct _reent *data = malloc(reent_size);
+  // This is not particularly safe, but a good approximation of how reent is
+  // initialized. Unfortunately newlib-nano does not have an appropriate reent
+  // header.
+  memset(data, 0, reent_size);
+  return data;
 }
