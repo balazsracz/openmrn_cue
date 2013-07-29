@@ -33,6 +33,12 @@
 
 #define __STDC_VERSION__ 199901L
 
+#ifdef TARGET_LPC2368
+#include "LPC23xx.h"
+#endif
+
+#include "src/cs_config.h"
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -59,7 +65,9 @@
 #include "src/updater.hxx"
 #include "src/timer_updater.hxx"
 
-#ifdef TARGET_LPC1768
+
+
+#if defined(TARGET_LPC1768) || defined(SECOND)
 #include "src/mbed_gpio_handlers.hxx"
 #endif
 
@@ -134,6 +142,7 @@ node_t node;
 extern SynchronousUpdater i2c_updater;
 extern I2CInUpdater in_extender0;
 extern I2CInUpdater in_extender1;
+extern I2CInUpdater in_extender2;
 
 #endif
 
@@ -183,15 +192,52 @@ MbedGPIOListener led_l3(0x0502010202650160ULL,
                         LED3);
 #endif
 
-#ifdef TARGET_LPC11Cxx
-MemoryBitSetEventHandler l1(0x0502010202650040ULL,
-                            get_state_byte(1, OFS_IOA),
-                            8);
 
-MemoryBitSetEventHandler l2(0x0502010202650060ULL,
-                            get_state_byte(2, OFS_IOA),
-                            8);
+#ifdef SECOND
+MbedGPIOListener led_1(BRACZ_LAYOUT | 0x2030,
+                       BRACZ_LAYOUT | 0x2031,
+                       P0_23);
+MbedGPIOListener led_2(BRACZ_LAYOUT | 0x2032,
+                       BRACZ_LAYOUT | 0x2033,
+                       P0_24);
+MbedGPIOListener led_3(BRACZ_LAYOUT | 0x2034,
+                       BRACZ_LAYOUT | 0x2035,
+                       P0_25);
+MbedGPIOListener led_4(BRACZ_LAYOUT | 0x2036,
+                       BRACZ_LAYOUT | 0x2037,
+                       P0_26);
+MbedGPIOListener led_5(BRACZ_LAYOUT | 0x2038,
+                       BRACZ_LAYOUT | 0x2039,
+                       P1_30);
+MbedGPIOListener led_6(BRACZ_LAYOUT | 0x203a,
+                       BRACZ_LAYOUT | 0x203b,
+                       P1_31);
 #endif
+
+#ifdef TARGET_LPC11Cxx
+MemoryBitSetEventHandler l1(BRACZ_LAYOUT | 0x2500,
+                            get_state_byte(1, OFS_IOA),
+                            16);
+
+MemoryBitSetEventHandler l2(BRACZ_LAYOUT | 0x2600,
+                            get_state_byte(2, OFS_IOA),
+                            16);
+#endif
+
+#if defined(TARGET_LPC2368) && defined(SECOND)
+MemoryBitSetEventHandler l1(BRACZ_LAYOUT | 0x2100,
+                            get_state_byte(1, OFS_IOA),
+                            16);
+
+MemoryBitSetEventHandler l2(BRACZ_LAYOUT | 0x2200,
+                            get_state_byte(2, OFS_IOA),
+                            16);
+
+MemoryBitSetEventHandler l3(BRACZ_LAYOUT | 0x2300,
+                            get_state_byte(3, OFS_IOA),
+                            16);
+#endif
+
 
 
 #if defined(TARGET_LPC2368) || defined(TARGET_LPC1768)
@@ -223,9 +269,13 @@ int appl_main(int argc, char *argv[])
 #endif
 
 #if defined(TARGET_LPC2368)
+#ifdef SECOND
+    can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
+#else
     PacketQueue::initialize("/dev/serUSB0");
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
     can_pipe1.AddPhysicalDeviceToPipe("/dev/can0", "can1_rx_thread", 512);
+#endif
 #endif
 
 #if defined(TARGET_LPC1768)
@@ -242,9 +292,11 @@ int appl_main(int argc, char *argv[])
     NMRAnetIF *nmranet_if;
 
 #if defined(TARGET_LPC2368) || defined(__linux__)
+#ifndef SECOND
     int fd = open("/dev/canp1v0", O_RDWR);
     ASSERT(fd >= 0);
     dcc_can_init(fd);
+#endif
 #endif
 
 
@@ -270,13 +322,50 @@ int appl_main(int argc, char *argv[])
     node = nmranet_node_create(NODE_ADDRESS, nmranet_if, "Virtual Node", NULL);
     nmranet_node_user_description(node, "Test Node");
 
-    //  nmranet_event_consumer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
+#if defined(TARGET_LPC11Cxx)
+
+    // Consume one led and one relay per board.
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2500, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2501, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2502, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2503, EVENT_STATE_INVALID);
+
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x251c, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x251d, EVENT_STATE_INVALID);
+
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2600, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2601, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2602, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2603, EVENT_STATE_INVALID);
+
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x261c, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x261d, EVENT_STATE_INVALID);
+
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2520, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2521, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2522, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2523, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2524, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2525, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2526, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2527, EVENT_STATE_INVALID);
+
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2620, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2621, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2622, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2623, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2624, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2625, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2626, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2627, EVENT_STATE_INVALID);
+
+#elif defined(TARGET_LPC1768)
+
     nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650300ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650301ULL, EVENT_STATE_INVALID);
-    /*    nmranet_event_consumer(node, 0x05020102a8650013ULL, EVENT_STATE_INVALID);
-          nmranet_event_consumer(node, 0x05020102a8650012ULL, EVENT_STATE_INVALID);*/
+
     nmranet_event_consumer(node, 0x0502010202650040ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650041ULL, EVENT_STATE_INVALID);
     //nmranet_event_consumer(node, 0x0502010202650042ULL, EVENT_STATE_INVALID);
@@ -289,15 +378,41 @@ int appl_main(int argc, char *argv[])
     nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
     nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);*/
 
-    nmranet_event_producer(node, 0x0502010202650104ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650105ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650106ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650107ULL, EVENT_STATE_INVALID);
 
-    nmranet_event_producer(node, 0x0502010202650204ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650205ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650206ULL, EVENT_STATE_INVALID);
-    nmranet_event_producer(node, 0x0502010202650207ULL, EVENT_STATE_INVALID);
+#elif defined(TARGET_LPC2368)
+
+    nmranet_event_consumer(node, 0x0502010202650301ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650300ULL, EVENT_STATE_INVALID);
+
+
+    // Bits produced and consumed by the automata are automatically exported.
+
+#ifdef SECOND
+    for (int c = 0x30; c<=0x3b; c++) {
+      nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2000 | c, EVENT_STATE_INVALID);
+    }
+
+    for (int b = 0x21; b <= 0x23; ++b) {
+      static const uint8_t produce[] = { 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27 };
+      static const uint8_t consume[] = { 0, 1, 2, 3, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28 ,29, 30, 31 };
+      
+      for (int p : produce) {
+        nmranet_event_producer(node, BRACZ_LAYOUT | (b << 8) | p, EVENT_STATE_INVALID);
+      }
+      for (int p : consume) {
+        nmranet_event_consumer(node, BRACZ_LAYOUT | (b << 8) | p, EVENT_STATE_INVALID);
+      }
+    }
+#endif  // Second
+
+#elif defined(__linux__)
+
+    // Bits produced and consumed by the automata are automatically exported.
+
+#else
+#error define your event producers/consumers
+#endif
+
 
 #if defined(TARGET_LPC1768)
     MbedGPIOProducer input_pin1(
@@ -315,19 +430,23 @@ int appl_main(int argc, char *argv[])
 #endif
 
 
-#ifdef TARGET_LPC2368
-    MemoryBitSetProducer produce_i2c0(node, 0x0502010202650100ULL);
-    MemoryBitSetProducer produce_i2c1(node, 0x0502010202650200ULL);
+#if defined(TARGET_LPC2368) || defined(TARGET_LPC11Cxx)
+    MemoryBitSetProducer produce_i2c0(node, BRACZ_LAYOUT | 0x2120);
+    MemoryBitSetProducer produce_i2c1(node, BRACZ_LAYOUT | 0x2220);
 
     in_extender0.RegisterListener(&produce_i2c0);
     in_extender1.RegisterListener(&produce_i2c1);
+#if defined(TARGET_LPC2368)
+    MemoryBitSetProducer produce_i2c2(node, BRACZ_LAYOUT | 0x2320);
+    in_extender2.RegisterListener(&produce_i2c2);
+#endif
 #endif
 
 
     //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
 
 
-#if defined(TARGET_LPC1768) || defined(TARGET_LPC2368) || defined(__linux__)
+#if defined(TARGET_LPC1768) || (defined(TARGET_LPC2368) && !defined(SECOND)) || defined(__linux__)
     AutomataRunner runner(node, automata_code);
     resume_all_automata();
 #endif
