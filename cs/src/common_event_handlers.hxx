@@ -97,9 +97,9 @@ class MemoryBitSetEventHandler : public EventHandler {
     int ofs = diff >> 4;
     int bit = (diff & 0xf) >> 1;
     if (diff & 1) {
-      data_[ofs] |= (1<<bit);
-    } else {
       data_[ofs] &= ~(1<<bit);
+    } else {
+      data_[ofs] |= (1<<bit);
     }
   }
 
