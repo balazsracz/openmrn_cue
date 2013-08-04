@@ -1,6 +1,6 @@
 
 #include "mbed.h"
-#include "pipe.hxx"
+#include "utils/pipe.hxx"
 #include "can.h"
 #include "FreeRTOSConfig.h"
 #include "src/mbed_i2c_update.hxx"

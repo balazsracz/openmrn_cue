@@ -35,12 +35,16 @@
 
 #include "LPC23xx.h"
 #include "mbed.h"
-#include "pipe.hxx"
+#include "utils/pipe.hxx"
 #include "can.h"
 #include "FreeRTOSConfig.h"
 #include "src/mbed_i2c_update.hxx"
 #include "src/base.h"
 #include "src/automata_control.h"
+#include "src/host_packet.h"
+
+#include "src/usb_proto.h"
+
 
 extern const unsigned long long NODE_ADDRESS;
 #ifdef SECOND
@@ -149,6 +153,15 @@ void hw_init(void)
     }
 #endif
     resetblink(1);
+}
+
+
+void log_output(char* buf, int size) {
+    if (size <= 0) return;
+    PacketBase pkt(size + 1);
+    pkt[0] = CMD_VCOM1;
+    memcpy(pkt.buf() + 1, buf, size);
+    PacketQueue::instance()->TransmitPacket(pkt);
 }
 
 }  // extern C

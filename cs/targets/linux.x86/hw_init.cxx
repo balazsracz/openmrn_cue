@@ -1,4 +1,4 @@
-#include "pipe/pipe.hxx"
+#include "utils/pipe.hxx"
 #include "nmranet_can.h"
 
 extern const unsigned long long NODE_ADDRESS;

@@ -9,8 +9,8 @@
 
 
 #include "os/os.h"
-#include "freertos_drivers/common/pipe.hxx"
-#include "freertos_drivers/common/gc_pipe.hxx"
+#include "utils/pipe.hxx"
+#include "utils/gc_pipe.hxx"
 
 #include "usb_proto.h"
 #include "automata_control.h"

@@ -48,7 +48,7 @@
 #include "os/os.h"
 #include "os/OS.hxx"
 #include "os/watchdog.h"
-#include "freertos_drivers/common/pipe.hxx"
+#include "utils/pipe.hxx"
 #include "if/nmranet_if.h"
 #include "core/nmranet_node.h"
 #include "core/nmranet_event.h"

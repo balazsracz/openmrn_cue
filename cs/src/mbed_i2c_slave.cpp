@@ -1,4 +1,4 @@
-#include "logging.h"
+#include "utils/logging.h"
 #include "automata_control.h"
 
 #ifdef nnn__FreeRTOS__

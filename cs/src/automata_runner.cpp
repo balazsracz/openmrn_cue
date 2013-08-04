@@ -18,7 +18,7 @@
 #include "automata_control.h"
 #include "dcc-master.h"
 
-#include "logging.h"
+#include "utils/logging.h"
 
 /*
   TODOS:
