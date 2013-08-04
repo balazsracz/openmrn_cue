@@ -31,6 +31,7 @@ TEST(BoardCompile, EmptyBoard) {
 class EmptyAutomata : public Automata {
  protected:
   virtual void Body() {}
+  virtual Board* board() { return NULL; }
 };
 
 TEST(AutomataCompile, EmptyAut) {

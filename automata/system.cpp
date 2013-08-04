@@ -25,6 +25,11 @@ void Board::RenderPreamble(string* output) {
     // Terminate the automata list.
     output->push_back(0);
     output->push_back(0);
+    // Render all automata bodies to create temporary variables
+    for (auto& a: automatas_) {
+      assert(a.automata);
+      a.automata->Render(NULL);
+    }
     for (auto v: global_variables_) {
         v->SetId(output->size());
         v->Render(output);
@@ -66,7 +71,7 @@ void Automata::Render(string* output) {
             op.clear();
             op.push_back(_ACT_IMPORT_VAR);
             op.push_back(it.second.id);
-            int gofs = it.first->GetId().id;
+            int gofs = output ? it.first->GetId().id : 0;
             op.push_back(gofs & 0xff);
             op.push_back((gofs >> 8) & 0xff);
             Op::CreateOperation(output, empty, op);
@@ -77,7 +82,9 @@ void Automata::Render(string* output) {
     }
     // Actually renders the body.
     Body();
-    output->push_back(0);  // EOF byte for the runner.
+    if (output_) {
+      output->push_back(0);  // EOF byte for the runner.
+    }
     output_ = NULL;
 }
 
