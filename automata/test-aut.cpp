@@ -3,6 +3,7 @@
 
 #include <string>
 #include <fstream>
+#include <memory>
 using namespace std;
 
 #include "system.hxx"
@@ -150,86 +151,137 @@ struct I2CBoard {
 
 I2CBoard b5(0x25), b6(0x26), b1(0x21), b3(0x23);
 
-StateRef StateInit(0);
-StateRef StateBase(1);
+StateRef StInit(0);
+StateRef StBase(1);
 
-StateRef StateUser1(2);
-StateRef StateUser2(3);
+
+StateRef StGreen(2);
+StateRef StGoing(3);
+
+
+StateRef StUser1(10);
+StateRef StUser2(11);
+
+
+EventBasedVariable is_paused(&brd,
+                             BRACZ_LAYOUT | 0x0000 | 0,
+                             BRACZ_LAYOUT | 0x0000 | 1,
+                             0, OFS_GLOBAL_BITS, 1);
+
+
+
+
+int next_temp_bit = 0;
+GlobalVariable* NewTempVariable(Board* board) {
+  int counter = next_temp_bit++;
+  int bit = counter & 7;
+  int autid = counter >> 3;
+  int client = autid >> 3;
+  int autofs = autid & 7;
+  int byteofs = autofs * LEN_AUTOMATA + OFS_BITS;
+  if (client >= 8) {
+    fprintf(stderr, "Too many local variables. Cannot allocate more.");
+    abort();
+  }
+  return new EventBasedVariable(
+      board,
+      BRACZ_LAYOUT | 0x3000 | (counter << 1),
+      BRACZ_LAYOUT | 0x3000 | (counter << 1) | 1,
+      client, byteofs, bit);
+}
+
+
+class StrategyAutomata : public Automata {
+ public:
+  StrategyAutomata() {}
+
+ protected:
+  static const int kTimeTakenToGoBusy = 1;
+  static const int kTimeTakenToGoFree = 3;
+
+  void SensorDebounce(LocalVariable& raw, LocalVariable& filtered) {
+    if (!sensor_tmp_var_.get()) {
+      sensor_tmp_var_.reset(NewTempVariable(board()));
+    }
+    LocalVariable& last(ImportVariable(sensor_tmp_var_.get()));
+    // If there is a flip, we start a timer. The timer length depends on the
+    // edge.
+    Def().IfReg0(raw).IfReg1(last).ActTimer(kTimeTakenToGoBusy);
+    Def().IfReg1(raw).IfReg0(last).ActTimer(kTimeTakenToGoFree);
+    DefCopy(raw, last);
+    // If no flip happened for the timer length, we put the value into the
+    // filtered.
+    Def().IfTimerDone().IfReg1(last).ActReg0(filtered);
+    Def().IfTimerDone().IfReg0(last).ActReg1(filtered);
+  }
+
+  void Strategy(LocalVariable& src_busy, LocalVariable& src_go,
+                LocalVariable& dst_busy) {
+    Def().IfState(StInit).ActState(StBase).ActReg0(src_go);
+
+    Def().IfState(StBase).IfReg1(ImportVariable(&is_paused))
+        .IfReg1(src_busy).IfReg0(dst_busy)
+        .ActState(StGreen);
+
+    Def().IfState(StGreen).ActReg1(src_go);
+
+    Def().IfState(StGreen).IfReg0(src_busy)
+        .ActReg0(src_go).ActState(StGoing);
+
+    Def().IfState(StGoing).IfReg1(dst_busy).ActState(StBase);
+  }
+
+
+
+
+  unique_ptr<GlobalVariable> sensor_tmp_var_;
+};
+
 
 
 EventBasedVariable led(&brd,
                        0x0502010202650012ULL,
                        0x0502010202650013ULL,
-                       0, OFS_GLOBAL_BITS, 1);
-
-EventBasedVariable intev(&brd,
-                         0x0502010202650022ULL,
-                         0x0502010202650023ULL,
-                         0, OFS_GLOBAL_BITS, 3);
-
-EventBasedVariable repev(&brd,
-                         0x0502010202650032ULL,
-                         0x0502010202650033ULL,
-                         0, OFS_GLOBAL_BITS, 4);
-
-EventBasedVariable vled1(&brd,
-                         0x0502010202650040ULL,
-                         0x0502010202650041ULL,
-                         1, OFS_IOA, 1);
-EventBasedVariable vled2(&brd,
-                         0x0502010202650042ULL,
-                         0x0502010202650043ULL,
-                         1, OFS_IOA, 0);
-EventBasedVariable vled3(&brd,
-                         0x0502010202650060ULL,
-                         0x0502010202650061ULL,
-                         2, OFS_IOA, 1);
-EventBasedVariable vled4(&brd,
-                         0x0502010202650062ULL,
-                         0x0502010202650063ULL,
-                         2, OFS_IOA, 0);
-
-EventBasedVariable inpb1(&brd,
-                         0x0502010202650082ULL,
-                         0x0502010202650083ULL,
-                         1, OFS_IOB, 2);
-
-EventBasedVariable inpb2(&brd,
-                         0x0502010202650084ULL,
-                         0x0502010202650085ULL,
-                         2, OFS_IOB, 2);
-
+                       7, 31, 1);
 
 DefAut(testaut, brd, {
-        Def().IfState(StateInit).ActState(StateBase);
+        Def().IfState(StInit).ActState(StBase);
     });
 
+
+DefCustomAut(magictest, brd, StrategyAutomata, {
+    SensorDebounce(ImportVariable(&b1.InBrownBrown),
+                   ImportVariable(&b1.InA3));
+    Strategy(ImportVariable(&b1.InA3),
+             ImportVariable(&b1.InOraRed),
+             ImportVariable(&b1.RelBlue));
+  });
 
 /*DefAut(blinker, brd, {
         LocalVariable& repvar(ImportVariable(&led));
         LocalVariable& l1(ImportVariable(&b5.LedRed));
         LocalVariable& l2(ImportVariable(&b6.LedGreen));
-        Def().IfState(StateInit).ActState(StateUser1);
-        Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
-        Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);
-        Def().IfState(StateUser1).ActReg1(repvar);
-        Def().IfState(StateUser2).ActReg0(repvar);
+        Def().IfState(StInit).ActState(StUser1);
+        Def().IfState(StUser1).IfTimerDone().ActTimer(1).ActState(StUser2);
+        Def().IfState(StUser2).IfTimerDone().ActTimer(1).ActState(StUser1);
+        Def().IfState(StUser1).ActReg1(repvar);
+        Def().IfState(StUser2).ActReg0(repvar);
 
-        Def().IfState(StateUser1).ActReg1(l1);
-        Def().IfState(StateUser2).ActReg0(l1);
+        Def().IfState(StUser1).ActReg1(l1);
+        Def().IfState(StUser2).ActReg0(l1);
 
-        Def().IfState(StateUser2).ActReg1(l2);
-        Def().IfState(StateUser1).ActReg0(l2);
+        Def().IfState(StUser2).ActReg1(l2);
+        Def().IfState(StUser1).ActReg0(l2);
         });*/
 
-DefAut(copier, brd, {
+/*DefAut(copier, brd, {
         LocalVariable& ledvar(ImportVariable(&led));
         LocalVariable& intvar(ImportVariable(&intev));
         Def().IfReg1(ledvar).ActReg1(intvar);
         Def().IfReg0(ledvar).ActReg0(intvar);
     });
-
-DefAut(xcopier, brd, {
+*/
+/*DefAut(xcopier, brd, {
         LocalVariable& ledvar(ImportVariable(&vled4));
         LocalVariable& btnvar(ImportVariable(&inpb1));
         DefCopy(ImportVariable(&b5.InBrownBrown), ImportVariable(&b5.LedRed));
@@ -241,6 +293,8 @@ DefAut(xcopier2, brd, {
         LocalVariable& btnvar(ImportVariable(&inpb2));
         //DefNCopy(btnvar, ledvar);
     });
+
+*/
 
 
 int main(int argc, char** argv) {
