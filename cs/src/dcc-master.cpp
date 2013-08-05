@@ -310,7 +310,7 @@ static uint8_t GetSpeedForTrain(uint8_t id) {
   unsigned speed = dcc_master_loco[id].speed.p.speed;
   speed *= dcc_master_loco[id].relative_speed;
   speed >>= 4;
-  if (speed > 127) speed = 127;
+  if (speed > 64) speed = 64;
   return speed;
 }
 
