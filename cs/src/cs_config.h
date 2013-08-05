@@ -54,7 +54,7 @@ extern uint32_t blinker_pattern;
 #define BRACZ_LAYOUT 0x0501010114FF0000ULL
 
 #ifdef TARGET_LPC2368
-#define SECOND
+//#define SECOND
 #endif
 
 
