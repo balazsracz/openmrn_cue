@@ -178,12 +178,24 @@ public:
     }
 };
 
-// Negated events of input_pin1
-BlinkerToggleEventHandler led_blinker(0x0502010202650301ULL,
-                                      0x0502010202650300ULL);
+#if defined(TARGET_LPC2368)
+
+#ifndef SECOND
+BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x203c,
+                                      BRACZ_LAYOUT | 0x203d);
+#else
+BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2040,
+                                      BRACZ_LAYOUT | 0x2041);
+
+#endif
+#endif // lpc 2368
+
 
 
 #ifdef TARGET_LPC1768
+BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2050,
+                                      BRACZ_LAYOUT | 0x2051);
+
 MbedGPIOListener led_l2(0x0502010202650140ULL,
                         0x0502010202650141ULL,
                         LED2);
@@ -215,6 +227,9 @@ MbedGPIOListener led_6(BRACZ_LAYOUT | 0x203a,
 #endif
 
 #ifdef TARGET_LPC11Cxx
+BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2050,
+                                      BRACZ_LAYOUT | 0x2051);
+
 MemoryBitSetEventHandler l1(BRACZ_LAYOUT | 0x2500,
                             get_state_byte(1, OFS_IOA),
                             16);
@@ -381,14 +396,14 @@ int appl_main(int argc, char *argv[])
 
 #elif defined(TARGET_LPC2368)
 
-    nmranet_event_consumer(node, 0x0502010202650301ULL, EVENT_STATE_INVALID);
-    nmranet_event_consumer(node, 0x0502010202650300ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2040, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2041, EVENT_STATE_INVALID);
 
 
     // Bits produced and consumed by the automata are automatically exported.
 
 #ifdef SECOND
-    for (int c = 0x30; c<=0x3b; c++) {
+    for (int c = 0x30; c<=0x3d; c++) {
       nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2000 | c, EVENT_STATE_INVALID);
     }
 
