@@ -9,6 +9,7 @@
 
 
 #include "os/os.h"
+#include "utils/logging.h"
 #include "utils/pipe.hxx"
 #include "utils/gc_pipe.hxx"
 
@@ -150,6 +151,8 @@ const uint8_t packet_misc_invalidarg[] = { 4, CMD_UMISC, 0x00, 0xff, 0x01 };
 
 void PacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
+    LOG(INFO, "usb packet len %d, cmd %02x, data %02x, %02x, %02x ...",
+        in_pkt.size(), in_pkt[0], in_pkt.buf()[1], in_pkt.buf()[2], in_pkt.buf()[3]);
     switch (in_pkt[0]) {
     case CMD_PING: {
 	PacketBase pongpacket(2);
