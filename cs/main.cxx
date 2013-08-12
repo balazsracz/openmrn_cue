@@ -260,6 +260,12 @@ DECLARE_PIPE(can_pipe0);
 DECLARE_PIPE(can_pipe1);
 #endif
 
+#ifdef SNIFFER
+DEFINE_PIPE(gc_pipe, 1);
+
+#include "utils/gc_pipe.hxx"
+#endif
+
 
 extern "C" {
 void appl_hw_init(void) __attribute__ ((weak));
@@ -296,10 +302,15 @@ int appl_main(int argc, char *argv[])
 #if defined(TARGET_LPC1768)
     //PacketQueue::initialize("/dev/serUSB0");
     // Uncomment the next 1 line to transmit to hardware CANbus.
-    can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
+    //can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
     //can_pipe1.AddPhysicalDeviceToPipe("/dev/can0", "can1_rx_thread", 512);
+    
 #endif
 
+#ifdef SNIFFER
+    GCAdapterBase::CreateGridConnectAdapter(&gc_pipe, &can_pipe0, false);
+    //gc_pipe.AddPhysicalDeviceToPipe("/dev/stdout", "gc_parse_thread", 512);
+#endif
 
     //can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
 

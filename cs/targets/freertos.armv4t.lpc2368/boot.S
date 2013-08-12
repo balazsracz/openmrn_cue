@@ -365,10 +365,12 @@ enable_fiq:
 	.global	enable_fiq_only
 enable_fiq_only:
 	push	{r0, r1, lr}
-	.global	SIEdisconnect
+#if 0    // needs new library
+        .global	SIEdisconnect
 	ldr	r0, =SIEdisconnect
         mov     LR, PC
 	bx	r0
+#endif
 	/*// Turns off the USB port.
 	ldr	r1, #0xE01FC0C4
 	ldr	r0, [r1]

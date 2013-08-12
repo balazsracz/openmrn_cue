@@ -16,6 +16,9 @@ using namespace std;
 using namespace automata;
 
 
+#define BRACZ_LAYOUT 0x0501010114FF0000ULL
+
+
 StateRef StateInit(0);
 StateRef StateBase(1);
 
@@ -26,8 +29,8 @@ StateRef StateUser2(3);
 Board brd;
 
 EventBasedVariable led(&brd,
-                       0x0502010202650512ULL,
-                       0x0502010202650513ULL,
+                       BRACZ_LAYOUT | 0x2050,
+                       BRACZ_LAYOUT | 0x2051,
                        0, OFS_GLOBAL_BITS, 1);
 
 // Negated input_pin1 variable.
@@ -101,10 +104,8 @@ DefAut(blinker, brd, {
   });
 
 DefAut(copier, brd, {
-        LocalVariable& ledvar(ImportVariable(&led));
-        LocalVariable& intvar(ImportVariable(&intev));
-        Def().IfReg1(ledvar).ActReg1(intvar);
-        Def().IfReg0(ledvar).ActReg0(intvar);
+    DefCopy(ImportVariable(&vNinput_pin),
+            ImportVariable(&led));
     });
 
 DefAut(xcopier, brd, {
