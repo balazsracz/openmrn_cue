@@ -57,4 +57,8 @@ extern uint32_t blinker_pattern;
 #endif
 
 
+#if defined(TARGET_LPC1768) || defined(TARGET_LPC2368) || defined(TARGET_LPC11Cxx) 
+#define HAVE_MBED
+#endif
+
 #endif // _CS_CONFIG_H_

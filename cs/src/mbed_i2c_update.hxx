@@ -6,6 +6,10 @@
 #include <initializer_list>
 #include <ext/slist>
 
+#include "cs_config.h"
+
+#ifdef HAVE_MBED
+
 #include "updater.hxx"
 
 
@@ -89,5 +93,7 @@ private:
   std::vector<int> count_unchanged_;
   __gnu_cxx::slist<UpdateListener*> listeners_;
 };
+
+#endif // HAVE_MBED
 
 #endif // _BRACZ_TRAIN_MBED_I2C_UPDATE_HXX_

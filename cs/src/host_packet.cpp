@@ -1,3 +1,5 @@
+#include "utils/logging.h"
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -151,7 +153,7 @@ const uint8_t packet_misc_invalidarg[] = { 4, CMD_UMISC, 0x00, 0xff, 0x01 };
 
 void PacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
-    LOG(INFO, "usb packet len %d, cmd %02x, data %02x, %02x, %02x ...",
+    LOG(INFO, "usb packet len %zd, cmd %02x, data %02x, %02x, %02x ...",
         in_pkt.size(), in_pkt[0], in_pkt.buf()[1], in_pkt.buf()[2], in_pkt.buf()[3]);
     switch (in_pkt[0]) {
     case CMD_PING: {
@@ -306,6 +308,11 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
         abort();
 #elif defined(TARGET_LPC1768)
         // TODO(bracz): define how to reset a Cortex-M3.
+        abort();
+#elif defined(TARGET_PIC32MX)
+        // TODO(bracz): define how to reset a PIC32MX.  In theory jumping to
+        // 0xbd000000 should do the trick, but disabling all peripherial
+        // interrupts might be a necessity there.
         abort();
 #elif !defined(__FreeRTOS__)
         //We ignore the reset command on a host.

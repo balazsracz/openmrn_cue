@@ -3,7 +3,7 @@
 
 #include "mbed_i2c_update.hxx"
 
-#ifdef __FreeRTOS__
+#ifdef HAVE_MBED
 
 #include "mbed.h"
 
@@ -58,4 +58,4 @@ void I2CInUpdater::PerformUpdate() {
   }
 }
 
-#endif
+#endif  // HAVE_MBED
