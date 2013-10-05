@@ -4,7 +4,21 @@
 #include "system.hxx"
 #include "operations.hxx"
 
+#include "../cs/src/base.h"  // for constants in decodeoffset.
+
+
 namespace automata {
+
+// Creates the arguments for EventBasedVariable allocation from a contiguous
+// counter.
+inline bool DecodeOffset(int counter, int* client, int* offset, int* bit) {
+  *bit = counter & 7;
+  int autid = counter >> 3;
+  *client = autid >> 3;
+  int autofs = autid & 7;
+  *offset = autofs * LEN_AUTOMATA + OFS_BITS;
+  return (*client < 8);
+}
 
 /**
    A global variable implementation that uses two events to set a state bit.
@@ -13,10 +27,20 @@ class EventBasedVariable : public GlobalVariable {
  public:
   EventBasedVariable(Board* brd,
                      uint64_t event_on, uint64_t event_off,
+                     int counter) {
+    int client, offset, bit;
+    HASSERT(DecodeOffset(counter, &client, &offset, &bit));
+    SetArgs(client, offset, bit);
+    if (brd) {
+      brd->AddVariable(this);
+    }
+  }
+
+  EventBasedVariable(Board* brd,
+                     uint64_t event_on, uint64_t event_off,
                      int client, int offset, int bit)
       : event_on_(event_on), event_off_(event_off) {
-    arg1_ = (0 << 5) | (client & 0b11111);
-    arg2_ = (offset << 3) | (bit & 7);
+    SetArgs(client, offset, bit);
     if (brd) {
       brd->AddVariable(this);
     }
@@ -57,6 +81,11 @@ class EventBasedVariable : public GlobalVariable {
   }
 
  private:
+  void SetArgs(int client, int offset, int bit) {
+    arg1_ = (0 << 5) | (client & 0b11111);
+    arg2_ = (offset << 3) | (bit & 7);
+  }
+
   uint64_t event_on_, event_off_;
   uint8_t arg1_;
   uint8_t arg2_;
