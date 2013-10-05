@@ -23,6 +23,9 @@ public:
   virtual ~I2CUpdaterBase() {}
 
 protected:
+  virtual void OnSuccess() {}
+  virtual void OnFailure() {}
+
   uint8_t* preamble() {
     return storage_;
   }
@@ -75,6 +78,9 @@ public:
   void RegisterListener(UpdateListener* listener) {
     listeners_.push_front(listener);
   }
+
+protected:
+  virtual void OnFailure();
 
 private:
   uint8_t& shadow(int i) {
