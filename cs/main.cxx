@@ -65,7 +65,10 @@
 #include "src/updater.hxx"
 #include "src/timer_updater.hxx"
 
-
+#ifdef TARGET_PIC32MX
+#include "plib.h"
+#include "peripheral/ports.h"
+#endif
 
 #if defined(TARGET_LPC1768) || defined(SECOND)
 #include "src/mbed_gpio_handlers.hxx"
@@ -91,7 +94,11 @@ const size_t SERIAL_TX_BUFFER_SIZE = 16;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 256;
 const size_t CAN_IF_READ_THREAD_STACK_SIZE = 700;
 #else
+#ifdef TARGET_PIC32MX
+const size_t main_stack_size = 3560;
+#else
 const size_t main_stack_size = 1560;
+#endif
 const int main_priority = 0;
 const size_t ALIAS_POOL_SIZE = 2;
 const size_t DOWNSTREAM_ALIAS_CACHE_SIZE = 2;
@@ -135,7 +142,7 @@ int __wrap___cxa_atexit(void) {
 
 node_t node;
 
-#ifdef __FreeRTOS__
+#ifdef HAVE_MBED
 
 #include "src/mbed_i2c_update.hxx"
 
@@ -154,10 +161,14 @@ void* out_blinker_thread(void*)
     {
         usleep(500000);
         //resetblink(1);
+        //       nmranet_event_produce(node, BRACZ_LAYOUT | 0x2054, EVENT_STATE_VALID);
+        //        nmranet_event_produce(node, BRACZ_LAYOUT | 0x2055, EVENT_STATE_INVALID);
         nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
         nmranet_event_produce(node, 0x0502010202650012ULL, EVENT_STATE_VALID);
         usleep(500000);
         //resetblink(0);
+        //        nmranet_event_produce(node, BRACZ_LAYOUT | 0x2055, EVENT_STATE_VALID);
+        //        nmranet_event_produce(node, BRACZ_LAYOUT | 0x2054, EVENT_STATE_INVALID);
         nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
         nmranet_event_produce(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
     }
@@ -178,6 +189,16 @@ public:
     }
 };
 
+#if defined(TARGET_PIC32MX)
+BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2054,
+                                      BRACZ_LAYOUT | 0x2055);
+
+MemoryToggleEventHandler<volatile unsigned int>
+yellow_blinker(BRACZ_LAYOUT | 0x2056,
+               BRACZ_LAYOUT | 0x2057,
+               BIT_12, &PORTB);
+#endif
+
 #if defined(TARGET_LPC2368)
 
 #ifndef SECOND
@@ -193,14 +214,17 @@ BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2040,
 
 
 #ifdef TARGET_LPC1768
-BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2050,
-                                      BRACZ_LAYOUT | 0x2051);
+BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2056,
+                                      BRACZ_LAYOUT | 0x2057);
 
-MbedGPIOListener led_l2(0x0502010202650140ULL,
-                        0x0502010202650141ULL,
+MbedGPIOListener led_l2(BRACZ_LAYOUT | 0x2050,
+                        BRACZ_LAYOUT | 0x2051,
+                        LED1);
+MbedGPIOListener led_l3(BRACZ_LAYOUT | 0x2052,
+                        BRACZ_LAYOUT | 0x2053,
                         LED2);
-MbedGPIOListener led_l3(0x0502010202650160ULL,
-                        0x0502010202650161ULL,
+MbedGPIOListener led_l4(BRACZ_LAYOUT | 0x2054,
+                        BRACZ_LAYOUT | 0x2055,
                         LED3);
 #endif
 
@@ -255,7 +279,7 @@ MemoryBitSetEventHandler l3(BRACZ_LAYOUT | 0x2300,
 
 
 
-#if defined(TARGET_LPC2368) || defined(TARGET_LPC1768)
+#if defined(TARGET_LPC2368) || defined(TARGET_LPC1768) || defined(TARGET_PIC32MX)
 DECLARE_PIPE(can_pipe0);
 DECLARE_PIPE(can_pipe1);
 #endif
@@ -299,10 +323,14 @@ int appl_main(int argc, char *argv[])
 #endif
 #endif
 
+#if defined(TARGET_PIC32MX)
+    can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 1024);
+#endif
+
 #if defined(TARGET_LPC1768)
     //PacketQueue::initialize("/dev/serUSB0");
     // Uncomment the next 1 line to transmit to hardware CANbus.
-    //can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
+    can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
     //can_pipe1.AddPhysicalDeviceToPipe("/dev/can0", "can1_rx_thread", 512);
     
 #endif
@@ -310,6 +338,8 @@ int appl_main(int argc, char *argv[])
 #ifdef SNIFFER
     GCAdapterBase::CreateGridConnectAdapter(&gc_pipe, &can_pipe0, false);
     //gc_pipe.AddPhysicalDeviceToPipe("/dev/stdout", "gc_parse_thread", 512);
+    extern PipeMember* stdout_pipmember;
+    gc_pipe.RegisterMember(stdout_pipmember);
 #endif
 
     //can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can1_rx_thread", 512);
@@ -326,7 +356,7 @@ int appl_main(int argc, char *argv[])
 #endif
 
 
-#if defined(TARGET_LPC2368) || defined(__linux__) || defined(TARGET_LPC1768)
+#if defined(TARGET_LPC2368) || defined(__linux__) || defined(TARGET_LPC1768) || defined(TARGET_PIC32MX)
     nmranet_if = nmranet_can_if_init(NODE_ADDRESS, "/dev/canp0v1", read, write);
 #elif defined(TARGET_LPC11Cxx)
     nmranet_if = nmranet_can_if_init(NODE_ADDRESS, "/dev/can0", read, write);
@@ -387,7 +417,7 @@ int appl_main(int argc, char *argv[])
 
 #elif defined(TARGET_LPC1768)
 
-    nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
+    /*    nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650300ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650301ULL, EVENT_STATE_INVALID);
@@ -398,12 +428,76 @@ int appl_main(int argc, char *argv[])
     //nmranet_event_consumer(node, 0x0502010202650043ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650060ULL, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, 0x0502010202650061ULL, EVENT_STATE_INVALID);
+    */
     //    nmranet_event_consumer(node, 0x0502010202650062ULL, EVENT_STATE_INVALID);
     //nmranet_event_consumer(node, 0x0502010202650063ULL, EVENT_STATE_INVALID);
     /*    nmranet_event_producer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
     nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
     nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);*/
 
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2060, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2061, EVENT_STATE_INVALID);
+
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2060, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2061, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2070, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2071, EVENT_STATE_INVALID);
+
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2050, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2051, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2052, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2053, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2054, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2055, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2056, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2057, EVENT_STATE_INVALID);
+
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2050, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2051, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2052, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2053, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2054, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2055, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2056, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2057, EVENT_STATE_INVALID);
+
+
+
+#elif defined(TARGET_PIC32MX)
+
+    /*    nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650300ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650301ULL, EVENT_STATE_INVALID);
+
+    nmranet_event_consumer(node, 0x0502010202650040ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650041ULL, EVENT_STATE_INVALID);
+    //nmranet_event_consumer(node, 0x0502010202650042ULL, EVENT_STATE_INVALID);
+    //nmranet_event_consumer(node, 0x0502010202650043ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650060ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650061ULL, EVENT_STATE_INVALID);
+    */
+    //    nmranet_event_consumer(node, 0x0502010202650062ULL, EVENT_STATE_INVALID);
+    //nmranet_event_consumer(node, 0x0502010202650063ULL, EVENT_STATE_INVALID);
+    /*    nmranet_event_producer(node, 0x0502010202000000ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);*/
+
+    nmranet_event_producer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
+    nmranet_event_consumer(node, 0x0502010202650012ULL, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_VALID);
+
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2070, EVENT_STATE_INVALID);
+    nmranet_event_producer(node, BRACZ_LAYOUT | 0x2071, EVENT_STATE_INVALID);
+
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2054, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2055, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2056, EVENT_STATE_INVALID);
+    nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2057, EVENT_STATE_INVALID);
+
+    //nmranet_event_producer(node, BRACZ_LAYOUT | 0x2054, EVENT_STATE_INVALID);
+    //nmranet_event_producer(node, BRACZ_LAYOUT | 0x2055, EVENT_STATE_INVALID);
 
 #elif defined(TARGET_LPC2368)
 
@@ -442,13 +536,18 @@ int appl_main(int argc, char *argv[])
 
 #if defined(TARGET_LPC1768)
     MbedGPIOProducer input_pin1(
-        node, 0x0502010202650300ULL, 0x0502010202650301ULL, p15, PullUp);
+        node, BRACZ_LAYOUT | 0x2060, BRACZ_LAYOUT | 0x2061, p15, PullUp);
+#elif defined(TARGET_PIC32MX)
+    mPORTDSetPinsDigitalIn(BIT_8);
+    //mPORTDSetPullUp(BIT_8);
+    MemoryBitProducer<volatile unsigned int> input_pin1
+      (node, BRACZ_LAYOUT | 0x2070, BRACZ_LAYOUT | 0x2071, BIT_8, &PORTD);
 #endif
 
     nmranet_node_initialized(node);
 
 
-#if defined(TARGET_LPC1768)
+#if defined(TARGET_LPC1768) || defined(TARGET_PIC32MX)
     // It is important to start this process only after the node_initialized
     // has returned, or else the program deadlocks. See
     // https://github.com/bakerstu/openmrn/issues/9
@@ -469,8 +568,9 @@ int appl_main(int argc, char *argv[])
 #endif
 
 
-    //os_thread_create(NULL, "out_blinker", 0, 800, out_blinker_thread, NULL);
-
+#if defined(TARGET_PIC32MX)
+    os_thread_create(NULL, "out_blinker", 0, 1800, out_blinker_thread, NULL);
+#endif
 
 #if defined(TARGET_LPC1768) || (defined(TARGET_LPC2368) && !defined(SECOND)) || defined(__linux__)
     AutomataRunner runner(node, automata_code);
