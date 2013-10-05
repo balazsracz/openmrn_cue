@@ -50,30 +50,30 @@ EventBasedVariable repev(&brd,
                          0, OFS_GLOBAL_BITS, 4);
 
 EventBasedVariable vled1(&brd,
-                         0x0502010202650140ULL,
-                         0x0502010202650141ULL,
+                         BRACZ_LAYOUT | 0x2050,
+                         BRACZ_LAYOUT | 0x2051,
                          1, OFS_IOA, 1);
 EventBasedVariable vled2(&brd,
-                         0x0502010202650142ULL,
-                         0x0502010202650143ULL,
+                         BRACZ_LAYOUT | 0x2052,
+                         BRACZ_LAYOUT | 0x2053,
                          1, OFS_IOA, 0);
 EventBasedVariable vled3(&brd,
-                         0x0502010202650160ULL,
-                         0x0502010202650161ULL,
+                         BRACZ_LAYOUT | 0x2054,
+                         BRACZ_LAYOUT | 0x2055,
                          2, OFS_IOA, 1);
 EventBasedVariable vled4(&brd,
-                         0x0502010202650162ULL,
-                         0x0502010202650163ULL,
+                         BRACZ_LAYOUT | 0x2056,
+                         BRACZ_LAYOUT | 0x2057,
                          2, OFS_IOA, 0);
 
 EventBasedVariable inpb1(&brd,
-                         0x0502010202650082ULL,
-                         0x0502010202650083ULL,
+                         BRACZ_LAYOUT | 0x2060,
+                         BRACZ_LAYOUT | 0x2061,
                          1, OFS_IOB, 2);
 
 EventBasedVariable inpb2(&brd,
-                         0x0502010202650084ULL,
-                         0x0502010202650085ULL,
+                         BRACZ_LAYOUT | 0x2070,
+                         BRACZ_LAYOUT | 0x2071,
                          2, OFS_IOB, 2);
 
 
@@ -83,12 +83,12 @@ DefAut(testaut, brd, {
 
 
 DefAut(blinker, brd, {
-    LocalVariable& track_busy(ImportVariable(&vNinput_pin));
+    LocalVariable& track_busy(ImportVariable(&inpb1));
     LocalVariable& l1(ImportVariable(&vled1));
-    LocalVariable& l2(ImportVariable(&vled3));
-    Def().IfState(StateInit).ActState(StateBase);
-    Def().IfReg0(track_busy).ActState(StateBase);
-    Def().IfReg1(track_busy).IfState(StateBase).ActState(StateUser1);
+    LocalVariable& l2(ImportVariable(&vled2));
+    Def().IfState(StateInit).ActState(StateBase).ActReg1(track_busy).ActReg0(l1).ActReg0(l2);
+    Def().IfReg1(track_busy).ActState(StateBase);
+    Def().IfReg0(track_busy).IfState(StateBase).ActState(StateUser1);
 
     Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
     Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);
@@ -103,7 +103,29 @@ DefAut(blinker, brd, {
     Def().IfState(StateUser1).ActReg0(l2);
   });
 
-DefAut(copier, brd, {
+DefAut(blinker2, brd, {
+    LocalVariable& track_busy(ImportVariable(&inpb2));
+    LocalVariable& l1(ImportVariable(&vled3));
+    LocalVariable& l2(ImportVariable(&vled4));
+    Def().IfState(StateInit).ActState(StateBase).ActReg1(track_busy).ActReg0(l1).ActReg0(l2);
+    Def().IfReg1(track_busy).ActState(StateBase);
+    Def().IfReg0(track_busy).IfState(StateBase).ActState(StateUser1);
+
+    Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
+    Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);
+
+    Def().IfState(StateBase).ActReg0(l1);
+    Def().IfState(StateBase).ActReg0(l2);
+
+    Def().IfState(StateUser1).ActReg1(l1);
+    Def().IfState(StateUser2).ActReg0(l1);
+
+    Def().IfState(StateUser2).ActReg1(l2);
+    Def().IfState(StateUser1).ActReg0(l2);
+  });
+
+
+/*DefAut(copier, brd, {
     DefCopy(ImportVariable(&vNinput_pin),
             ImportVariable(&led));
     });
@@ -119,6 +141,8 @@ DefAut(xcopier2, brd, {
         LocalVariable& btnvar(ImportVariable(&inpb2));
         //DefNCopy(btnvar, ledvar);
     });
+
+*/
 
 
 int main(int argc, char** argv) {
