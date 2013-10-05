@@ -45,7 +45,7 @@ _SAVED_RCON:
 	.globl __cs3_reset_PIC32MX
 	.type	__cs3_reset_PIC32MX, %function
 
-__cs3_reset_PIC32MX:
+__cs3_reset:
 
 
 #	===== Skip NMI trap for now =====
@@ -205,8 +205,13 @@ __cs3_reset_PIC32MX:
         .global _cinit
         jal     _cinit
         nop
+
+        .global __libc_init_array
+        jal     __libc_init_array
+        nop
         
-        jal     __cs3_premain
+#        jal     __cs3_premain
+        jal main
 
 
 #	===== Skip BEV and General Exception branch code for now =====
@@ -232,7 +237,11 @@ __cs3_reset_PIC32MX:
 	.set noreorder
 	.ent _gen_exception
 _gen_exception:
-	la	k0,_general_exception_context
+        // We store the exception address into the link register. This should
+	// help GDB do the stacktrace.
+	mfc0    ra,$14
+
+        la	k0,_general_exception_context
 	j	k0
 	nop
 	.end _gen_exception

@@ -37,9 +37,45 @@
 #include "plib.h"
 #include "peripheral/ports.h"
 
+#include "utils/pipe.hxx"
+#include "can.h"
+
+
+extern const unsigned long long NODE_ADDRESS;
+const unsigned long long NODE_ADDRESS = 0x050101011431ULL;
+
+DEFINE_PIPE(can_pipe0, sizeof(struct can_frame));
+DEFINE_PIPE(can_pipe1, sizeof(struct can_frame));
+VIRTUAL_DEVTAB_ENTRY(canp0v0, can_pipe0, "/dev/canp0v0", 16);
+VIRTUAL_DEVTAB_ENTRY(canp0v1, can_pipe0, "/dev/canp0v1", 16);
+
+VIRTUAL_DEVTAB_ENTRY(canp1v0, can_pipe1, "/dev/canp1v0", 16);
+VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);
+
 //DigitalIn startpin(P1_4);
 
 extern "C" {
+
+extern int _open_r(struct _reent *reent, const char *path, int flags, int mode);
+int open(const char *pathname, int flags, mode_t mode) {
+  return _open_r(_impure_ptr, pathname, flags, mode);
+}
+
+extern int _close_r(struct _reent *reent, int fd);
+int close(struct _reent *reent, int fd) {
+  return _close_r(_impure_ptr, fd);
+}
+
+extern ssize_t _read_r(struct _reent *reent, int fd, void *buf, size_t count);
+ssize_t read(int fd, void *buf, size_t count) {
+  return _read_r(_impure_ptr, fd, buf, count);
+}
+
+extern ssize_t _write_r(struct _reent *reent, int fd, const void *buf, size_t count);
+ssize_t write(int fd, const void *buf, size_t count) {
+  return _write_r(_impure_ptr, fd, buf, count);
+}
+
 
 
 void _cinit(void) {
@@ -50,14 +86,18 @@ void _cinit(void) {
 }
 
 
-#define SET_LED1() mPORTBSetBits(BIT_12)
-#define CLR_LED1() mPORTBClearBits(BIT_12)
+#define SET_LED1() mPORTBSetBits(BIT_15)
+#define CLR_LED1() mPORTBClearBits(BIT_15)
 
-#define SET_LED2() mPORTBSetBits(BIT_15)
-#define CLR_LED2() mPORTBClearBits(BIT_15)
+#define SET_LED2() mPORTBSetBits(BIT_12)
+#define CLR_LED2() mPORTBClearBits(BIT_12)
 
+uint32_t blinker_pattern;
 
-void blocking_diewith_blinker(uint32_t pattern) {
+void setblink(uint32_t pattern);
+
+void diewith(uint32_t pattern) {
+  setblink(pattern);  // starts the timer.
   uint32_t curr_pat = pattern;
   while(1) {
     if (curr_pat & 1) {
@@ -68,10 +108,31 @@ void blocking_diewith_blinker(uint32_t pattern) {
     curr_pat>>=1;
     if (!curr_pat) curr_pat = pattern;
     // Some delay.
-    volatile int i;
-    for(i = 0; i < 80*1024; ++i);
+    while (!IFS0bits.T2IF);
+    IFS0CLR = _IFS0_T2IF_MASK;
   }
 }
+
+void resetblink(uint32_t pattern) {
+  if (pattern & 1) {
+    SET_LED1();
+
+  } else {
+    CLR_LED1();
+  }
+}
+
+void setblink(uint32_t pattern) {
+  // Initializes timer2 for the blinking timer.
+  // timer off, freeze in debug mode, run in idle mode.
+  // Prescale 256, 16-bit timer, internal peripherial clock. 
+  //T2CON = 0b0100 0000 0111 0000 ;
+  T2CON = 0x4070;
+  PR2 = 19531;  // Ticks 8 times per second.
+  IEC0CLR = _IEC0_T2IE_MASK;  // disables interrupt
+  T2CONSET = 0x8000;  // Enables timer.
+}
+
 
 static unsigned int _excep_code; 
 static unsigned int _excep_addr; 
@@ -83,7 +144,7 @@ void _general_exception_context(void)
   asm volatile("mfc0 %0,$13" : "=r" (_excep_code)); 
   asm volatile("mfc0 %0,$14" : "=r" (_excep_addr)); 
   
-  blocking_diewith_blinker(0x8000A0CA); //3-1-2
+  diewith(0x8000A0CA); //3-1-2
 }
 
 
@@ -105,6 +166,7 @@ void lowlevel_hw_init(void) {
 void hw_init(void)
 {
 
+  //mJTAGPortEnable(DEBUG_JTAGPORT_OFF);
 
     mPORTBSetPinsDigitalOut( BIT_12 | BIT_15 );
     mPORTBSetBits(BIT_12 | BIT_15  );

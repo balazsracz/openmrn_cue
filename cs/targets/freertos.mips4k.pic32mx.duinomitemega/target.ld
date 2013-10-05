@@ -34,8 +34,8 @@ OUTPUT_ARCH(mips)
 ENTRY(__cs3_reset_PIC32MX) /* for debugger support, use actual HW-level entry and not _start */
 SEARCH_DIR(.)
 /* Force repeated search of CS3 and GCC libraries */
-GROUP(-lcs3hal -lgcc -lc -lcs3 -lcs3unhosted)
-/**/
+GROUP(-lcs3hal -lgcc -lc -lcs3)
+/* -lcs3unhosted*/
 
 /*
 ** NOTE: Device programmers require PIC32MX "physical" addresses.
@@ -115,8 +115,8 @@ SECTIONS
   */
   .boot_flash_text :
   {
-    PROVIDE(__cs3_reset_PIC32MX = _start);
-    __cs3_reset = __cs3_reset_PIC32MX;
+    /*PROVIDE(__cs3_reset_PIC32MX = _start);*/
+    /*__cs3_reset = __cs3_reset_PIC32MX;*/
     *(.cs3.reset)
 
   } >PIC32MX_flash_userboot
@@ -165,6 +165,15 @@ SECTIONS
   {
     *(.rodata .rodata.* .gnu.linkonce.r.*)
 
+
+    . = ALIGN(8);
+
+    *(.gnu_extab .gnu_extab*)
+    *(.gcc_except_table)
+    *(.eh_frame_hdr)
+    *(.eh_frame .eh_frame*)
+
+
     . = ALIGN(4);
     KEEP(*(.init))
 
@@ -201,6 +210,7 @@ SECTIONS
     KEEP (*crtend.o(.dtors))
 
     *(.lit)
+
 
     . = ALIGN(4);
     __cs3_regions = .;
@@ -251,6 +261,9 @@ SECTIONS
     _edata = .;
   } >ram  AT>PIC32MX_flash_user
 
+  __data_init_start__ = LOADADDR( .data ) ;
+
+
   /* Wrong, length just gives 256k size of flash: USER_FLASH_USED = LENGTH(PIC32MX_flash_user)+SIZEOF(.data); */
   
   /* DRN: The following is wrong; doesn't mark end of RAM copy...
@@ -286,7 +299,7 @@ SECTIONS
   /*__cs3_region_end_ram = __cs3_region_start_ram + LENGTH(ram);*/
   __cs3_region_size_ram = LENGTH(ram);
   /* WRONG: load address is PHYSICAL, not logical address:  __cs3_region_init_ram = LOADADDR (.data);  WRONG */
-  __cs3_region_init_ram = _etext; /* DRN updated this; seems correct... */
+  __cs3_region_init_ram = __data_init_start__; /* BADDDD DRN updated this; seems correct... */
   __cs3_region_init_size_ram = _edata - ADDR (.data);
   __cs3_region_zero_size_ram = _end - _edata;
 
