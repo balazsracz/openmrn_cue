@@ -124,6 +124,9 @@ private:
     friend void* tx_thread(void* p);
     friend void* rx_thread(void* p);
 
+    //! Set to true if the first successful sync packets are received.
+    bool synced_;
+
     //! Device to read/write packets from.
     int fd_;
 
