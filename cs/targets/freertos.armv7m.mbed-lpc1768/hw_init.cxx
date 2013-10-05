@@ -4,6 +4,7 @@
 
 #include "FreeRTOSConfig.h"
 
+#include "os/OS.hxx"
 
 extern const unsigned long long NODE_ADDRESS;
 const unsigned long long NODE_ADDRESS = 0x050101011434ULL;
@@ -48,6 +49,26 @@ void send_stdio_serial_message(const char* data) {
     serial_putc(stdio_serial, *data++);
   }
 }
+
+class StdOutPipeMember : public PipeMember
+{
+public:
+  virtual void write(const void* buf, size_t count) {
+    const char* cb = (const char*)(buf);
+    OSMutexLock l(&m);
+    for (size_t i = 0; i < count; i++) {
+      serial_putc(stdio_serial, cb[i]);
+    }
+    serial_putc(stdio_serial, '\n');
+  }
+
+private:
+  OSMutex m;
+};
+
+StdOutPipeMember stdout_pipem;
+PipeMember* stdout_pipmember = &stdout_pipem;
+
 
 void setblink(uint32_t pattern);
 
