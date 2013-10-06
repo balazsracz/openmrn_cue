@@ -523,7 +523,7 @@ void* automata_thread(void* arg) {
     return NULL;
 }
 
-AutomataRunner::AutomataRunner(node_t node, insn_t* base_pointer)
+AutomataRunner::AutomataRunner(node_t node, const insn_t* base_pointer)
     : ip_(0),
       aut_srcplace_(254),
       aut_trainid_(254),

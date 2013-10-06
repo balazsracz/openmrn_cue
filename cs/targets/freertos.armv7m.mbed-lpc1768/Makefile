@@ -29,8 +29,8 @@ $(EXECUTABLE)$(EXTENTION): depmake rr-crossing.o
 
 .PHONY: depmake
 
-depmake:
-	+$(MAKE) -C $(OPENMRNPATH)/targets/$(TARGET) all
+#depmake:
+#	+$(MAKE) -C $(OPENMRNPATH)/targets/$(TARGET) all
 
 rr-crossing.c : rr-crossing.cout
 

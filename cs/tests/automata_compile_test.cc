@@ -11,8 +11,9 @@
 
 using namespace automata;
 
-#define OFS_GLOBAL_BITS 24
-
+#ifndef OFS_GLOBAL_BITS
+#define OFS_GLOBAL_BITS 30
+#endif
 
 Board empty;
 
@@ -98,6 +99,16 @@ TEST(StateRefDeathTest, TooBigState) {
     }, "== id");
 }
 
+string S(std::initializer_list<int> l) {
+  string ret;
+  for (int v : l) {
+    EXPECT_LE(0, v);
+    EXPECT_GE(255, v);
+    ret.push_back(static_cast<char>(v));
+  }
+  return ret;
+}
+
 TEST(OpCompile, IfActState) {
   EmptyAutomata eaut;
   string output;
@@ -108,7 +119,7 @@ TEST(OpCompile, IfActState) {
     op.IfState(ref1);
     op.ActState(ref2);
   }
-  string expected({0x11, _IF_STATE | 17, _ACT_STATE | 23});
+  string expected(S({0x11, _IF_STATE | 17, _ACT_STATE | 23}));
   EXPECT_EQ(expected, output);
 }
 
@@ -126,18 +137,16 @@ DefAut(simpletestaut2, simple, {
 TEST(BoardCompile, SimpleBoard) {
   string output;
   simple.Render(&output);
-  string expected =
-      {
-        7, 0,  // pointer 1
-        14, 0, // pointer 2
-        0, 0,  // end of automatas
-        0,     // end of preamble
-        0x11, _IF_STATE | 11, _ACT_STATE | 22,
-        0x11, _IF_STATE | 22, _ACT_STATE | 11,
-        0,     // end of autoamta 1
-        0x11, _IF_STATE | 22, _ACT_STATE | 11,
-        0      // end of automata 2
-      };
+  string expected = S({7, 0,  // pointer 1
+                    14, 0, // pointer 2
+                    0, 0,  // end of automatas
+                    0,     // end of preamble
+                    0x11, _IF_STATE | 11, _ACT_STATE | 22,
+                    0x11, _IF_STATE | 22, _ACT_STATE | 11,
+                    0,     // end of autoamta 1
+                    0x11, _IF_STATE | 22, _ACT_STATE | 11,
+                    0      // end of automata 2
+                    });
   EXPECT_EQ(expected, output);
 }
 
@@ -152,25 +161,25 @@ EventBasedVariable intev(&testevent,
                          0, OFS_GLOBAL_BITS, 3);
 
 DefAut(testaut, testevent, {
-    auto& lintev = ImportVariable(&intev);
-    Def().IfReg0(lintev).ActReg1(lintev);
+    auto* lintev = ImportVariable(&intev);
+    Def().IfReg0(*lintev).ActReg1(lintev);
     });
 
 TEST(BoardCompile, SingleEventBoard) {
   string output;
   testevent.Render(&output);
   string expected =
-      {
+      S({
         31, 0,  // pointer to aut
         0, 0,  // end of automatas
         0xA0, _ACT_SET_EVENTID, 0b01010111, 5, 2, 1, 2, 2, 0x65, 0, 0x22,
         0xA0, _ACT_SET_EVENTID, 0b00000111, 5, 2, 1, 2, 2, 0x65, 0, 0x23,
-        0x30, _ACT_DEF_VAR, 0b0000000, (24<<3) | 3,
+        0x30, _ACT_DEF_VAR, 0b0000000, (30<<3) | 3,
         0,     // end of preamble
         0x40, _ACT_IMPORT_VAR, 1, 28, 0,
         0x11, _IF_REG_0 | 1, _ACT_REG_1 | 1,
         0,     // end of autoamta 1
-      };
+            });
   EXPECT_EQ(expected, output);
 }
 

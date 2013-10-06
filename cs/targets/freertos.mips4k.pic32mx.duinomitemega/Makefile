@@ -40,7 +40,7 @@ $(EXECUTABLE)$(EXTENTION): depmake
 
 .PHONY: depmake
 
-depmake:
-	+$(MAKE) -C $(OPENMRNPATH)/targets/$(TARGET) all
+#depmake:
+#	+$(MAKE) -C $(OPENMRNPATH)/targets/$(TARGET) all
 
 endif  #MISSING_DEPS

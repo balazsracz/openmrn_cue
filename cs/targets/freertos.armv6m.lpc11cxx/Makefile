@@ -36,8 +36,8 @@ $(EXECUTABLE)$(EXTENTION): target.ld depmake
 
 .PHONY: depmake
 
-depmake:
-	make -C $(OPENMRNPATH)/targets/$(TARGET) all
+#depmake:
+#	make -C $(OPENMRNPATH)/targets/$(TARGET) all
 
 
 endif #MISSING_DEPS

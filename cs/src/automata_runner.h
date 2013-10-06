@@ -102,7 +102,7 @@ private:
 
 class AutomataRunner {
 public:
-  AutomataRunner(node_t node, insn_t* base_pointer);
+  AutomataRunner(node_t node, const insn_t* base_pointer);
     ~AutomataRunner();
 
     AutomataRunner& ResetForAutomata(Automata* aut);
@@ -188,7 +188,7 @@ private:
     uint64_t aut_eventids_[2];  //< Eventid accumulators for declaring bits.
 
     //! Points to the beginning of the automata program area.
-    insn_t* base_pointer_;
+    const insn_t* base_pointer_;
 
     vector<Automata*> all_automata_;
 

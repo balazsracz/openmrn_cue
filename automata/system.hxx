@@ -17,9 +17,11 @@ using std::map;
 
 namespace automata {
 
+#ifndef DISALLOW_COPY_AND_ASSIGN
 //! Put this into the private section of a class to prevent the default copy
 //! constructors to be generated.
 #define DISALLOW_COPY_AND_ASSIGN(Name) Name& operator=(Name&); Name(Name&)
+#endif
 
 class Automata;
 class GlobalVariable;
@@ -116,7 +118,7 @@ public:
     struct LocalVariable {
     public:
         LocalVariable(): id(-1) {}
-        LocalVariable(int iid): id(iid) {}
+        explicit LocalVariable(int iid): id(iid) {}
         int GetId() const {
             assert(id >= 0 && id < 32);
             return id;
@@ -139,7 +141,7 @@ protected:
 
     LocalVariable timer_bit_;
 
-#define Def() Op(aut, aut->output())
+#define Def() Automata::Op(aut, aut->output())
 
     string* output_;
 

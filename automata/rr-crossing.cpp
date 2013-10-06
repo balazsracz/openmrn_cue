@@ -83,12 +83,12 @@ DefAut(testaut, brd, {
 
 
 DefAut(blinker, brd, {
-    LocalVariable& track_busy(ImportVariable(&inpb1));
-    LocalVariable& l1(ImportVariable(&vled1));
-    LocalVariable& l2(ImportVariable(&vled2));
+    LocalVariable* track_busy(ImportVariable(&inpb1));
+    LocalVariable* l1(ImportVariable(&vled1));
+    LocalVariable* l2(ImportVariable(&vled2));
     Def().IfState(StateInit).ActState(StateBase).ActReg1(track_busy).ActReg0(l1).ActReg0(l2);
-    Def().IfReg1(track_busy).ActState(StateBase);
-    Def().IfReg0(track_busy).IfState(StateBase).ActState(StateUser1);
+    Def().IfReg1(*track_busy).ActState(StateBase);
+    Def().IfReg0(*track_busy).IfState(StateBase).ActState(StateUser1);
 
     Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
     Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);
@@ -104,12 +104,12 @@ DefAut(blinker, brd, {
   });
 
 DefAut(blinker2, brd, {
-    LocalVariable& track_busy(ImportVariable(&inpb2));
-    LocalVariable& l1(ImportVariable(&vled3));
-    LocalVariable& l2(ImportVariable(&vled4));
+    LocalVariable* track_busy(ImportVariable(&inpb2));
+    LocalVariable* l1(ImportVariable(&vled3));
+    LocalVariable* l2(ImportVariable(&vled4));
     Def().IfState(StateInit).ActState(StateBase).ActReg1(track_busy).ActReg0(l1).ActReg0(l2);
-    Def().IfReg1(track_busy).ActState(StateBase);
-    Def().IfReg0(track_busy).IfState(StateBase).ActState(StateUser1);
+    Def().IfReg1(*track_busy).ActState(StateBase);
+    Def().IfReg0(*track_busy).IfState(StateBase).ActState(StateUser1);
 
     Def().IfState(StateUser1).IfTimerDone().ActTimer(1).ActState(StateUser2);
     Def().IfState(StateUser2).IfTimerDone().ActTimer(1).ActState(StateUser1);

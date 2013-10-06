@@ -16,8 +16,8 @@ lib/libautomata.a:
 
 .PHONY: depmake
 
-depmake:
-	make -C $(OPENMRNPATH)/targets/$(TARGET) all
+#depmake:
+#	make -C $(OPENMRNPATH)/targets/$(TARGET) all
 
 rr-crossing.c : rr-crossing.cout
 
