@@ -125,15 +125,17 @@ public:
         // We purposefully allow this object to be copied.
     };
 
-protected:
-    virtual void Body() = 0;
-
     // Adds a global variable reference to the used local variables, and
     // returns the local variable reference. The local variable reference if
     // owned by the Automata object. The same global var can be imported
     // multiple times (and will get the same ID).
     LocalVariable* ImportVariable(GlobalVariable* var);
     const LocalVariable& ImportVariable(const GlobalVariable& var);
+
+    const LocalVariable& timer_bit() { return timer_bit_; }
+
+protected:
+    virtual void Body() = 0;
 
     LocalVariable timer_bit_;
 

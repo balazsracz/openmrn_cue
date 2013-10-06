@@ -8,7 +8,7 @@
 #include "operations.hxx"
 #include "variables.hxx"
 
-using automata::EventBasedVariable;
+namespace automata {
 
 struct PhysicalSignal {
   PhysicalSignal(const EventBasedVariable* sensor, EventBasedVariable* signal)
@@ -17,11 +17,9 @@ struct PhysicalSignal {
   EventBasedVariable* signal_raw;
 };
 
-
-
 class CtrlTrackInterface {
  public:
-  CtrlTrackInterface(automata::Board* brd, uint64_t event_base, int counter)
+  CtrlTrackInterface(Board* brd, uint64_t event_base, int counter)
       : out_try_set_route(
             brd,
             event_base | 0, event_base | 0 | 1,
@@ -48,6 +46,17 @@ class CtrlTrackInterface {
   EventBasedVariable in_route_set_failure;
   EventBasedVariable out_route_released;
 
+  const EventBasedVariable& in_next_occ() const {
+    if (in_close_occ != nullptr) {
+      return *in_close_occ;
+    }
+    if (in_trainlength_occ != nullptr) {
+      return *in_trainlength_occ;
+    }
+    extern bool could_not_retrieve_next_occupancy_variable();
+    HASSERT(false && could_not_retrieve_next_occupancy_variable());
+  }
+
   // Occupancy value of the current block.
   EventBasedVariable* in_close_occ;
   // Occupancy value of the block that is more than train-length away.
@@ -60,7 +69,7 @@ class CtrlTrackInterface {
 
 class StraightTrack {
  public:
-  StraightTrack(automata::Board* brd, uint64_t event_base, int counter_base)
+  StraightTrack(Board* brd, uint64_t event_base, int counter_base)
     : side_a_(brd, event_base, counter_base),
       side_b_(brd, event_base + 16, counter_base + 8),
       simulated_occupancy_(brd, event_base + 32, event_base + 32 | 1,
@@ -68,7 +77,10 @@ class StraightTrack {
       route_set_ab_(brd, event_base + 32 + 2, event_base + 32 + 3,
                     counter_base + 17),
       route_set_ba_(brd, event_base + 32 + 4, event_base + 32 + 5,
-                    counter_base + 18) {}
+                    counter_base + 18),
+      tmp_seen_train_in_next_(brd, event_base + 32 + 6, event_base + 32 + 7,
+                              counter_base + 19)
+  {}
 
   void BindA(CtrlTrackInterface* opposite) {
     Bind(&side_a_, opposite);
@@ -88,11 +100,13 @@ class StraightTrack {
   EventBasedVariable route_set_ab_;
   // route from B to A
   EventBasedVariable route_set_ba_;
+  // Helper variable for simuating occupancy.
+  EventBasedVariable tmp_seen_train_in_next_;
 };
 
 class StraightTrackWithDetector : public StraightTrack {
 public:
-  StraightTrackWithDetector(automata::Board* brd,
+  StraightTrackWithDetector(Board* brd,
                             uint64_t event_base, int counter_base,
                             EventBasedVariable* detector)
     : StraightTrack(brd, event_base, counter_base),
@@ -105,10 +119,10 @@ protected:
   EventBasedVariable* detector_;    
 };
 
-
-void SimulateOccupancy(automata::Automata::LocalVariable* target,
-                       const automata::Automata::LocalVariable& route_set);
+void SimulateOccupancy(Automata* aut,
+                       Automata::LocalVariable* target,
+                       const Automata::LocalVariable& route_set);
                        
-
+}  // namespace automata
 
 #endif // _AUTOMATA_CONTROL_LOGIC_HXX_

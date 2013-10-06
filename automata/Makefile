@@ -1,6 +1,6 @@
 CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32
 
-OBJS=system.o
+OBJS=system.o control-logic.o
 
 AUTS = rr-crossing.cpp
 OUTPUTS = $(AUTS:.cpp=.cout)
