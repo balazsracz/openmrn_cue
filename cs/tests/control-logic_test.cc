@@ -11,12 +11,19 @@
 
 namespace automata {
 
-TEST_F(AutomataTests, SimulatedOccupancy) {
+TEST_F(AutomataNodeTests, SimulatedOccupancy) {
   Board brd;
-  static StraightTrack piece(&brd, BRACZ_LAYOUT | 0x5000, 0);
-  StraightTrack other(&brd, BRACZ_LAYOUT | 0x5100, 32);
-  piece.BindA(other.side_b());
-  piece.BindB(other.side_a());
+  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 32);
+  EventBasedVariable detector(&brd,
+                              BRACZ_LAYOUT | 0xf000, BRACZ_LAYOUT | 0xf001,
+                              0);
+  EventBasedVariable detect2(&brd,
+                             BRACZ_LAYOUT | 0xf002, BRACZ_LAYOUT | 0xf003,
+                             1);
+  StraightTrackWithDetector front(&brd, BRACZ_LAYOUT | 0x5100, 64, &detector);
+  StraightTrackWithDetector back(&brd, BRACZ_LAYOUT | 0x5100, 96, &detect2);
+  piece.side_b()->Bind(front.side_a());
+  piece.side_a()->Bind(back.side_b());
   // We do not bind "other" becase it is irrelevant.
 
   DefAut(strategyaut, brd, {
