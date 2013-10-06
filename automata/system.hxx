@@ -11,6 +11,10 @@ using std::string;
 using std::vector;
 using std::map;
 
+#ifndef HASSERT
+#define HASSERT(x) do { if (!(x)) {fprintf(stderr, "Assertion failed: " #x); abort();} } while(0)
+#endif
+
 namespace automata {
 
 //! Put this into the private section of a class to prevent the default copy

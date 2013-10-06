@@ -149,8 +149,8 @@ const struct const_loco_db_t const_lokdb[] = {
   { 2 , { 0, 2, 3, 4,  0xff, }, { LIGHT, HONK, FNT12, ABV,  0xff, },
     "ICE 2", MARKLIN_NEW | PUSHPULL }, // todo: check fnbits
   // 4
-  { 27, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
-    "WLE ER20", MARKLIN_NEW },
+  { 3, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RE 460 TSR", DCC_28 }, // todo: there is no beamer here
   // 5
   { 32, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
     "RTS RAILTR", MARKLIN_NEW },
@@ -176,8 +176,8 @@ const struct const_loco_db_t const_lokdb[] = {
   { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
     "Am 843 093-6", DCC_28 },
   // id 13
-  { 3, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RE 460 TSR", DCC_28 }, // todo: there is no beamer here
+  { 27, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
+    "WLE ER20", MARKLIN_NEW },
   // id 14
   { 18, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "185 595-6", DCC_28 },

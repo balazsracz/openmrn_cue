@@ -69,6 +69,7 @@
 #include "plib.h"
 #include "peripheral/ports.h"
 #endif
+//#include "LPC11xx.h"
 
 #if defined(TARGET_LPC1768) || defined(SECOND)
 #include "src/mbed_gpio_handlers.hxx"
@@ -87,8 +88,8 @@ const size_t ALIAS_POOL_SIZE = 1;
 const size_t DOWNSTREAM_ALIAS_CACHE_SIZE = 1;
 const size_t UPSTREAM_ALIAS_CACHE_SIZE = 1;
 const size_t DATAGRAM_POOL_SIZE = 0;
-const size_t CAN_RX_BUFFER_SIZE = 1;
-const size_t CAN_TX_BUFFER_SIZE = 8;
+const size_t CAN_RX_BUFFER_SIZE = 7;
+const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t SERIAL_RX_BUFFER_SIZE = 16;
 const size_t SERIAL_TX_BUFFER_SIZE = 16;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 256;
@@ -104,7 +105,7 @@ const size_t ALIAS_POOL_SIZE = 2;
 const size_t DOWNSTREAM_ALIAS_CACHE_SIZE = 2;
 const size_t UPSTREAM_ALIAS_CACHE_SIZE = 2;
 const size_t DATAGRAM_POOL_SIZE = 10;
-const size_t CAN_RX_BUFFER_SIZE = 1;
+const size_t CAN_RX_BUFFER_SIZE = 32;
 const size_t CAN_TX_BUFFER_SIZE = 32;
 const size_t SERIAL_RX_BUFFER_SIZE = 128;
 const size_t SERIAL_TX_BUFFER_SIZE = 130;
@@ -251,8 +252,8 @@ MbedGPIOListener led_6(BRACZ_LAYOUT | 0x203a,
 #endif
 
 #ifdef TARGET_LPC11Cxx
-BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2050,
-                                      BRACZ_LAYOUT | 0x2051);
+BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2500,
+                                      BRACZ_LAYOUT | 0x2501);
 
 MemoryBitSetEventHandler l1(BRACZ_LAYOUT | 0x2500,
                             get_state_byte(1, OFS_IOA),
@@ -415,6 +416,10 @@ int appl_main(int argc, char *argv[])
     nmranet_event_producer(node, BRACZ_LAYOUT | 0x2626, EVENT_STATE_INVALID);
     nmranet_event_producer(node, BRACZ_LAYOUT | 0x2627, EVENT_STATE_INVALID);
 
+    //nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2624, EVENT_STATE_INVALID);
+    //nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2625, EVENT_STATE_INVALID);
+
+
 #elif defined(TARGET_LPC1768)
 
     /*    nmranet_event_consumer(node, 0x0502010202650013ULL, EVENT_STATE_INVALID);
@@ -544,10 +549,15 @@ int appl_main(int argc, char *argv[])
       (node, BRACZ_LAYOUT | 0x2070, BRACZ_LAYOUT | 0x2071, BIT_8, &PORTD);
 #endif
 
+#if 0 && defined(TARGET_LPC11Cxx)
+    MemoryBitProducer<volatile uint32_t> input_pin1(
+        node, BRACZ_LAYOUT | 0x2620, BRACZ_LAYOUT | 0x2621, (1<<2), &LPC_GPIO2->DATA);
+#endif
+
     nmranet_node_initialized(node);
 
 
-#if defined(TARGET_LPC1768) || defined(TARGET_PIC32MX)
+#if defined(TARGET_LPC1768) || defined(TARGET_PIC32MX) //|| defined(TARGET_LPC11Cxx)
     // It is important to start this process only after the node_initialized
     // has returned, or else the program deadlocks. See
     // https://github.com/bakerstu/openmrn/issues/9
@@ -555,16 +565,20 @@ int appl_main(int argc, char *argv[])
 #endif
 
 
-#if defined(TARGET_LPC2368) || defined(TARGET_LPC11Cxx)
+#if defined(TARGET_LPC2368)
     MemoryBitSetProducer produce_i2c0(node, BRACZ_LAYOUT | 0x2120);
     MemoryBitSetProducer produce_i2c1(node, BRACZ_LAYOUT | 0x2220);
+    MemoryBitSetProducer produce_i2c2(node, BRACZ_LAYOUT | 0x2320);
 
     in_extender0.RegisterListener(&produce_i2c0);
     in_extender1.RegisterListener(&produce_i2c1);
-#if defined(TARGET_LPC2368)
-    MemoryBitSetProducer produce_i2c2(node, BRACZ_LAYOUT | 0x2320);
     in_extender2.RegisterListener(&produce_i2c2);
-#endif
+#elif defined(TARGET_LPC11Cxx)
+    MemoryBitSetProducer produce_i2c0(node, BRACZ_LAYOUT | 0x2520);
+    MemoryBitSetProducer produce_i2c1(node, BRACZ_LAYOUT | 0x2620);
+
+    in_extender0.RegisterListener(&produce_i2c0);
+    in_extender1.RegisterListener(&produce_i2c1);
 #endif
 
 

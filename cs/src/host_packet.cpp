@@ -105,7 +105,7 @@ static long long sync_packet_callback(void*, void*) {
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
-PacketQueue::PacketQueue(int fd) : fd_(fd) {
+PacketQueue::PacketQueue(int fd) : synced_(false), fd_(fd) {
     tx_queue_ = os_mq_create(PACKET_TX_QUEUE_LENGTH, sizeof(PacketBase));
     os_thread_create(NULL, "host_pkt_tx", 0, PACKET_TX_THREAD_STACK_SIZE,
 		     tx_thread, this);
@@ -134,6 +134,7 @@ void PacketQueue::RxThreadBody() {
     while(1) {
 	ssize_t ret = read(fd_, &size, 1);
 	ASSERT(ret == 1);
+        if (!synced_ && size != 15) continue;
 	PacketBase* pkt = new PacketBase(size);
 	uint8_t* buf = pkt->buf();
 	while (size) {
@@ -153,8 +154,17 @@ const uint8_t packet_misc_invalidarg[] = { 4, CMD_UMISC, 0x00, 0xff, 0x01 };
 
 void PacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
-    LOG(INFO, "usb packet len %zd, cmd %02x, data %02x, %02x, %02x ...",
-        in_pkt.size(), in_pkt[0], in_pkt.buf()[1], in_pkt.buf()[2], in_pkt.buf()[3]);
+    if (in_pkt.size() == 15 && in_pkt[0] == 0xe) {
+      // We do not do detailed logging for the sync packets.
+      synced_ = true;
+    } else {
+      if (!synced_) {
+        delete pkt;
+        return;
+      }
+      LOG(INFO, "usb packet len %d, cmd %02x, data %02x, %02x, %02x ...",
+          in_pkt.size(), in_pkt[0], in_pkt.buf()[1], in_pkt.buf()[2], in_pkt.buf()[3]);
+    }
     switch (in_pkt[0]) {
     case CMD_PING: {
 	PacketBase pongpacket(2);
@@ -375,6 +385,16 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 }
 
 void PacketQueue::TxThreadBody() {
+  while (!synced_) {
+    size_t size = sizeof(syncpacket);
+    const uint8_t* buf = syncpacket;
+    while (size) {
+      ssize_t res = write(fd_, buf, size);
+      ASSERT(res >= 0);
+      size -= res;
+      buf += res;
+    }
+  }
     while(1) {
 	PacketBase pkt;
 	os_mq_receive(tx_queue_, &pkt);
