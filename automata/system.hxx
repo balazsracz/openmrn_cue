@@ -77,7 +77,7 @@ public:
     GlobalVariable()
         : id_assigned_(false) {}
     virtual ~GlobalVariable() {}
-    virtual GlobalVariableId GetId() {
+    virtual GlobalVariableId GetId() const {
         assert(id_assigned_);
         return id_;
     }
@@ -100,7 +100,7 @@ private:
  */
 class Automata {
 public:
-    Automata() : timer_bit_(0), output_(NULL) {
+  Automata() : timer_bit_(0), output_(NULL), aut(this) {
         // We add the timer variable to the map with a fake key in order to
         // reserve local bit 0.
         used_variables_[NULL] = timer_bit_;
@@ -109,16 +109,15 @@ public:
 
     void Render(string* output);
 
-    class Op;
+    string* output() { return output_; }
 
-protected:
-    virtual void Body() = 0;
+    class Op;
 
     struct LocalVariable {
     public:
         LocalVariable(): id(-1) {}
         LocalVariable(int iid): id(iid) {}
-        int GetId() {
+        int GetId() const {
             assert(id >= 0 && id < 32);
             return id;
         }
@@ -126,27 +125,33 @@ protected:
         // We purposefully allow this object to be copied.
     };
 
+protected:
+    virtual void Body() = 0;
+
     // Adds a global variable reference to the used local variables, and
     // returns the local variable reference. The local variable reference if
     // owned by the Automata object. The same global var can be imported
     // multiple times (and will get the same ID).
-    LocalVariable& ImportVariable(GlobalVariable* var);
+    LocalVariable* ImportVariable(GlobalVariable* var);
+    const LocalVariable& ImportVariable(const GlobalVariable& var);
 
     LocalVariable timer_bit_;
 
-#define Def() Op(this, output_)
+#define Def() Op(aut, aut->output())
 
     string* output_;
 
+    Automata* const aut;
+
     virtual Board* board() = 0;
 
-    void DefCopy(LocalVariable& src, LocalVariable& dst);
-    void DefNCopy(LocalVariable& src, LocalVariable& dst);
+    void DefCopy(const LocalVariable& src, LocalVariable* dst);
+    void DefNCopy(const LocalVariable& src, LocalVariable* dst);
 
 private:
     friend class Op;
 
-    map<GlobalVariable*, LocalVariable> used_variables_;
+    map<const GlobalVariable*, LocalVariable> used_variables_;
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 

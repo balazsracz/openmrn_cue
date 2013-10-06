@@ -57,7 +57,7 @@ int next_temp_bit = 0;
 GlobalVariable* NewTempVariable(Board* board) {
   int counter = next_temp_bit++;
   int client, offset, bit;
-  if (!DecodeOffset(count, &client, &offset, &bit)) {
+  if (!DecodeOffset(counter, &client, &offset, &bit)) {
     fprintf(stderr, "Too many local variables. Cannot allocate more.");
     abort();
   }
@@ -77,27 +77,27 @@ class StrategyAutomata : public Automata {
   static const int kTimeTakenToGoBusy = 2;
   static const int kTimeTakenToGoFree = 3;
 
-  void SensorDebounce(LocalVariable& raw, LocalVariable& filtered) {
+  void SensorDebounce(const LocalVariable& raw, LocalVariable* filtered) {
     if (!sensor_tmp_var_.get()) {
       sensor_tmp_var_.reset(NewTempVariable(board()));
     }
-    LocalVariable& last(ImportVariable(sensor_tmp_var_.get()));
+    LocalVariable* last(ImportVariable(sensor_tmp_var_.get()));
     // If there is a flip, we start a timer. The timer length depends on the
     // edge.
-    Def().IfReg0(raw).IfReg1(last).ActTimer(kTimeTakenToGoBusy);
-    Def().IfReg1(raw).IfReg0(last).ActTimer(kTimeTakenToGoFree);
+    Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy);
+    Def().IfReg1(raw).IfReg0(*last).ActTimer(kTimeTakenToGoFree);
     DefCopy(raw, last);
     // If no flip happened for the timer length, we put the value into the
     // filtered.
-    Def().IfTimerDone().IfReg1(last).ActReg0(filtered);
-    Def().IfTimerDone().IfReg0(last).ActReg1(filtered);
+    Def().IfTimerDone().IfReg1(*last).ActReg0(filtered);
+    Def().IfTimerDone().IfReg0(*last).ActReg1(filtered);
   }
 
-  void Strategy(LocalVariable& src_busy, LocalVariable& src_go,
+  void Strategy(LocalVariable& src_busy, LocalVariable* src_go,
                 LocalVariable& dst_busy) {
     Def().IfState(StInit).ActState(StBase).ActReg0(src_go);
 
-    Def().IfState(StBase).IfReg1(ImportVariable(&is_paused))
+    Def().IfState(StBase).IfReg1(ImportVariable(is_paused))
         .IfReg1(src_busy).IfReg0(dst_busy)
         .ActState(StGreen);
 
@@ -121,19 +121,19 @@ EventBasedVariable led(&brd,
 
 DefAut(blinkaut, brd, {
     const int kBlinkSpeed = 3;
-    LocalVariable& rep(ImportVariable(blink_variable.get()));
+    LocalVariable* rep(ImportVariable(blink_variable.get()));
     Def().IfState(StInit).ActState(StUser1);
     Def().IfState(StUser1).IfTimerDone()
         .ActTimer(kBlinkSpeed).ActState(StUser2).ActReg0(rep);
     Def().IfState(StUser2).IfTimerDone()
         .ActTimer(kBlinkSpeed).ActState(StUser1).ActReg1(rep);
 
-    DefCopy(rep, ImportVariable(&b1.LedRed));
-    DefCopy(rep, ImportVariable(&b3.LedRed));
-    DefCopy(rep, ImportVariable(&b5.LedRed));
-    DefCopy(rep, ImportVariable(&b6.LedRed));
-    DefCopy(rep, ImportVariable(&panda_bridge.l4));
-    DefCopy(rep, ImportVariable(&lpc11_back.l0));
+    DefCopy(*rep, ImportVariable(&b1.LedRed));
+    DefCopy(*rep, ImportVariable(&b3.LedRed));
+    DefCopy(*rep, ImportVariable(&b5.LedRed));
+    DefCopy(*rep, ImportVariable(&b6.LedRed));
+    DefCopy(*rep, ImportVariable(&panda_bridge.l4));
+    DefCopy(*rep, ImportVariable(&lpc11_back.l0));
     });
 
 DefAut(testaut, brd, {
@@ -141,17 +141,17 @@ DefAut(testaut, brd, {
     });
 
 DefAut(auto_green, brd, {
-    DefNCopy(ImportVariable(S201.sensor_raw),
+    DefNCopy(ImportVariable(*S201.sensor_raw),
             ImportVariable(S201.signal_raw));
-    DefNCopy(ImportVariable(S382.sensor_raw),
+    DefNCopy(ImportVariable(*S382.sensor_raw),
             ImportVariable(S382.signal_raw));
-    DefNCopy(ImportVariable(S501.sensor_raw),
+    DefNCopy(ImportVariable(*S501.sensor_raw),
             ImportVariable(S501.signal_raw));
   });
 
 
 DefCustomAut(magictest, brd, StrategyAutomata, {
-    SensorDebounce(ImportVariable(S501.sensor_raw),
+    SensorDebounce(ImportVariable(*S501.sensor_raw),
                    ImportVariable(&b1.InA3));
     /*Strategy(ImportVariable(&b1.InA3),
              ImportVariable(&b1.InOraRed),

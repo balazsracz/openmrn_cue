@@ -47,30 +47,30 @@ public:
         return *this;
     }
 
-    Op& IfReg0(Automata::LocalVariable& var) {
+    Op& IfReg0(const Automata::LocalVariable& var) {
         uint8_t v = _IF_REG;
         if (output_) v |= var.GetId();
         ifs_.push_back(v);
         return *this;
     }
 
-    Op& IfReg1(Automata::LocalVariable& var) {
+    Op& IfReg1(const Automata::LocalVariable& var) {
         uint8_t v = _IF_REG | _REG_1;
         if (output_) v |= var.GetId();
         ifs_.push_back(v);
         return *this;
     }
 
-    Op& ActReg0(Automata::LocalVariable& var) {
+    Op& ActReg0(Automata::LocalVariable* var) {
         uint8_t v = _ACT_REG;
-        if (output_) v |= var.GetId();
+        if (output_) v |= var->GetId();
         acts_.push_back(v);
         return *this;
     }
 
-    Op& ActReg1(Automata::LocalVariable& var) {
+    Op& ActReg1(Automata::LocalVariable* var) {
         uint8_t v = _ACT_REG | _REG_1;
-        if (output_) v |= var.GetId();
+        if (output_) v |= var->GetId();
         acts_.push_back(v);
         return *this;
     }

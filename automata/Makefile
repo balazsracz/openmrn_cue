@@ -16,7 +16,7 @@ lib: libautomata.a
 libautomata.a: $(OBJS)
 	$(AR) cr $@ $+
 
-test-aut: $(OBJS)
+test-aut: $(OBJS) test-aut.cpp control-logic.hxx
 
 clean:
 	rm -f *.o *.cout $(BINS) test-aut *.d *.bin

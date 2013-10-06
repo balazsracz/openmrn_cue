@@ -49,13 +49,21 @@ void Board::RenderAutomatas(string* output) {
     }
 }
 
-Automata::LocalVariable& Automata::ImportVariable(GlobalVariable* var) {
-    int next_id = used_variables_.size();
+Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {
+    ImportVariable(*var);
     LocalVariable& ret = used_variables_[var];
-    if (ret.id < 0) {
-        ret.id = next_id;
-    }
-    return ret;
+    HASSERT(ret.id >= 0);
+    return &ret;
+}
+
+const Automata::LocalVariable& Automata::ImportVariable(
+    const GlobalVariable& var) {
+  int next_id = used_variables_.size();
+  LocalVariable& ret = used_variables_[&var];
+  if (ret.id < 0) {
+    ret.id = next_id;
+  }
+  return ret;
 }
 
 void Automata::Render(string* output) {
@@ -88,13 +96,14 @@ void Automata::Render(string* output) {
     output_ = NULL;
 }
 
-
-void Automata::DefCopy(Automata::LocalVariable& src, Automata::LocalVariable& dst) {
+void Automata::DefCopy(const Automata::LocalVariable& src,
+                       Automata::LocalVariable* dst) {
   Def().IfReg0(src).ActReg0(dst);
   Def().IfReg1(src).ActReg1(dst);
 }
 
-void Automata::DefNCopy(Automata::LocalVariable& src, Automata::LocalVariable& dst) {
+void Automata::DefNCopy(const Automata::LocalVariable& src,
+                        Automata::LocalVariable* dst) {
   Def().IfReg0(src).ActReg1(dst);
   Def().IfReg1(src).ActReg0(dst);
 }
