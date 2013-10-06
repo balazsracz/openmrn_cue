@@ -66,13 +66,19 @@ class CtrlTrackInterface {
   CtrlTrackInterface* binding;
 };
 
+void SimulateOccupancy(Automata* aut,
+                       Automata::LocalVariable* sim_occ,
+                       Automata::LocalVariable* tmp_seen_train_in_next,
+                       const Automata::LocalVariable& route_set,
+                       CtrlTrackInterface* past_if,
+                       CtrlTrackInterface* next_if);
 
 class StraightTrack {
  public:
   StraightTrack(Board* brd, uint64_t event_base, int counter_base)
     : side_a_(brd, event_base, counter_base),
       side_b_(brd, event_base + 16, counter_base + 8),
-      simulated_occupancy_(brd, event_base + 32, event_base + 32 | 1,
+      simulated_occupancy_(brd, event_base + 32, event_base + 32 + 1,
                            counter_base + 16),
       route_set_ab_(brd, event_base + 32 + 2, event_base + 32 + 3,
                     counter_base + 17),
@@ -89,6 +95,26 @@ class StraightTrack {
     Bind(&side_b_, opposite);
   }
 
+  CtrlTrackInterface* side_a() { return &side_a_; }
+  CtrlTrackInterface* side_b() { return &side_b_; }
+
+  void SimulateAllOccupancy(Automata* aut) {
+    auto* sim_occ = aut->ImportVariable(&simulated_occupancy_);
+    auto* tmp = aut->ImportVariable(&tmp_seen_train_in_next_);
+    SimulateOccupancy(aut,
+                      sim_occ,
+                      tmp,
+                      aut->ImportVariable(route_set_ab_),
+                      side_a(),
+                        side_b());
+    SimulateOccupancy(aut,
+                      sim_occ,
+                      tmp,
+                      aut->ImportVariable(route_set_ba_),
+                      side_b(),
+                      side_a());
+  }
+
  protected:
   void Bind(CtrlTrackInterface* me, CtrlTrackInterface* opposite);
 
@@ -96,9 +122,9 @@ class StraightTrack {
   CtrlTrackInterface side_b_;
 
   EventBasedVariable simulated_occupancy_;
-  // route from A to B
+  // route from A [in] to B [out]
   EventBasedVariable route_set_ab_;
-  // route from B to A
+  // route from B [in] to A [out]
   EventBasedVariable route_set_ba_;
   // Helper variable for simuating occupancy.
   EventBasedVariable tmp_seen_train_in_next_;
@@ -119,9 +145,6 @@ protected:
   EventBasedVariable* detector_;    
 };
 
-void SimulateOccupancy(Automata* aut,
-                       Automata::LocalVariable* target,
-                       const Automata::LocalVariable& route_set);
                        
 }  // namespace automata
 
