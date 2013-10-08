@@ -11,27 +11,55 @@
 
 namespace automata {
 
+TEST_F(AutomataNodeTests, TestFramework) {
+  Board brd;
+  static EventBasedVariable ev_var(&brd, BRACZ_LAYOUT | 0xf000,
+                                   BRACZ_LAYOUT | 0xf001,
+                                   0);
+  static FakeBit input(this);
+  DefAut(testaut, brd, {
+      DefCopy(ImportVariable(input), ImportVariable(&ev_var));
+    });
+  EventListener listen_event(ev_var);
+  SetupRunner(&brd);
+  Run();
+  Run();
+
+  input.Set(false);
+  Run();
+  EXPECT_FALSE(listen_event.value());
+
+  input.Set(true);
+  Run();
+  EXPECT_TRUE(listen_event.value());
+}
+
 TEST_F(AutomataNodeTests, SimulatedOccupancy) {
   Board brd;
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 32);
-  EventBasedVariable detector(&brd,
-                              BRACZ_LAYOUT | 0xf000, BRACZ_LAYOUT | 0xf001,
-                              0);
-  EventBasedVariable detect2(&brd,
-                             BRACZ_LAYOUT | 0xf002, BRACZ_LAYOUT | 0xf003,
-                             1);
-  StraightTrackWithDetector front(&brd, BRACZ_LAYOUT | 0x5100, 64, &detector);
-  StraightTrackWithDetector back(&brd, BRACZ_LAYOUT | 0x5100, 96, &detect2);
+  FakeBit previous_detector(this);
+  FakeBit next_detector(this);
+  StraightTrackWithDetector front(&brd, BRACZ_LAYOUT | 0x5100, 64,
+                                  &previous_detector);
+  StraightTrackWithDetector back(&brd, BRACZ_LAYOUT | 0x5100, 96,
+                                 &next_detector);
   piece.side_b()->Bind(front.side_a());
   piece.side_a()->Bind(back.side_b());
   // We do not bind "other" becase it is irrelevant.
+
+  EventListener sim_occ(piece.simulated_occupancy_);
 
   DefAut(strategyaut, brd, {
       piece.SimulateAllOccupancy(this);
     });
 
   SetupRunner(&brd);
-  runner_->RunAllAutomata();
+  Run();
+  previous_detector.Set(true);
+  Run();
+  EXPECT_FALSE(sim_occ.value());
+  SetVar(piece.route_set_ab_, true);
+  Run();
 }
 
 }  // namespace automata

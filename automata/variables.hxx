@@ -80,6 +80,9 @@ class EventBasedVariable : public GlobalVariable {
     Automata::Op::CreateOperation(output, empty, op);
   }
 
+  uint64_t event_on() const { return event_on_; }
+  uint64_t event_off() const { return event_off_; }
+
  private:
   void SetArgs(int client, int offset, int bit) {
     arg1_ = (0 << 5) | (client & 0b11111);

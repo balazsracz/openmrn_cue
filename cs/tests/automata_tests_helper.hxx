@@ -134,7 +134,7 @@ class AutomataTests : public testing::Test {
 
   class FakeBit : public InjectableVar {
   public:
-    FakeBit(AutomataTests* parent) : InjectableVar(parent) {}
+    FakeBit(AutomataTests* parent) : InjectableVar(parent), bit_(false) {}
 
     ~FakeBit() {
     }
@@ -192,7 +192,7 @@ protected:
     }*/
 
   static void* DispatchThread(void* arg);
-
+  static bool dispatch_thread_waiting_;
 
   // A loopback interace that reads/writes to can_pipe0.
   static NMRAnetIF* nmranet_if_;
@@ -230,6 +230,7 @@ private:
 
 NMRAnetIF* AutomataTests::nmranet_if_ = NULL;
 EventRegistry AutomataTests::registry_;
+bool AutomataTests::dispatch_thread_waiting_ = false;
 
 static ssize_t mock_read(int, void*, size_t) {
   // Never returns.
@@ -244,9 +245,12 @@ static ssize_t mock_write(int fd, const void* buf, size_t n) {
 }
 
 void* AutomataTests::DispatchThread(void* arg) {
+  dispatch_thread_waiting_ = false;
   node_t node = (node_t)arg;
   while(1) {
+    dispatch_thread_waiting_ = true;
     int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
+    dispatch_thread_waiting_ = false;
     if (result) {
       for (size_t i = nmranet_event_pending(node); i > 0; i--) {
         node_handle_t node_handle;
@@ -277,4 +281,60 @@ protected:
   AutomataNodeTests() {
     SetupStaticNode();
   }
+
+  void WaitForEventThread() {
+    while (nmranet_event_pending(node_) || !dispatch_thread_waiting_);
+  }
+  
+  void Run() {
+    WaitForEventThread();
+    runner_->RunAllAutomata();
+    WaitForEventThread();
+  }
+
+  void SetVar(const automata::EventBasedVariable& var, bool value) {
+    nmranet_event_produce(node_, value ? var.event_on() : var.event_off(),
+                          EVENT_STATE_VALID);
+    
+  }
+
+  friend class EventListener;
+
+  static EventRegistry* registry() {
+    return &registry_;
+  }
+
+  class EventListener : public EventHandler {
+   public:
+    EventListener(const automata::EventBasedVariable& var) 
+        : var_(var), bit_(false) {
+      AutomataNodeTests::registry()->RegisterHandler(this, var_.event_on());
+      AutomataNodeTests::registry()->RegisterHandler(this, var_.event_off());
+    }
+
+    virtual ~EventListener() {
+      AutomataNodeTests::registry()->UnregisterHandler(this, var_.event_on());
+      AutomataNodeTests::registry()->UnregisterHandler(this, var_.event_off());
+    }
+
+    virtual void HandleEvent(uint64_t event) {
+      if (event == var_.event_on()) {
+        bit_ = true;
+      } else if (event == var_.event_off()) {
+        bit_ = false;
+      } else {
+        extern bool unknown_event_arrived();
+        HASSERT(false && unknown_event_arrived());
+      }
+    }
+
+    bool value() {
+      return bit_;
+    }
+
+   private:
+    const automata::EventBasedVariable& var_;
+    bool bit_;
+  };
+
 };

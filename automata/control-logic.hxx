@@ -7,14 +7,15 @@
 #include "system.hxx"
 #include "operations.hxx"
 #include "variables.hxx"
+#include "gtest/gtest_prod.h"
 
 namespace automata {
 
 struct PhysicalSignal {
-  PhysicalSignal(const EventBasedVariable* sensor, EventBasedVariable* signal)
+  PhysicalSignal(const GlobalVariable* sensor, GlobalVariable* signal)
       : sensor_raw(sensor), signal_raw(signal) {}
-  const EventBasedVariable* sensor_raw;
-  EventBasedVariable* signal_raw;
+  const GlobalVariable* sensor_raw;
+  GlobalVariable* signal_raw;
 };
 
 class CtrlTrackInterface;
@@ -25,12 +26,12 @@ public:
 
   // Returns the first (real) occupancy detector within train length from the
   // interface `from'. Returns NULL if no such detector was found. The interface is interpreted by 
-  virtual const EventBasedVariable* LookupCloseDetector(
+  virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) = 0;
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
-  virtual const EventBasedVariable* LookupFarDetector(
+  virtual const GlobalVariable* LookupFarDetector(
       const CtrlTrackInterface* from) = 0;
 };
 
@@ -63,8 +64,8 @@ class CtrlTrackInterface {
   EventBasedVariable in_route_set_failure;
   EventBasedVariable out_route_released;
 
-  const EventBasedVariable* LookupNextDetector() const {
-    const EventBasedVariable* ret = LookupCloseDetector();
+  const GlobalVariable* LookupNextDetector() const {
+    const GlobalVariable* ret = LookupCloseDetector();
     if (ret != nullptr) {
       return ret;
     }
@@ -78,11 +79,11 @@ class CtrlTrackInterface {
 
   // Occupancy value of the current block, or the neighboring block less than a
   // train-length away.
-  const EventBasedVariable* LookupCloseDetector() const {
+  const GlobalVariable* LookupCloseDetector() const {
     return lookup_if_->LookupCloseDetector(this);
   }
   // Occupancy value of the block that is more than train-length away.
-  const EventBasedVariable* LookupFarDetector() const {
+  const GlobalVariable* LookupFarDetector() const {
     return lookup_if_->LookupFarDetector(this);
   }
 
@@ -151,6 +152,8 @@ class StraightTrack : public OccupancyLookupInterface {
   CtrlTrackInterface side_a_;
   CtrlTrackInterface side_b_;
 
+  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy);
+
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]
   EventBasedVariable route_set_ab_;
@@ -164,24 +167,24 @@ class StraightTrackWithDetector : public StraightTrack {
 public:
   StraightTrackWithDetector(Board* brd,
                             uint64_t event_base, int counter_base,
-                            EventBasedVariable* detector)
+                            GlobalVariable* detector)
     : StraightTrack(brd, event_base, counter_base),
       detector_(detector) {}
 
-  virtual const EventBasedVariable* LookupCloseDetector(
+  virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) {
     return detector_;
   }
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
-  virtual const EventBasedVariable* LookupFarDetector(
+  virtual const GlobalVariable* LookupFarDetector(
       const CtrlTrackInterface* from) {
     return NULL;
   }
 
 protected:
-  EventBasedVariable* detector_;    
+  GlobalVariable* detector_;    
 };
 
 
@@ -191,14 +194,14 @@ public:
                      uint64_t event_base, int counter_base)
     : StraightTrack(brd, event_base, counter_base) {}
 
-  virtual const EventBasedVariable* LookupCloseDetector(
+  virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) {
     return FindOtherSide(from)->binding()->LookupCloseDetector();
   }
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
-  virtual const EventBasedVariable* LookupFarDetector(
+  virtual const GlobalVariable* LookupFarDetector(
       const CtrlTrackInterface* from) {
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
