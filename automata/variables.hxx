@@ -27,7 +27,8 @@ class EventBasedVariable : public GlobalVariable {
  public:
   EventBasedVariable(Board* brd,
                      uint64_t event_on, uint64_t event_off,
-                     int counter) {
+                     int counter)
+    : event_on_(event_on), event_off_(event_off) {
     int client, offset, bit;
     HASSERT(DecodeOffset(counter, &client, &offset, &bit));
     SetArgs(client, offset, bit);

@@ -22,6 +22,8 @@ void suspend_all_automata();
 void resume_all_automata();
 //! Returns true if automata processing is enabled.
 bool automata_running();
+//! Clears all state bytes.
+void reset_all_state(void);
 
 //! Returns a state byte from a particular client and offset. Offset is
 //! interpreted in the old system.

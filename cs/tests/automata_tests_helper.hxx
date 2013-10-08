@@ -158,6 +158,7 @@ class AutomataTests : public testing::Test {
   }
 
   void SetupRunner(automata::Board* brd) {
+    reset_all_state();
     string output;
     brd->Render(&output);
     memcpy(program_area_, output.data(), output.size());
@@ -293,9 +294,9 @@ protected:
   }
 
   void SetVar(const automata::EventBasedVariable& var, bool value) {
-    nmranet_event_produce(node_, value ? var.event_on() : var.event_off(),
-                          EVENT_STATE_VALID);
-    
+    uint64_t eventid = value ? var.event_on() : var.event_off();
+    fprintf(stderr, "Producing event %016llx on node %p\n", eventid, node_);
+    nmranet_event_produce(node_, eventid, EVENT_STATE_VALID);
   }
 
   friend class EventListener;

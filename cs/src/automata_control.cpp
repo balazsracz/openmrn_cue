@@ -1,3 +1,4 @@
+#include <string.h>
 
 #include "cs_config.h"
 #include "automata_control.h"
@@ -36,6 +37,10 @@ uint8_t* get_state_byte(int client, int offset) {
 #else
     return &(clients[client][offset]);
 #endif
+}
+
+void reset_all_state(void) {
+  memset(clients, 0, sizeof(clients));
 }
 
 // Array holding the mapping of train location -> train ID.

@@ -34,37 +34,154 @@ TEST_F(AutomataNodeTests, TestFramework) {
   EXPECT_TRUE(listen_event.value());
 }
 
-TEST_F(AutomataNodeTests, SimulatedOccupancy) {
+TEST_F(AutomataNodeTests, TestFramework2) {
+  Board brd;
+  static EventBasedVariable ev_var(&brd, BRACZ_LAYOUT | 0xf000,
+                                   BRACZ_LAYOUT | 0xf001,
+                                   0);
+  static FakeBit bout(this);
+  DefAut(testaut2, brd, {
+      DefCopy(ImportVariable(ev_var), ImportVariable(&bout));
+    });
+  SetupRunner(&brd);
+  Run();
+  Run();
+
+  SetVar(ev_var, false);
+  Run();
+  EXPECT_FALSE(bout.Get());
+ 
+  SetVar(ev_var, true);
+  Run();
+  EXPECT_TRUE(bout.Get());
+
+  SetVar(ev_var, false);
+  Run();
+  EXPECT_FALSE(bout.Get());
+}
+
+
+TEST_F(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece) {
   Board brd;
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 32);
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
-  StraightTrackWithDetector front(&brd, BRACZ_LAYOUT | 0x5100, 64,
-                                  &previous_detector);
-  StraightTrackWithDetector back(&brd, BRACZ_LAYOUT | 0x5100, 96,
-                                 &next_detector);
-  piece.side_b()->Bind(front.side_a());
-  piece.side_a()->Bind(back.side_b());
-  // We do not bind "other" becase it is irrelevant.
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 64,
+                                   &previous_detector);
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5100, 96,
+                                  &next_detector);
+  piece.side_a()->Bind(before.side_b());
+  piece.side_b()->Bind(after.side_a());
 
   EventListener sim_occ(piece.simulated_occupancy_);
+  EventListener seen_train(piece.tmp_seen_train_in_next_);
+  EventListener released(piece.side_b()->out_route_released);
 
   DefAut(strategyaut, brd, {
       piece.SimulateAllOccupancy(this);
     });
 
+  EXPECT_FALSE(sim_occ.value());
   SetupRunner(&brd);
   Run();
   previous_detector.Set(true);
+  next_detector.Set(false);
   Run();
   EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(seen_train.value());
   SetVar(piece.route_set_ab_, true);
   Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_FALSE(seen_train.value());
+  EXPECT_FALSE(released.value());
+  // Now the train reaches the next detector.
+  next_detector.Set(true);
+  Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(seen_train.value());
+  // And then leaves the next detector.
+  next_detector.Set(false);
+  Run();
+  EXPECT_TRUE(seen_train.value());
+  EXPECT_TRUE(released.value());
+  EXPECT_FALSE(sim_occ.value());
 }
 
+TEST_F(AutomataNodeTests, SimulatedOccupancy_MultipleShortPiece) {
+  Board brd;
+  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 32);
+  static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5010, 128);
+  FakeBit previous_detector(this);
+  FakeBit next_detector(this);
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 64,
+                                   &previous_detector);
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5100, 96,
+                                  &next_detector);
+  piece.side_a()->Bind(before.side_b());
+  piece.side_b()->Bind(piece2.side_a());
+  piece2.side_b()->Bind(after.side_a());
+
+  EventListener sim_occ(piece.simulated_occupancy_);
+  EventListener sim_occ2(piece2.simulated_occupancy_);
+
+  DefAut(strategyaut, brd, {
+      piece.SimulateAllOccupancy(this);
+      piece2.SimulateAllOccupancy(this);
+    });
+
+  SetupRunner(&brd);
+  Run();
+  EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(sim_occ2.value());
+  previous_detector.Set(true);
+  next_detector.Set(false);
+  Run();
+  EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(sim_occ2.value());
+  SetVar(piece.route_set_ab_, true);
+  SetVar(piece2.route_set_ab_, true);
+  Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(sim_occ2.value());
+  // Now the train reaches the next detector.
+  next_detector.Set(true);
+  Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(sim_occ2.value());
+  // And then leaves the next detector.
+  next_detector.Set(false);
+  Run();
+  EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(sim_occ2.value());
+
+  SetVar(piece.route_set_ab_, false);
+  SetVar(piece2.route_set_ab_, false);
+  previous_detector.Set(false);
+  Run();
+
+  // Now we go backwards!
+  SetVar(piece.route_set_ba_, true);
+  SetVar(piece2.route_set_ba_, true);
+  next_detector.Set(true);
+  Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(sim_occ2.value());
+
+  previous_detector.Set(true);
+  Run();
+  next_detector.Set(false);
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(sim_occ2.value());
+  Run();
+  previous_detector.Set(false);
+  Run();
+  EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(sim_occ2.value());
+}
+
+
+
 }  // namespace automata
-
-
 
 int appl_main(int argc, char* argv[]) {
   //__libc_init_array();

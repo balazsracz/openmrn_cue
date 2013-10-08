@@ -137,7 +137,7 @@ class StraightTrack : public OccupancyLookupInterface {
                       tmp,
                       aut->ImportVariable(route_set_ab_),
                       side_a(),
-                        side_b());
+                      side_b());
     SimulateOccupancy(aut,
                       sim_occ,
                       tmp,
@@ -152,7 +152,8 @@ class StraightTrack : public OccupancyLookupInterface {
   CtrlTrackInterface side_a_;
   CtrlTrackInterface side_b_;
 
-  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy);
+  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece);
+  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_MultipleShortPiece);
 
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]
