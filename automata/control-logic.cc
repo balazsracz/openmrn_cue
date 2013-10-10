@@ -25,7 +25,7 @@ void SimulateOccupancy(Automata* aut,
       .ActReg0(tmp_seen_train_in_next);
 
   if (next_if->binding()->LookupFarDetector()) {
-    printf("Have far detector\n");
+    //printf("Have far detector\n");
     const LocalVariable& next_trainlength_occ = aut->ImportVariable(
         *next_if->binding()->LookupFarDetector());
     // If the train has shown up in a far-away block, it has surely passed
@@ -35,7 +35,7 @@ void SimulateOccupancy(Automata* aut,
   }
 
   if (next_if->binding()->LookupCloseDetector()) {
-    printf("Have close detector\n");
+    //printf("Have close detector\n");
     const LocalVariable& next_close_occ = aut->ImportVariable(
         *next_if->binding()->LookupCloseDetector());
     // We save a bit when a train has shown up in the next block.

@@ -257,6 +257,51 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_ShortAndLongPieces) {
   EXPECT_FALSE(sim_occ2.value());
   EXPECT_FALSE(sim_occ3.value());
   EXPECT_FALSE(sim_occ4.value());
+
+  // Run backwards.
+  SetVar(piece.route_set_ab_, false);
+  SetVar(piece2.route_set_ab_, false);
+  SetVar(piece3.route_set_ab_, false);
+  SetVar(piece4.route_set_ab_, false);
+  Run();
+  SetVar(piece.route_set_ba_, true);
+  SetVar(piece2.route_set_ba_, true);
+  SetVar(piece3.route_set_ba_, true);
+  SetVar(piece4.route_set_ba_, true);
+  Run();
+
+  EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(sim_occ2.value());
+  EXPECT_FALSE(sim_occ3.value());
+  EXPECT_FALSE(sim_occ4.value());
+
+  next_detector.Set(true);
+  Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(sim_occ2.value());
+  EXPECT_TRUE(sim_occ3.value());
+  EXPECT_TRUE(sim_occ4.value());
+
+  next_detector.Set(false);
+  Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(sim_occ2.value());
+  EXPECT_TRUE(sim_occ3.value());
+  EXPECT_TRUE(sim_occ4.value());
+
+  previous_detector.Set(true);
+  Run();
+  EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(sim_occ2.value());
+  EXPECT_TRUE(sim_occ3.value());
+  EXPECT_FALSE(sim_occ4.value());
+
+  previous_detector.Set(false);
+  Run();
+  EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(sim_occ2.value());
+  EXPECT_FALSE(sim_occ3.value());
+  EXPECT_FALSE(sim_occ4.value());
 }
 
 }  // namespace automata
