@@ -9,7 +9,8 @@ void SimulateOccupancy(Automata* aut,
                        Automata::LocalVariable* tmp_seen_train_in_next,
                        const Automata::LocalVariable& route_set,
                        CtrlTrackInterface* past_if,
-                       CtrlTrackInterface* next_if) {
+                       CtrlTrackInterface* next_if,
+                       OpCallback* release_cb) {
   // tmp_seen_train_in_next is 1 if we have seen a train in the next (close)
   // occupancy block.
   HASSERT(past_if);
@@ -30,8 +31,10 @@ void SimulateOccupancy(Automata* aut,
         *next_if->binding()->LookupFarDetector());
     // If the train has shown up in a far-away block, it has surely passed
     // through us.
-    Def().IfReg1(route_set).IfReg1(next_trainlength_occ).
-        ActReg0(sim_occ);
+    Def().IfReg1(route_set).IfReg1(next_trainlength_occ)
+        .ActReg0(sim_occ)
+        .RunCallback(release_cb);
+
   }
 
   if (next_if->binding()->LookupCloseDetector()) {
@@ -46,7 +49,8 @@ void SimulateOccupancy(Automata* aut,
     Def()
         .IfReg1(route_set).IfReg1(*sim_occ)
         .IfReg1(*tmp_seen_train_in_next).IfReg0(next_close_occ)
-        .ActReg0(sim_occ).ActReg1(aut->ImportVariable(&next_if->out_route_released));
+        .ActReg0(sim_occ)
+        .RunCallback(release_cb);
   }
 }
 

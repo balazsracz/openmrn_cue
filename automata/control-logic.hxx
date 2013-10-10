@@ -109,7 +109,8 @@ void SimulateOccupancy(Automata* aut,
                        Automata::LocalVariable* tmp_seen_train_in_next,
                        const Automata::LocalVariable& route_set,
                        CtrlTrackInterface* past_if,
-                       CtrlTrackInterface* next_if);
+                       CtrlTrackInterface* next_if,\
+                       OpCallback* release_cb);
 
 class StraightTrack : public OccupancyLookupInterface {
  public:
@@ -137,13 +138,15 @@ class StraightTrack : public OccupancyLookupInterface {
                       tmp,
                       aut->ImportVariable(route_set_ab_),
                       side_a(),
-                      side_b());
+                      side_b(),
+                      NULL);
     SimulateOccupancy(aut,
                       sim_occ,
                       tmp,
                       aut->ImportVariable(route_set_ba_),
                       side_b(),
-                      side_a());
+                      side_a(),
+                      NULL);
   }
 
  protected:

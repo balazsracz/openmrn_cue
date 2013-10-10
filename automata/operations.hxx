@@ -132,8 +132,8 @@ public:
         return *this;
     }
 
-  template<class T> Op& RunCallback(OpCallback* cb) {
-    cb->Run(this);
+  Op& RunCallback(OpCallback* cb) {
+    if (cb) cb->Run(this);
     return *this;
   }
 
