@@ -152,8 +152,21 @@ class StraightTrack : public OccupancyLookupInterface {
   CtrlTrackInterface side_a_;
   CtrlTrackInterface side_b_;
 
+  const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s) {
+    if (s == &side_a_) {
+      return &side_b_;
+    } else if (s == &side_b_) {
+      return &side_a_;
+    } else {
+      extern bool could_not_find_opposide_side();
+      HASSERT(false && could_not_find_opposide_side());
+    }
+    return NULL;
+  }
+
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece);
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_MultipleShortPiece);
+  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_ShortAndLongPieces);
 
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]
@@ -206,20 +219,27 @@ public:
       const CtrlTrackInterface* from) {
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
+};
 
- protected:
-  const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s) {
-    if (s == &side_a_) {
-      return &side_b_;
-    } else if (s == &side_b_) {
-      return &side_a_;
-    } else {
-      extern bool could_not_find_opposide_side();
-      HASSERT(false && could_not_find_opposide_side());
-    }
-    return NULL;
+class StraightTrackLong : public StraightTrack {
+public:
+  StraightTrackLong(Board* brd,
+                     uint64_t event_base, int counter_base)
+    : StraightTrack(brd, event_base, counter_base) {}
+
+  virtual const GlobalVariable* LookupCloseDetector(
+      const CtrlTrackInterface* from) {
+    return nullptr;
+  }
+
+  // Returns the first occupancy detector outside of train length from the
+  // interface `from'. Returns NULL if no such detector was found.
+  virtual const GlobalVariable* LookupFarDetector(
+      const CtrlTrackInterface* from) {
+    return FindOtherSide(from)->binding()->LookupNextDetector();
   }
 };
+
 
                        
 }  // namespace automata
