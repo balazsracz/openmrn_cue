@@ -124,7 +124,9 @@ class StraightTrack : public OccupancyLookupInterface {
         route_set_ba_(brd, event_base + 32 + 4, event_base + 32 + 5,
                       counter_base + 18),
         tmp_seen_train_in_next_(brd, event_base + 32 + 6, event_base + 32 + 7,
-                                counter_base + 19)
+                                counter_base + 19),
+        tmp_route_setting_in_progress(
+            brd, event_base + 32 + 8, event_base + 32 + 9, counter_base + 20)
   {}
 
   CtrlTrackInterface* side_a() { return &side_a_; }
@@ -159,6 +161,8 @@ class StraightTrack : public OccupancyLookupInterface {
   EventBasedVariable route_set_ba_;
   // Helper variable for simuating occupancy.
   EventBasedVariable tmp_seen_train_in_next_;
+  // Helper variable for excluding parallel route setting requests.
+  EventBasedVariable tmp_route_setting_in_progress_;
 };
 
 class StraightTrackWithDetector : public StraightTrack {

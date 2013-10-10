@@ -32,9 +32,48 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
 void SimulateRoute(Automata* aut,
                    CtrlTrackInterface* before,
                    CtrlTrackInterface* after,
+                   LocalVariable* route_setting_in_progress,
                    const vector<GlobalVariable*>& current_route,
-                   const vector<GlobalVariable*>& conflicting_routes) {
-  //  Def()
+                   const vector<const GlobalVariable*>& conflicting_routes) {
+  LocalVariable* in_try_set_route =
+      aut->ImportVariable(&before->binding()->out_try_set_route);
+  LocalVariable* in_route_set_success =
+      aut->ImportVariable(&before->in_route_set_success);
+  LocalVariable* in_route_set_failure =
+      aut->ImportVariable(&before->in_route_set_failure);
+  // We reject the request immediately if there is another route setting in
+  // progress.
+  Def()
+      .IfReg1(*in_try_set_route)
+      .IfReg1(*route_setting_in_progress)
+      .ActReg1(in_route_set_failure);
+      .ActReg0(in_route_set_success);
+      .ActReg0(*in_try_set_route)
+  // Check if we can propagate the route setting request.
+  Def()
+      .IfReg1(*in_try_set_route)
+      .IfReg0(*route_setting_in_progress)
+      .Rept(Automata::Op::IfReg0, current_route)
+      .Rept(Automata::Op::IfReg0, conflicting_routes)
+      // then we are in progress
+      .ActReg1(route_setting_in_progress)
+      // reset feedback bits for safety
+      .ActReg0(aut->ImportVariable(after->binding()->in_route_set_failure))
+      .ActReg0(aut->ImportVariable(after->binding()->in_route_set_success))
+      // and propagate request
+      .ActReg1(aut->ImportVariable(after->out_try_set_route));
+  Def()
+      .IfReg1(*in_try_set_route)
+      .IfReg0(*route_setting_in_progress)
+      // failed to propagate
+      .ActReg1(in_route_set_failure)
+      .ActReg0(in_route_set_success);
+      .ActReg0(in_try_set_route);
+  // Now look for feedback from propagated request.
+  Def()
+      .IfReg1(*in_try_set_route)
+      .
+    
 
 }
 
