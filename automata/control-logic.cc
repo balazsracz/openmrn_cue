@@ -4,6 +4,44 @@ namespace automata {
 
 typedef Automata::LocalVariable LocalVariable;
 
+void StraightTrack::SimulateAllOccupancy(Automata* aut) {
+  auto* sim_occ = aut->ImportVariable(&simulated_occupancy_);
+  auto* tmp = aut->ImportVariable(&tmp_seen_train_in_next_);
+  auto side_b_release = NewCallback(
+      this, &StraightTrack::ReleaseRouteCallback, side_b());
+  auto side_a_release = NewCallback(
+      this, &StraightTrack::ReleaseRouteCallback, side_a());
+  SimulateOccupancy(aut,
+                    sim_occ,
+                    tmp,
+                    aut->ImportVariable(route_set_ab_),
+                    side_a(),
+                    side_b(),
+                    &side_b_release);
+  SimulateOccupancy(aut,
+                    sim_occ,
+                    tmp,
+                    aut->ImportVariable(route_set_ba_),
+                    side_b(),
+                    side_a(),
+                    &side_a_release);
+}
+
+const CtrlTrackInterface* StraightTrack::FindOtherSide(
+    const CtrlTrackInterface* s) {
+  if (s == &side_a_) {
+    return &side_b_;
+  } else if (s == &side_b_) {
+    return &side_a_;
+  } else {
+    extern bool could_not_find_opposide_side();
+    HASSERT(false && could_not_find_opposide_side());
+  }
+  return NULL;
+}
+
+
+
 void SimulateOccupancy(Automata* aut,
                        Automata::LocalVariable* sim_occ,
                        Automata::LocalVariable* tmp_seen_train_in_next,

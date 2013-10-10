@@ -130,28 +130,7 @@ class StraightTrack : public OccupancyLookupInterface {
   CtrlTrackInterface* side_a() { return &side_a_; }
   CtrlTrackInterface* side_b() { return &side_b_; }
 
-  void SimulateAllOccupancy(Automata* aut) {
-    auto* sim_occ = aut->ImportVariable(&simulated_occupancy_);
-    auto* tmp = aut->ImportVariable(&tmp_seen_train_in_next_);
-    auto side_b_release = NewCallback(
-        this, &StraightTrack::ReleaseRouteCallback, side_b());
-    auto side_a_release = NewCallback(
-        this, &StraightTrack::ReleaseRouteCallback, side_a());
-    SimulateOccupancy(aut,
-                      sim_occ,
-                      tmp,
-                      aut->ImportVariable(route_set_ab_),
-                      side_a(),
-                      side_b(),
-                      &side_b_release);
-    SimulateOccupancy(aut,
-                      sim_occ,
-                      tmp,
-                      aut->ImportVariable(route_set_ba_),
-                      side_b(),
-                      side_a(),
-                      &side_a_release);
-  }
+  void SimulateAllOccupancy(Automata* aut);
 
  protected:
   void Bind(CtrlTrackInterface* me, CtrlTrackInterface* opposite);
@@ -159,17 +138,8 @@ class StraightTrack : public OccupancyLookupInterface {
   CtrlTrackInterface side_a_;
   CtrlTrackInterface side_b_;
 
-  const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s) {
-    if (s == &side_a_) {
-      return &side_b_;
-    } else if (s == &side_b_) {
-      return &side_a_;
-    } else {
-      extern bool could_not_find_opposide_side();
-      HASSERT(false && could_not_find_opposide_side());
-    }
-    return NULL;
-  }
+  // If you give this side_a() it will return side_b() and vice versa.
+  const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s);
   
   // This funciton will be called from SimulateOccupancy when the simulated
   // occupancy goes to zero and thus the route should be released.
