@@ -133,20 +133,24 @@ class StraightTrack : public OccupancyLookupInterface {
   void SimulateAllOccupancy(Automata* aut) {
     auto* sim_occ = aut->ImportVariable(&simulated_occupancy_);
     auto* tmp = aut->ImportVariable(&tmp_seen_train_in_next_);
+    auto side_b_release = NewCallback(
+        this, &StraightTrack::ReleaseRouteCallback, side_b());
+    auto side_a_release = NewCallback(
+        this, &StraightTrack::ReleaseRouteCallback, side_a());
     SimulateOccupancy(aut,
                       sim_occ,
                       tmp,
                       aut->ImportVariable(route_set_ab_),
                       side_a(),
                       side_b(),
-                      NULL);
+                      &side_b_release);
     SimulateOccupancy(aut,
                       sim_occ,
                       tmp,
                       aut->ImportVariable(route_set_ba_),
                       side_b(),
                       side_a(),
-                      NULL);
+                      &side_a_release);
   }
 
  protected:
@@ -165,6 +169,12 @@ class StraightTrack : public OccupancyLookupInterface {
       HASSERT(false && could_not_find_opposide_side());
     }
     return NULL;
+  }
+  
+  // This funciton will be called from SimulateOccupancy when the simulated
+  // occupancy goes to zero and thus the route should be released.
+  void ReleaseRouteCallback(CtrlTrackInterface* side, Automata::Op* op) {
+    op->ActReg1(op->parent()->ImportVariable(&side->out_route_released));
   }
 
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece);

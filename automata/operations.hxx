@@ -22,7 +22,7 @@ class OpCallback {
   virtual ~OpCallback() {};
 };
 
-template<class T, class P1> class OpCallback1 {
+template<class T, class P1> class OpCallback1 : public OpCallback {
  public:
   typedef void (T::*fptr_t)(P1 p1, Automata::Op* op);
 
@@ -30,7 +30,7 @@ template<class T, class P1> class OpCallback1 {
       : parent_(parent), p1_(p1), fptr_(fptr) {}
   virtual ~OpCallback1() {}
   virtual void Run(Automata::Op* op) {
-    parent_->fptr_(p1_, op);
+    (parent_->*fptr_)(p1_, op);
   }
 
  private:
@@ -136,6 +136,8 @@ public:
     if (cb) cb->Run(this);
     return *this;
   }
+
+  Automata* parent() { return parent_; }
 
 private:
     DISALLOW_COPY_AND_ASSIGN(Op);
