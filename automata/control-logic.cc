@@ -1,3 +1,5 @@
+#include <initializer_list>
+
 #include "control-logic.hxx"
 
 namespace automata {
@@ -25,6 +27,19 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
                     side_b(),
                     side_a(),
                     &side_a_release);
+}
+
+void SimulateRoute(Automata* aut,
+                   CtrlTrackInterface* before,
+                   CtrlTrackInterface* after,
+                   const vector<GlobalVariable*>& current_route,
+                   const vector<GlobalVariable*>& conflicting_routes) {
+  //  Def()
+
+}
+
+void StraightTrack::SimulateAllRoutes(Automata* aut) {
+
 }
 
 const CtrlTrackInterface* StraightTrack::FindOtherSide(

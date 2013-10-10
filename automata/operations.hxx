@@ -1,6 +1,8 @@
 #ifndef _bracz_train_automata_operations_hxx_
 #define _bracz_train_automata_operations_hxx_
 
+#include <initializer_list>
+
 #include "system.hxx"
 #include "../cs/src/automata_defs.h"
 
@@ -134,6 +136,25 @@ public:
 
   Op& RunCallback(OpCallback* cb) {
     if (cb) cb->Run(this);
+    return *this;
+  }
+
+  typedef Op& (Op::*const_var_fn_t)(const Automata::LocalVariable&);
+  typedef Op& (Op::*mutable_var_fn_t)(Automata::LocalVariable*);
+
+  Op& Rept(mutable_var_fn_t fn,
+           const std::initializer_list<GlobalVariable*>& vars) {
+    for (auto v : vars) {
+      (this->*fn)(parent()->ImportVariable(v));
+    }
+    return *this;
+  }
+
+  Op& Rept(const_var_fn_t fn,
+           const std::initializer_list<const GlobalVariable*>& vars) {
+    for (const GlobalVariable* v : vars) {
+      (this->*fn)(parent()->ImportVariable(*v));
+    }
     return *this;
   }
 

@@ -131,6 +131,7 @@ class StraightTrack : public OccupancyLookupInterface {
   CtrlTrackInterface* side_b() { return &side_b_; }
 
   void SimulateAllOccupancy(Automata* aut);
+  void SimulateAllRoutes(Automata* aut);
 
  protected:
   void Bind(CtrlTrackInterface* me, CtrlTrackInterface* opposite);
