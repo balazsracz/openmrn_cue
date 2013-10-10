@@ -20,3 +20,5 @@
 doc/html/*
 doc/latex/*
 doc/warnings
+# generated C files
+*.cout
