@@ -16,6 +16,33 @@ struct StateRef {
     int state;
 };
 
+class OpCallback {
+ public:
+  virtual void Run(Automata::Op* op) = 0;
+  virtual ~OpCallback() {};
+};
+
+template<class T, class P1> class OpCallback1 {
+ public:
+  typedef void (T::*fptr_t)(P1 p1, Automata::Op* op);
+
+  OpCallback1(T* parent, P1 p1, fptr_t fptr)
+      : parent_(parent), p1_(p1), fptr_(fptr) {}
+  virtual ~OpCallback1() {}
+  virtual void Run(Automata::Op* op) {
+    parent_->fptr_(p1_, op);
+  }
+
+ private:
+  T* parent_;
+  P1 p1_;
+  fptr_t fptr_;
+};
+
+template<class T, class P1> OpCallback1<T, P1> NewCallback(T* obj, typename OpCallback1<T, P1>::fptr_t fptr, P1 p1) {
+  return OpCallback1<T, P1>(obj, p1, fptr);
+}
+
 class Automata::Op {
 public:
     Op(Automata* parent)
@@ -104,6 +131,11 @@ public:
         acts_.push_back(byte);
         return *this;
     }
+
+  template<class T> Op& RunCallback(OpCallback* cb) {
+    cb->Run(this);
+    return *this;
+  }
 
 private:
     DISALLOW_COPY_AND_ASSIGN(Op);
