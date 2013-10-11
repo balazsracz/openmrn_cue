@@ -11,6 +11,10 @@
 
 namespace automata {
 
+extern StateRef StInit, StBase;
+
+void HandleInitState(Automata* aut);
+
 struct PhysicalSignal {
   PhysicalSignal(const GlobalVariable* sensor, GlobalVariable* signal)
       : sensor_raw(sensor), signal_raw(signal) {}
@@ -87,7 +91,7 @@ class CtrlTrackInterface {
     return lookup_if_->LookupFarDetector(this);
   }
 
-  const CtrlTrackInterface* binding() const {
+  CtrlTrackInterface* binding() const {
     return binding_;
   }
 
@@ -125,7 +129,7 @@ class StraightTrack : public OccupancyLookupInterface {
                       counter_base + 18),
         tmp_seen_train_in_next_(brd, event_base + 32 + 6, event_base + 32 + 7,
                                 counter_base + 19),
-        tmp_route_setting_in_progress(
+        tmp_route_setting_in_progress_(
             brd, event_base + 32 + 8, event_base + 32 + 9, counter_base + 20)
   {}
 

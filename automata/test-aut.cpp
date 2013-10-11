@@ -30,9 +30,6 @@ EventBasedVariable is_paused(&brd,
 
 I2CBoard b5(0x25), b6(0x26), b1(0x21), b3(0x23);
 
-StateRef StInit(0);
-StateRef StBase(1);
-
 
 StateRef StGreen(2);
 StateRef StGoing(3);
