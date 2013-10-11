@@ -157,6 +157,7 @@ class StraightTrack : public OccupancyLookupInterface {
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece);
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_MultipleShortPiece);
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_ShortAndLongPieces);
+  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_RouteSetting);
 
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]

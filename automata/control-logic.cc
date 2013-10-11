@@ -43,8 +43,8 @@ void SimulateRoute(Automata* aut,
                    CtrlTrackInterface* before,
                    CtrlTrackInterface* after,
                    LocalVariable* route_setting_in_progress,
-                   const MutableVarList& current_route,
-                   const ConstVarList& conflicting_routes) {
+                   const MutableVarList current_route,
+                   const ConstVarList conflicting_routes) {
   LocalVariable* in_try_set_route =
       aut->ImportVariable(&before->binding()->out_try_set_route);
   LocalVariable* in_route_set_success =
@@ -124,7 +124,20 @@ void SimulateRoute(Automata* aut,
 }
 
 void StraightTrack::SimulateAllRoutes(Automata* aut) {
-
+  LocalVariable* route_setting_in_progress =
+      aut->ImportVariable(&tmp_route_setting_in_progress_);
+  SimulateRoute(aut,
+                side_a(),
+                side_b(),
+                route_setting_in_progress,
+                { &route_set_ab_ },
+                { &route_set_ba_ });
+  SimulateRoute(aut,
+                side_b(),
+                side_a(),
+                route_setting_in_progress,
+                { &route_set_ba_ },
+                { &route_set_ab_ });
 }
 
 const CtrlTrackInterface* StraightTrack::FindOtherSide(

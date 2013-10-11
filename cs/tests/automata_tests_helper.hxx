@@ -338,4 +338,38 @@ protected:
     bool bit_;
   };
 
+  bool QueryVar(const automata::EventBasedVariable& var) {
+    return all_listener_.Query(var);
+  } 
+
+ private:
+  friend class GlobalEventListener;
+
+  class GlobalEventListener : public EventHandler {
+   public:
+    GlobalEventListener() : tick_(0) {
+      AutomataNodeTests::registry()->RegisterGlobalHandler(this);
+    }
+
+    virtual ~GlobalEventListener() {
+      AutomataNodeTests::registry()->UnregisterGlobalHandler(this);
+    }
+
+    virtual void HandleEvent(uint64_t event) {
+      event_last_seen_[event] = ++tick_;
+    }
+
+    bool Query(const automata::EventBasedVariable& var) {
+      int t_on = event_last_seen_[var.event_on()];
+      int t_off = event_last_seen_[var.event_off()];
+      HASSERT(t_on || t_off);
+      return t_on > t_off;
+    }
+
+   private:
+    map<uint64_t, int> event_last_seen_;
+    int tick_;
+  };
+
+  GlobalEventListener all_listener_;
 };

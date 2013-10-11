@@ -292,6 +292,7 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_ShortAndLongPieces) {
   previous_detector.Set(true);
   Run();
   EXPECT_TRUE(sim_occ.value());
+  EXPECT_TRUE(QueryVar(piece.simulated_occupancy_));
   EXPECT_TRUE(sim_occ2.value());
   EXPECT_TRUE(sim_occ3.value());
   EXPECT_FALSE(sim_occ4.value());
@@ -299,10 +300,43 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_ShortAndLongPieces) {
   previous_detector.Set(false);
   Run();
   EXPECT_FALSE(sim_occ.value());
+  EXPECT_FALSE(QueryVar(piece.simulated_occupancy_));
   EXPECT_FALSE(sim_occ2.value());
   EXPECT_FALSE(sim_occ3.value());
   EXPECT_FALSE(sim_occ4.value());
 }
+
+TEST_F(AutomataNodeTests, SimulatedOccupancy_RouteSetting) {
+  Board brd;
+  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
+  FakeBit previous_detector(this);
+  FakeBit next_detector(this);
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5020, 2*32,
+                                   &previous_detector);
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5030, 3*32,
+                                  &next_detector);
+
+  piece.side_a()->Bind(before.side_b());
+  piece.side_b()->Bind(after.side_a());
+
+  DefAut(strategyaut, brd, {
+      piece.SimulateAllOccupancy(this);
+      piece.SimulateAllRoutes(this);
+      HandleInitState(this);
+    });
+
+  SetupRunner(&brd);
+
+  EventListener sim_occ(piece.simulated_occupancy_);
+  EventListener route_ab(piece.route_set_ab_);
+  EventListener route_ba(piece.route_set_ba_);
+
+  
+  Run();
+
+
+}
+
 
 }  // namespace automata
 
