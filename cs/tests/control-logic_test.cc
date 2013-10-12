@@ -327,13 +327,51 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_RouteSetting) {
 
   SetupRunner(&brd);
 
-  EventListener sim_occ(piece.simulated_occupancy_);
-  EventListener route_ab(piece.route_set_ab_);
-  EventListener route_ba(piece.route_set_ba_);
-
-  
+  Run();
   Run();
 
+  EXPECT_EQ(StBase.state, runner_->GetAllAutomatas()[0]->GetState());
+
+  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
+  EXPECT_FALSE(QueryVar(piece.route_set_ab_));
+  EXPECT_FALSE(QueryVar(piece.tmp_route_setting_in_progress_));
+  // An incoming route request here.
+  SetVar(before.side_b()->out_try_set_route, true);
+
+  Run();
+
+  // Should be propagated.
+  EXPECT_TRUE(QueryVar(piece.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(piece.side_a()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
+
+  Run();
+  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  Run();
+
+  EXPECT_EQ(after.side_a()->binding(), piece.side_b());
+  EXPECT_EQ(before.side_b()->binding(), piece.side_a());
+  EXPECT_TRUE(QueryVar(after.side_a()->binding()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
+  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(QueryVar(piece.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(piece.route_set_ab_));
+  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
+
+  SetVar(after.side_a()->in_route_set_success, true);
+  SetVar(after.side_a()->binding()->out_try_set_route, false);
+  Run();
+  Run();
+
+  EXPECT_FALSE(QueryVar(piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(SQueryVar(after.side_a()->binding()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(piece.route_set_ab_));
+  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
 
 }
 

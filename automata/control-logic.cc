@@ -42,7 +42,8 @@ typedef std::initializer_list<const GlobalVariable*> ConstVarList;
 void SimulateRoute(Automata* aut,
                    CtrlTrackInterface* before,
                    CtrlTrackInterface* after,
-                   LocalVariable* route_setting_in_progress,
+                   LocalVariable* any_route_setting_in_progress,
+                   LocalVariable* current_route_setting_in_progress,
                    const MutableVarList current_route,
                    const ConstVarList conflicting_routes) {
   LocalVariable* in_try_set_route =
@@ -62,7 +63,7 @@ void SimulateRoute(Automata* aut,
   // Initialization
   Def().IfState(StInit)
       .ActReg0(out_try_set_route)
-      .ActReg0(route_setting_in_progress)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(in_route_set_success)
       .ActReg0(in_route_set_failure);
 
@@ -70,25 +71,28 @@ void SimulateRoute(Automata* aut,
   // progress.
   Def()
       .IfReg1(*in_try_set_route)
-      .IfReg1(*route_setting_in_progress)
+      .IfReg1(*any_route_setting_in_progress)
       .ActReg1(in_route_set_failure)
       .ActReg0(in_route_set_success)
       .ActReg0(in_try_set_route);
-  // We also reject is the outgoing route request hasn't returned to zero yet.
+  // We also reject if the outgoing route request hasn't returned to zero yet.
   Def()
       .IfReg1(*in_try_set_route)
-      .IfReg1(*route_setting_in_progress)
+      .IfReg1(*out_try_set_route)
       .ActReg1(in_route_set_failure)
       .ActReg0(in_route_set_success)
       .ActReg0(in_try_set_route);
   // Check if we can propagate the route setting request.
   Def()
       .IfReg1(*in_try_set_route)
-      .IfReg0(*route_setting_in_progress)
+      .IfReg0(*any_route_setting_in_progress)
       .Rept(&Automata::Op::IfReg0, const_current_route)
       .Rept(&Automata::Op::IfReg0, conflicting_routes)
       // then grab the in-progress lock
-      .ActReg1(route_setting_in_progress)
+      .ActReg1(any_route_setting_in_progress)
+      // and move the route set request to pending
+      .ActReg1(current_route_setting_in_progress)
+      .ActReg0(in_try_set_route)
       // reset feedback bits for safety
       .ActReg0(out_route_set_success)
       .ActReg0(out_route_set_failure)
@@ -96,46 +100,53 @@ void SimulateRoute(Automata* aut,
       .ActReg1(out_try_set_route);
   Def()
       .IfReg1(*in_try_set_route)
-      .IfReg0(*route_setting_in_progress)
+      .IfReg0(*any_route_setting_in_progress)
       // so we failed to propagate; reject the request.
       .ActReg1(in_route_set_failure)
       .ActReg0(in_route_set_success)
       .ActReg0(in_try_set_route);
   // Now look for feedback from propagated request.
   Def()
-      .IfReg1(*in_try_set_route)
+      .IfReg1(*current_route_setting_in_progress)
       .IfReg1(*out_route_set_failure)
-      .ActReg0(in_try_set_route)
+      .ActReg0(current_route_setting_in_progress)
       .ActReg0(out_route_set_failure)
       .ActReg0(out_route_set_success)
-      .ActReg0(route_setting_in_progress)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(in_route_set_success)
       .ActReg1(in_route_set_failure);
   Def()
-      .IfReg1(*in_try_set_route)
+      .IfReg1(*current_route_setting_in_progress)
       .IfReg1(*out_route_set_success)
-      .ActReg0(in_try_set_route)
+      .ActReg0(current_route_setting_in_progress)
       .ActReg0(out_route_set_failure)
       .ActReg0(out_route_set_success)
-      .ActReg0(route_setting_in_progress)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(in_route_set_failure)
       .ActReg1(in_route_set_success)
       .Rept(&Automata::Op::ActReg1, current_route);
 }
 
 void StraightTrack::SimulateAllRoutes(Automata* aut) {
-  LocalVariable* route_setting_in_progress =
+  LocalVariable* any_route_setting_in_progress =
       aut->ImportVariable(&tmp_route_setting_in_progress_);
+  Def().IfState(StInit)
+      .ActReg0(aut->ImportVariable(&route_set_ab_))
+      .ActReg0(aut->ImportVariable(&route_set_ba_))
+      .ActReg0(aut->ImportVariable(&route_pending_ab_))
+      .ActReg0(aut->ImportVariable(&route_pending_ba_));
   SimulateRoute(aut,
                 side_a(),
                 side_b(),
-                route_setting_in_progress,
+                any_route_setting_in_progress,
+                aut->ImportVariable(&route_pending_ab_),
                 { &route_set_ab_ },
                 { &route_set_ba_ });
   SimulateRoute(aut,
                 side_b(),
                 side_a(),
-                route_setting_in_progress,
+                any_route_setting_in_progress,
+                aut->ImportVariable(&route_pending_ba_),
                 { &route_set_ba_ },
                 { &route_set_ab_ });
 }
