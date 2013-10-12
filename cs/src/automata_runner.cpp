@@ -152,7 +152,8 @@ public:
     EventBit(node_t node,
              uint64_t event_on, uint64_t event_off,
              uint8_t mask, uint8_t* ptr)
-        : MemoryToggleEventHandler<uint8_t>(event_on, event_off, mask, ptr) {
+        : MemoryToggleEventHandler<uint8_t>(event_on, event_off, mask, ptr),
+          defined_(false) {
         if (0) fprintf(stderr,"event bit create on node %p\n", node);
         nmranet_event_producer(node, event_on, EVENT_STATE_INVALID);
         nmranet_event_producer(node, event_off, EVENT_STATE_INVALID);
@@ -161,13 +162,15 @@ public:
     }
 
     virtual bool Read(node_t node, Automata* aut) {
+      // TODO(balazs.racz): we should consider CHECK failing here if
+      // !defined. That will force us to explicitly reset every bit in StInit.
         return ((*memory_) & mask_);
     }
 
     virtual void Write(node_t node, Automata* aut, bool value) {
         if (0) fprintf(stderr,"event bit write to node %p\n", node);
         bool last_value = !!((*memory_) & mask_);
-        if (value == last_value) return;
+        if ((value == last_value) && defined_) return;
         if (value) {
             *memory_ |= mask_;
             nmranet_event_produce(node, event_on_, EVENT_STATE_VALID);
@@ -178,6 +181,15 @@ public:
             nmranet_event_produce(node, event_off_, EVENT_STATE_VALID);
         }
     }
+
+  virtual void HandleEvent(uint64_t event) {
+    defined_ = true;
+    MemoryToggleEventHandler<uint8_t>::HandleEvent(event);
+  }
+
+ private:
+  // This bit is true if we've already seen an event that defines this bit.
+  bool defined_;
 };
 
 ReadWriteBit* AutomataRunner::create_variable() {
