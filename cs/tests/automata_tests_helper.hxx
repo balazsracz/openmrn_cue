@@ -338,8 +338,17 @@ protected:
     bool bit_;
   };
 
+  // Returns the current value of the event based variable var. This is
+  // independent of the internal event representation (state bits) and only
+  // listens to OpenLCB events. If the variable is undefined, it is assumed to
+  // be false (default state of internal bit).
   bool QueryVar(const automata::EventBasedVariable& var) {
     return all_listener_.Query(var);
+  } 
+
+  // Like QueryVar, but assert fails if the variable value is not defined yet.
+  bool SQueryVar(const automata::EventBasedVariable& var) {
+    return all_listener_.StrictQuery(var);
   } 
 
  private:
@@ -359,10 +368,17 @@ protected:
       event_last_seen_[event] = ++tick_;
     }
 
-    bool Query(const automata::EventBasedVariable& var) {
+    bool StrictQuery(const automata::EventBasedVariable& var) {
       int t_on = event_last_seen_[var.event_on()];
       int t_off = event_last_seen_[var.event_off()];
       HASSERT(t_on || t_off);
+      return t_on > t_off;
+    }
+
+    bool Query(const automata::EventBasedVariable& var) {
+      int t_on = event_last_seen_[var.event_on()];
+      int t_off = event_last_seen_[var.event_off()];
+      // If they are both zero, we return false.
       return t_on > t_off;
     }
 
