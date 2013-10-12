@@ -395,6 +395,62 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_RouteSetting) {
 }
 
 
+TEST_F(AutomataNodeTests, SimulatedOccupancy_SimultSetting) {
+  Board brd;
+  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
+  FakeBit previous_detector(this);
+  FakeBit next_detector(this);
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5020, 2*32,
+                                   &previous_detector);
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5030, 3*32,
+                                  &next_detector);
+
+  piece.side_a()->Bind(before.side_b());
+  piece.side_b()->Bind(after.side_a());
+
+  DefAut(strategyaut, brd, {
+      piece.SimulateAllOccupancy(this);
+      piece.SimulateAllRoutes(this);
+      HandleInitState(this);
+    });
+
+  SetupRunner(&brd);
+
+  Run();
+  Run();
+
+  // An incoming route request here.
+  SetVar(before.side_b()->out_try_set_route, true);
+  Run();
+
+  // Should be propagated.
+  EXPECT_TRUE(QueryVar(piece.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(piece.side_a()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(piece.side_a()->in_route_set_failure));
+  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  Run();
+
+  // A conflicting route request,
+  SetVar(after.side_a()->out_try_set_route, true);
+  Run();
+  // which is rejected immediately.
+  EXPECT_FALSE(QueryVar(after.side_a()->out_try_set_route));
+  EXPECT_FALSE(SQueryVar(after.side_a()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(after.side_a()->binding()->in_route_set_failure));
+
+  // Then the first route set request returns.
+  SetVar(after.side_a()->in_route_set_success, true);
+  SetVar(after.side_a()->binding()->out_try_set_route, false);
+  Run();
+
+  // And then the first route sets properly.
+  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(piece.route_set_ab_));
+  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
+}
 
 TEST_F(AutomataNodeTests, SimulatedOccupancy_MultiRoute) {
   Board brd;
