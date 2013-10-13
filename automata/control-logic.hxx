@@ -154,9 +154,9 @@ class StraightTrack : public OccupancyLookupInterface {
   
   // This funciton will be called from SimulateOccupancy when the simulated
   // occupancy goes to zero and thus the route should be released.
-  void ReleaseRouteCallback(CtrlTrackInterface* side, Automata::Op* op) {
-    op->ActReg1(op->parent()->ImportVariable(&side->out_route_released));
-  }
+  void ReleaseRouteCallback(CtrlTrackInterface* side_out,
+                            Automata::LocalVariable* route_set,
+                            Automata::Op* op);
 
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece);
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_MultipleShortPiece);
@@ -164,6 +164,7 @@ class StraightTrack : public OccupancyLookupInterface {
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_RouteSetting);
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SimultSetting);
   FRIEND_TEST(AutomataNodeTests, ReverseRoute);
+  FRIEND_TEST(AutomataNodeTests, MultiRoute);
 
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]

@@ -508,7 +508,7 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_SimultSetting) {
   EXPECT_FALSE(QueryVar(piece.route_set_ab_));
 }
 
-TEST_F(AutomataNodeTests, SimulatedOccupancy_MultiRoute) {
+TEST_F(AutomataNodeTests, MultiRoute) {
   Board brd;
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
   static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5040, 4*32);
@@ -516,30 +516,71 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_MultiRoute) {
   static StraightTrackShort piece4(&brd, BRACZ_LAYOUT | 0x50C0, 6*32);
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
-  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 2*32,
-                                   &previous_detector);
-  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5140, 3*32,
-                                  &next_detector);
+  static StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 2*32,
+                                          &previous_detector);
+  static StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5140, 3*32,
+                                         &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
   piece2.side_b()->Bind(piece3.side_a());
   piece3.side_b()->Bind(piece4.side_a());
   piece4.side_b()->Bind(after.side_a());
 
+#define DefPiece(pp) DefAut(aut##pp, brd, { \
+      pp.SimulateAllOccupancy(this);       \
+      pp.SimulateAllRoutes(this);          \
+      HandleInitState(this);               \
+    })
+
+  DefPiece(piece);
+  DefPiece(piece2);
+  DefPiece(piece3);
+  DefPiece(piece4);
+
+  // This will immediately accept a route at the end stop.
   DefAut(strategyaut, brd, {
-      std::initializer_list<StraightTrack*> pieces{
-        &piece, &piece2, &piece3, &piece4};
-      for (auto& p : pieces) {
-        p->SimulateAllOccupancy(this);
-        p->SimulateAllRoutes(this);
-      }
-      HandleInitState(this);
+      LocalVariable* try_set_route = 
+          ImportVariable(&after.side_a()->binding()->out_try_set_route);
+      LocalVariable* route_set_succcess = 
+          ImportVariable(&after.side_a()->in_route_set_success);
+      Def()
+          .IfReg1(*try_set_route)
+          .ActReg0(try_set_route)
+          .ActReg1(route_set_succcess);
     });
 
   SetupRunner(&brd);
 
-  Run();
-  Run();
+  Run(10);
+  SetVar(before.side_b()->out_try_set_route, true);
+  Run(10);
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
+
+  SetVar(before.side_b()->binding()->in_route_set_success, false);
+  Run(10);
+  
+  // Now we run the route.
+  previous_detector.Set(true);
+  Run(10);
+  previous_detector.Set(false);
+  Run(10);
+  next_detector.Set(true);
+  Run(10);
+  next_detector.Set(false);
+  Run(10);
+
+  EXPECT_FALSE(SQueryVar(piece.simulated_occupancy_));
+  EXPECT_FALSE(SQueryVar(piece.route_set_ab_));
+
+  // Route should be done, we set another one.
+  Run(10);
+  SetVar(before.side_b()->out_try_set_route, true);
+  Run(10);
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
 }
 
 

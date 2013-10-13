@@ -45,6 +45,28 @@ template<class T, class P1> OpCallback1<T, P1> NewCallback(T* obj, typename OpCa
   return OpCallback1<T, P1>(obj, p1, fptr);
 }
 
+template<class T, class P1, class P2> class OpCallback2 : public OpCallback {
+ public:
+  typedef void (T::*fptr_t)(P1 p1, P2 p2, Automata::Op* op);
+
+  OpCallback2(T* parent, P1 p1, P2 p2, fptr_t fptr)
+      : parent_(parent), p1_(p1), p2_(p2), fptr_(fptr) {}
+  virtual ~OpCallback2() {}
+  virtual void Run(Automata::Op* op) {
+    (parent_->*fptr_)(p1_, p2_, op);
+  }
+
+ private:
+  T* parent_;
+  P1 p1_;
+  P2 p2_;
+  fptr_t fptr_;
+};
+
+template<class T, class P1, class P2> OpCallback2<T, P1, P2> NewCallback(T* obj, typename OpCallback2<T, P1, P2>::fptr_t fptr, P1 p1, P2 p2) {
+  return OpCallback2<T, P1, P2>(obj, p1, p2, fptr);
+}
+
 class Automata::Op {
 public:
     Op(Automata* parent)

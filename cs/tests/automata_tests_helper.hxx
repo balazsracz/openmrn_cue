@@ -287,9 +287,11 @@ protected:
     while (nmranet_event_pending(node_) || !dispatch_thread_waiting_);
   }
   
-  void Run() {
-    WaitForEventThread();
-    runner_->RunAllAutomata();
+  void Run(int count = 1) {
+    for (int i = 0; i < count; ++i) {
+      WaitForEventThread();
+      runner_->RunAllAutomata();
+    }
     WaitForEventThread();
   }
 

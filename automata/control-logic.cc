@@ -16,21 +16,23 @@ typedef Automata::LocalVariable LocalVariable;
 void StraightTrack::SimulateAllOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(&simulated_occupancy_);
   auto* tmp = aut->ImportVariable(&tmp_seen_train_in_next_);
+  auto* route_set_ab = aut->ImportVariable(&route_set_ab_); 
+  auto* route_set_ba = aut->ImportVariable(&route_set_ba_); 
   auto side_b_release = NewCallback(
-      this, &StraightTrack::ReleaseRouteCallback, side_b());
+      this, &StraightTrack::ReleaseRouteCallback, side_b(), route_set_ab);
   auto side_a_release = NewCallback(
-      this, &StraightTrack::ReleaseRouteCallback, side_a());
+      this, &StraightTrack::ReleaseRouteCallback, side_a(), route_set_ba);
   SimulateOccupancy(aut,
                     sim_occ,
                     tmp,
-                    aut->ImportVariable(route_set_ab_),
+                    *route_set_ab,
                     side_a(),
                     side_b(),
                     &side_b_release);
   SimulateOccupancy(aut,
                     sim_occ,
                     tmp,
-                    aut->ImportVariable(route_set_ba_),
+                    *route_set_ba,
                     side_b(),
                     side_a(),
                     &side_a_release);
@@ -38,6 +40,19 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
 
 typedef std::initializer_list<GlobalVariable*> MutableVarList;
 typedef std::initializer_list<const GlobalVariable*> ConstVarList;
+
+void StraightTrack::ReleaseRouteCallback(CtrlTrackInterface* side_out,
+                                         LocalVariable* route_set,
+                                         Automata::Op* op) {
+  // TODO: strictly speaking here we should also take into account the
+  // occupancy status of the neighbors to ensure that we are only releasing a
+  // route component if the previous route components are already
+  // released. That would need another temporary variable that we can save the
+  // pending route release into.
+
+  op->ActReg1(op->parent()->ImportVariable(&side_out->out_route_released));
+  op->ActReg0(route_set);
+}
 
 void SimulateRoute(Automata* aut,
                    CtrlTrackInterface* before,
