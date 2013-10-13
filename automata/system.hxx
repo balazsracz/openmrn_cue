@@ -159,9 +159,9 @@ private:
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 
-#define DefCustomAut(name, boardref, base, body) class Aut##name : public base {public:  Aut##name(decltype(boardref)* board) : board_(board) {board_->AddAutomata(this); } protected: decltype(boardref)* board_; virtual Board* board() {return board_;} virtual void Body() body  } name##instance(&(boardref))
+#define DefCustomAut(name, boardref, base, body...) class Aut##name : public base {public:  Aut##name(decltype(boardref)* board) : board_(board) {board_->AddAutomata(this); } protected: decltype(boardref)* board_; virtual Board* board() {return board_;} virtual void Body() body  } name##instance(&(boardref))
 
-#define DefAut(name, boardref, body) DefCustomAut(name, boardref, automata::Automata, body)
+#define DefAut(name, boardref, body...) DefCustomAut(name, boardref, automata::Automata, body)
 
 }
 
