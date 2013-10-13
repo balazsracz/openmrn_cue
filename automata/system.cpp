@@ -62,6 +62,7 @@ const Automata::LocalVariable& Automata::ImportVariable(
   LocalVariable& ret = used_variables_[&var];
   if (ret.id < 0) {
     ret.id = next_id;
+    assert(ret.id < MAX_IMPORT_VAR);
   }
   return ret;
 }

@@ -198,7 +198,7 @@ private:
     DeclaredBitsMap declared_bits_;
     //! The bits that are imported to the current automata. This gets filled up
     //! during the automata code execution.
-    ReadWriteBit* imported_bits_[32];
+    ReadWriteBit* imported_bits_[MAX_IMPORT_VAR];
     //! Points to the current automata.
     Automata* current_automata_;
     //! The OpenMRN node used for generating sourced events.

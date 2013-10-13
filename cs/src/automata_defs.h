@@ -1,5 +1,7 @@
 // Common definitions between C and ASM parts of automata library.
 
+#define MAX_IMPORT_VAR 32
+
 #define INSN_OFFSET 0x0800
 
 // 0b0.......

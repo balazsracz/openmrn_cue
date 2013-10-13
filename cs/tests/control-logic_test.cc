@@ -68,7 +68,7 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece) {
   FakeBit next_detector(this);
   StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 64,
                                    &previous_detector);
-  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5100, 96,
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5140, 96,
                                   &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(after.side_a());
@@ -110,12 +110,12 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece) {
 TEST_F(AutomataNodeTests, SimulatedOccupancy_MultipleShortPiece) {
   Board brd;
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 32);
-  static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5010, 128);
+  static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5040, 128);
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 64,
                                    &previous_detector);
-  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5100, 96,
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5140, 96,
                                   &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
@@ -183,13 +183,13 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_ShortAndLongPieces) {
   Board brd;
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
   static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5040, 4*32);
-  static StraightTrackLong piece3(&brd, BRACZ_LAYOUT | 0x5050, 5*32);
-  static StraightTrackShort piece4(&brd, BRACZ_LAYOUT | 0x5060, 6*32);
+  static StraightTrackLong piece3(&brd, BRACZ_LAYOUT | 0x5080, 5*32);
+  static StraightTrackShort piece4(&brd, BRACZ_LAYOUT | 0x50C0, 6*32);
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
-  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5020, 2*32,
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 2*32,
                                    &previous_detector);
-  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5030, 3*32,
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5140, 3*32,
                                   &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
@@ -311,9 +311,9 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_RouteSetting) {
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
-  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5020, 2*32,
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5040, 2*32,
                                    &previous_detector);
-  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5030, 3*32,
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5080, 3*32,
                                   &next_detector);
 
   piece.side_a()->Bind(before.side_b());
@@ -352,6 +352,8 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_RouteSetting) {
 
   EXPECT_EQ(after.side_a()->binding(), piece.side_b());
   EXPECT_EQ(before.side_b()->binding(), piece.side_a());
+  EXPECT_EQ(after.side_a(), piece.side_b()->binding());
+  EXPECT_EQ(before.side_b(), piece.side_a()->binding());
   EXPECT_TRUE(QueryVar(after.side_a()->binding()->out_try_set_route));
   EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_success));
   EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
@@ -394,15 +396,14 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_RouteSetting) {
   EXPECT_TRUE(QueryVar(after.side_a()->binding()->in_route_set_failure));
 }
 
-
-TEST_F(AutomataNodeTests, SimulatedOccupancy_SimultSetting) {
+TEST_F(AutomataNodeTests, ReverseRoute) {
   Board brd;
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
-  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5020, 2*32,
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5040, 2*32,
                                    &previous_detector);
-  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5030, 3*32,
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5080, 3*32,
                                   &next_detector);
 
   piece.side_a()->Bind(before.side_b());
@@ -420,49 +421,104 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_SimultSetting) {
   Run();
 
   // An incoming route request here.
-  SetVar(before.side_b()->out_try_set_route, true);
+  SetVar(after.side_a()->out_try_set_route, true);
+
+  Run();
+
+  // Debug
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(piece.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(QueryVar(piece.route_pending_ab_));
+  EXPECT_TRUE(QueryVar(piece.route_pending_ba_));
+
+  // Should be propagated.
+  EXPECT_TRUE(QueryVar(piece.side_a()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(piece.side_b()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(piece.side_b()->in_route_set_failure));
+
+  Run();
+
+  SetVar(before.side_b()->in_route_set_success, true);
+  SetVar(before.side_b()->binding()->out_try_set_route, false);
+  Run();
+  Run();
+
+  EXPECT_TRUE(SQueryVar(piece.side_b()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(piece.side_b()->in_route_set_failure));
+  EXPECT_TRUE(QueryVar(piece.route_set_ba_));
+  EXPECT_FALSE(QueryVar(piece.route_set_ab_));
+}
+
+
+TEST_F(AutomataNodeTests, SimulatedOccupancy_SimultSetting) {
+  Board brd;
+  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
+  FakeBit previous_detector(this);
+  FakeBit next_detector(this);
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5040, 2*32,
+                                   &previous_detector);
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5080, 3*32,
+                                  &next_detector);
+
+  piece.side_a()->Bind(before.side_b());
+  piece.side_b()->Bind(after.side_a());
+
+  DefAut(strategyaut, brd, {
+      piece.SimulateAllOccupancy(this);
+      piece.SimulateAllRoutes(this);
+      HandleInitState(this);
+    });
+
+  SetupRunner(&brd);
+
+  Run();
+  Run();
+
+  // An incoming route request here.
+  SetVar(after.side_a()->out_try_set_route, true);
   Run();
 
   // Should be propagated.
-  EXPECT_TRUE(QueryVar(piece.side_b()->out_try_set_route));
-  EXPECT_FALSE(QueryVar(piece.side_a()->in_route_set_success));
-  EXPECT_FALSE(QueryVar(piece.side_a()->in_route_set_failure));
+  EXPECT_TRUE(SQueryVar(piece.side_a()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(piece.side_b()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(piece.side_b()->in_route_set_failure));
   EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
-  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(after.side_a()->out_try_set_route));
   Run();
 
   // A conflicting route request,
-  SetVar(after.side_a()->out_try_set_route, true);
+  SetVar(before.side_b()->out_try_set_route, true);
   Run();
   // which is rejected immediately.
-  EXPECT_FALSE(QueryVar(after.side_a()->out_try_set_route));
-  EXPECT_FALSE(SQueryVar(after.side_a()->binding()->in_route_set_success));
-  EXPECT_TRUE(QueryVar(after.side_a()->binding()->in_route_set_failure));
+  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_FALSE(SQueryVar(before.side_b()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_failure));
 
   // Then the first route set request returns.
-  SetVar(after.side_a()->in_route_set_success, true);
-  SetVar(after.side_a()->binding()->out_try_set_route, false);
+  SetVar(before.side_b()->in_route_set_success, true);
+  SetVar(before.side_b()->binding()->out_try_set_route, false);
   Run();
 
   // And then the first route sets properly.
-  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_success));
-  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
-  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
-  EXPECT_TRUE(QueryVar(piece.route_set_ab_));
-  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
+  EXPECT_TRUE(QueryVar(after.side_a()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(after.side_a()->binding()->in_route_set_failure));
+  EXPECT_FALSE(QueryVar(after.side_a()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(piece.route_set_ba_));
+  EXPECT_FALSE(QueryVar(piece.route_set_ab_));
 }
 
 TEST_F(AutomataNodeTests, SimulatedOccupancy_MultiRoute) {
   Board brd;
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1*32);
   static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5040, 4*32);
-  static StraightTrackLong piece3(&brd, BRACZ_LAYOUT | 0x5050, 5*32);
-  static StraightTrackShort piece4(&brd, BRACZ_LAYOUT | 0x5060, 6*32);
+  static StraightTrackLong piece3(&brd, BRACZ_LAYOUT | 0x5080, 5*32);
+  static StraightTrackShort piece4(&brd, BRACZ_LAYOUT | 0x50C0, 6*32);
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
-  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5020, 2*32,
+  StraightTrackWithDetector before(&brd, BRACZ_LAYOUT | 0x5100, 2*32,
                                    &previous_detector);
-  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5030, 3*32,
+  StraightTrackWithDetector after(&brd, BRACZ_LAYOUT | 0x5140, 3*32,
                                   &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
