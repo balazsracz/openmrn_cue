@@ -525,6 +525,21 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_MultiRoute) {
   piece2.side_b()->Bind(piece3.side_a());
   piece3.side_b()->Bind(piece4.side_a());
   piece4.side_b()->Bind(after.side_a());
+
+  DefAut(strategyaut, brd, {
+      std::initializer_list<StraightTrack*> pieces{
+        &piece, &piece2, &piece3, &piece4};
+      for (auto& p : pieces) {
+        p->SimulateAllOccupancy(this);
+        p->SimulateAllRoutes(this);
+      }
+      HandleInitState(this);
+    });
+
+  SetupRunner(&brd);
+
+  Run();
+  Run();
 }
 
 
