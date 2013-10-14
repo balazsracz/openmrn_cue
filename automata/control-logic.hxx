@@ -4,6 +4,9 @@
 #ifndef _AUTOMATA_CONTROL_LOGIC_HXX_
 #define _AUTOMATA_CONTROL_LOGIC_HXX_
 
+#include <map>
+#include <algorithm>
+
 #include "system.hxx"
 #include "operations.hxx"
 #include "variables.hxx"
@@ -22,6 +25,37 @@ struct PhysicalSignal {
   GlobalVariable* signal_raw;
 };
 
+typedef Callback1<Automata*> AutomataCallback;
+
+// This class allows registering multiple feature callbacks that will all be
+// applied to an automata in one go, in user-specified ordering.
+class AutomataPlugin {
+ public:
+
+
+  AutomataPlugin() {}
+  virtual ~AutomataPlugin() {
+    for (const auto& it : cb_) {
+      delete it.second;
+    }
+  }
+
+  void RunAll(Automata* aut) {
+    for (const auto& it : cb_) {
+      it.second->Run(aut);
+    }
+  }
+
+  // The plugins will be called in increasing order of n.
+  void AddAutomataPlugin(int n, AutomataCallback* cb) {
+    cb_.insert(std::make_pair(n, cb));
+  }
+
+ private:
+  std::multimap<int, AutomataCallback*> cb_;
+};
+
+
 class CtrlTrackInterface;
 
 class OccupancyLookupInterface {
@@ -29,7 +63,7 @@ public:
   virtual ~OccupancyLookupInterface() {}
 
   // Returns the first (real) occupancy detector within train length from the
-  // interface `from'. Returns NULL if no such detector was found. The interface is interpreted by 
+  // interface `from'. Returns NULL if no such detector was found. The interface is interpreted by
   virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) = 0;
 
@@ -116,7 +150,8 @@ void SimulateOccupancy(Automata* aut,
                        CtrlTrackInterface* next_if,\
                        OpCallback* release_cb);
 
-class StraightTrack : public OccupancyLookupInterface {
+class StraightTrack : public OccupancyLookupInterface,
+                      public virtual AutomataPlugin {
  public:
   StraightTrack(Board* brd, uint64_t event_base, int counter_base)
       : side_a_(brd, this, event_base, counter_base),
@@ -151,7 +186,7 @@ class StraightTrack : public OccupancyLookupInterface {
 
   // If you give this side_a() it will return side_b() and vice versa.
   const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s);
-  
+
   // This funciton will be called from SimulateOccupancy when the simulated
   // occupancy goes to zero and thus the route should be released.
   void ReleaseRouteCallback(CtrlTrackInterface* side_out,
@@ -198,11 +233,12 @@ public:
   // interface `from'. Returns NULL if no such detector was found.
   virtual const GlobalVariable* LookupFarDetector(
       const CtrlTrackInterface* from) {
+    // TODO(bracz): this should actually be propagated instead of NULLing.
     return NULL;
   }
 
 protected:
-  GlobalVariable* detector_;    
+  GlobalVariable* detector_;
 };
 
 
@@ -245,7 +281,7 @@ public:
 };
 
 
-                       
+
 }  // namespace automata
 
 #endif // _AUTOMATA_CONTROL_LOGIC_HXX_

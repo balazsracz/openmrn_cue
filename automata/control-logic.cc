@@ -16,8 +16,8 @@ typedef Automata::LocalVariable LocalVariable;
 void StraightTrack::SimulateAllOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(&simulated_occupancy_);
   auto* tmp = aut->ImportVariable(&tmp_seen_train_in_next_);
-  auto* route_set_ab = aut->ImportVariable(&route_set_ab_); 
-  auto* route_set_ba = aut->ImportVariable(&route_set_ba_); 
+  auto* route_set_ab = aut->ImportVariable(&route_set_ab_);
+  auto* route_set_ba = aut->ImportVariable(&route_set_ba_);
   auto side_b_release = NewCallback(
       this, &StraightTrack::ReleaseRouteCallback, side_b(), route_set_ab);
   auto side_a_release = NewCallback(
