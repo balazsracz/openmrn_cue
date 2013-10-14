@@ -31,8 +31,6 @@ typedef Callback1<Automata*> AutomataCallback;
 // applied to an automata in one go, in user-specified ordering.
 class AutomataPlugin {
  public:
-
-
   AutomataPlugin() {}
   virtual ~AutomataPlugin() {
     for (const auto& it : cb_) {
@@ -54,7 +52,6 @@ class AutomataPlugin {
  private:
   std::multimap<int, AutomataCallback*> cb_;
 };
-
 
 class CtrlTrackInterface;
 
@@ -170,7 +167,11 @@ class StraightTrack : public OccupancyLookupInterface,
                                 counter_base + 21),
         tmp_route_setting_in_progress_(
             brd, event_base + 32 + 12, event_base + 32 + 13, counter_base + 22)
-  {}
+  {
+
+    AddAutomataPlugin(20, NewCallbackPtr(
+        this, &StraightTrack::SimulateAllOccupancy));
+  }
 
   CtrlTrackInterface* side_a() { return &side_a_; }
   CtrlTrackInterface* side_b() { return &side_b_; }
@@ -246,7 +247,10 @@ class StraightTrackShort : public StraightTrack {
 public:
   StraightTrackShort(Board* brd,
                      uint64_t event_base, int counter_base)
-    : StraightTrack(brd, event_base, counter_base) {}
+    : StraightTrack(brd, event_base, counter_base) {
+    AddAutomataPlugin(30, NewCallbackPtr(
+        (StraightTrack*)this, &StraightTrack::SimulateAllRoutes));
+  }
 
   virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) {
@@ -265,7 +269,10 @@ class StraightTrackLong : public StraightTrack {
 public:
   StraightTrackLong(Board* brd,
                      uint64_t event_base, int counter_base)
-    : StraightTrack(brd, event_base, counter_base) {}
+    : StraightTrack(brd, event_base, counter_base) {
+    AddAutomataPlugin(30, NewCallbackPtr(
+        this, &StraightTrack::SimulateAllRoutes));
+  }
 
   virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) {

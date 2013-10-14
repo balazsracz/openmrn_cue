@@ -133,33 +133,37 @@ class CbTemplate {
     ret += "};\n";
 
     // NewCallback function
-    if (!templates.empty()) {
-      ret += "template" + templates + " ";
-    }
-    string retclass =
-        SpecName() +
-        RenderTemplateArgs(false, has_object_, has_return_,
-                           bound_arg_count_, unbound_arg_count_);
-    ret += "inline " + retclass;
-    if (has_object_) ret += " NewCallback("; else  ret += " NewCallback(";
-    {
-      bool first = true;
-      if (has_object_) AddArg(&ret, &first, "T* obj");
-      AddArg(&ret, &first, FPtrType());
-      for (int i = 1; i <= bound_arg_count_; i++) {
-        AddArg(&ret, &first, ConstBoundArgRef(i));
+    if (has_object_) templates.insert(1,string("class U, "));
+    for (bool ptr : {false, true}) {
+      if (!templates.empty()) {
+        ret += "template" + templates + " ";
       }
-    }
-    ret += ") {\n  return " + retclass + "(";
-    {
-      bool first = true;
-      if (has_object_) AddArg(&ret, &first, "obj");
-      AddArg(&ret, &first, "fptr_t");
-      for (int i = 1; i <= bound_arg_count_; i++) {
-        AddArg(&ret, &first, BoundArgArg(i));
+      string retclass =
+          SpecName() +
+          RenderTemplateArgs(false, has_object_, has_return_,
+                             bound_arg_count_, unbound_arg_count_);
+      ret += "inline " + retclass;
+      if (ptr) ret += "* NewCallbackPtr("; else  ret += " NewCallback(";
+      {
+        bool first = true;
+        if (has_object_) AddArg(&ret, &first, "U* obj");
+        AddArg(&ret, &first, FPtrType());
+        for (int i = 1; i <= bound_arg_count_; i++) {
+          AddArg(&ret, &first, ConstBoundArgRef(i));
+        }
       }
+      ret += ") {\n  return " + (ptr?string("new ") : string())
+          + retclass + "(";
+      {
+        bool first = true;
+        if (has_object_) AddArg(&ret, &first, "obj");
+        AddArg(&ret, &first, "fptr_t");
+        for (int i = 1; i <= bound_arg_count_; i++) {
+          AddArg(&ret, &first, BoundArgArg(i));
+        }
+      }
+      ret += ");\n}\n";
     }
-    ret += ");\n}\n";
 
     return ret;
   };

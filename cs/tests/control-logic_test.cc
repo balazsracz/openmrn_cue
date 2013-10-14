@@ -465,8 +465,9 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_SimultSetting) {
   piece.side_b()->Bind(after.side_a());
 
   DefAut(strategyaut, brd, {
-      piece.SimulateAllOccupancy(this);
-      piece.SimulateAllRoutes(this);
+      piece.RunAll(this);
+      /*piece.SimulateAllOccupancy(this);
+        piece.SimulateAllRoutes(this);*/
       HandleInitState(this);
     });
 
