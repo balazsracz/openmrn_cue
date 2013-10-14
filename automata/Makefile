@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32
+CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32 -Wall
 
 OBJS=system.o control-logic.o
 
@@ -11,6 +11,14 @@ all: lib test-aut
 -include *.d
 
 lib: libautomata.a
+
+dumpcallback: gen_callback
+	./gen_callback
+
+callback-specializations.hxx: gen_callback
+	./gen_callback > callback-specializations.hxx
+
+gencb: callback-specializations.hxx
 
 
 libautomata.a: $(OBJS)

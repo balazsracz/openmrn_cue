@@ -5,6 +5,7 @@
 
 #include "system.hxx"
 #include "../cs/src/automata_defs.h"
+#include "callback.hxx"
 
 namespace automata {
 
@@ -18,7 +19,9 @@ struct StateRef {
     int state;
 };
 
-class OpCallback {
+typedef Callback1<Automata::Op*> OpCallback;
+
+/*class OpCallback {
  public:
   virtual void Run(Automata::Op* op) = 0;
   virtual ~OpCallback() {};
@@ -65,7 +68,7 @@ template<class T, class P1, class P2> class OpCallback2 : public OpCallback {
 
 template<class T, class P1, class P2> OpCallback2<T, P1, P2> NewCallback(T* obj, typename OpCallback2<T, P1, P2>::fptr_t fptr, P1 p1, P2 p2) {
   return OpCallback2<T, P1, P2>(obj, p1, p2, fptr);
-}
+  }*/
 
 class Automata::Op {
 public:
