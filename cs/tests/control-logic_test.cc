@@ -621,9 +621,13 @@ TEST_F(AutomataNodeTests, Signal) {
 #undef DefPiece
 
   SetupRunner(&brd);
+  Run(2);
 
-  Run(10);
-
+  SetVar(first_body.side_b()->out_try_set_route, true);
+  Run(5);
+  EXPECT_FALSE(QueryVar(first_body.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(first_body.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(first_body.side_b()->binding()->in_route_set_failure));
 }
 
 }  // namespace automata
