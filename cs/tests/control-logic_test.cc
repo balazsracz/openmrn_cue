@@ -468,7 +468,6 @@ TEST_F(AutomataNodeTests, SimulatedOccupancy_SimultSetting) {
       piece.RunAll(this);
       /*piece.SimulateAllOccupancy(this);
         piece.SimulateAllRoutes(this);*/
-      HandleInitState(this);
     });
 
   SetupRunner(&brd);
@@ -537,6 +536,7 @@ TEST_F(AutomataNodeTests, MultiRoute) {
   DefPiece(piece2);
   DefPiece(piece3);
   DefPiece(piece4);
+#undef DefPiece
 
   // This will immediately accept a route at the end stop.
   DefAut(strategyaut, brd, {
@@ -584,6 +584,47 @@ TEST_F(AutomataNodeTests, MultiRoute) {
   EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
 }
 
+TEST_F(AutomataNodeTests, Signal) {
+  Board brd;
+  FakeBit previous_detector(this);
+  FakeBit request_green(this);
+  FakeBit signal_green(this);
+  FakeBit next_detector(this);
+  FakeBit request_green2(this);
+  FakeBit signal_green2(this);
+  static StraightTrackLong first_body(&brd, BRACZ_LAYOUT | 0x5180, 1*32);
+  static StraightTrackWithDetector first_det(
+      &brd, BRACZ_LAYOUT | 0x5100, 2*32, &previous_detector);
+  static SignalPiece signal(
+      &brd, BRACZ_LAYOUT | 0x5000, 3*32, &request_green, &signal_green);
+  static StraightTrackLong mid(&brd, BRACZ_LAYOUT | 0x5040, 4*32);
+  static StraightTrackLong second_body(&brd, BRACZ_LAYOUT | 0x5040, 5*32);
+  static StraightTrackWithDetector second_det(
+      &brd, BRACZ_LAYOUT | 0x5080, 6*32, &next_detector);
+  static SignalPiece second_signal(
+      &brd, BRACZ_LAYOUT | 0x50C0, 7*32, &request_green2, &signal_green2);
+  static StraightTrackLong after(&brd, BRACZ_LAYOUT | 0x5140, 8*32);
+
+  StraightTrack::BindSequence({&first_body, &first_det, &signal, &mid, &second_body, &second_det, &second_signal, &after});
+
+#define DefPiece(pp) DefAut(aut##pp, brd, { \
+      pp.RunAll(this);                      \
+    })
+
+  DefPiece(first_det);
+  DefPiece(signal);
+  DefPiece(mid);
+  DefPiece(second_body);
+  DefPiece(second_det);
+  DefPiece(second_signal);
+
+#undef DefPiece
+
+  SetupRunner(&brd);
+
+  Run(10);
+
+}
 
 }  // namespace automata
 

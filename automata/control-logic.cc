@@ -11,6 +11,18 @@ void HandleInitState(Automata* aut) {
   Def().IfState(StInit).ActState(StBase);
 }
 
+void StraightTrack::BindSequence(
+    std::initializer_list<StraightTrack*> pieces) {
+  StraightTrack* before = nullptr;
+  for (StraightTrack* entry : pieces) {
+    if (!before) {
+      before = entry;
+    } else {
+      before->side_b()->Bind(entry->side_a());
+    }
+  }
+}
+
 typedef Automata::LocalVariable LocalVariable;
 
 void StraightTrack::SimulateAllOccupancy(Automata* aut) {
@@ -166,12 +178,39 @@ void StraightTrack::SimulateAllRoutes(Automata* aut) {
                 { &route_set_ab_ });
 }
 
+void StraightTrackWithDetector::DetectorRoute(Automata* aut) {
+  LocalVariable* any_route_setting_in_progress =
+      aut->ImportVariable(&tmp_route_setting_in_progress_);
+  Def().IfState(StInit)
+      .ActReg0(aut->ImportVariable(&route_set_ab_))
+      .ActReg0(aut->ImportVariable(&route_set_ba_))
+      .ActReg0(aut->ImportVariable(&route_pending_ab_))
+      .ActReg0(aut->ImportVariable(&route_pending_ba_));
+  // We use the detector as a conflicting route. This will prevent a route
+  // being set across a straight track (in either direction) if the detector
+  // shows not empty.
+  SimulateRoute(aut,
+                side_a(),
+                side_b(),
+                any_route_setting_in_progress,
+                aut->ImportVariable(&route_pending_ab_),
+                { &route_set_ab_ },
+                { &route_set_ba_, detector_ });
+  SimulateRoute(aut,
+                side_b(),
+                side_a(),
+                any_route_setting_in_progress,
+                aut->ImportVariable(&route_pending_ba_),
+                { &route_set_ba_ },
+                { &route_set_ab_, detector_ });
+}
 
 void SignalPiece::SignalOccupancy(Automata* aut) {
   const LocalVariable& prev_detector =
       aut->ImportVariable(*side_a()->binding()->LookupNextDetector());
   LocalVariable* occ = aut->ImportVariable(&simulated_occupancy_);
   LocalVariable* signal = aut->ImportVariable(signal_);
+  LocalVariable* route = aut->ImportVariable(&route_set_ab_);
   Def()
       .IfReg1(prev_detector)
       .ActReg1(occ);
@@ -179,6 +218,7 @@ void SignalPiece::SignalOccupancy(Automata* aut) {
       .IfReg0(prev_detector)
       .IfReg1(*occ)
       .ActReg0(signal)
+      .ActReg0(route)
       .ActReg0(occ);
 }
 

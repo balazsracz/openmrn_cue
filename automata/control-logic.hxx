@@ -31,7 +31,9 @@ typedef Callback1<Automata*> AutomataCallback;
 // applied to an automata in one go, in user-specified ordering.
 class AutomataPlugin {
  public:
-  AutomataPlugin() {}
+  AutomataPlugin() {
+    AddAutomataPlugin(10000, NewCallbackPtr(&HandleInitState));
+  }
   virtual ~AutomataPlugin() {
     for (const auto& it : cb_) {
       delete it.second;
@@ -181,6 +183,8 @@ class StraightTrack : public OccupancyLookupInterface,
         this, &StraightTrack::SimulateAllOccupancy));
   }
 
+  static void BindSequence(std::initializer_list<StraightTrack*> pieces);
+
   CtrlTrackInterface* side_a() { return &side_a_; }
   CtrlTrackInterface* side_b() { return &side_b_; }
 
@@ -231,7 +235,12 @@ public:
                             uint64_t event_base, int counter_base,
                             GlobalVariable* detector)
     : StraightTrack(brd, event_base, counter_base),
-      detector_(detector) {}
+      detector_(detector) {
+    // No occupancy simulation needed.
+    RemoveAutomataPlugins(20);
+    AddAutomataPlugin(30, NewCallbackPtr(
+        this, &StraightTrackWithDetector::DetectorRoute));
+  }
 
   virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) {
@@ -247,6 +256,8 @@ public:
   }
 
 protected:
+  void DetectorRoute(Automata* aut);
+
   GlobalVariable* detector_;
 };
 
