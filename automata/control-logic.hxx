@@ -49,6 +49,15 @@ class AutomataPlugin {
     cb_.insert(std::make_pair(n, cb));
   }
 
+  // Removes all plugins with the given priority.
+  void RemoveAutomataPlugins(int n) {
+    auto range = cb_.equal_range(n);
+    for (auto r = range.first; r != range.second; r++) {
+      delete r->second;
+    }
+    cb_.erase(range.first, range.second);
+  }
+
  private:
   std::multimap<int, AutomataCallback*> cb_;
 };
@@ -168,7 +177,6 @@ class StraightTrack : public OccupancyLookupInterface,
         tmp_route_setting_in_progress_(
             brd, event_base + 32 + 12, event_base + 32 + 13, counter_base + 22)
   {
-
     AddAutomataPlugin(20, NewCallbackPtr(
         this, &StraightTrack::SimulateAllOccupancy));
   }
@@ -287,7 +295,47 @@ public:
   }
 };
 
+// A signal is a piece where trains coming from side_a towards side_b can (and
+// shall) stop if the signal is red.
+class SignalPiece : public StraightTrackShort {
+ public:
+  SignalPiece(Board* brd,
+              uint64_t event_base, int counter_base,
+              GlobalVariable* request_green,
+              GlobalVariable* signal)
+      : StraightTrackShort(brd, event_base, counter_base),
+        request_green_(request_green),
+        signal_(signal) {
+    // We "override" the occupancy detection by just copying the occupancy
+    // value from the previous piece of track.
+    RemoveAutomataPlugins(20);
+    AddAutomataPlugin(20, NewCallbackPtr(
+        this, &SignalPiece::SignalOccupancy));
+    // Signals have custom route setting logic in the forward direction.
+    RemoveAutomataPlugins(30);
+    AddAutomataPlugin(30, NewCallbackPtr(
+        this, &SignalPiece::SignalRoute));
+  }
 
+  virtual const GlobalVariable* LookupCloseDetector(
+      const CtrlTrackInterface* from) {
+    return FindOtherSide(from)->binding()->LookupCloseDetector();
+  }
+
+  // Returns the first occupancy detector outside of train length from the
+  // interface `from'. Returns NULL if no such detector was found.
+  virtual const GlobalVariable* LookupFarDetector(
+      const CtrlTrackInterface* from) {
+    return FindOtherSide(from)->binding()->LookupFarDetector();
+  }
+
+  void SignalRoute(Automata* aut);
+  void SignalOccupancy(Automata* aut);
+
+ private:
+  GlobalVariable* request_green_;
+  GlobalVariable* signal_;
+};
 
 }  // namespace automata
 
