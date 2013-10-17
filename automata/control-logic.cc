@@ -19,6 +19,7 @@ void StraightTrack::BindSequence(
       before = entry;
     } else {
       before->side_b()->Bind(entry->side_a());
+      before = entry;
     }
   }
 }
