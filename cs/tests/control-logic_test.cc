@@ -598,7 +598,7 @@ TEST_F(AutomataNodeTests, Signal) {
   static SignalPiece signal(
       &brd, BRACZ_LAYOUT | 0x5000, 3*32, &request_green, &signal_green);
   static StraightTrackLong mid(&brd, BRACZ_LAYOUT | 0x5040, 4*32);
-  static StraightTrackLong second_body(&brd, BRACZ_LAYOUT | 0x5040, 5*32);
+  static StraightTrackLong second_body(&brd, BRACZ_LAYOUT | 0x51C0, 5*32);
   static StraightTrackWithDetector second_det(
       &brd, BRACZ_LAYOUT | 0x5080, 6*32, &next_detector);
   static SignalPiece second_signal(
@@ -612,8 +612,8 @@ TEST_F(AutomataNodeTests, Signal) {
     })
 
   DefPiece(first_det);
-  DefPiece(signal);
   DefPiece(mid);
+  DefPiece(signal);
   DefPiece(second_body);
   DefPiece(second_det);
   DefPiece(second_signal);
@@ -628,6 +628,54 @@ TEST_F(AutomataNodeTests, Signal) {
   EXPECT_FALSE(QueryVar(first_body.side_b()->out_try_set_route));
   EXPECT_TRUE(QueryVar(first_body.side_b()->binding()->in_route_set_success));
   EXPECT_FALSE(QueryVar(first_body.side_b()->binding()->in_route_set_failure));
+
+  EXPECT_TRUE(QueryVar(signal.route_set_ab_));
+  EXPECT_FALSE(signal_green.Get());
+
+  previous_detector.Set(true);
+  Run(5);
+  EXPECT_TRUE(QueryVar(signal.route_set_ab_));
+  EXPECT_FALSE(signal_green.Get());
+  EXPECT_TRUE(QueryVar(first_det.route_set_ab_));
+
+  EXPECT_FALSE(QueryVar(mid.route_set_ab_));
+
+  request_green.Set(true);
+  Run(1);
+  EXPECT_TRUE(request_green.Get());
+  EXPECT_TRUE(QueryVar(signal.side_b()->out_try_set_route));
+  Run(10);
+
+  EXPECT_FALSE(request_green.Get());
+  EXPECT_TRUE(QueryVar(mid.route_set_ab_));
+  EXPECT_TRUE(signal_green.Get());
+
+  previous_detector.Set(false);
+  Run(10);
+  EXPECT_TRUE(QueryVar(mid.route_set_ab_));
+  EXPECT_FALSE(QueryVar(signal.route_set_ab_));
+  EXPECT_FALSE(QueryVar(first_det.route_set_ab_));
+  EXPECT_FALSE(signal_green.Get());
+
+  EXPECT_FALSE(QueryVar(first_body.side_b()->out_try_set_route));
+
+  SetVar(first_body.side_b()->out_try_set_route, true);
+  Run(5);
+  EXPECT_TRUE(QueryVar(signal.route_set_ab_));
+  EXPECT_FALSE(signal_green.Get());
+  EXPECT_TRUE(QueryVar(first_det.route_set_ab_));
+
+  // We try to set another green, but the previous train blocks this.
+  request_green.Set(true);
+  Run(1);
+  EXPECT_TRUE(request_green.Get());
+  EXPECT_TRUE(QueryVar(signal.side_b()->out_try_set_route));
+  Run(10);
+
+  EXPECT_FALSE(request_green.Get());
+  EXPECT_FALSE(QueryVar(signal.side_b()->out_try_set_route));
+  EXPECT_FALSE(signal_green.Get());
+
 }
 
 }  // namespace automata

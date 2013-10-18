@@ -223,6 +223,22 @@ void SignalPiece::SignalOccupancy(Automata* aut) {
       .ActReg0(occ);
 }
 
+void StraightTrackWithDetector::DetectorOccupancy(Automata* aut) {
+  LocalVariable* occ = aut->ImportVariable(&simulated_occupancy_);
+  const LocalVariable& det = aut->ImportVariable(*detector_);
+  LocalVariable* route1 = aut->ImportVariable(&route_set_ab_);
+  LocalVariable* route2 = aut->ImportVariable(&route_set_ba_);
+  Def()
+      .IfReg1(det)
+      .ActReg1(occ);
+  Def()
+      .IfReg0(det)
+      .IfReg1(*occ)
+      .ActReg0(route1)
+      .ActReg0(route2)
+      .ActReg0(occ);
+}
+
 void SimulateSignalFwdRoute(Automata* aut,
                             CtrlTrackInterface* before,
                             CtrlTrackInterface* after,
@@ -291,6 +307,7 @@ void SimulateSignalFwdRoute(Automata* aut,
       // For safety, we set the signal to red if we accepted a route.
       .ActReg0(signal)
       .Rept(&Automata::Op::ActReg1, current_route)
+      .ActReg0(current_route_setting_in_progress)
       .ActReg0(in_route_set_failure)
       .ActReg1(in_route_set_success);
 

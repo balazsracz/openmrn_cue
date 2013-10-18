@@ -213,6 +213,7 @@ class StraightTrack : public OccupancyLookupInterface,
   FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SimultSetting);
   FRIEND_TEST(AutomataNodeTests, ReverseRoute);
   FRIEND_TEST(AutomataNodeTests, MultiRoute);
+  FRIEND_TEST(AutomataNodeTests, Signal);
 
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]
@@ -238,6 +239,8 @@ public:
       detector_(detector) {
     // No occupancy simulation needed.
     RemoveAutomataPlugins(20);
+    AddAutomataPlugin(20, NewCallbackPtr(
+        this, &StraightTrackWithDetector::DetectorOccupancy));
     AddAutomataPlugin(30, NewCallbackPtr(
         this, &StraightTrackWithDetector::DetectorRoute));
   }
@@ -257,6 +260,7 @@ public:
 
 protected:
   void DetectorRoute(Automata* aut);
+  void DetectorOccupancy(Automata* aut);
 
   GlobalVariable* detector_;
 };
