@@ -755,7 +755,7 @@ TEST_F(AutomataNodeTests, 100trainz) {
                                &second_signal, &after});
 
 #define DefPiece(pp) \
-  DefAut(aut##pp, brd, { pp.RunAll(this); })
+  StandardPluginAutomata aut##pp(&brd, &pp);
 
   DefPiece(first_det);
   DefPiece(mid);

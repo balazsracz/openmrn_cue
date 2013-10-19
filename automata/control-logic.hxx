@@ -64,17 +64,40 @@ class AutomataPlugin {
   std::multimap<int, AutomataCallback*> cb_;
 };
 
+// A straight automata definition that calls all the plugins.
+class StandardPluginAutomata : public automata::Automata {
+ public:
+  StandardPluginAutomata(Board* brd, AutomataPlugin* plugins)
+      : plugins_(plugins), brd_(brd) {
+    brd->AddAutomata(this);
+  }
+
+  virtual void Body() {
+    plugins_->RunAll(this);
+  }
+
+  virtual Board* board() { return brd_; }
+
+ private:
+  AutomataPlugin* plugins_;
+  Board* brd_;
+};
+
 class CtrlTrackInterface;
 
+// THis class is the casis of sequential binding. It defines a run of track
+// which has exactly two endpoints. Internally it might be made of one or more
+// teack pieces that are already bound.
 class StraightTrackInterface {
  public:
   virtual CtrlTrackInterface* side_a() = 0;
   virtual CtrlTrackInterface* side_b() = 0;
-
 };
 
+// Bind together a sequence of straight tracks.
 void BindSequence(std::initializer_list<StraightTrackInterface*> pieces);
 
+// Interface for finding real occupancy detectors at a track piece.
 class OccupancyLookupInterface {
 public:
   virtual ~OccupancyLookupInterface() {}
@@ -277,8 +300,8 @@ protected:
 class StraightTrackWithRawDetector : public StraightTrackWithDetector {
 public:
   StraightTrackWithRawDetector(Board* brd,
-                            uint64_t event_base, int counter_base,
-                            GlobalVariable* raw_detector)
+                               uint64_t event_base, int counter_base,
+                               const GlobalVariable* raw_detector)
       : StraightTrackWithDetector(brd, event_base, counter_base,
                                   &simulated_occupancy_),
         raw_detector_(raw_detector),
@@ -291,7 +314,7 @@ public:
 protected:
   void RawDetectorOccupancy(Automata* aut);
 
-  GlobalVariable* raw_detector_;
+  const GlobalVariable* raw_detector_;
   EventBasedVariable debounce_temp_var_;
 };
 
