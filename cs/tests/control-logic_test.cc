@@ -661,6 +661,15 @@ TEST_F(AutomataNodeTests, Signal) {
 
   SetVar(first_body.side_b()->out_try_set_route, true);
   Run(5);
+  // let's dump all bits that are set
+  for (int c = 0; c < 256; c++) {
+    int client, offset, bit;
+    DecodeOffset(c, &client, &offset, &bit);
+    if ((1<<bit) & *get_state_byte(client, offset)) {
+      printf("bit %d [%d * 32 + %d * 8 + %d] (c %d o %d bit %d)\n", c, c / 32, (c % 32) / 8, c%8,  client, offset, bit);
+    }
+  }
+
   EXPECT_TRUE(QueryVar(signal.route_set_ab_));
   EXPECT_FALSE(signal_green.Get());
   EXPECT_TRUE(QueryVar(first_det.route_set_ab_));

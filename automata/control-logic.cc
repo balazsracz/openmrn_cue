@@ -308,6 +308,7 @@ void SimulateSignalFwdRoute(Automata* aut,
       .ActReg0(signal)
       .Rept(&Automata::Op::ActReg1, current_route)
       .ActReg0(current_route_setting_in_progress)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(in_route_set_failure)
       .ActReg1(in_route_set_success);
 

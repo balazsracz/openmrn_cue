@@ -490,6 +490,7 @@ TEST_F(AutomataTests, EventVar2) {
   //EXPECT_EQ("", output);
   SetupRunner(&brd);
   runner_->RunAllAutomata();
+  WaitForEventThread();
 }
 
 

@@ -196,6 +196,10 @@ protected:
   static void* DispatchThread(void* arg);
   static bool dispatch_thread_waiting_;
 
+  void WaitForEventThread() {
+    while (nmranet_event_pending(node_) || !dispatch_thread_waiting_);
+  }
+
   // A loopback interace that reads/writes to can_pipe0.
   static NMRAnetIF* nmranet_if_;
   static EventRegistry registry_;
@@ -287,10 +291,6 @@ protected:
 
   ~AutomataNodeTests() {
     WaitForEventThread();
-  }
-
-  void WaitForEventThread() {
-    while (nmranet_event_pending(node_) || !dispatch_thread_waiting_);
   }
 
   void Run(int count = 1) {
