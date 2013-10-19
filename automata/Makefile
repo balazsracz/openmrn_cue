@@ -37,9 +37,14 @@ flash-test: test-aut
 	./test-aut
 	aut-flash.sh *bin
 
+.PHONY: flash
 flash: bracz-layout3h-logic
 	./bracz-layout3h-logic
 	aut-flash.sh *bin
+
+.PHONY: bin
+bin: bracz-layout3h-logic
+	./bracz-layout3h-logic
 
 $(OUTPUTS): %.cout : %
 	./$< > $@
