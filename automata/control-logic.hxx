@@ -99,7 +99,7 @@ class CtrlTrackInterface {
             counter + 2),
         out_route_released(
             brd,
-            event_base | 4, event_base | 6 | 1,
+            event_base | 6, event_base | 6 | 1,
             counter + 3),
         lookup_if_(parent),
         binding_(nullptr) {}
@@ -163,21 +163,21 @@ class StraightTrack : public OccupancyLookupInterface,
  public:
   StraightTrack(Board* brd, uint64_t event_base, int counter_base)
       : side_a_(brd, this, event_base, counter_base),
-        side_b_(brd, this, event_base + 16, counter_base + 8),
-        simulated_occupancy_(brd, event_base + 32, event_base + 32 + 1,
-                             counter_base + 16),
-        route_set_ab_(brd, event_base + 32 + 2, event_base + 32 + 3,
-                      counter_base + 17),
-        route_set_ba_(brd, event_base + 32 + 4, event_base + 32 + 5,
-                      counter_base + 18),
-        route_pending_ab_(brd, event_base + 32 + 6, event_base + 32 + 7,
-                      counter_base + 19),
-        route_pending_ba_(brd, event_base + 32 + 8, event_base + 32 + 9,
-                      counter_base + 20),
-        tmp_seen_train_in_next_(brd, event_base + 32 + 10, event_base + 32 + 11,
-                                counter_base + 21),
+        side_b_(brd, this, event_base + 8, counter_base + 4),
+        simulated_occupancy_(brd, event_base + 16, event_base + 16 + 1,
+                             counter_base + 8),
+        route_set_ab_(brd, event_base + 16 + 2, event_base + 16 + 3,
+                      counter_base + 8 + 1),
+        route_set_ba_(brd, event_base + 16 + 4, event_base + 16 + 5,
+                      counter_base + 8 + 2),
+        route_pending_ab_(brd, event_base + 16 + 6, event_base + 16 + 7,
+                      counter_base + 8 + 3),
+        route_pending_ba_(brd, event_base + 16 + 8, event_base + 16 + 9,
+                      counter_base + 8 + 4),
+        tmp_seen_train_in_next_(brd, event_base + 16 + 10, event_base + 16 + 11,
+                                counter_base + 8 + 5),
         tmp_route_setting_in_progress_(
-            brd, event_base + 32 + 12, event_base + 32 + 13, counter_base + 22)
+            brd, event_base + 16 + 12, event_base + 16 + 13, counter_base + 8 + 6)
   {
     AddAutomataPlugin(20, NewCallbackPtr(
         this, &StraightTrack::SimulateAllOccupancy));
@@ -266,6 +266,26 @@ protected:
   GlobalVariable* detector_;
 };
 
+class StraightTrackWithRawDetector : public StraightTrackWithDetector {
+public:
+  StraightTrackWithRawDetector(Board* brd,
+                            uint64_t event_base, int counter_base,
+                            GlobalVariable* raw_detector)
+      : StraightTrackWithDetector(brd, event_base, counter_base,
+                                  &simulated_occupancy_),
+        raw_detector_(raw_detector),
+        debounce_temp_var_(brd, event_base + 16 + 14, event_base + 16 + 15, counter_base + 8 + 7) {
+    RemoveAutomataPlugins(20);
+    AddAutomataPlugin(20, NewCallbackPtr(
+        this, &StraightTrackWithRawDetector::RawDetectorOccupancy));
+  }
+
+protected:
+  void RawDetectorOccupancy(Automata* aut);
+
+  GlobalVariable* raw_detector_;
+  EventBasedVariable debounce_temp_var_;
+};
 
 class StraightTrackShort : public StraightTrack {
 public:

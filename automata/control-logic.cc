@@ -223,6 +223,34 @@ void SignalPiece::SignalOccupancy(Automata* aut) {
       .ActReg0(occ);
 }
 
+void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
+  static const int kTimeTakenToGoBusy = 2;
+  static const int kTimeTakenToGoFree = 3;
+
+  LocalVariable* occ = aut->ImportVariable(&simulated_occupancy_);
+  const LocalVariable& raw = aut->ImportVariable(*raw_detector_);
+  LocalVariable* last(aut->ImportVariable(&debounce_temp_var_));
+  LocalVariable* route1 = aut->ImportVariable(&route_set_ab_);
+  LocalVariable* route2 = aut->ImportVariable(&route_set_ba_);
+
+  // If there is a flip, we start a timer. The timer length depends on the
+  // edge.
+  Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy);
+  Def().IfReg1(raw).IfReg0(*last).ActTimer(kTimeTakenToGoFree);
+  aut->DefCopy(raw, last);
+
+  // If no flip happened for the timer length, we put the value into the
+  // occupancy bit.
+  Def()
+      .IfTimerDone().IfReg0(*last)
+      .ActReg1(occ);
+  Def()
+      .IfTimerDone().IfReg1(*last)
+      .ActReg0(route1)
+      .ActReg0(route2)
+      .ActReg0(occ);
+}
+
 void StraightTrackWithDetector::DetectorOccupancy(Automata* aut) {
   LocalVariable* occ = aut->ImportVariable(&simulated_occupancy_);
   const LocalVariable& det = aut->ImportVariable(*detector_);
