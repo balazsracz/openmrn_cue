@@ -214,6 +214,7 @@ class StraightTrack : public OccupancyLookupInterface,
   FRIEND_TEST(AutomataNodeTests, ReverseRoute);
   FRIEND_TEST(AutomataNodeTests, MultiRoute);
   FRIEND_TEST(AutomataNodeTests, Signal);
+  FRIEND_TEST(AutomataNodeTests, 100trainz);
 
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]
