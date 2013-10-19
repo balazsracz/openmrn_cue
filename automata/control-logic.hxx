@@ -66,6 +66,15 @@ class AutomataPlugin {
 
 class CtrlTrackInterface;
 
+class StraightTrackInterface {
+ public:
+  virtual CtrlTrackInterface* side_a() = 0;
+  virtual CtrlTrackInterface* side_b() = 0;
+
+};
+
+void BindSequence(std::initializer_list<StraightTrackInterface*> pieces);
+
 class OccupancyLookupInterface {
 public:
   virtual ~OccupancyLookupInterface() {}
@@ -158,7 +167,8 @@ void SimulateOccupancy(Automata* aut,
                        CtrlTrackInterface* next_if,\
                        OpCallback* release_cb);
 
-class StraightTrack : public OccupancyLookupInterface,
+class StraightTrack : public StraightTrackInterface,
+                      public OccupancyLookupInterface,
                       public virtual AutomataPlugin {
  public:
   StraightTrack(Board* brd, uint64_t event_base, int counter_base)
@@ -183,10 +193,8 @@ class StraightTrack : public OccupancyLookupInterface,
         this, &StraightTrack::SimulateAllOccupancy));
   }
 
-  static void BindSequence(std::initializer_list<StraightTrack*> pieces);
-
-  CtrlTrackInterface* side_a() { return &side_a_; }
-  CtrlTrackInterface* side_b() { return &side_b_; }
+  virtual CtrlTrackInterface* side_a() { return &side_a_; }
+  virtual CtrlTrackInterface* side_b() { return &side_b_; }
 
   void SimulateAllOccupancy(Automata* aut);
   void SimulateAllRoutes(Automata* aut);

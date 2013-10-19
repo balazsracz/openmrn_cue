@@ -11,10 +11,10 @@ void HandleInitState(Automata* aut) {
   Def().IfState(StInit).ActState(StBase);
 }
 
-void StraightTrack::BindSequence(
-    std::initializer_list<StraightTrack*> pieces) {
-  StraightTrack* before = nullptr;
-  for (StraightTrack* entry : pieces) {
+void BindSequence(
+    std::initializer_list<StraightTrackInterface*> pieces) {
+  StraightTrackInterface* before = nullptr;
+  for (StraightTrackInterface* entry : pieces) {
     if (!before) {
       before = entry;
     } else {

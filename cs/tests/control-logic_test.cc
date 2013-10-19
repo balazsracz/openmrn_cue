@@ -597,7 +597,7 @@ TEST_F(AutomataNodeTests, Signal) {
       &brd, BRACZ_LAYOUT | 0x50C0, 7 * 32, &request_green2, &signal_green2);
   static StraightTrackLong after(&brd, BRACZ_LAYOUT | 0x5140, 8 * 32);
 
-  StraightTrack::BindSequence({&first_body,    &first_det,   &signal,
+  BindSequence({&first_body,    &first_det,   &signal,
                                &mid,           &second_body, &second_det,
                                &second_signal, &after});
 
@@ -750,7 +750,7 @@ TEST_F(AutomataNodeTests, 100trainz) {
       &brd, BRACZ_LAYOUT | 0x50C0, 7 * 32, &request_green2, &signal_green2);
   static StraightTrackLong after(&brd, BRACZ_LAYOUT | 0x5140, 8 * 32);
 
-  StraightTrack::BindSequence({&first_body,    &first_det,   &signal,
+  BindSequence({&first_body,    &first_det,   &signal,
                                &mid,           &second_body, &second_det,
                                &second_signal, &after});
 
