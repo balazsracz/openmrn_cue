@@ -12,6 +12,8 @@
 #include "variables.hxx"
 #include "gtest/gtest_prod.h"
 
+class StandardBlock;
+
 namespace automata {
 
 extern StateRef StInit, StBase;
@@ -94,8 +96,9 @@ class StraightTrackInterface {
   virtual CtrlTrackInterface* side_b() = 0;
 };
 
-// Bind together a sequence of straight tracks.
-void BindSequence(std::initializer_list<StraightTrackInterface*> pieces);
+// Bind together a sequence of straight tracks. The return value is always
+// true.
+bool BindSequence(const std::initializer_list<StraightTrackInterface*>& pieces);
 
 // Interface for finding real occupancy detectors at a track piece.
 class OccupancyLookupInterface {
@@ -246,6 +249,8 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(AutomataNodeTests, MultiRoute);
   FRIEND_TEST(AutomataNodeTests, Signal);
   FRIEND_TEST(AutomataNodeTests, 100trainz);
+
+  friend class ::StandardBlock;
 
   EventBasedVariable simulated_occupancy_;
   // route from A [in] to B [out]

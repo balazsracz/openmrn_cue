@@ -11,8 +11,8 @@ void HandleInitState(Automata* aut) {
   Def().IfState(StInit).ActState(StBase);
 }
 
-void BindSequence(
-    std::initializer_list<StraightTrackInterface*> pieces) {
+bool BindSequence(
+    const std::initializer_list<StraightTrackInterface*>& pieces) {
   StraightTrackInterface* before = nullptr;
   for (StraightTrackInterface* entry : pieces) {
     if (!before) {
@@ -22,6 +22,7 @@ void BindSequence(
       before = entry;
     }
   }
+  return true;
 }
 
 typedef Automata::LocalVariable LocalVariable;
