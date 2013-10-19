@@ -540,9 +540,9 @@ TEST_F(AutomataNodeTests, MultiRoute) {
 
   // This will immediately accept a route at the end stop.
   DefAut(strategyaut, brd, {
-      LocalVariable* try_set_route = 
+      LocalVariable* try_set_route =
           ImportVariable(&after.side_a()->binding()->out_try_set_route);
-      LocalVariable* route_set_succcess = 
+      LocalVariable* route_set_succcess =
           ImportVariable(&after.side_a()->in_route_set_success);
       Def()
           .IfReg1(*try_set_route)
@@ -620,9 +620,22 @@ TEST_F(AutomataNodeTests, Signal) {
 
 #undef DefPiece
 
+  // This will immediately accept a route at the end stop.
+  DefAut(strategyaut, brd, {
+      LocalVariable* try_set_route =
+          ImportVariable(&after.side_a()->binding()->out_try_set_route);
+      LocalVariable* route_set_succcess =
+          ImportVariable(&after.side_a()->in_route_set_success);
+      Def()
+          .IfReg1(*try_set_route)
+          .ActReg0(try_set_route)
+          .ActReg1(route_set_succcess);
+    });
+
   SetupRunner(&brd);
   Run(2);
 
+  // Sets the first train's route until the first signal.
   SetVar(first_body.side_b()->out_try_set_route, true);
   Run(5);
   EXPECT_FALSE(QueryVar(first_body.side_b()->out_try_set_route));
@@ -632,6 +645,7 @@ TEST_F(AutomataNodeTests, Signal) {
   EXPECT_TRUE(QueryVar(signal.route_set_ab_));
   EXPECT_FALSE(signal_green.Get());
 
+  // First train shows up at first signal.
   previous_detector.Set(true);
   Run(5);
   EXPECT_TRUE(QueryVar(signal.route_set_ab_));
@@ -640,6 +654,7 @@ TEST_F(AutomataNodeTests, Signal) {
 
   EXPECT_FALSE(QueryVar(mid.route_set_ab_));
 
+  // and gets a green
   request_green.Set(true);
   Run(1);
   EXPECT_TRUE(request_green.Get());
@@ -650,6 +665,7 @@ TEST_F(AutomataNodeTests, Signal) {
   EXPECT_TRUE(QueryVar(mid.route_set_ab_));
   EXPECT_TRUE(signal_green.Get());
 
+  // and leaves the block
   previous_detector.Set(false);
   Run(10);
   EXPECT_TRUE(QueryVar(mid.route_set_ab_));
@@ -659,6 +675,7 @@ TEST_F(AutomataNodeTests, Signal) {
 
   EXPECT_FALSE(QueryVar(first_body.side_b()->out_try_set_route));
 
+  // We run a second route until the first signal
   SetVar(first_body.side_b()->out_try_set_route, true);
   Run(5);
   // let's dump all bits that are set
@@ -685,6 +702,33 @@ TEST_F(AutomataNodeTests, Signal) {
   EXPECT_FALSE(QueryVar(signal.side_b()->out_try_set_route));
   EXPECT_FALSE(signal_green.Get());
 
+  // First train reaches second signal.
+  next_detector.Set(true);
+  request_green.Set(true);
+  Run(10);
+  EXPECT_FALSE(QueryVar(mid.route_set_ab_));
+  EXPECT_TRUE(QueryVar(second_signal.route_set_ab_));
+  EXPECT_FALSE(signal_green2.Get());
+
+  EXPECT_FALSE(request_green.Get());
+  EXPECT_FALSE(signal_green.Get());
+
+  request_green2.Set(true);
+  Run(5);
+  EXPECT_TRUE(signal_green2.Get());
+  EXPECT_TRUE(QueryVar(second_signal.route_set_ab_));
+
+  next_detector.Set(false);
+  Run(10);
+  EXPECT_FALSE(signal_green2.Get());
+  EXPECT_FALSE(QueryVar(second_signal.route_set_ab_));
+
+  // Now the second train can go.
+  request_green.Set(true);
+  Run(10);
+  EXPECT_FALSE(request_green.Get());
+  EXPECT_TRUE(signal_green.Get());
+  EXPECT_TRUE(QueryVar(mid.route_set_ab_));
 }
 
 }  // namespace automata
