@@ -102,7 +102,8 @@ private:
 
 class AutomataRunner {
 public:
-  AutomataRunner(node_t node, const insn_t* base_pointer);
+  AutomataRunner(node_t node, const insn_t* base_pointer,
+                 bool with_thread = true);
     ~AutomataRunner();
 
     AutomataRunner& ResetForAutomata(Automata* aut);
@@ -113,7 +114,7 @@ public:
     insn_t get_insn(aut_offset_t offset) {
       insn_t ret = base_pointer_[offset];
       if (0) fprintf(stderr, "get insn[%d] = 0x%02x\n", offset, ret);
-	return ret;
+      return ret;
     }
 
     insn_t load_insn() {

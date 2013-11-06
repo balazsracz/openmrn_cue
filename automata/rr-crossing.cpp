@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
     for (char t : output) {
       printf("0x%02x, ", (uint8_t)t);
       if (++c >= 12) {
-        printf("\n  ", t);
+        printf("\n  ");
         c = 0;
       }
     }

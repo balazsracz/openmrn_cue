@@ -136,6 +136,9 @@ public:
 
     const LocalVariable& timer_bit() { return timer_bit_; }
 
+    void DefCopy(const LocalVariable& src, LocalVariable* dst);
+    void DefNCopy(const LocalVariable& src, LocalVariable* dst);
+
 protected:
     virtual void Body() = 0;
 
@@ -148,9 +151,6 @@ protected:
     Automata* const aut;
 
     virtual Board* board() = 0;
-
-    void DefCopy(const LocalVariable& src, LocalVariable* dst);
-    void DefNCopy(const LocalVariable& src, LocalVariable* dst);
 
 private:
     friend class Op;

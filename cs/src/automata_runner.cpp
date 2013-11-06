@@ -68,7 +68,12 @@ void AutomataRunner::Run() {
     uint8_t numif, numact;
     int endif, endcond;
     bool keep;
-    while((insn = load_insn()) != 0) {
+    while (1) {
+      //LOG(VERBOSE, "ip: %d\n", ip_);
+      insn = load_insn();
+      if (!insn) break;
+
+      //    while((insn = load_insn()) != 0) {
 	numif = insn & 0x0f;
 	numact = insn >> 4;
 	endif = ip_ + numif;
@@ -535,7 +540,8 @@ void* automata_thread(void* arg) {
     return NULL;
 }
 
-AutomataRunner::AutomataRunner(node_t node, const insn_t* base_pointer)
+AutomataRunner::AutomataRunner(node_t node, const insn_t* base_pointer,
+                               bool with_thread)
     : ip_(0),
       aut_srcplace_(254),
       aut_trainid_(254),
@@ -549,8 +555,14 @@ AutomataRunner::AutomataRunner(node_t node, const insn_t* base_pointer)
     memset(imported_bits_, 0, sizeof(imported_bits_));
     CreateVarzAndAutomatas();
     os_sem_init(&automata_sem_, 0);
-    os_thread_create(&automata_thread_handle_, "automata", 0,
-                     AUTOMATA_THREAD_STACK_SIZE, automata_thread, this);
+    if (with_thread) {
+      os_thread_create(&automata_thread_handle_, "automata", 0,
+                       AUTOMATA_THREAD_STACK_SIZE, automata_thread, this);
+    } else {
+      automata_thread_handle_ = 0;
+      automata_timer_ = 0;
+      thread_exited_ = true;
+    }
 }
 
 AutomataRunner::~AutomataRunner() {
@@ -562,7 +574,9 @@ AutomataRunner::~AutomataRunner() {
   while (!thread_exited_) {
     // Do nothing.
   }
-  os_timer_delete(automata_timer_);
+  if (automata_timer_) {
+    os_timer_delete(automata_timer_);
+  }
   for (auto i : all_automata_) {
     delete i;
   }

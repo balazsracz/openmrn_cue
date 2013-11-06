@@ -159,10 +159,11 @@ class AutomataTests : public testing::Test {
 
   void SetupRunner(automata::Board* brd) {
     reset_all_state();
-    string output;
-    brd->Render(&output);
-    memcpy(program_area_, output.data(), output.size());
-    runner_ = new AutomataRunner(node_, program_area_);
+    current_program_.clear();
+    brd->Render(&current_program_);
+    fprintf(stderr, "program size: %d\n", current_program_.size());
+    memcpy(program_area_, current_program_.data(), current_program_.size());
+    runner_ = new AutomataRunner(node_, program_area_, false);
     for (auto bit : mock_bits_) {
       runner_->InjectBit(bit->GetGlobalOffset(), bit->CreateBit());
     }
@@ -195,6 +196,10 @@ protected:
   static void* DispatchThread(void* arg);
   static bool dispatch_thread_waiting_;
 
+  void WaitForEventThread() {
+    while (nmranet_event_pending(node_) || !dispatch_thread_waiting_);
+  }
+
   // A loopback interace that reads/writes to can_pipe0.
   static NMRAnetIF* nmranet_if_;
   static EventRegistry registry_;
@@ -202,6 +207,7 @@ protected:
   node_t node_;
   AutomataRunner* runner_;
   insn_t program_area_[10000];
+  string current_program_;
 
   void SetupStaticNode() {
     static node_t static_node = CreateNewNode();
@@ -285,10 +291,10 @@ protected:
     SetupStaticNode();
   }
 
-  void WaitForEventThread() {
-    while (nmranet_event_pending(node_) || !dispatch_thread_waiting_);
+  ~AutomataNodeTests() {
+    WaitForEventThread();
   }
-  
+
   void Run(int count = 1) {
     for (int i = 0; i < count; ++i) {
       WaitForEventThread();
