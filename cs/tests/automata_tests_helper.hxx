@@ -213,6 +213,8 @@ protected:
                                       "Test Node2", NULL);
     fprintf(stderr,"node_=%p\n", node);
     nmranet_node_user_description(node, "Test Node2");
+    extern void EnsureCompatEventHandlerExists();
+    EnsureCompatEventHandlerExists();
     nmranet_node_initialized(node);
     os_thread_t thread;
     os_thread_create(&thread, "event_process_thread",

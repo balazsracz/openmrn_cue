@@ -392,6 +392,8 @@ TEST_F(AutomataTests, LoadEventId) {
 }
 
 TEST_F(AutomataTests, EventVar) {
+  extern void EnsureCompatEventHandlerExists();
+  EnsureCompatEventHandlerExists();
   node_ = nmranet_node_create(0x02010d000001ULL, nmranet_if_,
                               "Test Node", NULL);
   ASSERT_TRUE(node_);

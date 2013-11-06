@@ -162,7 +162,7 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
         delete pkt;
         return;
       }
-      LOG(INFO, "usb packet len %d, cmd %02x, data %02x, %02x, %02x ...",
+      LOG(INFO, "usb packet len %zd, cmd %02x, data %02x, %02x, %02x ...",
           in_pkt.size(), in_pkt[0], in_pkt.buf()[1], in_pkt.buf()[2], in_pkt.buf()[3]);
     }
     switch (in_pkt[0]) {
