@@ -11,6 +11,7 @@
 #include "../automata/variables.hxx"
 
 #include "src/automata_runner.h"
+#include "nmranet_config.h"
 
 
 
@@ -392,8 +393,10 @@ TEST_F(AutomataTests, LoadEventId) {
 }
 
 TEST_F(AutomataTests, EventVar) {
+#ifdef CPP_EVENT_HANDLER
   extern void EnsureCompatEventHandlerExists();
   EnsureCompatEventHandlerExists();
+#endif
   node_ = nmranet_node_create(0x02010d000001ULL, nmranet_if_,
                               "Test Node", NULL);
   ASSERT_TRUE(node_);
@@ -497,6 +500,7 @@ TEST_F(AutomataTests, EventVar2) {
 
 
 TEST_F(AutomataTests, EmptyTest) {
+  WaitForEventThread();
 }
 
 

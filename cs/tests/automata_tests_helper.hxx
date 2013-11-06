@@ -20,6 +20,9 @@
 #include "pipe/pipe.hxx"
 #include "pipe/gc_format.h"
 #include "nmranet_can.h"
+#ifdef CPP_EVENT_HANDLER
+#include "nmranet/GlobalEventHandler.hxx"
+#endif
 
 using ::testing::_;
 using ::testing::Return;
@@ -176,6 +179,7 @@ class AutomataTests : public testing::Test {
   }
 
   ~AutomataTests() {
+    WaitForEventThread();
     delete runner_;
   }
 
@@ -195,9 +199,14 @@ protected:
 
   static void* DispatchThread(void* arg);
   static bool dispatch_thread_waiting_;
+  static node_t static_node_;
 
-  void WaitForEventThread() {
-    while (nmranet_event_pending(node_) || !dispatch_thread_waiting_);
+  static void WaitForEventThread() {
+#ifdef CPP_EVENT_HANDLER
+    while (GlobalEventFlow::instance->EventProcessingPending()) {}
+#endif
+    if (!static_node_) return;
+    while (nmranet_event_pending(static_node_) || !dispatch_thread_waiting_) {}
   }
 
   // A loopback interace that reads/writes to can_pipe0.
@@ -219,8 +228,10 @@ protected:
                                       "Test Node2", NULL);
     fprintf(stderr,"node_=%p\n", node);
     nmranet_node_user_description(node, "Test Node2");
+#ifdef CPP_EVENT_HANDLER
     extern void EnsureCompatEventHandlerExists();
     EnsureCompatEventHandlerExists();
+#endif
     nmranet_node_initialized(node);
     os_thread_t thread;
     os_thread_create(&thread, "event_process_thread",
@@ -240,6 +251,7 @@ private:
 NMRAnetIF* AutomataTests::nmranet_if_ = NULL;
 EventRegistry AutomataTests::registry_;
 bool AutomataTests::dispatch_thread_waiting_ = false;
+node_t AutomataTests::static_node_ = 0;
 
 static ssize_t mock_read(int, void*, size_t) {
   // Never returns.
