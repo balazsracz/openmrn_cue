@@ -176,7 +176,7 @@ TEST(BoardCompile, SingleEventBoard) {
         0xA0, _ACT_SET_EVENTID, 0b00000111, 5, 2, 1, 2, 2, 0x65, 0, 0x23,
         0x30, _ACT_DEF_VAR, 0b0000000, (30<<3) | 3,
         0,     // end of preamble
-        0x40, _ACT_IMPORT_VAR, 1, 28, 0,
+        0x50, _ACT_IMPORT_VAR, 1, 0, 28, 0,
         0x11, _IF_REG_0 | 1, _ACT_REG_1 | 1,
         0,     // end of autoamta 1
             });

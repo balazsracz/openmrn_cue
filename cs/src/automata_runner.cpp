@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 
+#include "utils/macros.h"
 #include "core/nmranet_event.h"
 
 #include "common_event_handlers.hxx"
@@ -44,6 +45,7 @@ AutomataRunner& AutomataRunner::ResetForAutomata(Automata* aut) {
     current_automata_ = aut;
     ip_ = aut->GetStartingOffset();
     memset(imported_bits_, 0, sizeof(imported_bits_));
+    memset(imported_bit_args_, 0, sizeof(imported_bit_args_));
     imported_bits_[0] = aut->GetTimerBit();
     return *this;
 }
@@ -135,9 +137,16 @@ void AutomataRunner::Run() {
 
 void AutomataRunner::import_variable() {
     uint8_t local_idx = load_insn();
+    uint16_t arg = local_idx >> 5;
+    local_idx &= 31;
+    // Need to rewrite the bit fields if we want a different local variable set
+    // size.
+    HASSERT(32 == (sizeof(imported_bits_) /
+                   sizeof(imported_bits_[0])));
+    arg <<= 8;
+    arg |= load_insn();
     uint16_t global_ofs = load_insn();
     global_ofs |= load_insn() << 8;
-
     if (local_idx >= (sizeof(imported_bits_) /
                       sizeof(imported_bits_[0]))) {
         // The local variable offset is out of bounds.
@@ -149,6 +158,7 @@ void AutomataRunner::import_variable() {
         diewith(CS_DIE_AUT_HALT);
     }
     imported_bits_[local_idx] = it->second;
+    imported_bit_args_[local_idx] = arg;
 }
 
 
@@ -166,13 +176,13 @@ public:
         nmranet_event_consumer(node, event_off, EVENT_STATE_INVALID);
     }
 
-    virtual bool Read(node_t node, Automata* aut) {
+    virtual bool Read(uint16_t, node_t node, Automata* aut) {
       // TODO(balazs.racz): we should consider CHECK failing here if
       // !defined. That will force us to explicitly reset every bit in StInit.
         return ((*memory_) & mask_);
     }
 
-    virtual void Write(node_t node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
         if (0) fprintf(stderr,"event bit write to node %p\n", node);
         bool last_value = !!((*memory_) & mask_);
         if ((value == last_value) && defined_) return;
@@ -243,14 +253,14 @@ public:
     }
     virtual ~LockBit();
 
-    virtual bool Read(node_t node, Automata* aut) {
+    virtual bool Read(uint16_t, node_t node, Automata* aut) {
 	int existing_id = locks[lock_id_];
 	if (!existing_id) return false;
 	if (existing_id == aut->GetId()) return false;
 	return true;
     }
 
-    virtual void Write(node_t node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
 	if (locks[lock_id_] == 0 && value) {
 	    locks[lock_id_] = aut->GetId();
 	} else if (locks[lock_id_] == aut->GetId() && !value) {
@@ -266,20 +276,26 @@ bool AutomataRunner::eval_condition(insn_t insn) {
       return (current_automata_->GetState() == (insn & ~_IF_STATE_MASK));
   }
   if ((insn & _IF_REG_MASK) == _IF_REG) {
-      bool value = GetBit(insn & _IF_REG_BITNUM_MASK)
-	  ->Read(openmrn_node_, current_automata_);
+      int cnt = insn & _IF_REG_BITNUM_MASK;
+      uint16_t arg = imported_bit_args_[cnt];
+      bool value = GetBit(cnt)
+	  ->Read(arg, openmrn_node_, current_automata_);
       bool expected = (insn & (1<<6));
       return value == expected;
   }
   if ((insn & _GET_LOCK_MASK) == _GET_LOCK) {
-      ReadWriteBit* bit = GetBit(insn & ~_GET_LOCK_MASK);
-      if (bit->Read(openmrn_node_, current_automata_)) return false;
-      bit->Write(openmrn_node_, current_automata_, true);
+      int cnt = insn & ~_GET_LOCK_MASK;
+      uint16_t arg = imported_bit_args_[cnt];
+      ReadWriteBit* bit = GetBit(cnt);
+      if (bit->Read(arg, openmrn_node_, current_automata_)) return false;
+      bit->Write(arg, openmrn_node_, current_automata_, true);
       return true;
   }
   if ((insn & _REL_LOCK_MASK) == _REL_LOCK) {
-      ReadWriteBit* bit = GetBit(insn & ~_REL_LOCK_MASK);
-      bit->Write(openmrn_node_, current_automata_, false);
+      int cnt = insn & ~_REL_LOCK_MASK;
+      uint16_t arg = imported_bit_args_[cnt];
+      ReadWriteBit* bit = GetBit(cnt);
+      bit->Write(arg, openmrn_node_, current_automata_, false);
       return true;
   }
   if ((insn & _IF_MISC_MASK) == _IF_MISC_BASE) {
@@ -433,8 +449,10 @@ void AutomataRunner::eval_action(insn_t insn) {
     } else if ((insn & _ACT_TIMER_MASK) == _ACT_TIMER) {
 	current_automata_->SetTimer(insn & ~_ACT_TIMER_MASK);
     } else if ((insn & _ACT_REG_MASK) == _ACT_REG) {
-	GetBit(insn & _IF_REG_BITNUM_MASK)
-	    ->Write(openmrn_node_, current_automata_, insn & (1<<6));
+        int cnt = insn & _IF_REG_BITNUM_MASK;
+        uint16_t arg = imported_bit_args_[cnt];
+	GetBit(cnt)
+	    ->Write(arg, openmrn_node_, current_automata_, insn & (1<<6));
     } else if ((insn & _ACT_MISC_MASK) == _ACT_MISC_BASE) {
 	switch (insn) {
 	case _ACT_UP_ASPECT: {

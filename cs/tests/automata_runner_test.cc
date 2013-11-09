@@ -30,12 +30,12 @@ TEST(TimerBitTest, ShowsZeroNonZeroState) {
   ASSERT_TRUE(bit);
   a.SetTimer(13);
   EXPECT_EQ(13, a.GetTimer());
-  EXPECT_TRUE(bit->Read(NULL, &a));
+  EXPECT_TRUE(bit->Read(0, NULL, &a));
   a.SetTimer(0);
   EXPECT_EQ(0, a.GetTimer());
-  EXPECT_FALSE(bit->Read(NULL, &a));
+  EXPECT_FALSE(bit->Read(0, NULL, &a));
   a.SetTimer(1);
-  EXPECT_TRUE(bit->Read(NULL, &a));
+  EXPECT_TRUE(bit->Read(0, NULL, &a));
 }
 
 TEST(TimerBitTest, Tick) {
@@ -43,19 +43,19 @@ TEST(TimerBitTest, Tick) {
   ReadWriteBit* bit = a.GetTimerBit();
   ASSERT_TRUE(bit);
   a.SetTimer(3);
-  EXPECT_TRUE(bit->Read(NULL, &a));
+  EXPECT_TRUE(bit->Read(0, NULL, &a));
   a.Tick();
   EXPECT_EQ(2, a.GetTimer());
-  EXPECT_TRUE(bit->Read(NULL, &a));
+  EXPECT_TRUE(bit->Read(0, NULL, &a));
   a.Tick();
   EXPECT_EQ(1, a.GetTimer());
-  EXPECT_TRUE(bit->Read(NULL, &a));
+  EXPECT_TRUE(bit->Read(0, NULL, &a));
   a.Tick();
   EXPECT_EQ(0, a.GetTimer());
-  EXPECT_FALSE(bit->Read(NULL, &a));
+  EXPECT_FALSE(bit->Read(0, NULL, &a));
   a.Tick();
   EXPECT_EQ(0, a.GetTimer());
-  EXPECT_FALSE(bit->Read(NULL, &a));
+  EXPECT_FALSE(bit->Read(0, NULL, &a));
 }
 
 TEST(TimerBitTest, DifferentInitialize) {
@@ -71,7 +71,7 @@ TEST(TimerBitTest, DiesOnWrite) {
   Automata a(10, 0);
   ReadWriteBit* bit = a.GetTimerBit();
   EXPECT_DEATH({
-      bit->Write(NULL, &a, false);
+      bit->Write(0, NULL, &a, false);
     }, "802AAC2A");
 }
 
@@ -135,8 +135,8 @@ TEST(RunnerTest, SingleEmptyAutomataBoard) {
 TEST_F(AutomataTests, DefAct0) {
   automata::Board brd;
   static MockBit mb(this);
-  EXPECT_CALL(mb.mock(), Write(_, _, false)).Times(1);
-  EXPECT_CALL(mb.mock(), Read(_, _)).Times(0);
+  EXPECT_CALL(mb.mock(), Write(_, _, _, false)).Times(1);
+  EXPECT_CALL(mb.mock(), Read(_, _, _)).Times(0);
   DefAut(testaut1, brd, {
       auto v1 = ImportVariable(&mb);
       Def().ActReg0(v1);
@@ -148,8 +148,8 @@ TEST_F(AutomataTests, DefAct0) {
 TEST_F(AutomataTests, DefAct1) {
   automata::Board brd;
   static MockBit mb(this);
-  EXPECT_CALL(mb.mock(), Write(_, _, true)).Times(1);
-  EXPECT_CALL(mb.mock(), Read(_, _)).Times(0);
+  EXPECT_CALL(mb.mock(), Write(_, _, _, true)).Times(1);
+  EXPECT_CALL(mb.mock(), Read(_, _, _)).Times(0);
   DefAut(testaut1, brd, {
       auto v1 = ImportVariable(&mb);
       Def().ActReg1(v1);
@@ -164,9 +164,9 @@ TEST_F(AutomataTests, DefIfReg1) {
   static MockBit rb(this);
   static MockBit rrb(this);
   static MockBit wb(this);
-  EXPECT_CALL(wb.mock(), Write(_, _, true));
-  EXPECT_CALL(rb.mock(), Read(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(rrb.mock(), Read(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(wb.mock(), Write(_, _, _, true));
+  EXPECT_CALL(rb.mock(), Read(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(rrb.mock(), Read(_, _, _)).WillOnce(Return(false));
   DefAut(testaut1, brd, {
       auto rv = ImportVariable(&rb);
       auto rrv = ImportVariable(&rrb);
@@ -183,9 +183,9 @@ TEST_F(AutomataTests, DefIfReg0) {
   static MockBit rb(this);
   static MockBit rrb(this);
   static MockBit wb(this);
-  EXPECT_CALL(wb.mock(), Write(_, _, true));
-  EXPECT_CALL(rb.mock(), Read(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(rrb.mock(), Read(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(wb.mock(), Write(_, _, _, true));
+  EXPECT_CALL(rb.mock(), Read(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(rrb.mock(), Read(_, _, _)).WillOnce(Return(false));
   DefAut(testaut1, brd, {
       auto rv = ImportVariable(&rb);
       auto rrv = ImportVariable(&rrb);
@@ -261,16 +261,16 @@ TEST_F(AutomataTests, IfState) {
   runner_->RunAllAutomata();
   Mock::VerifyAndClear(&wb.mock());
 
-  EXPECT_CALL(wb.mock(), Write(_, _, false));
+  EXPECT_CALL(wb.mock(), Write(_, _, _, false));
   aut->SetState(11);
   runner_->RunAllAutomata();
   Mock::VerifyAndClear(&wb.mock());
 
-  EXPECT_CALL(wb.mock(), Write(_, _, false));
+  EXPECT_CALL(wb.mock(), Write(_, _, _, false));
   runner_->RunAllAutomata();
   Mock::VerifyAndClear(&wb.mock());
 
-  EXPECT_CALL(wb.mock(), Write(_, _, true));
+  EXPECT_CALL(wb.mock(), Write(_, _, _, true));
   aut->SetState(12);
   runner_->RunAllAutomata();
   Mock::VerifyAndClear(&wb.mock());
@@ -292,8 +292,8 @@ TEST_F(AutomataTests, MultipleAutomata) {
       Def().ActReg1(wv);
     });
   SetupRunner(&brd);
-  EXPECT_CALL(wb.mock(), Write(_, _, true));
-  EXPECT_CALL(wb.mock(), Write(_, _, false));
+  EXPECT_CALL(wb.mock(), Write(_, _, _, true));
+  EXPECT_CALL(wb.mock(), Write(_, _, _, false));
 
   runner_->RunAllAutomata();
 }
@@ -466,6 +466,7 @@ TEST_F(AutomataTests, EventVar2) {
   nmranet_event_producer(node_, 0x0502010202650012ULL, EVENT_STATE_INVALID);
   nmranet_event_producer(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
   nmranet_node_initialized(node_);
+  WaitForEventThread();
 
   os_thread_t thread;
   os_thread_create(&thread, "event_process_thread",
@@ -476,6 +477,7 @@ TEST_F(AutomataTests, EventVar2) {
   nmranet_event_produce(node_, 0x0502010202650012ULL, EVENT_STATE_VALID);
   nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_INVALID);
   nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
+  WaitForEventThread();
 
   Board brd;
   using automata::EventBasedVariable;
@@ -484,6 +486,7 @@ TEST_F(AutomataTests, EventVar2) {
                          0x0502010202650013ULL,
                          0, OFS_GLOBAL_BITS, 1);
   static automata::GlobalVariable* var;
+  WaitForEventThread();
   var = &led;
   DefAut(testaut1, brd, {
       auto wv = ImportVariable(var);

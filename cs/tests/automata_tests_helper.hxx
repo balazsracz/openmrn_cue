@@ -51,8 +51,8 @@ const size_t CAN_IF_READ_THREAD_STACK_SIZE = 1024;
 
 class GMockBit : public ReadWriteBit {
  public:
-  MOCK_METHOD2(Read, bool(node_t node, Automata* aut));
-  MOCK_METHOD3(Write, void(node_t node, Automata* aut, bool value));
+  MOCK_METHOD3(Read, bool(uint16_t arg, node_t node, Automata* aut));
+  MOCK_METHOD4(Write, void(uint16_t arg, node_t node, Automata* aut, bool value));
 };
 
 
@@ -67,10 +67,10 @@ class AutomataTests : public testing::Test {
     FakeBitPointer(bool* backend)
         : backend_(backend) {}
     virtual ~FakeBitPointer() {}
-    virtual bool Read(node_t node, Automata* aut) {
+    virtual bool Read(uint16_t, node_t node, Automata* aut) {
       return *backend_;
     }
-    virtual void Write(node_t node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
       *backend_ = value;
     }
 

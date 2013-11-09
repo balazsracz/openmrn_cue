@@ -23,9 +23,9 @@ class Automata;
 
 class ReadWriteBit {
 public:
-    virtual ~ReadWriteBit() {}
-    virtual bool Read(node_t node, Automata* aut) = 0;
-    virtual void Write(node_t node, Automata* aut, bool value) = 0;
+  virtual ~ReadWriteBit() {}
+  virtual bool Read(uint16_t arg, node_t node, Automata* aut) = 0;
+  virtual void Write(uint16_t arg, node_t node, Automata* aut, bool value) = 0;
 };
 
 
@@ -79,10 +79,10 @@ private:
     public:
 	TimerBit(int id) : id_(id) {}
 	virtual ~TimerBit() {}
-	virtual bool Read(node_t node, Automata* aut) {
+        virtual bool Read(uint16_t, node_t, Automata* aut) {
 	    return *GetStateByte(OFS_TIMER);
 	}
-	virtual void Write(node_t node, Automata* aut, bool value) {
+	virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
 	    diewith(CS_DIE_AUT_WRITETIMERBIT);
 	}
 	int GetId() {
@@ -200,6 +200,9 @@ private:
     //! The bits that are imported to the current automata. This gets filled up
     //! during the automata code execution.
     ReadWriteBit* imported_bits_[MAX_IMPORT_VAR];
+    //! Arguments to the imported bits.
+    uint16_t imported_bit_args_[MAX_IMPORT_VAR];
+
     //! Points to the current automata.
     Automata* current_automata_;
     //! The OpenMRN node used for generating sourced events.
