@@ -220,6 +220,7 @@ protected:
 
   void SetupStaticNode() {
     static node_t static_node = CreateNewNode();
+    static_node_ = static_node;
     node_ = static_node;
   }
 
