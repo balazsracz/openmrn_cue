@@ -9,6 +9,8 @@
 
 #include <stdio.h>
 
+#include <memory>
+
 #include "utils/macros.h"
 #include "core/nmranet_event.h"
 
@@ -20,6 +22,11 @@
 #include "dcc-master.h"
 
 #include "utils/logging.h"
+#include "nmranet/WriteFlow.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
+
+// This write helper will only ever be used synchronously.
+static WriteHelper automata_write_helper(nullptr);
 
 /*
   TODOS:
@@ -207,6 +214,31 @@ public:
   bool defined_;
 };
 
+class EventBlockBit : public ReadWriteBit {
+ public:
+  EventBlockBit(WriteHelper::node_type node,
+                uint64_t event_base,
+                size_t size)
+      : storage_(new uint32_t[size >> 5]),
+        handler_(new BitRangeEventPC(node, event_base, storage_, size)) {}
+
+  ~EventBlockBit() {
+    delete[] storage_;
+  }
+
+  virtual bool Read(uint16_t arg, node_t node, Automata* aut) {
+    return handler_->Get(arg);
+  }
+
+  virtual void Write(uint16_t arg, node_t node, Automata* aut, bool value) {
+    return handler_->Set(arg, value, &automata_write_helper, nullptr);
+  }
+
+ private:
+  uint32_t* storage_;
+  std::unique_ptr<BitRangeEventPC> handler_;
+};
+
 ReadWriteBit* AutomataRunner::create_variable() {
     uint8_t arg1 = load_insn();
     uint8_t arg2 = load_insn();
@@ -219,6 +251,10 @@ ReadWriteBit* AutomataRunner::create_variable() {
     case 0:
         return new EventBit(openmrn_node_, aut_eventids_[1], aut_eventids_[0],
                             (1<<bit), ptr);
+    case 1: {
+        uint16_t size = ((client & 7) << 8) | arg2;
+        return new EventBlockBit(openmrn_node_, aut_eventids_[0], size);
+    }
     default:
         diewith(CS_DIE_UNSUPPORTED);
     }  // switch type
