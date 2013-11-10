@@ -338,15 +338,15 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
   EXPECT_FALSE(sim_occ3.value());
   EXPECT_FALSE(sim_occ4.value());
 }
-/*
+
 TEST_F(LogicTest, SimulatedOccupancy_RouteSetting) {
-  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1 * 32);
+  static StraightTrackShort piece(EventBlock::Allocator(&alloc(), "p", 32, 32));
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      &brd, BRACZ_LAYOUT | 0x5040, 2 * 32, &previous_detector);
+      EventBlock::Allocator(&alloc(), "before", 32, 32), &previous_detector);
   StraightTrackWithDetector after(
-      &brd, BRACZ_LAYOUT | 0x5080, 3 * 32, &next_detector);
+      EventBlock::Allocator(&alloc(), "after", 32, 32), &next_detector);
 
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(after.side_a());
@@ -364,70 +364,70 @@ TEST_F(LogicTest, SimulatedOccupancy_RouteSetting) {
 
   EXPECT_EQ(StBase.state, runner_->GetAllAutomatas()[0]->GetState());
 
-  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
-  EXPECT_FALSE(QueryVar(piece.route_set_ab_));
-  EXPECT_FALSE(QueryVar(piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(QueryVar(*piece.route_set_ba_));
+  EXPECT_FALSE(QueryVar(*piece.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*piece.tmp_route_setting_in_progress_));
   // An incoming route request here.
-  SetVar(before.side_b()->out_try_set_route, true);
+  SetVar(*before.side_b()->out_try_set_route, true);
 
   Run();
 
   // Should be propagated.
-  EXPECT_TRUE(QueryVar(piece.side_b()->out_try_set_route));
-  EXPECT_FALSE(QueryVar(piece.side_a()->in_route_set_success));
-  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
+  EXPECT_TRUE(QueryVar(*piece.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*piece.side_a()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(*piece.tmp_route_setting_in_progress_));
 
   Run();
-  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
-  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(QueryVar(*before.side_b()->out_try_set_route));
   Run();
 
   EXPECT_EQ(after.side_a()->binding(), piece.side_b());
   EXPECT_EQ(before.side_b()->binding(), piece.side_a());
   EXPECT_EQ(after.side_a(), piece.side_b()->binding());
   EXPECT_EQ(before.side_b(), piece.side_a()->binding());
-  EXPECT_TRUE(QueryVar(after.side_a()->binding()->out_try_set_route));
-  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_success));
-  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
-  EXPECT_TRUE(QueryVar(piece.tmp_route_setting_in_progress_));
-  EXPECT_FALSE(QueryVar(piece.simulated_occupancy_));
-  EXPECT_FALSE(QueryVar(piece.route_set_ab_));
-  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*after.side_a()->binding()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*before.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(*before.side_b()->binding()->in_route_set_failure));
+  EXPECT_TRUE(QueryVar(*piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(QueryVar(*piece.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*piece.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*piece.route_set_ba_));
 
-  SetVar(after.side_a()->in_route_set_success, true);
-  SetVar(after.side_a()->binding()->out_try_set_route, false);
+  SetVar(*after.side_a()->in_route_set_success, true);
+  SetVar(*after.side_a()->binding()->out_try_set_route, false);
   Run();
   Run();
 
-  EXPECT_FALSE(QueryVar(piece.tmp_route_setting_in_progress_));
-  EXPECT_FALSE(SQueryVar(after.side_a()->binding()->out_try_set_route));
-  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_success));
-  EXPECT_FALSE(QueryVar(before.side_b()->binding()->in_route_set_failure));
-  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
-  EXPECT_TRUE(QueryVar(piece.route_set_ab_));
-  EXPECT_FALSE(QueryVar(piece.route_set_ba_));
+  EXPECT_FALSE(QueryVar(*piece.tmp_route_setting_in_progress_));
+  EXPECT_FALSE(SQueryVar(*after.side_a()->binding()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*before.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(*before.side_b()->binding()->in_route_set_failure));
+  EXPECT_FALSE(QueryVar(*before.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*piece.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*piece.route_set_ba_));
 
   // Now a second route setting should fail.
-  SetVar(before.side_b()->out_try_set_route, true);
+  SetVar(*before.side_b()->out_try_set_route, true);
 
   Run();
   Run();
 
-  EXPECT_FALSE(QueryVar(before.side_b()->out_try_set_route));
-  EXPECT_FALSE(SQueryVar(before.side_b()->binding()->in_route_set_success));
-  EXPECT_TRUE(QueryVar(before.side_b()->binding()->in_route_set_failure));
+  EXPECT_FALSE(QueryVar(*before.side_b()->out_try_set_route));
+  EXPECT_FALSE(SQueryVar(*before.side_b()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(*before.side_b()->binding()->in_route_set_failure));
 
   // And an opposite route should fail too.
-  SetVar(after.side_a()->out_try_set_route, true);
+  SetVar(*after.side_a()->out_try_set_route, true);
 
   Run();
   Run();
 
-  EXPECT_FALSE(QueryVar(after.side_a()->out_try_set_route));
-  EXPECT_FALSE(SQueryVar(after.side_a()->binding()->in_route_set_success));
-  EXPECT_TRUE(QueryVar(after.side_a()->binding()->in_route_set_failure));
+  EXPECT_FALSE(QueryVar(*after.side_a()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*after.side_a()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(*after.side_a()->binding()->in_route_set_failure));
 }
-
+/*
 TEST_F(LogicTest, ReverseRoute) {
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1 * 32);
   FakeBit previous_detector(this);

@@ -402,6 +402,9 @@ protected:
     bool StrictQuery(const automata::GlobalVariable& var) {
       int t_on = event_last_seen_[var.event_on()];
       int t_off = event_last_seen_[var.event_off()];
+      if (!t_on && !t_off) {
+        fprintf(stderr,"tick %d, not seen: %llx and %llx (bit %llx)\n", tick_, var.event_on(), var.event_off(), (var.event_on() - BRACZ_LAYOUT - 0xc000)/2);
+      }
       HASSERT(t_on || t_off);
       return t_on > t_off;
     }
