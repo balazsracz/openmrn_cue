@@ -125,7 +125,7 @@ class EventBlock : public EventVariableBase {
     Allocator(EventBlock* block, const string& name)
         : name_(name), block_(block), next_entry_(0), end_(8 << 8) {}
 
-    Allocator(Allocator* parent, const string& name, int count,
+    Allocator(const Allocator* parent, const string& name, int count,
               int alignment = 1)
         : name_(CreateNameFromParent(parent, name)), block_(parent->block_) {
       parent->Align(alignment);
@@ -135,29 +135,32 @@ class EventBlock : public EventVariableBase {
 
     // Reserves a number entries at the beginning of the block. Returns the
     // first entry that was reserved.
-    int Reserve(int count) {
+    int Reserve(int count) const {
       HASSERT(next_entry_ + count <= end_);
       int ret = next_entry_;
       next_entry_ += count;
       return ret;
     }
 
+    // Creates a new variable and transfers ownership to the caller.
+    GlobalVariable* Allocate(const string& name) const;
+
     // Rounds up the next to-be-allocated entry to Alignment.
-    void Align(int alignment) {
+    void Align(int alignment) const {
       next_entry_ += alignment - 1;
       next_entry_ /= alignment;
       next_entry_ *= alignment;
     }
 
-    const string& name() { return name_; }
+    const string& name() const { return name_; }
 
-    EventBlock* block() { return block_; }
+    EventBlock* block() const { return block_; }
 
-    int remaining() { return end_ - next_entry_; }
+    int remaining() const { return end_ - next_entry_; }
 
     // Concatenates parent->name() and 'name', adding a '.' as separator if both
     // are non-empty.
-    static string CreateNameFromParent(Allocator* parent, const string& name) {
+    static string CreateNameFromParent(const Allocator* parent, const string& name) {
       if (name.empty()) return parent->name();
       if (parent->name().empty()) return name;
       string ret = parent->name();
@@ -167,15 +170,17 @@ class EventBlock : public EventVariableBase {
     }
 
    private:
+    DISALLOW_COPY_AND_ASSIGN(Allocator);
     string name_;
     EventBlock* block_;
-    int next_entry_;
+    mutable int next_entry_;
     int end_;
   };
 
   Allocator* allocator() { return &allocator_; }
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(EventBlock);
   uint64_t event_base_;
   uint16_t size_;
   Allocator allocator_;
@@ -183,7 +188,7 @@ class EventBlock : public EventVariableBase {
 
 class BlockVariable : public GlobalVariable {
  public:
-  BlockVariable(EventBlock::Allocator* allocator, const string& name)
+  BlockVariable(const EventBlock::Allocator* allocator, const string& name)
       : parent_(allocator->block()),
         name_(allocator->CreateNameFromParent(allocator, name)) {
     int arg = allocator->Reserve(1);
@@ -206,6 +211,7 @@ class BlockVariable : public GlobalVariable {
   const string& name() { return name_; }
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(BlockVariable);
   EventBlock* parent_;
   string name_;
 };

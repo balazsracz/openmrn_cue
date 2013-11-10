@@ -95,14 +95,12 @@ DefAut(testaut, brd, {
 
 class StandardBlock : public StraightTrackInterface {
  public:
-  StandardBlock(Board* brd, PhysicalSignal* physical,
-                uint64_t event_base, int counter_base)
-      : request_green_(brd, event_base + 16 + 14, event_base + 16 + 15,
-                       counter_base + 15),
-        body_(brd, event_base, counter_base),
-        body_det_(brd, event_base + 32, counter_base + 16,
+  StandardBlock(Board* brd, PhysicalSignal* physical, const EventBlock::Allocator& alloc)
+      : request_green_(alloc.Allocate("request_green")),
+        body_(EventBlock::Allocator(&alloc, "body", 24, 8)),
+        body_det_(EventBlock::Allocator(&alloc, "body_det", 24, 8),
                   physical->sensor_raw),
-        signal_(brd, event_base + 64, counter_base + 32, &request_green_,
+        signal_(EventBlock::Allocator(&alloc, "body_det", 24, 8), request_green_.get(),
                 physical->signal_raw),
         physical_(physical),
         aut_body_(brd, &body_),
@@ -114,12 +112,12 @@ class StandardBlock : public StraightTrackInterface {
   virtual CtrlTrackInterface* side_a() { return body_.side_a(); }
   virtual CtrlTrackInterface* side_b() { return signal_.side_b(); }
 
-  GlobalVariable* request_green() { return &request_green_; }
-  const GlobalVariable& route() { return body_det_.route_set_ab_; }
-  const GlobalVariable& detector() { return body_det_.simulated_occupancy_; }
+  GlobalVariable* request_green() { return request_green_.get(); }
+  const GlobalVariable& route() { return *body_det_.route_set_ab_; }
+  const GlobalVariable& detector() { return *body_det_.simulated_occupancy_; }
 
  private:
-  EventBasedVariable request_green_;
+  unique_ptr<GlobalVariable> request_green_;
 
  public:
   StraightTrackLong body_;
@@ -134,15 +132,16 @@ class StandardBlock : public StraightTrackInterface {
   StandardPluginAutomata aut_signal_;
 };
 
+EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 
 StandardBlock Block_WWB14(&brd, &WWB14,
-                          BRACZ_LAYOUT | 0x3800 | 0, 48*0);
+                          *logic.allocator());
 StandardBlock Block_A301(&brd, &A301,
-                         BRACZ_LAYOUT | 0x3880 | 0, 48*1);
+                         *logic.allocator());
 //StandardBlock Block_YYC23(&brd, &YYC23,
 //                          BRACZ_LAYOUT | 0x3900 | 0, 48*2);
 StandardBlock Block_XXB1(&brd, &XXB1,
-                         BRACZ_LAYOUT | 0x3980 | 0, 48*3);
+                         *logic.allocator());
 
 #define BLOCK_SEQUENCE   &Block_XXB1, &Block_A301,  &Block_WWB14,  /*&Block_YYC23,*/  &Block_XXB1
 

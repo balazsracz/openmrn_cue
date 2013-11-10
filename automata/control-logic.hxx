@@ -5,6 +5,7 @@
 #define _AUTOMATA_CONTROL_LOGIC_HXX_
 
 #include <map>
+#include <memory>
 #include <algorithm>
 
 #include "system.hxx"
@@ -118,32 +119,19 @@ public:
 
 class CtrlTrackInterface {
  public:
-  CtrlTrackInterface(Board* brd, OccupancyLookupInterface* parent,
-                     uint64_t event_base, int counter)
-      : out_try_set_route(
-            brd,
-            event_base | 0, event_base | 0 | 1,
-            counter),
-        in_route_set_success(
-            brd,
-            event_base | 2, event_base | 2 | 1,
-            counter + 1),
-        in_route_set_failure(
-            brd,
-            event_base | 4, event_base | 4 | 1,
-            counter + 2),
-        out_route_released(
-            brd,
-            event_base | 6, event_base | 6 | 1,
-            counter + 3),
+  CtrlTrackInterface(const EventBlock::Allocator& allocator, OccupancyLookupInterface* parent)
+      : out_try_set_route(allocator.Allocate("out_try_set_route")),
+        in_route_set_success(allocator.Allocate("in_route_set_success")),
+        in_route_set_failure(allocator.Allocate("in_route_set_failure")),
+        out_route_released(allocator.Allocate("out_route_released")),
         lookup_if_(parent),
         binding_(nullptr) {}
 
 
-  EventBasedVariable out_try_set_route;
-  EventBasedVariable in_route_set_success;
-  EventBasedVariable in_route_set_failure;
-  EventBasedVariable out_route_released;
+  std::unique_ptr<GlobalVariable> out_try_set_route;
+  std::unique_ptr<GlobalVariable> in_route_set_success;
+  std::unique_ptr<GlobalVariable> in_route_set_failure;
+  std::unique_ptr<GlobalVariable> out_route_released;
 
   const GlobalVariable* LookupNextDetector() const {
     const GlobalVariable* ret = LookupCloseDetector();
@@ -197,23 +185,16 @@ class StraightTrack : public StraightTrackInterface,
                       public OccupancyLookupInterface,
                       public virtual AutomataPlugin {
  public:
-  StraightTrack(Board* brd, uint64_t event_base, int counter_base)
-      : side_a_(brd, this, event_base, counter_base),
-        side_b_(brd, this, event_base + 8, counter_base + 4),
-        simulated_occupancy_(brd, event_base + 16, event_base + 16 + 1,
-                             counter_base + 8),
-        route_set_ab_(brd, event_base + 16 + 2, event_base + 16 + 3,
-                      counter_base + 8 + 1),
-        route_set_ba_(brd, event_base + 16 + 4, event_base + 16 + 5,
-                      counter_base + 8 + 2),
-        route_pending_ab_(brd, event_base + 16 + 6, event_base + 16 + 7,
-                      counter_base + 8 + 3),
-        route_pending_ba_(brd, event_base + 16 + 8, event_base + 16 + 9,
-                      counter_base + 8 + 4),
-        tmp_seen_train_in_next_(brd, event_base + 16 + 10, event_base + 16 + 11,
-                                counter_base + 8 + 5),
-        tmp_route_setting_in_progress_(
-            brd, event_base + 16 + 12, event_base + 16 + 13, counter_base + 8 + 6)
+  StraightTrack(const EventBlock::Allocator& allocator)
+      : side_a_(EventBlock::Allocator(&allocator, "a", 8), this),
+        side_b_(EventBlock::Allocator(&allocator, "b", 8), this),
+        simulated_occupancy_(allocator.Allocate("simulated_occ")),
+        route_set_ab_(allocator.Allocate("route_set_ab")),
+        route_set_ba_(allocator.Allocate("route_set_ba")),
+        route_pending_ab_(allocator.Allocate("route_pending_ab")),
+        route_pending_ba_(allocator.Allocate("route_pending_ba")),
+        tmp_seen_train_in_next_(allocator.Allocate("tmp_seen_train_in_next")),
+        tmp_route_setting_in_progress_(allocator.Allocate("tmp_route_setting_in_progress"))
   {
     AddAutomataPlugin(20, NewCallbackPtr(
         this, &StraightTrack::SimulateAllOccupancy));
@@ -252,27 +233,26 @@ class StraightTrack : public StraightTrackInterface,
 
   friend class ::StandardBlock;
 
-  EventBasedVariable simulated_occupancy_;
+  std::unique_ptr<GlobalVariable> simulated_occupancy_;
   // route from A [in] to B [out]
-  EventBasedVariable route_set_ab_;
+  std::unique_ptr<GlobalVariable> route_set_ab_;
   // route from B [in] to A [out]
-  EventBasedVariable route_set_ba_;
+  std::unique_ptr<GlobalVariable> route_set_ba_;
   // temp var for route AB
-  EventBasedVariable route_pending_ab_;
+  std::unique_ptr<GlobalVariable> route_pending_ab_;
   // temp var for route BA
-  EventBasedVariable route_pending_ba_;
+  std::unique_ptr<GlobalVariable> route_pending_ba_;
   // Helper variable for simuating occupancy.
-  EventBasedVariable tmp_seen_train_in_next_;
+  std::unique_ptr<GlobalVariable> tmp_seen_train_in_next_;
   // Helper variable for excluding parallel route setting requests.
-  EventBasedVariable tmp_route_setting_in_progress_;
+  std::unique_ptr<GlobalVariable> tmp_route_setting_in_progress_;
 };
 
 class StraightTrackWithDetector : public StraightTrack {
 public:
-  StraightTrackWithDetector(Board* brd,
-                            uint64_t event_base, int counter_base,
+  StraightTrackWithDetector(const EventBlock::Allocator& allocator,
                             GlobalVariable* detector)
-    : StraightTrack(brd, event_base, counter_base),
+    : StraightTrack(allocator),
       detector_(detector) {
     // No occupancy simulation needed.
     RemoveAutomataPlugins(20);
@@ -304,13 +284,12 @@ protected:
 
 class StraightTrackWithRawDetector : public StraightTrackWithDetector {
 public:
-  StraightTrackWithRawDetector(Board* brd,
-                               uint64_t event_base, int counter_base,
+  StraightTrackWithRawDetector(const EventBlock::Allocator& allocator,
                                const GlobalVariable* raw_detector)
-      : StraightTrackWithDetector(brd, event_base, counter_base,
-                                  &simulated_occupancy_),
+      : StraightTrackWithDetector(allocator, nullptr),
         raw_detector_(raw_detector),
-        debounce_temp_var_(brd, event_base + 16 + 14, event_base + 16 + 15, counter_base + 8 + 7) {
+        debounce_temp_var_(allocator.Allocate("tmp_debounce")) {
+    detector_ = simulated_occupancy_.get();
     RemoveAutomataPlugins(20);
     AddAutomataPlugin(20, NewCallbackPtr(
         this, &StraightTrackWithRawDetector::RawDetectorOccupancy));
@@ -320,14 +299,13 @@ protected:
   void RawDetectorOccupancy(Automata* aut);
 
   const GlobalVariable* raw_detector_;
-  EventBasedVariable debounce_temp_var_;
+  std::unique_ptr<GlobalVariable> debounce_temp_var_;
 };
 
 class StraightTrackShort : public StraightTrack {
 public:
-  StraightTrackShort(Board* brd,
-                     uint64_t event_base, int counter_base)
-    : StraightTrack(brd, event_base, counter_base) {
+  StraightTrackShort(const EventBlock::Allocator& allocator)
+    : StraightTrack(allocator) {
     AddAutomataPlugin(30, NewCallbackPtr(
         (StraightTrack*)this, &StraightTrack::SimulateAllRoutes));
   }
@@ -347,9 +325,8 @@ public:
 
 class StraightTrackLong : public StraightTrack {
 public:
-  StraightTrackLong(Board* brd,
-                     uint64_t event_base, int counter_base)
-    : StraightTrack(brd, event_base, counter_base) {
+  StraightTrackLong(const EventBlock::Allocator& allocator)
+    : StraightTrack(allocator) {
     AddAutomataPlugin(30, NewCallbackPtr(
         this, &StraightTrack::SimulateAllRoutes));
   }
@@ -371,11 +348,10 @@ public:
 // shall) stop if the signal is red.
 class SignalPiece : public StraightTrackShort {
  public:
-  SignalPiece(Board* brd,
-              uint64_t event_base, int counter_base,
+  SignalPiece(const EventBlock::Allocator& allocator,
               GlobalVariable* request_green,
               GlobalVariable* signal)
-      : StraightTrackShort(brd, event_base, counter_base),
+      : StraightTrackShort(allocator),
         request_green_(request_green),
         signal_(signal) {
     // We "override" the occupancy detection by just copying the occupancy

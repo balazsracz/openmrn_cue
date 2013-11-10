@@ -28,10 +28,10 @@ bool BindSequence(
 typedef Automata::LocalVariable LocalVariable;
 
 void StraightTrack::SimulateAllOccupancy(Automata* aut) {
-  auto* sim_occ = aut->ImportVariable(&simulated_occupancy_);
-  auto* tmp = aut->ImportVariable(&tmp_seen_train_in_next_);
-  auto* route_set_ab = aut->ImportVariable(&route_set_ab_);
-  auto* route_set_ba = aut->ImportVariable(&route_set_ba_);
+  auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
+  auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
+  auto* route_set_ab = aut->ImportVariable(route_set_ab_.get());
+  auto* route_set_ba = aut->ImportVariable(route_set_ba_.get());
   auto side_b_release = NewCallback(
       this, &StraightTrack::ReleaseRouteCallback, side_b(), route_set_ab);
   auto side_a_release = NewCallback(
@@ -64,7 +64,7 @@ void StraightTrack::ReleaseRouteCallback(CtrlTrackInterface* side_out,
   // released. That would need another temporary variable that we can save the
   // pending route release into.
 
-  op->ActReg1(op->parent()->ImportVariable(&side_out->out_route_released));
+  op->ActReg1(op->parent()->ImportVariable(side_out->out_route_released.get()));
   op->ActReg0(route_set);
 }
 
@@ -76,17 +76,17 @@ void SimulateRoute(Automata* aut,
                    const MutableVarList current_route,
                    const ConstVarList conflicting_routes) {
   LocalVariable* in_try_set_route =
-      aut->ImportVariable(&before->binding()->out_try_set_route);
+      aut->ImportVariable(before->binding()->out_try_set_route.get());
   LocalVariable* in_route_set_success =
-      aut->ImportVariable(&before->in_route_set_success);
+      aut->ImportVariable(before->in_route_set_success.get());
   LocalVariable* in_route_set_failure =
-      aut->ImportVariable(&before->in_route_set_failure);
+      aut->ImportVariable(before->in_route_set_failure.get());
   LocalVariable* out_route_set_success =
-      aut->ImportVariable(&after->binding()->in_route_set_success);
+      aut->ImportVariable(after->binding()->in_route_set_success.get());
   LocalVariable* out_route_set_failure =
-      aut->ImportVariable(&after->binding()->in_route_set_failure);
+      aut->ImportVariable(after->binding()->in_route_set_failure.get());
   LocalVariable* out_try_set_route =
-      aut->ImportVariable(&after->out_try_set_route);
+      aut->ImportVariable(after->out_try_set_route.get());
   const ConstVarList& const_current_route =
       reinterpret_cast<const ConstVarList&>(current_route);
   // Initialization
@@ -158,36 +158,36 @@ void SimulateRoute(Automata* aut,
 
 void StraightTrack::SimulateAllRoutes(Automata* aut) {
   LocalVariable* any_route_setting_in_progress =
-      aut->ImportVariable(&tmp_route_setting_in_progress_);
+      aut->ImportVariable(tmp_route_setting_in_progress_.get());
   Def().IfState(StInit)
-      .ActReg0(aut->ImportVariable(&route_set_ab_))
-      .ActReg0(aut->ImportVariable(&route_set_ba_))
-      .ActReg0(aut->ImportVariable(&route_pending_ab_))
-      .ActReg0(aut->ImportVariable(&route_pending_ba_));
+      .ActReg0(aut->ImportVariable(route_set_ab_.get()))
+      .ActReg0(aut->ImportVariable(route_set_ba_.get()))
+      .ActReg0(aut->ImportVariable(route_pending_ab_.get()))
+      .ActReg0(aut->ImportVariable(route_pending_ba_.get()));
   SimulateRoute(aut,
                 side_a(),
                 side_b(),
                 any_route_setting_in_progress,
-                aut->ImportVariable(&route_pending_ab_),
-                { &route_set_ab_ },
-                { &route_set_ba_ });
+                aut->ImportVariable(route_pending_ab_.get()),
+                { route_set_ab_.get() },
+                { route_set_ba_.get() });
   SimulateRoute(aut,
                 side_b(),
                 side_a(),
                 any_route_setting_in_progress,
-                aut->ImportVariable(&route_pending_ba_),
-                { &route_set_ba_ },
-                { &route_set_ab_ });
+                aut->ImportVariable(route_pending_ba_.get()),
+                { route_set_ba_.get() },
+                { route_set_ab_.get() });
 }
 
 void StraightTrackWithDetector::DetectorRoute(Automata* aut) {
   LocalVariable* any_route_setting_in_progress =
-      aut->ImportVariable(&tmp_route_setting_in_progress_);
+      aut->ImportVariable(tmp_route_setting_in_progress_.get());
   Def().IfState(StInit)
-      .ActReg0(aut->ImportVariable(&route_set_ab_))
-      .ActReg0(aut->ImportVariable(&route_set_ba_))
-      .ActReg0(aut->ImportVariable(&route_pending_ab_))
-      .ActReg0(aut->ImportVariable(&route_pending_ba_));
+      .ActReg0(aut->ImportVariable(route_set_ab_.get()))
+      .ActReg0(aut->ImportVariable(route_set_ba_.get()))
+      .ActReg0(aut->ImportVariable(route_pending_ab_.get()))
+      .ActReg0(aut->ImportVariable(route_pending_ba_.get()));
   // We use the detector as a conflicting route. This will prevent a route
   // being set across a straight track (in either direction) if the detector
   // shows not empty.
@@ -195,24 +195,24 @@ void StraightTrackWithDetector::DetectorRoute(Automata* aut) {
                 side_a(),
                 side_b(),
                 any_route_setting_in_progress,
-                aut->ImportVariable(&route_pending_ab_),
-                { &route_set_ab_ },
-                { &route_set_ba_, detector_ });
+                aut->ImportVariable(route_pending_ab_.get()),
+                { route_set_ab_.get() },
+                { route_set_ba_.get(), detector_ });
   SimulateRoute(aut,
                 side_b(),
                 side_a(),
                 any_route_setting_in_progress,
-                aut->ImportVariable(&route_pending_ba_),
-                { &route_set_ba_ },
-                { &route_set_ab_, detector_ });
+                aut->ImportVariable(route_pending_ba_.get()),
+                { route_set_ba_.get() },
+                { route_set_ab_.get(), detector_ });
 }
 
 void SignalPiece::SignalOccupancy(Automata* aut) {
   const LocalVariable& prev_detector =
       aut->ImportVariable(*side_a()->binding()->LookupNextDetector());
-  LocalVariable* occ = aut->ImportVariable(&simulated_occupancy_);
+  LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
   LocalVariable* signal = aut->ImportVariable(signal_);
-  LocalVariable* route = aut->ImportVariable(&route_set_ab_);
+  LocalVariable* route = aut->ImportVariable(route_set_ab_.get());
   Def()
       .IfReg1(prev_detector)
       .ActReg1(occ);
@@ -228,11 +228,11 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
   static const int kTimeTakenToGoBusy = 2;
   static const int kTimeTakenToGoFree = 3;
 
-  LocalVariable* occ = aut->ImportVariable(&simulated_occupancy_);
+  LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
   const LocalVariable& raw = aut->ImportVariable(*raw_detector_);
-  LocalVariable* last(aut->ImportVariable(&debounce_temp_var_));
-  LocalVariable* route1 = aut->ImportVariable(&route_set_ab_);
-  LocalVariable* route2 = aut->ImportVariable(&route_set_ba_);
+  LocalVariable* last(aut->ImportVariable(debounce_temp_var_.get()));
+  LocalVariable* route1 = aut->ImportVariable(route_set_ab_.get());
+  LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
 
   // If there is a flip, we start a timer. The timer length depends on the
   // edge.
@@ -253,10 +253,10 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
 }
 
 void StraightTrackWithDetector::DetectorOccupancy(Automata* aut) {
-  LocalVariable* occ = aut->ImportVariable(&simulated_occupancy_);
+  LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
   const LocalVariable& det = aut->ImportVariable(*detector_);
-  LocalVariable* route1 = aut->ImportVariable(&route_set_ab_);
-  LocalVariable* route2 = aut->ImportVariable(&route_set_ba_);
+  LocalVariable* route1 = aut->ImportVariable(route_set_ab_.get());
+  LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
   Def()
       .IfReg1(det)
       .ActReg1(occ);
@@ -278,17 +278,17 @@ void SimulateSignalFwdRoute(Automata* aut,
                             GlobalVariable* go_signal,
                             GlobalVariable* in_request_green) {
   LocalVariable* in_try_set_route =
-      aut->ImportVariable(&before->binding()->out_try_set_route);
+      aut->ImportVariable(before->binding()->out_try_set_route.get());
   LocalVariable* in_route_set_success =
-      aut->ImportVariable(&before->in_route_set_success);
+      aut->ImportVariable(before->in_route_set_success.get());
   LocalVariable* in_route_set_failure =
-      aut->ImportVariable(&before->in_route_set_failure);
+      aut->ImportVariable(before->in_route_set_failure.get());
   LocalVariable* out_route_set_success =
-      aut->ImportVariable(&after->binding()->in_route_set_success);
+      aut->ImportVariable(after->binding()->in_route_set_success.get());
   LocalVariable* out_route_set_failure =
-      aut->ImportVariable(&after->binding()->in_route_set_failure);
+      aut->ImportVariable(after->binding()->in_route_set_failure.get());
   LocalVariable* out_try_set_route =
-      aut->ImportVariable(&after->out_try_set_route);
+      aut->ImportVariable(after->out_try_set_route.get());
   const ConstVarList& const_current_route =
       reinterpret_cast<const ConstVarList&>(current_route);
   LocalVariable* signal =
@@ -365,29 +365,29 @@ void SimulateSignalFwdRoute(Automata* aut,
 
 void SignalPiece::SignalRoute(Automata* aut) {
   LocalVariable* any_route_setting_in_progress =
-      aut->ImportVariable(&tmp_route_setting_in_progress_);
+      aut->ImportVariable(tmp_route_setting_in_progress_.get());
   Def().IfState(StInit)
-      .ActReg0(aut->ImportVariable(&route_set_ab_))
-      .ActReg0(aut->ImportVariable(&route_set_ba_))
-      .ActReg0(aut->ImportVariable(&route_pending_ab_))
-      .ActReg0(aut->ImportVariable(&route_pending_ba_));
+      .ActReg0(aut->ImportVariable(route_set_ab_.get()))
+      .ActReg0(aut->ImportVariable(route_set_ba_.get()))
+      .ActReg0(aut->ImportVariable(route_pending_ab_.get()))
+      .ActReg0(aut->ImportVariable(route_pending_ba_.get()));
 
   // In direction b->a the signal track is completely normal.
   SimulateRoute(aut,
                 side_b(),
                 side_a(),
                 any_route_setting_in_progress,
-                aut->ImportVariable(&route_pending_ba_),
-                { &route_set_ba_ },
-                { &route_set_ab_ });
+                aut->ImportVariable(route_pending_ba_.get()),
+                { route_set_ba_.get() },
+                { route_set_ab_.get() });
 
   SimulateSignalFwdRoute(aut,
                          side_a(),
                          side_b(),
                          any_route_setting_in_progress,
-                         aut->ImportVariable(&route_pending_ab_),
-                         { &route_set_ab_ },
-                         { &route_set_ba_ },
+                         aut->ImportVariable(route_pending_ab_.get()),
+                         { route_set_ab_.get() },
+                         { route_set_ba_.get() },
                          signal_,
                          request_green_);
 }

@@ -3,6 +3,7 @@
 #include "system.hxx"
 #include "../cs/src/automata_defs.h"
 #include "operations.hxx"
+#include "variables.hxx"
 
 
 namespace automata {
@@ -136,5 +137,9 @@ protected:
 
     }
     };*/
+
+GlobalVariable* EventBlock::Allocator::Allocate(const string& name) const {
+  return new BlockVariable(this, name);
+}
 
 }
