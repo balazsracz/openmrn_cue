@@ -219,7 +219,7 @@ class EventBlockBit : public ReadWriteBit {
   EventBlockBit(WriteHelper::node_type node,
                 uint64_t event_base,
                 size_t size)
-      : storage_(new uint32_t[size >> 5]),
+      : storage_(new uint32_t[(size + 31) >> 5]),
         handler_(new BitRangeEventPC(node, event_base, storage_, size)) {}
 
   ~EventBlockBit() {

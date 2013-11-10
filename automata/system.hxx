@@ -96,7 +96,9 @@ public:
     //! board code.
     virtual void Render(string* output) = 0;
 
-private:
+    bool HasId() { return id_assigned_; }
+
+protected:
     bool id_assigned_;
     GlobalVariableId id_;
     DISALLOW_COPY_AND_ASSIGN(GlobalVariable);

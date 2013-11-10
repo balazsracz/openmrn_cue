@@ -183,6 +183,42 @@ TEST(BoardCompile, SingleEventBoard) {
   EXPECT_EQ(expected, output);
 }
 
+TEST(BlockTest, AllocatorTest) {
+  Board brd;
+  EventBlock block1(&brd, 0x05020102020658000ULL, "blk");
+  EXPECT_EQ("blk", block1.allocator()->name());
+  EventBlock::Allocator resv1(block1.allocator(), "r1", 13);
+  EXPECT_EQ("blk.r1", resv1.name());
+  EXPECT_EQ(13, resv1.remaining());
+  EXPECT_EQ(2035, block1.allocator()->remaining());
+  EXPECT_EQ(0, resv1.Reserve(1));
+  EXPECT_EQ(1, resv1.Reserve(1));
+  EXPECT_EQ(2, resv1.Reserve(1));
+  EXPECT_EQ(3, resv1.Reserve(1));
+  EXPECT_EQ(9, resv1.remaining());
+
+  EventBlock::Allocator resv2(block1.allocator(), "", 7, 16);
+  EXPECT_EQ(16, resv2.Reserve(1));
+  EXPECT_EQ(17, resv2.Reserve(1));
+  EXPECT_EQ(18, resv2.Reserve(1));
+  EXPECT_EQ(4, resv2.remaining());
+
+  EXPECT_DEATH(resv2.Reserve(5), "next_entry_");
+  BlockVariable bv(&resv1, "blockvar");
+  EXPECT_EQ("blk.r1.blockvar", bv.name());
+  block1.SetId(354);
+
+  GlobalVariableId id = bv.GetId();
+  EXPECT_EQ(354U, id.id);
+  EXPECT_EQ(4, id.arg);
+}
+
+Board obrd;
+EventBlock block1(&obrd, 0x05020102020658000ULL, "oblk");
+
+//EventBlock::Allocator resv;
+//BlockVariable bv1(block1.allocator(), foo);
+
 int appl_main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
