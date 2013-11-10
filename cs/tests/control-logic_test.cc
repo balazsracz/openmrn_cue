@@ -609,7 +609,7 @@ TEST_F(LogicTest, MultiRoute) {
   EXPECT_TRUE(QueryVar(*before.side_b()->binding()->in_route_set_success));
   EXPECT_FALSE(QueryVar(*before.side_b()->binding()->in_route_set_failure));
 }
-/*
+
 TEST_F(LogicTest, Signal) {
   FakeBit previous_detector(this);
   FakeBit request_green(this);
@@ -617,22 +617,22 @@ TEST_F(LogicTest, Signal) {
   FakeBit next_detector(this);
   FakeBit request_green2(this);
   FakeBit signal_green2(this);
-  static StraightTrackLong first_body(&brd, BRACZ_LAYOUT | 0x5180, 1 * 32);
+  static StraightTrackLong first_body(alloc());
   static StraightTrackWithDetector first_det(
-      &brd, BRACZ_LAYOUT | 0x5100, 2 * 32, &previous_detector);
+      alloc(), &previous_detector);
   static SignalPiece signal(
-      &brd, BRACZ_LAYOUT | 0x5000, 3 * 32, &request_green, &signal_green);
-  static StraightTrackLong mid(&brd, BRACZ_LAYOUT | 0x5040, 4 * 32);
-  static StraightTrackLong second_body(&brd, BRACZ_LAYOUT | 0x51C0, 5 * 32);
+      alloc(), &request_green, &signal_green);
+  static StraightTrackLong mid(alloc());
+  static StraightTrackLong second_body(alloc());
   static StraightTrackWithDetector second_det(
-      &brd, BRACZ_LAYOUT | 0x5080, 6 * 32, &next_detector);
+      alloc(), &next_detector);
   static SignalPiece second_signal(
-      &brd, BRACZ_LAYOUT | 0x50C0, 7 * 32, &request_green2, &signal_green2);
-  static StraightTrackLong after(&brd, BRACZ_LAYOUT | 0x5140, 8 * 32);
+      alloc(), &request_green2, &signal_green2);
+  static StraightTrackLong after(alloc());
 
   BindSequence({&first_body,    &first_det,   &signal,
-                               &mid,           &second_body, &second_det,
-                               &second_signal, &after});
+          &mid,           &second_body, &second_det,
+          &second_signal, &after});
 
 #define DefPiece(pp) \
   DefAut(aut##pp, brd, { pp.RunAll(this); })
@@ -649,9 +649,9 @@ TEST_F(LogicTest, Signal) {
   // This will immediately accept a route at the end stop.
   DefAut(strategyaut, brd, {
     LocalVariable* try_set_route =
-        ImportVariable(&after.side_a()->binding()->out_try_set_route);
+        ImportVariable(after.side_a()->binding()->out_try_set_route.get());
     LocalVariable* route_set_succcess =
-        ImportVariable(&after.side_a()->in_route_set_success);
+        ImportVariable(after.side_a()->in_route_set_success.get());
     Def().IfReg1(*try_set_route).ActReg0(try_set_route).ActReg1(
         route_set_succcess);
   });
@@ -769,18 +769,18 @@ TEST_F(LogicTest, 100trainz) {
   FakeBit next_detector(this);
   FakeBit request_green2(this);
   FakeBit signal_green2(this);
-  static StraightTrackLong first_body(&brd, BRACZ_LAYOUT | 0x5180, 1 * 32);
+  static StraightTrackLong first_body(alloc());
   static StraightTrackWithDetector first_det(
-      &brd, BRACZ_LAYOUT | 0x5100, 2 * 32, &previous_detector);
+      alloc(), &previous_detector);
   static SignalPiece signal(
-      &brd, BRACZ_LAYOUT | 0x5000, 3 * 32, &request_green, &signal_green);
-  static StraightTrackLong mid(&brd, BRACZ_LAYOUT | 0x5040, 4 * 32);
-  static StraightTrackLong second_body(&brd, BRACZ_LAYOUT | 0x51C0, 5 * 32);
+      alloc(), &request_green, &signal_green);
+  static StraightTrackLong mid(alloc());
+  static StraightTrackLong second_body(alloc());
   static StraightTrackWithDetector second_det(
-      &brd, BRACZ_LAYOUT | 0x5080, 6 * 32, &next_detector);
+      alloc(), &next_detector);
   static SignalPiece second_signal(
-      &brd, BRACZ_LAYOUT | 0x50C0, 7 * 32, &request_green2, &signal_green2);
-  static StraightTrackLong after(&brd, BRACZ_LAYOUT | 0x5140, 8 * 32);
+      alloc(), &request_green2, &signal_green2);
+  static StraightTrackLong after(alloc());
 
   BindSequence({&first_body,    &first_det,   &signal,
                                &mid,           &second_body, &second_det,
@@ -801,9 +801,9 @@ TEST_F(LogicTest, 100trainz) {
   // This will immediately accept a route at the end stop.
   DefAut(strategyaut, brd, {
     LocalVariable* try_set_route =
-        ImportVariable(&after.side_a()->binding()->out_try_set_route);
+        ImportVariable(after.side_a()->binding()->out_try_set_route.get());
     LocalVariable* route_set_succcess =
-        ImportVariable(&after.side_a()->in_route_set_success);
+        ImportVariable(after.side_a()->in_route_set_success.get());
     Def().IfReg1(*try_set_route).ActReg0(try_set_route).ActReg1(
         route_set_succcess);
   });
@@ -890,7 +890,7 @@ TEST_F(LogicTest, 100trainz) {
     Run(10);
   }
 }
-*/
+
 }  // namespace automata
 
 int appl_main(int argc, char* argv[]) {
