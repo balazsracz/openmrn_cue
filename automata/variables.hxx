@@ -6,7 +6,6 @@
 
 #include "../cs/src/base.h"  // for constants in decodeoffset.
 
-
 namespace automata {
 
 // Creates the arguments for EventBasedVariable allocation from a contiguous
@@ -19,7 +18,6 @@ inline bool DecodeOffset(int counter, int* client, int* offset, int* bit) {
   *offset = autofs * LEN_AUTOMATA + OFS_BITS;
   return (*client < 8);
 }
-
 
 class EventVariableBase : public GlobalVariable {
  public:
@@ -70,8 +68,7 @@ class EventVariableBase : public GlobalVariable {
 */
 class EventBasedVariable : public EventVariableBase {
  public:
-  EventBasedVariable(Board* brd,
-                     uint64_t event_on, uint64_t event_off,
+  EventBasedVariable(Board* brd, uint64_t event_on, uint64_t event_off,
                      int counter)
       : EventVariableBase(brd), event_on_(event_on), event_off_(event_off) {
     int client, offset, bit;
@@ -79,8 +76,7 @@ class EventBasedVariable : public EventVariableBase {
     SetArgs(client, offset, bit);
   }
 
-  EventBasedVariable(Board* brd,
-                     uint64_t event_on, uint64_t event_off,
+  EventBasedVariable(Board* brd, uint64_t event_on, uint64_t event_off,
                      int client, int offset, int bit)
       : EventVariableBase(brd), event_on_(event_on), event_off_(event_off) {
     SetArgs(client, offset, bit);
@@ -107,14 +103,12 @@ class EventBasedVariable : public EventVariableBase {
 
 class EventBlock : public EventVariableBase {
  public:
-  EventBlock(Board* brd,
-             uint64_t event_base,
-             const string& name)
-    : EventVariableBase(brd), event_base_(event_base), size_(1) {}
+  EventBlock(Board* brd, uint64_t event_base, const string& name)
+      : EventVariableBase(brd), event_base_(event_base), size_(1) {}
 
   virtual void Render(string* output) {
     CreateEventId(0, event_base_, output);
-    HASSERT(size_ < (8<<8));
+    HASSERT(size_ < (8 << 8));
     arg1_ = (1 << 5) | ((size_ >> 8) & 7);
     arg2_ = size_ & 0xff;
     RenderHelper(output);
@@ -123,11 +117,11 @@ class EventBlock : public EventVariableBase {
   class Allocator {
    public:
     Allocator(EventBlock* block, const string& name)
-        : name_(name), block_(block), next_entry_(0), end_(8<<8) {}
+        : name_(name), block_(block), next_entry_(0), end_(8 << 8) {}
 
-    Allocator(Allocator* parent, const string& name, int count, int alignment = 1)
-        : name_(CreateNameFromParent(parent, name)),
-          block_(parent->block_) {
+    Allocator(Allocator* parent, const string& name, int count,
+              int alignment = 1)
+        : name_(CreateNameFromParent(parent, name)), block_(parent->block_) {
       parent->Align(alignment);
       next_entry_ = parent->Reserve(count);
       end_ = next_entry_ + count;
@@ -174,4 +168,4 @@ class EventBlock : public EventVariableBase {
 
 }  // namespace
 
-#endif // _bracz_train_automata_variables_hxx_
+#endif  // _bracz_train_automata_variables_hxx_
