@@ -6,6 +6,8 @@
 #endif
 
 #define LOGLEVEL VERBOSE
+// Workaroundfor bug in <memory> for gcc 2.6.2 lpcxpresso newlib
+#define __CR2_C___4_6_2_BITS_SHARED_PTR_H__
 
 #include <stdio.h>
 
