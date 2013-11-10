@@ -231,6 +231,8 @@ class BlockVariable : public GlobalVariable {
   string name_;
 };
 
+void ClearOffsetMap();
+
 }  // namespace
 
 #endif  // _bracz_train_automata_variables_hxx_

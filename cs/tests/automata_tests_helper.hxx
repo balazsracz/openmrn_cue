@@ -22,6 +22,7 @@
 #include "nmranet_can.h"
 #ifdef CPP_EVENT_HANDLER
 #include "nmranet/GlobalEventHandler.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
 #endif
 
 using ::testing::_;
@@ -182,6 +183,7 @@ class AutomataTests : public testing::Test {
   }
 
   AutomataTests() {
+    automata::ClearOffsetMap();
     next_bit_offset_ = 4242;
     runner_ = NULL;
     node_ = NULL;
@@ -304,6 +306,10 @@ void AutomataTests::SetUpTestCase() {
 
   nmranet_if_ = nmranet_can_if_fd_init(0x02010d000000ULL, fd[0], fd[1],
                                       "can_mock_if", mock_read, mock_write);
+#ifdef CPP_EVENT_HANDLER
+  extern void EnsureCompatEventHandlerExists();
+  EnsureCompatEventHandlerExists();
+#endif
 }
 
 
@@ -377,50 +383,83 @@ protected:
   // independent of the internal event representation (state bits) and only
   // listens to OpenLCB events. If the variable is undefined, it is assumed to
   // be false (default state of internal bit).
-  bool QueryVar(const automata::EventBasedVariable& var) {
+  bool QueryVar(const automata::GlobalVariable& var) {
     return all_listener_.Query(var);
   } 
 
   // Like QueryVar, but assert fails if the variable value is not defined yet.
-  bool SQueryVar(const automata::EventBasedVariable& var) {
+  bool SQueryVar(const automata::GlobalVariable& var) {
     return all_listener_.StrictQuery(var);
   } 
 
  private:
   friend class GlobalEventListener;
 
-  class GlobalEventListener : public EventHandler {
+  class GlobalEventListenerBase {
    public:
-    GlobalEventListener() : tick_(0) {
-      AutomataNodeTests::registry()->RegisterGlobalHandler(this);
-    }
+    GlobalEventListenerBase() : tick_(0) {}
 
-    virtual ~GlobalEventListener() {
-      AutomataNodeTests::registry()->UnregisterGlobalHandler(this);
-    }
-
-    virtual void HandleEvent(uint64_t event) {
-      event_last_seen_[event] = ++tick_;
-    }
-
-    bool StrictQuery(const automata::EventBasedVariable& var) {
+    bool StrictQuery(const automata::GlobalVariable& var) {
       int t_on = event_last_seen_[var.event_on()];
       int t_off = event_last_seen_[var.event_off()];
       HASSERT(t_on || t_off);
       return t_on > t_off;
     }
 
-    bool Query(const automata::EventBasedVariable& var) {
+    bool Query(const automata::GlobalVariable& var) {
       int t_on = event_last_seen_[var.event_on()];
       int t_off = event_last_seen_[var.event_off()];
       // If they are both zero, we return false.
       return t_on > t_off;
     }
 
+   protected:
+    void IncomingEvent(uint64_t event) {
+      event_last_seen_[event] = ++tick_;
+    }
+
    private:
     map<uint64_t, int> event_last_seen_;
     int tick_;
   };
+
+#ifdef CPP_EVENT_HANDLER
+  class GlobalEventListener : private SimpleEventHandler, public GlobalEventListenerBase {
+   public:
+    GlobalEventListener() {
+      NMRAnetEventRegistry::instance()->RegisterHandler(this, 0, 0);
+    }
+
+    ~GlobalEventListener() {
+      NMRAnetEventRegistry::instance()->UnregisterHandler(this, 0, 0);
+    }
+   private:
+    virtual void HandleEventReport(EventReport* event, Notifiable* done) {
+      IncomingEvent(event->event);
+      done->Notify();
+    }
+
+    virtual void HandleIdentifyGlobal(EventReport* event, Notifiable* done) {
+      done->Notify();
+    }
+  };
+#else
+  class GlobalEventListener : private EventHandler, public GlobalEventListenerBase {
+   public:
+    GlobalEventListener() :  {
+      AutomataNodeTests::registry()->RegisterGlobalHandler(this);
+    }
+
+    virtual ~GlobalEventListener() {
+      AutomataNodeTests::registry()->UnregisterGlobalHandler(this);
+    }
+   private:
+    virtual void HandleEvent(uint64_t event) {
+      IncomingEvent(event);
+    }
+  };
+#endif
+
 
   GlobalEventListener all_listener_;
 };

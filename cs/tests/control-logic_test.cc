@@ -87,7 +87,6 @@ TEST_F(LogicTest, TestFramework3) {
  
   SetVar(*w, true);
   Run();
-  sleep(1);
   EXPECT_TRUE(lsrc.value());
   EXPECT_TRUE(ldst.value());
 
@@ -139,22 +138,22 @@ TEST_F(LogicTest, SimulatedOccupancy_SingleShortPiece) {
   EXPECT_TRUE(released.value());
   EXPECT_FALSE(sim_occ.value());
 }
-/*
+
 TEST_F(LogicTest, SimulatedOccupancy_MultipleShortPiece) {
-  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 32);
-  static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5040, 128);
+  static StraightTrackShort piece(alloc());
+  static StraightTrackShort piece2(alloc());
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      &brd, BRACZ_LAYOUT | 0x5100, 64, &previous_detector);
+      alloc(), &previous_detector);
   StraightTrackWithDetector after(
-      &brd, BRACZ_LAYOUT | 0x5140, 96, &next_detector);
+      alloc(), &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
   piece2.side_b()->Bind(after.side_a());
 
-  EventListener sim_occ(piece.simulated_occupancy_);
-  EventListener sim_occ2(piece2.simulated_occupancy_);
+  EventListener sim_occ(*piece.simulated_occupancy_);
+  EventListener sim_occ2(*piece2.simulated_occupancy_);
 
   DefAut(strategyaut, brd, {
     piece.SimulateAllOccupancy(this);
@@ -170,8 +169,8 @@ TEST_F(LogicTest, SimulatedOccupancy_MultipleShortPiece) {
   Run();
   EXPECT_FALSE(sim_occ.value());
   EXPECT_FALSE(sim_occ2.value());
-  SetVar(piece.route_set_ab_, true);
-  SetVar(piece2.route_set_ab_, true);
+  SetVar(*piece.route_set_ab_, true);
+  SetVar(*piece2.route_set_ab_, true);
   Run();
   EXPECT_TRUE(sim_occ.value());
   EXPECT_TRUE(sim_occ2.value());
@@ -186,14 +185,14 @@ TEST_F(LogicTest, SimulatedOccupancy_MultipleShortPiece) {
   EXPECT_FALSE(sim_occ.value());
   EXPECT_FALSE(sim_occ2.value());
 
-  SetVar(piece.route_set_ab_, false);
-  SetVar(piece2.route_set_ab_, false);
+  SetVar(*piece.route_set_ab_, false);
+  SetVar(*piece2.route_set_ab_, false);
   previous_detector.Set(false);
   Run();
 
   // Now we go backwards!
-  SetVar(piece.route_set_ba_, true);
-  SetVar(piece2.route_set_ba_, true);
+  SetVar(*piece.route_set_ba_, true);
+  SetVar(*piece2.route_set_ba_, true);
   next_detector.Set(true);
   Run();
   EXPECT_TRUE(sim_occ.value());
@@ -212,26 +211,26 @@ TEST_F(LogicTest, SimulatedOccupancy_MultipleShortPiece) {
 }
 
 TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
-  static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1 * 32);
-  static StraightTrackShort piece2(&brd, BRACZ_LAYOUT | 0x5040, 4 * 32);
-  static StraightTrackLong piece3(&brd, BRACZ_LAYOUT | 0x5080, 5 * 32);
-  static StraightTrackShort piece4(&brd, BRACZ_LAYOUT | 0x50C0, 6 * 32);
+  static StraightTrackShort piece(EventBlock::Allocator(&alloc(), "p1", 32, 32));
+  static StraightTrackShort piece2(EventBlock::Allocator(&alloc(), "p2", 32, 32));
+  static StraightTrackLong piece3(EventBlock::Allocator(&alloc(), "p3", 32, 32));
+  static StraightTrackShort piece4(EventBlock::Allocator(&alloc(), "p4", 32, 32));
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      &brd, BRACZ_LAYOUT | 0x5100, 2 * 32, &previous_detector);
+      alloc(), &previous_detector);
   StraightTrackWithDetector after(
-      &brd, BRACZ_LAYOUT | 0x5140, 3 * 32, &next_detector);
+      alloc(), &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
   piece2.side_b()->Bind(piece3.side_a());
   piece3.side_b()->Bind(piece4.side_a());
   piece4.side_b()->Bind(after.side_a());
 
-  EventListener sim_occ(piece.simulated_occupancy_);
-  EventListener sim_occ2(piece2.simulated_occupancy_);
-  EventListener sim_occ3(piece3.simulated_occupancy_);
-  EventListener sim_occ4(piece4.simulated_occupancy_);
+  EventListener sim_occ(*piece.simulated_occupancy_);
+  EventListener sim_occ2(*piece2.simulated_occupancy_);
+  EventListener sim_occ3(*piece3.simulated_occupancy_);
+  EventListener sim_occ4(*piece4.simulated_occupancy_);
 
   DefAut(strategyaut, brd, {
     piece.SimulateAllOccupancy(this);
@@ -253,11 +252,11 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
             piece3.side_a()->binding()->LookupCloseDetector());
 
   // Now run the train forwards.
-  SetVar(piece.route_set_ab_, true);
-  SetVar(piece2.route_set_ab_, true);
-  SetVar(piece3.route_set_ab_, true);
-  SetVar(piece4.route_set_ab_, true);
-  Run();
+  SetVar(*piece.route_set_ab_, true);
+  SetVar(*piece2.route_set_ab_, true);
+  SetVar(*piece3.route_set_ab_, true);
+  SetVar(*piece4.route_set_ab_, true);
+  Run(3);
   EXPECT_FALSE(sim_occ.value());
   EXPECT_FALSE(sim_occ2.value());
   EXPECT_FALSE(sim_occ3.value());
@@ -265,16 +264,19 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
 
   previous_detector.Set(true);
   next_detector.Set(false);
-  Run();
+  Run(3);
 
   EXPECT_TRUE(sim_occ.value());
   EXPECT_TRUE(sim_occ2.value());
+  EXPECT_TRUE(QueryVar(*piece2.simulated_occupancy_));
   EXPECT_TRUE(sim_occ3.value());
+  EXPECT_TRUE(QueryVar(*piece3.simulated_occupancy_));
   EXPECT_TRUE(sim_occ4.value());
+  EXPECT_TRUE(QueryVar(*piece4.simulated_occupancy_));
 
   previous_detector.Set(false);
   next_detector.Set(true);
-  Run();
+  Run(3);
 
   EXPECT_FALSE(sim_occ.value());
   EXPECT_FALSE(sim_occ2.value());
@@ -282,7 +284,7 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
   EXPECT_TRUE(sim_occ4.value());
 
   next_detector.Set(false);
-  Run();
+  Run(3);
 
   EXPECT_FALSE(sim_occ.value());
   EXPECT_FALSE(sim_occ2.value());
@@ -290,15 +292,15 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
   EXPECT_FALSE(sim_occ4.value());
 
   // Run backwards.
-  SetVar(piece.route_set_ab_, false);
-  SetVar(piece2.route_set_ab_, false);
-  SetVar(piece3.route_set_ab_, false);
-  SetVar(piece4.route_set_ab_, false);
+  SetVar(*piece.route_set_ab_, false);
+  SetVar(*piece2.route_set_ab_, false);
+  SetVar(*piece3.route_set_ab_, false);
+  SetVar(*piece4.route_set_ab_, false);
   Run();
-  SetVar(piece.route_set_ba_, true);
-  SetVar(piece2.route_set_ba_, true);
-  SetVar(piece3.route_set_ba_, true);
-  SetVar(piece4.route_set_ba_, true);
+  SetVar(*piece.route_set_ba_, true);
+  SetVar(*piece2.route_set_ba_, true);
+  SetVar(*piece3.route_set_ba_, true);
+  SetVar(*piece4.route_set_ba_, true);
   Run();
 
   EXPECT_FALSE(sim_occ.value());
@@ -323,7 +325,7 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
   previous_detector.Set(true);
   Run();
   EXPECT_TRUE(sim_occ.value());
-  EXPECT_TRUE(QueryVar(piece.simulated_occupancy_));
+  EXPECT_TRUE(QueryVar(*piece.simulated_occupancy_));
   EXPECT_TRUE(sim_occ2.value());
   EXPECT_TRUE(sim_occ3.value());
   EXPECT_FALSE(sim_occ4.value());
@@ -331,12 +333,12 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
   previous_detector.Set(false);
   Run();
   EXPECT_FALSE(sim_occ.value());
-  EXPECT_FALSE(QueryVar(piece.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*piece.simulated_occupancy_));
   EXPECT_FALSE(sim_occ2.value());
   EXPECT_FALSE(sim_occ3.value());
   EXPECT_FALSE(sim_occ4.value());
 }
-
+/*
 TEST_F(LogicTest, SimulatedOccupancy_RouteSetting) {
   static StraightTrackShort piece(&brd, BRACZ_LAYOUT | 0x5000, 1 * 32);
   FakeBit previous_detector(this);
