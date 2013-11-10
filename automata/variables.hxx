@@ -108,7 +108,8 @@ class EventBasedVariable : public EventVariableBase {
 class EventBlock : public EventVariableBase {
  public:
   EventBlock(Board* brd,
-             uint64_t event_base)
+             uint64_t event_base,
+             const string& name)
     : EventVariableBase(brd), event_base_(event_base), size_(1) {}
 
   virtual void Render(string* output) {
@@ -119,7 +120,54 @@ class EventBlock : public EventVariableBase {
     RenderHelper(output);
   }
 
+  class Allocator {
+   public:
+    Allocator(EventBlock* block, const string& name)
+        : name_(name), block_(block), next_entry_(0), end_(8<<8) {}
+
+    Allocator(Allocator* parent, const string& name, int count, int alignment = 1)
+        : name_(CreateNameFromParent(parent, name)),
+          block_(parent->block_) {
+      parent->Align(alignment);
+      next_entry_ = parent->Reserve(count);
+      end_ = next_entry_ + count;
+    }
+
+    int Reserve(int count) {
+      HASSERT(next_entry_ + count <= end_);
+      int ret = next_entry_;
+      next_entry_ += count;
+      return next_entry_;
+    }
+
+    // Rounds up the next to-be-allocated entry to Alignment.
+    void Align(int alignment) {
+      next_entry_ += alignment - 1;
+      next_entry_ /= alignment;
+      next_entry_ *= alignment;
+    }
+
+    const string& name() { return name_; }
+
+   private:
+    string name_;
+    EventBlock* block_;
+    int next_entry_;
+    int end_;
+  };
+
  private:
+  // Concatenates parent->name() and 'name', adding a '.' as separator if both
+  // are non-empty.
+  static string CreateNameFromParent(Allocator* parent, const string& name) {
+    if (name.empty()) return parent->name();
+    if (parent->name().empty()) return name;
+    string ret = parent->name();
+    ret += ".";
+    ret += name;
+    return ret;
+  }
+
   uint64_t event_base_;
   uint16_t size_;
 };
