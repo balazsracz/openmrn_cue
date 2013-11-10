@@ -82,8 +82,8 @@ class EventBasedVariable : public EventVariableBase {
   }
   virtual ~EventBasedVariable() {}
 
-  uint64_t event_on() const { return event_on_; }
-  uint64_t event_off() const { return event_off_; }
+  virtual uint64_t event_on() const { return event_on_; }
+  virtual uint64_t event_off() const { return event_off_; }
 
   virtual void Render(string* output) {
     CreateEventId(1, event_on_, output);
@@ -179,6 +179,13 @@ class EventBlock : public EventVariableBase {
 
   Allocator* allocator() { return &allocator_; }
 
+  uint64_t event_base() const { return event_base_; }
+
+  // These should never be called. This variable does not represent a single
+  // bit.
+  virtual uint64_t event_on() const { HASSERT(false); }
+  virtual uint64_t event_off() const { HASSERT(false); }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(EventBlock);
   uint64_t event_base_;
@@ -209,6 +216,14 @@ class BlockVariable : public GlobalVariable {
   }
 
   const string& name() { return name_; }
+
+  virtual uint64_t event_on() const {
+    return parent_->event_base() + id_.arg * 2;
+  }
+
+  virtual uint64_t event_off() const {
+    return parent_->event_base() + id_.arg * 2 + 1;
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlockVariable);

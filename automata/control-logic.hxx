@@ -221,15 +221,15 @@ class StraightTrack : public StraightTrackInterface,
                             Automata::LocalVariable* route_set,
                             Automata::Op* op);
 
-  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SingleShortPiece);
-  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_MultipleShortPiece);
-  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_ShortAndLongPieces);
-  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_RouteSetting);
-  FRIEND_TEST(AutomataNodeTests, SimulatedOccupancy_SimultSetting);
-  FRIEND_TEST(AutomataNodeTests, ReverseRoute);
-  FRIEND_TEST(AutomataNodeTests, MultiRoute);
-  FRIEND_TEST(AutomataNodeTests, Signal);
-  FRIEND_TEST(AutomataNodeTests, 100trainz);
+  FRIEND_TEST(LogicTest, SimulatedOccupancy_SingleShortPiece);
+  FRIEND_TEST(LogicTest, SimulatedOccupancy_MultipleShortPiece);
+  FRIEND_TEST(LogicTest, SimulatedOccupancy_ShortAndLongPieces);
+  FRIEND_TEST(LogicTest, SimulatedOccupancy_RouteSetting);
+  FRIEND_TEST(LogicTest, SimulatedOccupancy_SimultSetting);
+  FRIEND_TEST(LogicTest, ReverseRoute);
+  FRIEND_TEST(LogicTest, MultiRoute);
+  FRIEND_TEST(LogicTest, Signal);
+  FRIEND_TEST(LogicTest, 100trainz);
 
   friend class ::StandardBlock;
 

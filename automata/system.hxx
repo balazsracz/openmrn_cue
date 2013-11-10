@@ -98,6 +98,11 @@ public:
 
     bool HasId() { return id_assigned_; }
 
+    // These methods are used by the unittesting frameworks to declare a
+    // listener.
+    virtual uint64_t event_on() const = 0;
+    virtual uint64_t event_off() const = 0;
+
 protected:
     bool id_assigned_;
     GlobalVariableId id_;

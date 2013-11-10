@@ -131,6 +131,10 @@ class AutomataTests : public testing::Test {
       return *mock_bit_;
     }
 
+    // These should never be called. This variable does not have eventids bound.
+    virtual uint64_t event_on() const { HASSERT(false); }
+    virtual uint64_t event_off() const { HASSERT(false); }
+
    private:
     GMockBit* owned_mockbit_;
     GMockBit* mock_bit_;
@@ -153,6 +157,10 @@ class AutomataTests : public testing::Test {
 
     bool Get() { return bit_; }
     void Set(bool b) { bit_ = b; }
+
+    // These should never be called. This variable does not have eventids bound.
+    virtual uint64_t event_on() const { HASSERT(false); }
+    virtual uint64_t event_off() const { HASSERT(false); }
 
   private:
     bool bit_;
@@ -317,9 +325,10 @@ protected:
     WaitForEventThread();
   }
 
-  void SetVar(const automata::EventBasedVariable& var, bool value) {
+  void SetVar(const automata::GlobalVariable& var, bool value) {
     uint64_t eventid = value ? var.event_on() : var.event_off();
     fprintf(stderr, "Producing event %016llx on node %p\n", eventid, node_);
+    nmranet_event_producer(node_, eventid, EVENT_STATE_INVALID);
     nmranet_event_produce(node_, eventid, EVENT_STATE_VALID);
   }
 
@@ -331,10 +340,12 @@ protected:
 
   class EventListener : public EventHandler {
    public:
-    EventListener(const automata::EventBasedVariable& var) 
+    EventListener(const automata::GlobalVariable& var) 
         : var_(var), bit_(false) {
       AutomataNodeTests::registry()->RegisterHandler(this, var_.event_on());
       AutomataNodeTests::registry()->RegisterHandler(this, var_.event_off());
+      nmranet_event_consumer(static_node_, var_.event_on(), EVENT_STATE_UNKNOWN);
+      nmranet_event_consumer(static_node_, var_.event_off(), EVENT_STATE_UNKNOWN);
     }
 
     virtual ~EventListener() {
@@ -358,7 +369,7 @@ protected:
     }
 
    private:
-    const automata::EventBasedVariable& var_;
+    const automata::GlobalVariable& var_;
     bool bit_;
   };
 
