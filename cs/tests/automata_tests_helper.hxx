@@ -82,6 +82,7 @@ class AutomataTests : public testing::Test {
    public:
     InjectableVar(AutomataTests* parent) {
       global_var_offset_ = parent->RegisterInjectableBit(this);
+      SetId(global_var_offset_);
       fprintf(stderr, "new mock bit: %p\n", this);
     }
 
@@ -89,11 +90,11 @@ class AutomataTests : public testing::Test {
       fprintf(stderr, "destroying mock bit: %p\n", this);
     }
 
-    virtual automata::GlobalVariableId GetId() const {
+    /*virtual automata::GlobalVariableId GetId() const {
       automata::GlobalVariableId ret;
       ret.id = global_var_offset_;
       return ret;
-    }
+      }*/
 
     virtual void Render(string* /*unused*/) {
       // Mock bits do not have any code in the board preamble.

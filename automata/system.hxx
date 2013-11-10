@@ -67,7 +67,9 @@ private:
 
 struct GlobalVariableId {
 public:
+    GlobalVariableId() : id(0), arg(0) {}
     uint32_t id;
+    uint16_t arg;
 };
 
 /** Represents a single bit that the automata runner system will track. This
@@ -86,6 +88,9 @@ public:
     void SetId(uint32_t id) {
         id_assigned_ = true;
         id_.id = id;
+    }
+    void SetArg(uint16_t arg) {
+        id_.arg = arg;
     }
     //! Appends the rendered version of this variable to the preamble of the
     //! board code.

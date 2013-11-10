@@ -79,9 +79,16 @@ void Automata::Render(string* output) {
         if (it.first) {
             op.clear();
             op.push_back(_ACT_IMPORT_VAR);
+            uint8_t b1 = 0;
+            uint8_t b2 = 0;
+            uint16_t arg = output ? it.first->GetId().arg : 0;
+            HASSERT(arg < (8<<8));
+            b1 = (arg >> 8) << 5;
             HASSERT(it.second.id < 32);
-            op.push_back(it.second.id);
-            op.push_back(0); // argument, low bits
+            b1 |= (it.second.id & 31);
+            b2 = arg & 0xff;
+            op.push_back(b1);
+            op.push_back(b2); // argument, low bits
             int gofs = output ? it.first->GetId().id : 0;
             op.push_back(gofs & 0xff);
             op.push_back((gofs >> 8) & 0xff);

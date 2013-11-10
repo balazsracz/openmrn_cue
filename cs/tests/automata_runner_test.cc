@@ -162,11 +162,13 @@ TEST_F(AutomataTests, DefAct1) {
 TEST_F(AutomataTests, DefIfReg1) {
   automata::Board brd;
   static MockBit rb(this);
+  rb.SetArg(42);
   static MockBit rrb(this);
+  rrb.SetArg(37);
   static MockBit wb(this);
-  EXPECT_CALL(wb.mock(), Write(_, _, _, true));
-  EXPECT_CALL(rb.mock(), Read(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(rrb.mock(), Read(_, _, _)).WillOnce(Return(false));
+  EXPECT_CALL(wb.mock(), Write(0, _, _, true));
+  EXPECT_CALL(rb.mock(), Read(42, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(rrb.mock(), Read(37, _, _)).WillOnce(Return(false));
   DefAut(testaut1, brd, {
       auto rv = ImportVariable(&rb);
       auto rrv = ImportVariable(&rrb);
