@@ -213,11 +213,35 @@ TEST(BlockTest, AllocatorTest) {
   EXPECT_EQ(4, id.arg);
 }
 
-Board obrd;
-EventBlock block1(&obrd, 0x05020102020658000ULL, "oblk");
 
-//EventBlock::Allocator resv;
-//BlockVariable bv1(block1.allocator(), foo);
+TEST(BoardCompile, BlockEventBoard) {
+  Board brd;
+  EventBlock block1(&brd, 0x0502010202658000ULL, "blk");
+  block1.allocator()->Reserve(42);
+  EventBlock::Allocator resv1(block1.allocator(), "r1", 7);
+  static BlockVariable bv(&resv1, "blockvar");
+
+  DefAut(testaut, brd, {
+      auto* lintev = ImportVariable(&bv);
+      Def().IfReg0(*lintev).ActReg1(lintev);
+    });
+
+  string output;
+  brd.Render(&output);
+  string expected =
+      S({
+        20, 0,  // pointer to aut
+        0, 0,  // end of automatas
+        //        0xA0, _ACT_SET_EVENTID, 0b01010111, 5, 2, 1, 2, 2, 0x65, 0x80, 0x0,
+        0xA0, _ACT_SET_EVENTID, 0b00000111, 5, 2, 1, 2, 2, 0x65, 0x80, 0,
+        0x30, _ACT_DEF_VAR, 0b00100000, 43,
+        0,     // end of preamble
+        0x50, _ACT_IMPORT_VAR, 1, 42, 17, 0,
+        0x11, _IF_REG_0 | 1, _ACT_REG_1 | 1,
+        0,     // end of autoamta 1
+            });
+  EXPECT_EQ(expected, output);
+}
 
 int appl_main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
