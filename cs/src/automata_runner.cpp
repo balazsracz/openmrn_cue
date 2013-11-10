@@ -220,7 +220,10 @@ class EventBlockBit : public ReadWriteBit {
                 uint64_t event_base,
                 size_t size)
       : storage_(new uint32_t[(size + 31) >> 5]),
-        handler_(new BitRangeEventPC(node, event_base, storage_, size)) {}
+        handler_(new BitRangeEventPC(node, event_base, storage_, size)) {
+    size_t sz = (size + 31) >> 5;
+    memset(&storage_[0], 0, sz * sizeof(storage_[0]));
+  }
 
   ~EventBlockBit() {
     delete[] storage_;
