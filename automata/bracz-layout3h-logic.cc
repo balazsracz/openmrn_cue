@@ -27,6 +27,11 @@ EventBasedVariable is_paused(&brd,
                              BRACZ_LAYOUT | 0x0001,
                              7, 31, 3);
 
+EventBasedVariable blink_off(&brd,
+                             BRACZ_LAYOUT | 0x0002,
+                             BRACZ_LAYOUT | 0x0003,
+                             7, 31, 2);
+
 
 I2CBoard b5(0x25), b6(0x26), b1(0x21), b3(0x23);
 
@@ -75,10 +80,11 @@ EventBasedVariable led(&brd,
 DefAut(blinkaut, brd, {
     const int kBlinkSpeed = 3;
     LocalVariable* rep(ImportVariable(blink_variable.get()));
+    const LocalVariable& lblink_off(ImportVariable(blink_off));
     Def().IfState(StInit).ActState(StUser1);
-    Def().IfState(StUser1).IfTimerDone()
+    Def().IfState(StUser1).IfTimerDone().IfReg0(lblink_off)
         .ActTimer(kBlinkSpeed).ActState(StUser2).ActReg0(rep);
-    Def().IfState(StUser2).IfTimerDone()
+    Def().IfState(StUser2).IfTimerDone().IfReg0(lblink_off)
         .ActTimer(kBlinkSpeed).ActState(StUser1).ActReg1(rep);
 
     DefCopy(*rep, ImportVariable(&b1.LedRed));
@@ -135,13 +141,13 @@ class StandardBlock : public StraightTrackInterface {
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 
 StandardBlock Block_WWB14(&brd, &WWB14,
-                          *logic.allocator());
+                          EventBlock::Allocator(logic.allocator(), "WWB14", 80));
 StandardBlock Block_A301(&brd, &A301,
-                         *logic.allocator());
+                         EventBlock::Allocator(logic.allocator(), "A301", 80));
 //StandardBlock Block_YYC23(&brd, &YYC23,
 //                          BRACZ_LAYOUT | 0x3900 | 0, 48*2);
 StandardBlock Block_XXB1(&brd, &XXB1,
-                         *logic.allocator());
+                         EventBlock::Allocator(logic.allocator(), "XXB1", 80));
 
 #define BLOCK_SEQUENCE   &Block_XXB1, &Block_A301,  &Block_WWB14,  /*&Block_YYC23,*/  &Block_XXB1
 
@@ -151,10 +157,17 @@ std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE };
 bool ignored1 = BindSequence({BLOCK_SEQUENCE});
 
 DefAut(control_logic, brd, {
+    StateRef StWaiting(4);
+    Def()
+        .IfState(StInit)
+        .ActState(StWaiting)
+        .ActTimer(4)
+        .ActReg1(ImportVariable(&is_paused));
     for (size_t i = 0; i < block_sequence.size() - 1; ++i) {
       StandardBlock* current = block_sequence[i];
       StandardBlock* next = block_sequence[i+1];
       Def()
+          .IfReg0(ImportVariable(is_paused))
           .IfReg1(ImportVariable(current->detector()))
           .IfReg0(ImportVariable(next->route()))
           .IfReg0(ImportVariable(next->detector()))
@@ -162,6 +175,12 @@ DefAut(control_logic, brd, {
     }
   });
 
+
+DefAut(display, brd, {
+    DefCopy(ImportVariable(Block_XXB1.detector()), ImportVariable(&panda_bridge.l0));
+    DefCopy(ImportVariable(Block_A301.detector()), ImportVariable(&panda_bridge.l1));
+    DefCopy(ImportVariable(Block_WWB14.detector()), ImportVariable(&panda_bridge.l2));
+  });
 
 /*DefAut(auto_green, brd, {
     DefNCopy(ImportVariable(*S201.sensor_raw),
