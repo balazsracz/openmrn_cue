@@ -139,25 +139,32 @@ protected:
     };*/
 
 typedef map<int, string> OfsMap;
-OfsMap g_ofs_map;
+OfsMap* g_ofs_map = nullptr;
 
 GlobalVariable* EventBlock::Allocator::Allocate(const string& name) const {
   int ofs = next_entry_;
   BlockVariable* v = new BlockVariable(this, name);
-  g_ofs_map[ofs] = v->name();
+  if (!g_ofs_map) {
+    g_ofs_map = new OfsMap;
+  }
+  (*g_ofs_map)[ofs] = v->name();
   return v;
 }
 
 void ClearOffsetMap() {
-  g_ofs_map.clear();
+  g_ofs_map->clear();
+}
+
+map<int, string>* GetOffsetMap() {
+  return g_ofs_map;
 }
 
 }
 
 const string& GetNameForOffset(int ofs) {
   static string empty;
-  automata::OfsMap::const_iterator it = automata::g_ofs_map.find(ofs);
-  if (it != automata::g_ofs_map.end()) {
+  automata::OfsMap::const_iterator it = automata::g_ofs_map->find(ofs);
+  if (it != automata::g_ofs_map->end()) {
     return it->second;
   } else {
     return empty;

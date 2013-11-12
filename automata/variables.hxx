@@ -232,6 +232,7 @@ class BlockVariable : public GlobalVariable {
 };
 
 void ClearOffsetMap();
+map<int, string>* GetOffsetMap();
 
 }  // namespace
 
