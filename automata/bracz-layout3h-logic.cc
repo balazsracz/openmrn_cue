@@ -228,5 +228,14 @@ int main(int argc, char** argv) {
     brd.Render(&output);
     fwrite(output.data(), 1, output.size(), f);
     fclose(f);
+
+    f = fopen("variables.txt", "w");
+    assert(f);
+    map<int, string>& m(*automata::GetOffsetMap());
+    for (const auto& it : m) {
+      fprintf(f, "%04x: %s\n", it.first * 2, it.second.c_str());
+    }
+    fclose(f);
+
     return 0;
 };
