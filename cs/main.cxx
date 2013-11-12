@@ -94,6 +94,8 @@ const size_t SERIAL_RX_BUFFER_SIZE = 16;
 const size_t SERIAL_TX_BUFFER_SIZE = 16;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 256;
 const size_t CAN_IF_READ_THREAD_STACK_SIZE = 700;
+const size_t WRITE_FLOW_THREAD_STACK_SIZE = 1024;
+const size_t COMPAT_EVENT_THREAD_STACK_SIZE = 700;
 #else
 #ifdef TARGET_PIC32MX
 const size_t main_stack_size = 3560;
@@ -111,6 +113,8 @@ const size_t SERIAL_RX_BUFFER_SIZE = 128;
 const size_t SERIAL_TX_BUFFER_SIZE = 130;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 512;
 const size_t CAN_IF_READ_THREAD_STACK_SIZE = 1024;
+const size_t WRITE_FLOW_THREAD_STACK_SIZE = 1024;
+const size_t COMPAT_EVENT_THREAD_STACK_SIZE = 700;
 #endif
 
 extern const unsigned long long NODE_ADDRESS;

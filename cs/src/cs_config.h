@@ -33,8 +33,8 @@ extern uint32_t blinker_pattern;
 
 ///////////
 
-#define DCC_CAN_THREAD_CAN_STACK_SIZE 2048
-#define AUTOMATA_THREAD_STACK_SIZE 2048
+#define DCC_CAN_THREAD_CAN_STACK_SIZE 1000
+#define AUTOMATA_THREAD_STACK_SIZE 1000
 
 #define MAX_SIGNALS 64
 #define MAX_LOCK_ID 8
@@ -57,7 +57,7 @@ extern uint32_t blinker_pattern;
 #endif
 
 
-#if defined(TARGET_LPC1768) || defined(TARGET_LPC2368) || defined(TARGET_LPC11Cxx) 
+#if defined(TARGET_LPC1768) || defined(TARGET_LPC2368) || defined(TARGET_LPC11Cxx)
 #define HAVE_MBED
 #endif
 
