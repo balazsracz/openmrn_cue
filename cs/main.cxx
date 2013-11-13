@@ -68,6 +68,7 @@
 #include "src/automata_control.h"
 #include "src/updater.hxx"
 #include "src/timer_updater.hxx"
+#include "src/event_range_listener.hxx"
 #include "core/nmranet_node_private.h"
 
 #ifdef TARGET_PIC32MX
@@ -82,6 +83,7 @@
 
 #ifdef ONLY_CPP_EVENT
 #include "nmranet/GlobalEventHandler.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
 #include "executor/executor.hxx"
 #endif
 
@@ -107,7 +109,7 @@ const size_t SERIAL_RX_BUFFER_SIZE = 16;
 const size_t SERIAL_TX_BUFFER_SIZE = 16;
 const size_t DATAGRAM_THREAD_STACK_SIZE = 256;
 const size_t CAN_IF_READ_THREAD_STACK_SIZE = 700;
-const size_t WRITE_FLOW_THREAD_STACK_SIZE = 1024;
+//const size_t WRITE_FLOW_THREAD_STACK_SIZE = 1024;
 const size_t COMPAT_EVENT_THREAD_STACK_SIZE = 700;
 #else
 #ifdef TARGET_PIC32MX
@@ -176,7 +178,9 @@ extern SynchronousUpdater i2c_updater;
 extern I2CInUpdater in_extender0;
 extern I2CInUpdater in_extender1;
 extern I2CInUpdater in_extender2;
-
+extern I2COutUpdater extender0;
+extern I2COutUpdater extender1;
+extern I2COutUpdater extender2;
 #endif
 
 #if defined(TARGET_PIC32MX)
@@ -202,7 +206,22 @@ void* out_blinker_thread(void*)
 }
 #endif
 
-#ifndef ONLY_CPP_EVENT
+#ifdef ONLY_CPP_EVENT
+
+class BlinkerBit : public BitEventInterface {
+ public:
+  BlinkerBit(uint64_t event_on, uint64_t event_off)
+      : BitEventInterface(event_on, event_off) {}
+
+  virtual bool GetCurrentState() { return blinker_pattern; }
+  virtual void SetState(bool new_value) {
+    resetblink(new_value ? 1 : 0);
+  }
+
+  virtual node_t node() { return ::node; }
+};
+
+#else
 
 EventRegistry registry;
 
@@ -287,7 +306,17 @@ MbedGPIOListener led_6(BRACZ_LAYOUT | 0x203a,
 #ifdef ONLY_CPP_EVENT
 
 Executor main_executor;
-GlobalEventFlow event_flow(&main_executor, 10);
+GlobalEventFlow event_flow(&main_executor, 30);
+
+BlinkerBit blinker_bit(BRACZ_LAYOUT | 0x2500,
+                       BRACZ_LAYOUT | 0x2501);
+BitEventConsumer blinker_bit_handler(&blinker_bit);
+
+Executor* DefaultWriteFlowExecutor() {
+  return &main_executor;
+}
+
+FlowUpdater updater(&main_executor, {&extender0, &extender1, &in_extender0, &in_extender1});
 
 #else
 
@@ -422,8 +451,16 @@ int appl_main(int argc, char *argv[])
 
 #if defined(TARGET_LPC11Cxx)
 
-#ifndef ONLY_CPP_EVENT
+#ifdef ONLY_CPP_EVENT
+    extern uint32_t state_25;
+    BitRangeEventPC pc_25(node, BRACZ_LAYOUT | 0x2500, &state_25, 24);
+    extern uint32_t state_26;
+    BitRangeEventPC pc_26(node, BRACZ_LAYOUT | 0x2600, &state_26, 24);
 
+    ListenerToEventProxy listener_25(&pc_25);
+    ListenerToEventProxy listener_26(&pc_26);
+
+#else
     // Consume one led and one relay per board.
     nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2500, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2501, EVENT_STATE_INVALID);
@@ -606,7 +643,7 @@ int appl_main(int argc, char *argv[])
     // It is important to start this process only after the node_initialized
     // has returned, or else the program deadlocks. See
     // https://github.com/bakerstu/openmrn/issues/9
-    TimerUpdater upd(MSEC_TO_NSEC(50), {&input_pin1});
+    TimerUpdater upd(MSEC_TO_PERIOD(50), {&input_pin1});
 #endif
 
 
@@ -615,12 +652,16 @@ int appl_main(int argc, char *argv[])
     MemoryBitSetProducer produce_i2c1(node, BRACZ_LAYOUT | 0x2220);
     MemoryBitSetProducer produce_i2c2(node, BRACZ_LAYOUT | 0x2320);
 
-    in_extender0.RegisterListener(&produce_i2c0);
-    in_extender1.RegisterListener(&produce_i2c1);
-    in_extender2.RegisterListener(&produce_i2c2);
+    in_extender0.SetListener(&produce_i2c0);
+    in_extender1.SetListener(&produce_i2c1);
+    in_extender2.SetListener(&produce_i2c2);
 #elif defined(TARGET_LPC11Cxx)
 
-#ifndef ONLY_CPP_EVENT
+#ifdef ONLY_CPP_EVENT
+    in_extender0.SetListener(&listener_25);
+    in_extender1.SetListener(&listener_26);
+
+#else
     MemoryBitSetProducer produce_i2c0(node, BRACZ_LAYOUT | 0x2520);
     MemoryBitSetProducer produce_i2c1(node, BRACZ_LAYOUT | 0x2620);
 
@@ -651,10 +692,12 @@ int appl_main(int argc, char *argv[])
     {
 
 #if defined(TARGET_LPC11Cxx)
+#ifndef ONLY_CPP_EVENT
       // This takes a bit of time (blocking).
       i2c_updater.Step();
+#endif
 #else
-      nmranet_node_wait(node, MSEC_TO_NSEC(300));
+      nmranet_node_wait(node, MSEC_TO_PERIOD(300));
 #endif
 
 
@@ -679,7 +722,7 @@ int appl_main(int argc, char *argv[])
 
     for (;;)
     {
-        int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
+        int result = nmranet_node_wait(node, MSEC_TO_PERIOD(300));
 
         if (result) {
             for (size_t i = nmranet_event_pending(node); i > 0; i--) {
