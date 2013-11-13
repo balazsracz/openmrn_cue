@@ -37,6 +37,10 @@
 #include "LPC23xx.h"
 #endif
 
+#ifdef TARGET_LPC11Cxx
+#define ONLY_CPP_EVENT
+#endif
+
 #include "src/cs_config.h"
 
 #include <stdlib.h>
@@ -64,6 +68,7 @@
 #include "src/automata_control.h"
 #include "src/updater.hxx"
 #include "src/timer_updater.hxx"
+#include "core/nmranet_node_private.h"
 
 #ifdef TARGET_PIC32MX
 #include "plib.h"
@@ -75,12 +80,20 @@
 #include "src/mbed_gpio_handlers.hxx"
 #endif
 
+#ifdef ONLY_CPP_EVENT
+#include "nmranet/GlobalEventHandler.hxx"
+#include "executor/executor.hxx"
+#endif
+
 const char *nmranet_manufacturer = "Balazs Racz";
 const char *nmranet_hardware_rev = "N/A";
 const char *nmranet_software_rev = "0.1";
 
 
 #ifdef TARGET_LPC11Cxx
+
+#define ONLY_CPP_EVENT
+
 // Memory constrained situation -- set the parameters to tight values.
 const size_t main_stack_size = 900;
 const int main_priority = 0;
@@ -147,6 +160,14 @@ int __wrap___cxa_atexit(void) {
 
 node_t node;
 
+
+// This is a trick we play on the linker to pull in these symbols. Otherwise we
+// won't be able to link the binary, since there are back-references to these
+// symbols from lower-level libraries.
+void (*unused_f)(node_t, uint64_t, uint64_t)=&nmranet_identify_consumers;
+void (*unused_g)(node_t, uint64_t, uint64_t)=&nmranet_identify_producers;
+
+
 #ifdef HAVE_MBED
 
 #include "src/mbed_i2c_update.hxx"
@@ -158,7 +179,7 @@ extern I2CInUpdater in_extender2;
 
 #endif
 
-
+#if defined(TARGET_PIC32MX)
 void* out_blinker_thread(void*)
 {
     resetblink(0);
@@ -179,6 +200,9 @@ void* out_blinker_thread(void*)
     }
     return NULL;
 }
+#endif
+
+#ifndef ONLY_CPP_EVENT
 
 EventRegistry registry;
 
@@ -193,6 +217,9 @@ public:
         resetblink(blinker_pattern);
     }
 };
+
+#endif
+
 
 #if defined(TARGET_PIC32MX)
 BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2054,
@@ -256,6 +283,14 @@ MbedGPIOListener led_6(BRACZ_LAYOUT | 0x203a,
 #endif
 
 #ifdef TARGET_LPC11Cxx
+
+#ifdef ONLY_CPP_EVENT
+
+Executor main_executor;
+GlobalEventFlow event_flow(&main_executor, 10);
+
+#else
+
 BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2500,
                                       BRACZ_LAYOUT | 0x2501);
 
@@ -266,6 +301,8 @@ MemoryBitSetEventHandler l1(BRACZ_LAYOUT | 0x2500,
 MemoryBitSetEventHandler l2(BRACZ_LAYOUT | 0x2600,
                             get_state_byte(2, OFS_IOA),
                             16);
+#endif
+
 #endif
 
 #if defined(TARGET_LPC2368) && defined(SECOND)
@@ -385,6 +422,8 @@ int appl_main(int argc, char *argv[])
 
 #if defined(TARGET_LPC11Cxx)
 
+#ifndef ONLY_CPP_EVENT
+
     // Consume one led and one relay per board.
     nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2500, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2501, EVENT_STATE_INVALID);
@@ -419,6 +458,8 @@ int appl_main(int argc, char *argv[])
     nmranet_event_producer(node, BRACZ_LAYOUT | 0x2625, EVENT_STATE_INVALID);
     nmranet_event_producer(node, BRACZ_LAYOUT | 0x2626, EVENT_STATE_INVALID);
     nmranet_event_producer(node, BRACZ_LAYOUT | 0x2627, EVENT_STATE_INVALID);
+
+#endif
 
     //nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2624, EVENT_STATE_INVALID);
     //nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2625, EVENT_STATE_INVALID);
@@ -578,11 +619,15 @@ int appl_main(int argc, char *argv[])
     in_extender1.RegisterListener(&produce_i2c1);
     in_extender2.RegisterListener(&produce_i2c2);
 #elif defined(TARGET_LPC11Cxx)
+
+#ifndef ONLY_CPP_EVENT
     MemoryBitSetProducer produce_i2c0(node, BRACZ_LAYOUT | 0x2520);
     MemoryBitSetProducer produce_i2c1(node, BRACZ_LAYOUT | 0x2620);
 
     in_extender0.RegisterListener(&produce_i2c0);
     in_extender1.RegisterListener(&produce_i2c1);
+#endif
+
 #endif
 
 
@@ -612,6 +657,10 @@ int appl_main(int argc, char *argv[])
       nmranet_node_wait(node, MSEC_TO_NSEC(300));
 #endif
 
+
+#ifdef ONLY_CPP_EVENT
+      main_executor.ThreadBody();
+#else
       // These are quick.
       for (size_t i = nmranet_event_pending(node); i > 0; i--) {
         node_handle_t node_handle;
@@ -623,6 +672,8 @@ int appl_main(int argc, char *argv[])
         // We release unknown datagrams iwthout processing them.
         nmranet_datagram_release(datagram);
       }
+#endif
+
     }
 #else
 

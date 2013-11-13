@@ -3,6 +3,7 @@
 #define  _BRACZ_TRAIN_UPDATER_HXX_
 
 #include <queue>
+#include <list>
 #include <initializer_list>
 
 #include "cs_config.h"
@@ -51,7 +52,7 @@ public:
 
 private:
   // Queue holding entries of the regular update cycle.
-  std::queue<Updatable*> background_queue_;
+  std::queue<Updatable*, std::list<Updatable*> > background_queue_;
 
   DISALLOW_COPY_AND_ASSIGN(UpdateQueue);
 };
