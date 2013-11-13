@@ -10,7 +10,7 @@
 
 #ifdef HAVE_MBED
 
-#include "updater.hxx"
+#include "updater_base.hxx"
 
 
 // Forward declared from the mbed library.
@@ -70,8 +70,9 @@ class I2CInUpdater : public I2CUpdaterBase {
 public:
   I2CInUpdater(I2C* port, int address,
                std::initializer_list<uint8_t> preamble,
-               uint8_t* data_offset, int data_length)
-      : I2CUpdaterBase(port, address, preamble, data_offset, data_length, 2*data_length) {
+               uint8_t* data_offset, int data_length,
+               int listener_offset)
+      : I2CUpdaterBase(port, address, preamble, data_offset, data_length, 2*data_length), listener_offset_(listener_offset) {
     memset(extra_data(), 0, 2 * data_length);
   }
 
@@ -79,8 +80,8 @@ public:
 
   virtual void PerformUpdate();
 
-  void RegisterListener(UpdateListener* listener) {
-    listeners_.push_front(listener);
+  void SetListener(UpdateListener* listener) {
+    listener_ = listener;
   }
 
 protected:
@@ -97,7 +98,8 @@ private:
 
   std::vector<uint8_t> shadow_;
   std::vector<int> count_unchanged_;
-  __gnu_cxx::slist<UpdateListener*> listeners_;
+  UpdateListener* listener_;
+  int listener_offset_;
 };
 
 #endif // HAVE_MBED

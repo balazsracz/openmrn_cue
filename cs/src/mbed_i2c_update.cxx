@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <initializer_list>
 
+//#include "utils/logging.h"
+
 #include "mbed_i2c_update.hxx"
 
 #ifdef HAVE_MBED
@@ -54,10 +56,7 @@ void I2CInUpdater::PerformUpdate() {
   for (int i = 0; i < data_length_; i++) {
     if (shadow(i) == new_data[i]) {
       if (count_unchanged(i) == I2C_READ_UNCHANGED_COUNT) {
-        for (auto listener : listeners_) {
-          listener->OnChanged(i, data_offset_[i], shadow(i));
-        }
-        data_offset_[i] = shadow(i);
+        data_offset_[i] = listener_->OnChanged(listener_offset_ + i, data_offset_[i], shadow(i));
       } else {
         ++count_unchanged(i);
       }
