@@ -564,7 +564,7 @@ void AutomataRunner::RunAllAutomata() {
   }
 }
 
-static long long automata_tick_callback(void* runner, void*) {
+static os_period_t automata_tick_callback(void* runner, void*) {
     ASSERT(runner);
     static int count = 0;
     if (count++ > 10) {
@@ -578,7 +578,7 @@ static long long automata_tick_callback(void* runner, void*) {
 void* automata_thread(void* arg) {
     AutomataRunner* runner = (AutomataRunner*)arg;
     runner->automata_timer_ = os_timer_create(&automata_tick_callback, runner, NULL);
-    os_timer_start(runner->automata_timer_, MSEC_TO_NSEC(100));  // 10 HZ
+    os_timer_start(runner->automata_timer_, MSEC_TO_PERIOD(100));  // 10 HZ
     while(1) {
 	runner->WaitForWakeup();
         if (runner->request_thread_exit_) {

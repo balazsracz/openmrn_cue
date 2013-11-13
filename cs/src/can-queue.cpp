@@ -142,7 +142,7 @@ void* dcc_can_thread(void*) {
 }
 
 
-static long long dcc_timer_callback(void*, void*) {
+static os_period_t dcc_timer_callback(void*, void*) {
     os_mutex_lock(&dcc_mutex);
     DccLoop_Timer();
     MoStaMaster_Timer();
@@ -159,7 +159,7 @@ void dcc_can_init(int devfd) {
     mostacan_fd = devfd;
     DccLoop_Init();
     dcc_timer = os_timer_create(&dcc_timer_callback, NULL, NULL);
-    os_timer_start(dcc_timer, MSEC_TO_NSEC(100));
+    os_timer_start(dcc_timer, MSEC_TO_PERIOD(100));
     os_thread_create(NULL, "dcc_can_rx", 0, DCC_CAN_THREAD_CAN_STACK_SIZE,
 		     dcc_can_thread, NULL);
 }

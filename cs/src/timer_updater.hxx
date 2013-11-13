@@ -14,14 +14,14 @@
  */
 class TimerUpdater {
  public:
-  TimerUpdater(long long period_nano,
+  TimerUpdater(os_period_t period,
                std::initializer_list<Updatable*> entries)
       : background_queue_(entries),
         timer_(TimerUpdater::callback, this, NULL) {
-    timer_.start(period_nano);
+    timer_.start(period);
   }
 
-  static long long callback(void* object, void* /*unused*/) {
+  static os_period_t callback(void* object, void* /*unused*/) {
     TimerUpdater* me = static_cast<TimerUpdater*>(object);
     for (auto u : me->background_queue_) {
       u->PerformUpdate();
@@ -31,7 +31,6 @@ class TimerUpdater {
 
  private:
   std::deque<Updatable*> background_queue_;
-  long long period_nano_;
   OSTimer timer_;
 };
 
