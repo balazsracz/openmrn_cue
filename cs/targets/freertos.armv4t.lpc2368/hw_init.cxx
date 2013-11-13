@@ -31,6 +31,7 @@
  * @date 13 April 2013
  */
 
+#include "utils/logging.h"
 #include "src/cs_config.h"
 
 #include "LPC23xx.h"
@@ -44,7 +45,7 @@
 #include "src/host_packet.h"
 
 #include "src/usb_proto.h"
-
+#include "src/updater.hxx"
 
 extern const unsigned long long NODE_ADDRESS;
 #ifdef SECOND
@@ -71,9 +72,9 @@ I2COutUpdater extender0(&i2c, 0x21, {}, get_state_byte(1, OFS_IOA), 2);
 I2COutUpdater extender1(&i2c, 0x22, {}, get_state_byte(2, OFS_IOA), 2);
 I2COutUpdater extender2(&i2c, 0x23, {}, get_state_byte(3, OFS_IOA), 2);
 
-I2CInUpdater in_extender0(&i2c, 0x21, {}, get_state_byte(1, OFS_IOB), 1);
-I2CInUpdater in_extender1(&i2c, 0x22, {}, get_state_byte(2, OFS_IOB), 1);
-I2CInUpdater in_extender2(&i2c, 0x23, {}, get_state_byte(3, OFS_IOB), 1);
+I2CInUpdater in_extender0(&i2c, 0x21, {}, get_state_byte(1, OFS_IOB), 1, 2);
+I2CInUpdater in_extender1(&i2c, 0x22, {}, get_state_byte(2, OFS_IOB), 1, 2);
+I2CInUpdater in_extender2(&i2c, 0x23, {}, get_state_byte(3, OFS_IOB), 1, 2);
 
 SynchronousUpdater i2c_updater({&extender0, &extender1, &extender2, &in_extender0, &in_extender1, &in_extender2});
 
