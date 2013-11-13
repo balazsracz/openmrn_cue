@@ -117,7 +117,7 @@ class MemoryBitSetProducer : public UpdateListener {
 
   virtual ~MemoryBitSetProducer() {}
 
-  virtual void OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value);
+  virtual uint8_t OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value);
 
  private:
   node_t node_;

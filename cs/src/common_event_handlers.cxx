@@ -3,7 +3,7 @@
 #include "core/nmranet_event.h"
 
 
-void MemoryBitSetProducer::OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value) {
+uint8_t MemoryBitSetProducer::OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value) {
   uint64_t eventid = event_base_ + offset * 16;
   for (int mask = 1; mask <= 255; mask <<= 1, eventid += 2) {
     if ((previous_value & mask) != (new_value & mask)) {
@@ -16,4 +16,5 @@ void MemoryBitSetProducer::OnChanged(uint8_t offset, uint8_t previous_value, uin
       }
     }
   }
+  return new_value;
 }
