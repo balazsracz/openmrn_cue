@@ -9,8 +9,8 @@ sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \
      else echo OPENMRNPATH not found; fi" \
 )
 
-export OPENMRNPATH
-
 ifeq ($(OPENMRNPATH),OPENMRNPATH not found)
 $(error Could not find OPENMRN)
 endif
+
+export OPENMRNPATH:=$(abspath $(OPENMRNPATH))
