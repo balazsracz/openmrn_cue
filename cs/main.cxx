@@ -35,6 +35,8 @@
 
 #ifdef TARGET_LPC2368
 #include "LPC23xx.h"
+
+
 #endif
 
 #ifdef TARGET_LPC11Cxx
@@ -42,6 +44,10 @@
 #endif
 
 #include "src/cs_config.h"
+
+#ifdef SECOND
+#define ONLY_CPP_EVENT
+#endif
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -208,6 +214,9 @@ void* out_blinker_thread(void*)
 
 #ifdef ONLY_CPP_EVENT
 
+Executor main_executor;
+GlobalEventFlow event_flow(&main_executor, 30);
+
 class BlinkerBit : public BitEventInterface {
  public:
   BlinkerBit(uint64_t event_on, uint64_t event_off)
@@ -256,8 +265,10 @@ yellow_blinker(BRACZ_LAYOUT | 0x2056,
 BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x203c,
                                       BRACZ_LAYOUT | 0x203d);
 #else
+#ifndef ONLY_CPP_EVENT
 BlinkerToggleEventHandler led_blinker(BRACZ_LAYOUT | 0x2040,
                                       BRACZ_LAYOUT | 0x2041);
+#endif
 
 #endif
 #endif // lpc 2368
@@ -305,9 +316,6 @@ MbedGPIOListener led_6(BRACZ_LAYOUT | 0x203a,
 
 #ifdef ONLY_CPP_EVENT
 
-Executor main_executor;
-GlobalEventFlow event_flow(&main_executor, 30);
-
 BlinkerBit blinker_bit(BRACZ_LAYOUT | 0x2500,
                        BRACZ_LAYOUT | 0x2501);
 BitEventConsumer blinker_bit_handler(&blinker_bit);
@@ -335,6 +343,20 @@ MemoryBitSetEventHandler l2(BRACZ_LAYOUT | 0x2600,
 #endif
 
 #if defined(TARGET_LPC2368) && defined(SECOND)
+#ifdef ONLY_CPP_EVENT
+
+BlinkerBit blinker_bit(BRACZ_LAYOUT | 0x203c,
+                       BRACZ_LAYOUT | 0x203d);
+BitEventConsumer blinker_bit_handler(&blinker_bit);
+
+Executor* DefaultWriteFlowExecutor() {
+  return &main_executor;
+}
+
+FlowUpdater updater(&main_executor, {&extender0, &extender2, &in_extender0, &in_extender2});
+#else
+
+
 MemoryBitSetEventHandler l1(BRACZ_LAYOUT | 0x2100,
                             get_state_byte(1, OFS_IOA),
                             16);
@@ -346,6 +368,7 @@ MemoryBitSetEventHandler l2(BRACZ_LAYOUT | 0x2200,
 MemoryBitSetEventHandler l3(BRACZ_LAYOUT | 0x2300,
                             get_state_byte(3, OFS_IOA),
                             16);
+#endif
 #endif
 
 
@@ -588,13 +611,29 @@ int appl_main(int argc, char *argv[])
 
 #elif defined(TARGET_LPC2368)
 
+#ifndef SECOND
     nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2040, EVENT_STATE_INVALID);
     nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2041, EVENT_STATE_INVALID);
 
 
     // Bits produced and consumed by the automata are automatically exported.
 
-#ifdef SECOND
+#else
+
+#ifdef ONLY_CPP_EVENT
+    extern uint32_t state_21;
+    BitRangeEventPC pc_21(node, BRACZ_LAYOUT | 0x2100, &state_21, 24);
+    extern uint32_t state_22;
+    BitRangeEventPC pc_22(node, BRACZ_LAYOUT | 0x2200, &state_22, 24);
+    extern uint32_t state_23;
+    BitRangeEventPC pc_23(node, BRACZ_LAYOUT | 0x2300, &state_23, 24);
+
+    ListenerToEventProxy listener_21(&pc_21);
+    ListenerToEventProxy listener_22(&pc_22);
+    ListenerToEventProxy listener_23(&pc_23);
+
+#else
+
     for (int c = 0x30; c<=0x3d; c++) {
       nmranet_event_consumer(node, BRACZ_LAYOUT | 0x2000 | c, EVENT_STATE_INVALID);
     }
@@ -610,6 +649,7 @@ int appl_main(int argc, char *argv[])
         nmranet_event_consumer(node, BRACZ_LAYOUT | (b << 8) | p, EVENT_STATE_INVALID);
       }
     }
+#endif //CPP
 #endif  // Second
 
 #elif defined(__linux__)
@@ -622,8 +662,9 @@ int appl_main(int argc, char *argv[])
 
 
 #if defined(TARGET_LPC1768)
-    MbedGPIOProducer input_pin1(
-        node, BRACZ_LAYOUT | 0x2060, BRACZ_LAYOUT | 0x2061, p15, PullUp);
+    // TODO(bracz) reenable
+    /*MbedGPIOProducer input_pin1(
+      node, BRACZ_LAYOUT | 0x2060, BRACZ_LAYOUT | 0x2061, p15, PullUp);*/
 #elif defined(TARGET_PIC32MX)
     mPORTDSetPinsDigitalIn(BIT_8);
     //mPORTDSetPullUp(BIT_8);
@@ -643,18 +684,17 @@ int appl_main(int argc, char *argv[])
     // It is important to start this process only after the node_initialized
     // has returned, or else the program deadlocks. See
     // https://github.com/bakerstu/openmrn/issues/9
-    TimerUpdater upd(MSEC_TO_PERIOD(50), {&input_pin1});
+    // TODO(bracz) reenable
+    //TimerUpdater upd(MSEC_TO_PERIOD(50), {&input_pin1});
 #endif
 
 
 #if defined(TARGET_LPC2368)
-    MemoryBitSetProducer produce_i2c0(node, BRACZ_LAYOUT | 0x2120);
-    MemoryBitSetProducer produce_i2c1(node, BRACZ_LAYOUT | 0x2220);
-    MemoryBitSetProducer produce_i2c2(node, BRACZ_LAYOUT | 0x2320);
-
-    in_extender0.SetListener(&produce_i2c0);
-    in_extender1.SetListener(&produce_i2c1);
-    in_extender2.SetListener(&produce_i2c2);
+#ifdef SECOND
+    in_extender0.SetListener(&listener_21);
+    in_extender1.SetListener(&listener_22);
+    in_extender2.SetListener(&listener_23);
+#endif
 #elif defined(TARGET_LPC11Cxx)
 
 #ifdef ONLY_CPP_EVENT
@@ -682,7 +722,9 @@ int appl_main(int argc, char *argv[])
 #endif
 
 #if defined(TARGET_LPC2368)
+#ifndef ONLY_CPP_EVENT
     i2c_updater.RunInNewThread("i2c_update", 0, 1024);
+#endif
 #endif
 
     resetblink(0);
@@ -691,19 +733,18 @@ int appl_main(int argc, char *argv[])
     for (;;)
     {
 
+#ifdef ONLY_CPP_EVENT
+      main_executor.ThreadBody();
+      continue;
+#else
+
 #if defined(TARGET_LPC11Cxx)
-#ifndef ONLY_CPP_EVENT
       // This takes a bit of time (blocking).
       i2c_updater.Step();
-#endif
 #else
       nmranet_node_wait(node, MSEC_TO_PERIOD(300));
 #endif
 
-
-#ifdef ONLY_CPP_EVENT
-      main_executor.ThreadBody();
-#else
       // These are quick.
       for (size_t i = nmranet_event_pending(node); i > 0; i--) {
         node_handle_t node_handle;

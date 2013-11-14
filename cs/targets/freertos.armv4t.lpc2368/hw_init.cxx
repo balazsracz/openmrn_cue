@@ -68,15 +68,19 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);
 //I2C i2c(P0_10, P0_11); for panda CS
 I2C i2c(P0_27, P0_28);
 
-I2COutUpdater extender0(&i2c, 0x21, {}, get_state_byte(1, OFS_IOA), 2);
-I2COutUpdater extender1(&i2c, 0x22, {}, get_state_byte(2, OFS_IOA), 2);
-I2COutUpdater extender2(&i2c, 0x23, {}, get_state_byte(3, OFS_IOA), 2);
+uint32_t state_21;
+uint32_t state_22;
+uint32_t state_23;
 
-I2CInUpdater in_extender0(&i2c, 0x21, {}, get_state_byte(1, OFS_IOB), 1, 2);
-I2CInUpdater in_extender1(&i2c, 0x22, {}, get_state_byte(2, OFS_IOB), 1, 2);
-I2CInUpdater in_extender2(&i2c, 0x23, {}, get_state_byte(3, OFS_IOB), 1, 2);
+I2COutUpdater extender0(&i2c, 0x21, {}, (uint8_t*)&state_21, 2);
+I2COutUpdater extender1(&i2c, 0x22, {}, (uint8_t*)&state_22, 2);
+I2COutUpdater extender2(&i2c, 0x23, {}, (uint8_t*)&state_23, 2);
 
-SynchronousUpdater i2c_updater({&extender0, &extender1, &extender2, &in_extender0, &in_extender1, &in_extender2});
+I2CInUpdater in_extender0(&i2c, 0x21, {}, ((uint8_t*)&state_21) + 2, 1, 2);
+I2CInUpdater in_extender1(&i2c, 0x22, {}, ((uint8_t*)&state_22) + 2, 1, 2);
+I2CInUpdater in_extender2(&i2c, 0x23, {}, ((uint8_t*)&state_23) + 2, 1, 2);
+
+//SynchronousUpdater i2c_updater({&extender0, &extender1, &extender2, &in_extender0, &in_extender1, &in_extender2});
 
 extern "C" {
 

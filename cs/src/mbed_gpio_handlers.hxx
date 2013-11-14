@@ -4,12 +4,49 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "updater.hxx"
-#include "common_event_handlers.hxx"
+//#include "updater.hxx"
+//#include "common_event_handlers.hxx"
 
 #include "mbed.h"
 
-class MbedGPIOListener : public GPIOOutToggleEventHandler {
+#include "nmranet/EventHandlerTemplates.hxx"
+
+extern node_t node;
+
+class MbedGPIOListener : public BitEventInterface, public BitEventConsumer {
+ public:
+  MbedGPIOListener(uint64_t event_on, uint64_t event_off,
+                   PinName pin)
+      : BitEventInterface(event_on, event_off),
+        BitEventConsumer(this) {
+    mask_ = gpio_set(pin);
+    gpio_t gpio;
+    gpio_init(&gpio, pin, PIN_OUTPUT);
+    memory_off_ = gpio.reg_clr;
+    memory_on_ = gpio.reg_set;
+    memory_read_ = gpio.reg_in;
+  }
+
+  virtual bool GetCurrentState() {
+    return (*memory_read_) & mask_;
+  }
+  virtual void SetState(bool new_value) {
+    if (new_value) *memory_on_ = mask_; else *memory_off_ = mask_;
+  }
+
+  virtual node_t node() {
+    return ::node;
+  }
+
+ private:
+  volatile uint32_t* memory_on_;
+  volatile uint32_t* memory_off_;
+  volatile uint32_t* memory_read_;
+  uint32_t mask_;
+};
+
+
+/*class MbedGPIOListener : public GPIOOutToggleEventHandler {
  public:
   MbedGPIOListener(uint64_t event_on, uint64_t event_off,
                    PinName pin)
@@ -34,6 +71,6 @@ class MbedGPIOProducer : public MemoryBitProducer<volatile uint32_t> {
     gpio_mode(&gpio, mode);
     memory_ = gpio.reg_in;
   }
-};
+  };*/
 
 #endif // _BRACZ_TRAIN_MBED_GPIO_HANDLERS_HXX_
