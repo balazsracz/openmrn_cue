@@ -3,6 +3,10 @@
 
 //#include "utils/logging.h"
 
+extern "C" {
+  void resetblink(uint32_t pattern);
+}
+
 #include "mbed_i2c_update.hxx"
 
 #ifdef HAVE_MBED
@@ -34,7 +38,16 @@ void I2CInUpdater::OnFailure() {
   for (int i = 0; i < data_length_; i++) {
     count_unchanged(i) = 0;
   }
+  const uint32_t kPattern = 0x8002;
+  if (blinker_pattern != kPattern) {
+    resetblink(kPattern);
+  }
 }
+
+void I2CInUpdater::OnSuccess() {
+  resetblink(0);
+}
+
 
 void I2CInUpdater::PerformUpdate() {
   int ret;

@@ -101,12 +101,13 @@ public:
   }
 
   ControlFlowAction StartUpdateTimer() {
-    WakeUpRepeatedly(&sleep_data_, MSEC_TO_PERIOD(50));
+    //WakeUpRepeatedly(&sleep_data_, MSEC_TO_PERIOD(50));
     return CallImmediately(ST(WaitForWakeup));
   }
 
   ControlFlowAction WaitForWakeup() {
-    return WaitForTimerWakeUpAndCall(&sleep_data_, ST(UpdateOne));
+    return Sleep(&sleep_data_, MSEC_TO_PERIOD(5), ST(UpdateOne));
+    //return WaitForTimerWakeUpAndCall(&sleep_data_, ST(UpdateOne));
   }
 
   ControlFlowAction UpdateOne() {

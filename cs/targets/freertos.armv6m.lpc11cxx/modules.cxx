@@ -44,11 +44,11 @@ I2C i2c(P0_5, P0_4);
 
 uint32_t state_25;
 uint32_t state_26;
-I2COutUpdater extender0(&i2c, 0x25, {}, (uint8_t*)state_25, 2);
-I2COutUpdater extender1(&i2c, 0x26, {}, (uint8_t*)state_26, 2);
+I2COutUpdater extender0(&i2c, 0x25, {}, (uint8_t*)&state_25, 2);
+I2COutUpdater extender1(&i2c, 0x26, {}, (uint8_t*)&state_26, 2);
 
-I2CInUpdater in_extender0(&i2c, 0x25, {}, ((uint8_t*)state_25) + 2, 1, 2);
-I2CInUpdater in_extender1(&i2c, 0x26, {}, ((uint8_t*)state_26) + 2, 1, 2);
+I2CInUpdater in_extender0(&i2c, 0x25, {}, ((uint8_t*)&state_25) + 2, 1, 2);
+I2CInUpdater in_extender1(&i2c, 0x26, {}, ((uint8_t*)&state_26) + 2, 1, 2);
 
 //SynchronousUpdater i2c_updater({&extender0, &extender1, &in_extender0, &in_extender1});
 

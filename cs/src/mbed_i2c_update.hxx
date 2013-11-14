@@ -86,7 +86,7 @@ public:
 
 protected:
   virtual void OnFailure();
-
+  virtual void OnSuccess();
 private:
   uint8_t& shadow(int i) {
     return extra_data()[i];
