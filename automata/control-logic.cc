@@ -234,6 +234,15 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
   LocalVariable* route1 = aut->ImportVariable(route_set_ab_.get());
   LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
 
+  // During boot we purposefully emit an event on the raw detector. This is a
+  // poor-man's query: if the raw detector is implemented as a bit PC, then it
+  // will respond with another event if the input doesn't match what we
+  // emitted.
+  Def()
+      .IfState(StInit)
+      .ActReg1(aut->ImportVariable(const_cast<GlobalVariable *>(raw_detector_)))
+      .ActReg1(last);
+
   // If there is a flip, we start a timer. The timer length depends on the
   // edge.
   Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy);
