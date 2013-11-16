@@ -106,7 +106,7 @@ public:
   }
 
   ControlFlowAction WaitForWakeup() {
-    return Sleep(&sleep_data_, MSEC_TO_PERIOD(5), ST(UpdateOne));
+    return Sleep(&sleep_data_, MSEC_TO_NSEC(5), ST(UpdateOne));
     //return WaitForTimerWakeUpAndCall(&sleep_data_, ST(UpdateOne));
   }
 

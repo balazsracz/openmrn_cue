@@ -721,7 +721,7 @@ int appl_main(int argc, char *argv[])
     resume_all_automata();
 #endif
 
-#if defined(TARGET_LPC2368)
+#if defined(TARGET_LPC2368) && defined(SECOND)
 #ifndef ONLY_CPP_EVENT
     i2c_updater.RunInNewThread("i2c_update", 0, 1024);
 #endif
@@ -742,7 +742,7 @@ int appl_main(int argc, char *argv[])
       // This takes a bit of time (blocking).
       i2c_updater.Step();
 #else
-      nmranet_node_wait(node, MSEC_TO_PERIOD(300));
+      nmranet_node_wait(node, MSEC_TO_NSEC(300));
 #endif
 
       // These are quick.
@@ -763,7 +763,7 @@ int appl_main(int argc, char *argv[])
 
     for (;;)
     {
-        int result = nmranet_node_wait(node, MSEC_TO_PERIOD(300));
+        int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
 
         if (result) {
             for (size_t i = nmranet_event_pending(node); i > 0; i--) {
