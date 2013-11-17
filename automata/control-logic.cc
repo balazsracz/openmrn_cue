@@ -255,7 +255,7 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
       .IfTimerDone().IfReg0(*last)
       .ActReg1(occ);
   Def()
-      .IfTimerDone().IfReg1(*last)
+      .IfTimerDone().IfReg1(*last).IfReg1(*occ)
       .ActReg0(route1)
       .ActReg0(route2)
       .ActReg0(occ);
