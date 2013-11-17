@@ -156,6 +156,7 @@ TEST(BoardCompile, SimpleBoard) {
 Board testevent;
 
 EventBasedVariable intev(&testevent,
+                         "intev",
                          0x0502010202650022ULL,
                          0x0502010202650023ULL,
                          0, OFS_GLOBAL_BITS, 3);

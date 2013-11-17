@@ -408,6 +408,7 @@ TEST_F(AutomataTests, EventVar) {
   Board brd;
   using automata::EventBasedVariable;
   EventBasedVariable led(&brd,
+                         "led",
                          0x0502010202650012ULL,
                          0x0502010202650013ULL,
                          0, OFS_GLOBAL_BITS, 1);
@@ -484,6 +485,7 @@ TEST_F(AutomataTests, EventVar2) {
   Board brd;
   using automata::EventBasedVariable;
   EventBasedVariable led(&brd,
+                         "led",
                          0x0502010202650012ULL,
                          0x0502010202650013ULL,
                          0, OFS_GLOBAL_BITS, 1);
