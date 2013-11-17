@@ -111,7 +111,7 @@ class StandardBlock : public StraightTrackInterface {
         body_(EventBlock::Allocator(&alloc, "body", 24, 8)),
         body_det_(EventBlock::Allocator(&alloc, "body_det", 24, 8),
                   physical->sensor_raw),
-        signal_(EventBlock::Allocator(&alloc, "body_det", 24, 8), request_green_.get(),
+        signal_(EventBlock::Allocator(&alloc, "signal", 24, 8), request_green_.get(),
                 physical->signal_raw),
         physical_(physical),
         aut_body_(brd, &body_),
