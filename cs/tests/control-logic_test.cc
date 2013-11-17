@@ -854,6 +854,7 @@ TEST_F(LogicTest, 100trainz) {
     EXPECT_FALSE(request_green.Get());
     EXPECT_TRUE(signal_green.Get());
     EXPECT_TRUE(QueryVar(*mid.route_set_ab_));
+    EXPECT_TRUE(QueryVar(*second_det.route_set_ab_));
     EXPECT_TRUE(QueryVar(*second_signal.route_set_ab_));
 
     // But the third train cannot get in yet,
