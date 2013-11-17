@@ -100,7 +100,7 @@ void* rx_thread(void* p) {
 const uint8_t syncpacket[] = {
     CMD_SYNC_LEN, CMD_SYNC, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 
-static os_period_t sync_packet_callback(void*, void*) {
+static long long sync_packet_callback(void*, void*) {
     PacketQueue::instance()->TransmitConstPacket(syncpacket);
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
@@ -112,7 +112,7 @@ PacketQueue::PacketQueue(int fd) : synced_(false), fd_(fd) {
     os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
-    os_timer_start(sync_packet_timer_, MSEC_TO_PERIOD(250));
+    os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(250));
     // Wires up packet receive from vcom0 to the USB host.
     usb_vcom0_recv_ = new VCOMPipeMember(CMD_VCOM0);
     usb_vcom_pipe0.RegisterMember(usb_vcom0_recv_);
@@ -162,8 +162,8 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
         delete pkt;
         return;
       }
-      LOG(INFO, "usb packet len %d, cmd %02x, data %02x, %02x, %02x ...",
-          in_pkt.size(), in_pkt[0], in_pkt.buf()[1], in_pkt.buf()[2], in_pkt.buf()[3]);
+      LOG(INFO, "usb packet len %lu, cmd %02x, data %02x, %02x, %02x ...",
+          (unsigned long)in_pkt.size(), in_pkt[0], in_pkt.buf()[1], in_pkt.buf()[2], in_pkt.buf()[3]);
     }
     switch (in_pkt[0]) {
     case CMD_PING: {
