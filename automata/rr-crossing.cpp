@@ -29,49 +29,59 @@ StateRef StateUser2(3);
 Board brd;
 
 EventBasedVariable led(&brd,
+                       "led",
                        BRACZ_LAYOUT | 0x2050,
                        BRACZ_LAYOUT | 0x2051,
                        0, OFS_GLOBAL_BITS, 1);
 
 // Negated input_pin1 variable.
 EventBasedVariable vNinput_pin(&brd,
+                               "vNinput_pin",
                                0x0502010202650301ULL,
                                0x0502010202650300ULL,
                                0, OFS_GLOBAL_BITS, 2);
 
 EventBasedVariable intev(&brd,
+                         "intev",
                          0x0502010202650122ULL,
                          0x0502010202650123ULL,
                          0, OFS_GLOBAL_BITS, 3);
 
 EventBasedVariable repev(&brd,
+                         "repev",
                          0x0502010202650132ULL,
                          0x0502010202650133ULL,
                          0, OFS_GLOBAL_BITS, 4);
 
 EventBasedVariable vled1(&brd,
+                         "vled1",
                          BRACZ_LAYOUT | 0x2050,
                          BRACZ_LAYOUT | 0x2051,
                          1, OFS_IOA, 1);
 EventBasedVariable vled2(&brd,
+                         "vled2",
                          BRACZ_LAYOUT | 0x2052,
                          BRACZ_LAYOUT | 0x2053,
                          1, OFS_IOA, 0);
 EventBasedVariable vled3(&brd,
+                         "vled3",
                          BRACZ_LAYOUT | 0x2054,
                          BRACZ_LAYOUT | 0x2055,
                          2, OFS_IOA, 1);
 EventBasedVariable vled4(&brd,
+                         "vled4",
                          BRACZ_LAYOUT | 0x2056,
                          BRACZ_LAYOUT | 0x2057,
                          2, OFS_IOA, 0);
 
 EventBasedVariable inpb1(&brd,
+                         "inpb1",
                          BRACZ_LAYOUT | 0x2060,
                          BRACZ_LAYOUT | 0x2061,
                          1, OFS_IOB, 2);
 
 EventBasedVariable inpb2(&brd,
+                         "inpb2",
                          BRACZ_LAYOUT | 0x2070,
                          BRACZ_LAYOUT | 0x2071,
                          2, OFS_IOB, 2);

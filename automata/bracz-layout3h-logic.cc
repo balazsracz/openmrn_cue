@@ -9,6 +9,7 @@ using namespace std;
 #include "system.hxx"
 #include "operations.hxx"
 #include "variables.hxx"
+#include "registry.hxx"
 
 #include "bracz-layout.hxx"
 #include "control-logic.hxx"
@@ -23,11 +24,13 @@ using namespace automata;
 Board brd;
 
 EventBasedVariable is_paused(&brd,
+                             "is_paused",
                              BRACZ_LAYOUT | 0x0000,
                              BRACZ_LAYOUT | 0x0001,
                              7, 31, 3);
 
 EventBasedVariable blink_off(&brd,
+                             "blink_off",
                              BRACZ_LAYOUT | 0x0002,
                              BRACZ_LAYOUT | 0x0003,
                              7, 31, 2);
@@ -65,6 +68,7 @@ GlobalVariable* NewTempVariable(Board* board) {
   }
   return new EventBasedVariable(
       board,
+      StringPrintf("tmp_var_%d", counter),
       BRACZ_LAYOUT | 0x3000 | (counter << 1),
       BRACZ_LAYOUT | 0x3000 | (counter << 1) | 1,
       client, offset, bit);
@@ -73,6 +77,7 @@ GlobalVariable* NewTempVariable(Board* board) {
 unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
 
 EventBasedVariable led(&brd,
+                       "led",
                        0x0502010202650012ULL,
                        0x0502010202650013ULL,
                        7, 31, 1);
@@ -136,6 +141,8 @@ class StandardBlock : public StraightTrackInterface {
   StandardPluginAutomata aut_body_;
   StandardPluginAutomata aut_body_det_;
   StandardPluginAutomata aut_signal_;
+
+  DISALLOW_COPY_AND_ASSIGN(StandardBlock);
 };
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");

@@ -49,83 +49,101 @@ extern Board brd;
 
 struct I2CBoard {
   I2CBoard(int a)
-      : LedRed(
+      : name_(StringPrintf("B%d", a-0x20)),
+        LedRed(
             &brd,
+            name_ + "LedRed",
             BRACZ_LAYOUT | (a<<8) | 0x00,
             BRACZ_LAYOUT | (a<<8) | 0x01,
             a & 0xf, OFS_IOA, 0),
         LedGreen(
             &brd,
+            name_ + "LedGreen",
             BRACZ_LAYOUT | (a<<8) | 0x02,
             BRACZ_LAYOUT | (a<<8) | 0x03,
             a & 0xf, OFS_IOA, 1),
         ActOraRed(
             &brd,
+            name_ + "ActOraRed",
             BRACZ_LAYOUT | (a<<8) | 0x10,
             BRACZ_LAYOUT | (a<<8) | 0x11,
             a & 0xf, OFS_IOA + 1, 0),
         ActOraGreen(
             &brd,
+            name_ + "ActOraGreen",
             BRACZ_LAYOUT | (a<<8) | 0x12,
             BRACZ_LAYOUT | (a<<8) | 0x13,
             a & 0xf, OFS_IOA + 1, 1),
         ActGreenRed(
             &brd,
+            name_ + "ActGreenRed",
             BRACZ_LAYOUT | (a<<8) | 0x16,
             BRACZ_LAYOUT | (a<<8) | 0x17,
             a & 0xf, OFS_IOA + 1, 2),
         ActGreenGreen(
             &brd,
+            name_ + "ActGreenGreen",
             BRACZ_LAYOUT | (a<<8) | 0x14,
             BRACZ_LAYOUT | (a<<8) | 0x15,
             a & 0xf, OFS_IOA + 1, 3),
         ActBlueBrown(
             &brd,
+            name_ + "ActBlueBrown",
             BRACZ_LAYOUT | (a<<8) | 0x18,
             BRACZ_LAYOUT | (a<<8) | 0x19,
             a & 0xf, OFS_IOA + 1, 4),
         ActBlueGrey(
             &brd,
+            name_ + "ActBlueGrey",
             BRACZ_LAYOUT | (a<<8) | 0x1a,
             BRACZ_LAYOUT | (a<<8) | 0x1b,
             a & 0xf, OFS_IOA + 1, 5),
 
         RelGreen(
             &brd,
+            name_ + "RelGreen",
             BRACZ_LAYOUT | (a<<8) | 0x1c,
             BRACZ_LAYOUT | (a<<8) | 0x1d,
             a & 0xf, OFS_IOA + 1, 6),
         RelBlue(
             &brd,
+            name_ + "RelBlue",
             BRACZ_LAYOUT | (a<<8) | 0x1e,
             BRACZ_LAYOUT | (a<<8) | 0x1f,
             a & 0xf, OFS_IOA + 1, 7),
 
         InOraRed(
             &brd,
+            name_ + "InOraRed",
             BRACZ_LAYOUT | (a<<8) | 0x22,
             BRACZ_LAYOUT | (a<<8) | 0x23,
             a & 0xf, OFS_IOB, 0),
         InOraGreen(
             &brd,
+            name_ + "InOraGreen",
             BRACZ_LAYOUT | (a<<8) | 0x20,
             BRACZ_LAYOUT | (a<<8) | 0x21,
             a & 0xf, OFS_IOB, 1),
         InBrownGrey(
             &brd,
+            name_ + "InBrownGrey",
             BRACZ_LAYOUT | (a<<8) | 0x26,
             BRACZ_LAYOUT | (a<<8) | 0x27,
             a & 0xf, OFS_IOB, 2),
         InBrownBrown(
             &brd,
+            name_ + "InBrownBrown",
             BRACZ_LAYOUT | (a<<8) | 0x24,
             BRACZ_LAYOUT | (a<<8) | 0x25,
             a & 0xf, OFS_IOB, 3),
         InA3(
             &brd,
+            name_ + "InA3",
             BRACZ_LAYOUT | (a<<8) | 0x2a,
             BRACZ_LAYOUT | (a<<8) | 0x2b,
             a & 0xf, OFS_IOB, 4) {}
+
+  string name_;
 
   EventBasedVariable LedRed, LedGreen;
 
@@ -143,38 +161,45 @@ struct I2CBoard {
 
 struct PandaControlBoard {
   PandaControlBoard()
-      : l0(
+      : name_("panda."),
+        l0(
             &brd,
+            name_ + "L0",
             BRACZ_LAYOUT | 0x2030,
             BRACZ_LAYOUT | 0x2031,
             7, 31, 4),
         l1(
             &brd,
+            name_ + "L1",
             BRACZ_LAYOUT | 0x2032,
             BRACZ_LAYOUT | 0x2033,
             7, 31, 5),
         l2(
             &brd,
+            name_ + "L2",
             BRACZ_LAYOUT | 0x2034,
             BRACZ_LAYOUT | 0x2035,
             7, 31, 6),
         l3(
             &brd,
+            name_ + "L3",
             BRACZ_LAYOUT | 0x2036,
             BRACZ_LAYOUT | 0x2037,
             7, 31, 7),
         l4(
             &brd,
+            name_ + "L4",
             BRACZ_LAYOUT | 0x2038,
             BRACZ_LAYOUT | 0x2039,
             7, 30, 0),
         l5(
             &brd,
+            name_ + "L5",
             BRACZ_LAYOUT | 0x203a,
             BRACZ_LAYOUT | 0x203b,
             7, 30, 1)
   {}
-
+  string name_;
   EventBasedVariable l0, l1, l2, l3, l4, l5;
 };
 
@@ -182,6 +207,7 @@ struct LPC11C {
   LPC11C()
       : l0(
             &brd,
+            "LPC11C.L0",
             BRACZ_LAYOUT | 0x2020,
             BRACZ_LAYOUT | 0x2021,
             7, 30, 2)
