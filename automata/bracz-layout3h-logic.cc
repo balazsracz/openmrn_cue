@@ -263,5 +263,15 @@ int main(int argc, char** argv) {
     }
     fclose(f);
 
+    f = fopen("jmri-out.xml", "w");
+    assert(f);
+    PrintAllEventVariables(f);
+    fclose(f);
+
+    f = fopen("var-bash-list.txt", "w");
+    assert(f);
+    PrintAllEventVariablesInBashFormat(f);
+    fclose(f);
+
     return 0;
 };
