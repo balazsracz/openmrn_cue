@@ -5,8 +5,9 @@
 #include "gmock/gmock.h"
 
 #include "automata_tests_helper.hxx"
-
 #include "../automata/control-logic.hxx"
+
+#include "utils/test_main.hxx"
 
 namespace automata {
 
@@ -23,7 +24,7 @@ class LogicTest : public AutomataNodeTests {
 
 TEST_F(LogicTest, TestFramework) {
   static EventBasedVariable ev_var(
-      &brd, BRACZ_LAYOUT | 0xf000, BRACZ_LAYOUT | 0xf001, 0);
+      &brd, "test", BRACZ_LAYOUT | 0xf000, BRACZ_LAYOUT | 0xf001, 0);
   static FakeBit input(this);
   DefAut(testaut, brd, {
     DefCopy(ImportVariable(input), ImportVariable(&ev_var));
@@ -44,7 +45,7 @@ TEST_F(LogicTest, TestFramework) {
 
 TEST_F(LogicTest, TestFramework2) {
   static EventBasedVariable ev_var(
-      &brd, BRACZ_LAYOUT | 0xf000, BRACZ_LAYOUT | 0xf001, 0);
+      &brd, "test", BRACZ_LAYOUT | 0xf000, BRACZ_LAYOUT | 0xf001, 0);
   static FakeBit bout(this);
   DefAut(testaut2, brd, {
     DefCopy(ImportVariable(ev_var), ImportVariable(&bout));
@@ -892,9 +893,3 @@ TEST_F(LogicTest, 100trainz) {
 }
 
 }  // namespace automata
-
-int appl_main(int argc, char* argv[]) {
-  //__libc_init_array();
-  testing::InitGoogleMock(&argc, argv);
-  return RUN_ALL_TESTS();
-}

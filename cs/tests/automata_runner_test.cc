@@ -13,6 +13,7 @@
 #include "src/automata_runner.h"
 #include "nmranet_config.h"
 
+#include "utils/test_main.hxx"
 
 
 using automata::Board;
@@ -508,11 +509,4 @@ TEST_F(AutomataTests, EventVar2) {
 
 TEST_F(AutomataTests, EmptyTest) {
   WaitForEventThread();
-}
-
-
-int appl_main(int argc, char* argv[]) {
-  //__libc_init_array();
-  testing::InitGoogleMock(&argc, argv);
-  return RUN_ALL_TESTS();
 }

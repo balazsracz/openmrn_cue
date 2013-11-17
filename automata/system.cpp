@@ -153,7 +153,7 @@ GlobalVariable* EventBlock::Allocator::Allocate(const string& name) const {
 }
 
 void ClearOffsetMap() {
-  g_ofs_map->clear();
+  if (g_ofs_map) g_ofs_map->clear();
 }
 
 map<int, string>* GetOffsetMap() {
