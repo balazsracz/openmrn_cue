@@ -359,15 +359,19 @@ void SimulateSignalFwdRoute(Automata* aut,
       .IfReg0(*out_try_set_route)
       .IfReg0(*out_route_set_success)
       .IfReg0(*out_route_set_failure)
-      .ActReg1(out_try_set_route);
+      .IfReg0(*any_route_setting_in_progress)
+      .ActReg1(out_try_set_route)
+      .ActReg1(any_route_setting_in_progress);
 
   Def().IfReg1(*out_route_set_success)
       .ActReg0(out_route_set_success)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
       .ActReg1(signal);
 
   Def().IfReg1(*out_route_set_failure)
       .ActReg0(out_route_set_failure)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
       .ActReg0(signal);
 }
