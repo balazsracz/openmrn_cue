@@ -381,6 +381,7 @@ void SignalPiece::SignalRoute(Automata* aut) {
                 { route_set_ba_.get() },
                 { route_set_ab_.get() });
 
+  // Whereas in direction a->b we have the special route setting logic.
   SimulateSignalFwdRoute(aut,
                          side_a(),
                          side_b(),
