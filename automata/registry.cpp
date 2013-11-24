@@ -22,7 +22,6 @@ void RegisterEventVariable(const string& name, uint64_t event_on,
   var.event_off = event_off;
   var.name = name;
   registered_variables()->push_back(var);
-  fprintf(stderr, "registered variable %d.\n", registered_variables()->size());
 }
 
 uint8_t eventbyte(uint64_t event, int b) { return (event >> (b * 8)) & 0xff; }
@@ -39,7 +38,6 @@ string EventToJmriFormat(uint64_t event) {
 void PrintAllEventVariables(FILE* f) {
   fprintf(stderr, "%d total variables \n", registered_variables()->size());
   for (const auto& v : *registered_variables()) {
-    fprintf(stderr, " var: %lld \n", v.event_on);
     fprintf(f,
             "<sensor systemName=\"MS%s;%s\" inverted=\"false\" "
             "userName=\"%s\"> <systemName>MS%s;%s</systemName> "
