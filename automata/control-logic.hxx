@@ -88,9 +88,9 @@ class StandardPluginAutomata : public automata::Automata {
 
 class CtrlTrackInterface;
 
-// THis class is the casis of sequential binding. It defines a run of track
+// This class is the basis of sequential binding. It defines a run of track
 // which has exactly two endpoints. Internally it might be made of one or more
-// teack pieces that are already bound.
+// track pieces that are already bound.
 class StraightTrackInterface {
  public:
   virtual CtrlTrackInterface* side_a() = 0;
@@ -214,12 +214,6 @@ class StraightTrack : public StraightTrackInterface,
 
   // If you give this side_a() it will return side_b() and vice versa.
   const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s);
-
-  // This funciton will be called from SimulateOccupancy when the simulated
-  // occupancy goes to zero and thus the route should be released.
-  void ReleaseRouteCallback(CtrlTrackInterface* side_out,
-                            Automata::LocalVariable* route_set,
-                            Automata::Op* op);
 
   FRIEND_TEST(LogicTest, SimulatedOccupancy_SingleShortPiece);
   FRIEND_TEST(LogicTest, SimulatedOccupancy_MultipleShortPiece);
@@ -383,6 +377,140 @@ class SignalPiece : public StraightTrackShort {
  private:
   GlobalVariable* request_green_;
   GlobalVariable* signal_;
+};
+
+
+class TurnoutInterface {
+ public:
+  virtual CtrlTrackInterface* side_points() = 0;
+  virtual CtrlTrackInterface* side_closed() = 0;
+  virtual CtrlTrackInterface* side_thrown() = 0;
+};
+
+class TurnoutBase : public TurnoutInterface, private OccupancyLookupInterface, public virtual AutomataPlugin {
+ public:
+  TurnoutBase(const EventBlock::Allocator& allocator)
+      : side_points_(EventBlock::Allocator(&allocator, "points", 8), this),
+        side_closed_(EventBlock::Allocator(&allocator, "closed", 8), this),
+        side_thrown_(EventBlock::Allocator(&allocator, "thrown", 8), this),
+        simulated_occupancy_(allocator.Allocate("simulated_occ")),
+        route_set_PC_(allocator.Allocate("route_set_PC")),
+        route_set_CP_(allocator.Allocate("route_set_CP")),
+        route_set_PT_(allocator.Allocate("route_set_PT")),
+        route_set_TP_(allocator.Allocate("route_set_TP")),
+        route_pending_PC_(allocator.Allocate("route_pending_PC")),
+        route_pending_CP_(allocator.Allocate("route_pending_CP")),
+        route_pending_PT_(allocator.Allocate("route_pending_PT")),
+        route_pending_TP_(allocator.Allocate("route_pending_TP")),
+        any_route_set_(allocator.Allocate("any_route_set")),
+        turnout_state_(allocator.Allocate("turnout_state")),
+        tmp_seen_train_in_next_(allocator.Allocate("tmp_seen_train_in_next")),
+        tmp_route_setting_in_progress_(allocator.Allocate("tmp_route_setting_in_progress"))
+  {
+    directions_.push_back(Direction(&side_points_, &side_closed_, route_set_PC_.get(), route_pending_PC_.get()));
+    directions_.push_back(Direction(&side_points_, &side_thrown_, route_set_PT_.get(), route_pending_PT_.get()));
+    directions_.push_back(Direction(&side_closed_, &side_points_, route_set_CP_.get(), route_pending_CP_.get()));
+    directions_.push_back(Direction(&side_thrown_, &side_points_, route_set_TP_.get(), route_pending_TP_.get()));
+    AddAutomataPlugin(20, NewCallbackPtr(this, &TurnoutBase::TurnoutOccupancy));
+    AddAutomataPlugin(30, NewCallbackPtr(this, &TurnoutBase::TurnoutRoute));
+    AddAutomataPlugin(35, NewCallbackPtr(this, &TurnoutBase::PopulateAnyRouteSet));
+  }
+
+  virtual CtrlTrackInterface* side_points() {
+    return &side_points_;
+  }
+  virtual CtrlTrackInterface* side_closed() {
+    return &side_closed_;
+  }
+  virtual CtrlTrackInterface* side_thrown() {
+    return &side_thrown_;
+  }
+  
+ protected:
+  CtrlTrackInterface side_points_;
+  CtrlTrackInterface side_closed_;
+  CtrlTrackInterface side_thrown_;
+
+  struct Direction {
+    Direction(CtrlTrackInterface* f,
+              CtrlTrackInterface* t,
+              GlobalVariable* r,
+              GlobalVariable* rp)
+        : from(f), to(t), route(r), route_pending(rp) {}
+    CtrlTrackInterface* from;
+    CtrlTrackInterface* to;
+    GlobalVariable* route;
+    GlobalVariable* route_pending;
+  };
+
+  vector<Direction> directions_;
+
+  std::unique_ptr<GlobalVariable> simulated_occupancy_;
+  // route from closed/thrown/points [in] to closed/thrown/points [out]
+  std::unique_ptr<GlobalVariable> route_set_PC_;
+  std::unique_ptr<GlobalVariable> route_set_CP_;
+  std::unique_ptr<GlobalVariable> route_set_PT_;
+  std::unique_ptr<GlobalVariable> route_set_TP_;
+  // temp var for routes
+  std::unique_ptr<GlobalVariable> route_pending_PC_;
+  std::unique_ptr<GlobalVariable> route_pending_CP_;
+  std::unique_ptr<GlobalVariable> route_pending_PT_;
+  std::unique_ptr<GlobalVariable> route_pending_TP_;
+
+  // Helper variable that is 1 iff any of the four routes are set.
+  std::unique_ptr<GlobalVariable> any_route_set_;
+
+  // Is zero if turnout is closed, 1 if turnout is thrown.
+  std::unique_ptr<GlobalVariable> turnout_state_;
+
+  // Helper variable for simuating occupancy.
+  std::unique_ptr<GlobalVariable> tmp_seen_train_in_next_;
+  // Helper variable for excluding parallel route setting requests.
+  std::unique_ptr<GlobalVariable> tmp_route_setting_in_progress_;
+
+ private:
+  void PopulateAnyRouteSet(Automata* aut);
+  void TurnoutOccupancy(Automata* aut);
+  void TurnoutRoute(Automata* aut);
+};
+
+class FixedTurnout : public TurnoutBase {
+ public:
+  enum State {
+    TURNOUT_CLOSED,
+    TURNOUT_THROWN
+  };
+
+  FixedTurnout(State state, const EventBlock::Allocator& allocator)
+      : TurnoutBase(allocator) {
+    AddAutomataPlugin(10, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
+  }
+
+  virtual const GlobalVariable* LookupCloseDetector(
+      const CtrlTrackInterface* from) {
+    return FindOtherSide(from)->binding()->LookupCloseDetector();
+  }
+
+  virtual const GlobalVariable* LookupFarDetector(
+      const CtrlTrackInterface* from) {
+    return FindOtherSide(from)->binding()->LookupFarDetector();
+  }
+
+ private:
+  void FixTurnoutState(Automata* aut);
+
+  State state_;
+  
+  const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s) {
+    if (s == &side_closed_) return &side_points_;
+    if (s == &side_thrown_) return &side_points_;
+    if (s == &side_points_ &&
+        state_ == TURNOUT_CLOSED) return &side_closed_;
+    if (s == &side_points_ &&
+        state_ == TURNOUT_THROWN) return &side_thrown_;
+    assert(0);
+    return nullptr;
+  }
 };
 
 }  // namespace automata

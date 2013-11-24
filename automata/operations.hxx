@@ -167,16 +167,16 @@ public:
   typedef Op& (Op::*const_var_fn_t)(const Automata::LocalVariable&);
   typedef Op& (Op::*mutable_var_fn_t)(Automata::LocalVariable*);
 
-  Op& Rept(mutable_var_fn_t fn,
-           const std::initializer_list<GlobalVariable*>& vars) {
-    for (auto v : vars) {
+  template<class C> Op& Rept(mutable_var_fn_t fn,
+           const C& vars) {
+    for (GlobalVariable* v : vars) {
       (this->*fn)(parent()->ImportVariable(v));
     }
     return *this;
   }
 
-  Op& Rept(const_var_fn_t fn,
-           const std::initializer_list<const GlobalVariable*>& vars) {
+  template<class C> Op& Rept(const_var_fn_t fn,
+           const C& vars) {
     for (const GlobalVariable* v : vars) {
       (this->*fn)(parent()->ImportVariable(*v));
     }

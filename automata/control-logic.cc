@@ -27,15 +27,28 @@ bool BindSequence(
 
 typedef Automata::LocalVariable LocalVariable;
 
+// This funciton will be called from SimulateOccupancy when the simulated
+// occupancy goes to zero and thus the route should be released.
+void ReleaseRouteCallback(CtrlTrackInterface* side_out,
+                          LocalVariable* route_set,
+                          Automata::Op* op) {
+  // TODO: strictly speaking here we should also take into account the
+  // occupancy status of the neighbors to ensure that we are only releasing a
+  // route component if the previous route components are already
+  // released. That would need another temporary variable that we can save the
+  // pending route release into.
+
+  op->ActReg1(op->parent()->ImportVariable(side_out->out_route_released.get()));
+  op->ActReg0(route_set);
+}
+
 void StraightTrack::SimulateAllOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
   auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
   auto* route_set_ab = aut->ImportVariable(route_set_ab_.get());
   auto* route_set_ba = aut->ImportVariable(route_set_ba_.get());
-  auto side_b_release = NewCallback(
-      this, &StraightTrack::ReleaseRouteCallback, side_b(), route_set_ab);
-  auto side_a_release = NewCallback(
-      this, &StraightTrack::ReleaseRouteCallback, side_a(), route_set_ba);
+  auto side_b_release = NewCallback(&ReleaseRouteCallback, side_b(), route_set_ab);
+  auto side_a_release = NewCallback(&ReleaseRouteCallback, side_a(), route_set_ba);
   SimulateOccupancy(aut,
                     sim_occ,
                     tmp,
@@ -54,19 +67,6 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
 
 typedef std::initializer_list<GlobalVariable*> MutableVarList;
 typedef std::initializer_list<const GlobalVariable*> ConstVarList;
-
-void StraightTrack::ReleaseRouteCallback(CtrlTrackInterface* side_out,
-                                         LocalVariable* route_set,
-                                         Automata::Op* op) {
-  // TODO: strictly speaking here we should also take into account the
-  // occupancy status of the neighbors to ensure that we are only releasing a
-  // route component if the previous route components are already
-  // released. That would need another temporary variable that we can save the
-  // pending route release into.
-
-  op->ActReg1(op->parent()->ImportVariable(side_out->out_route_released.get()));
-  op->ActReg0(route_set);
-}
 
 void SimulateRoute(Automata* aut,
                    CtrlTrackInterface* before,
@@ -457,5 +457,68 @@ void SimulateOccupancy(Automata* aut,
   }
 }
 
+void FixedTurnout::FixTurnoutState(Automata* aut) {
+  LocalVariable* turnoutstate = aut->ImportVariable(turnout_state_.get());
+  if (state_ == TURNOUT_CLOSED) {
+    Def().ActReg0(turnoutstate);
+  } else if (state_ == TURNOUT_THROWN) {
+    Def().ActReg1(turnoutstate);
+  }
+}
+
+void TurnoutBase::TurnoutOccupancy(Automata* aut) {
+  auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
+  auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
+
+  for (const auto& d : directions_) {
+    auto* route_set = aut->ImportVariable(d.route);
+    auto release = NewCallback(&ReleaseRouteCallback, d.to, route_set);
+    SimulateOccupancy(aut,
+                      sim_occ,
+                      tmp,
+                      *route_set,
+                      d.from,
+                      d.to,
+                      &release);
+  }
+}
+
+void TurnoutBase::PopulateAnyRouteSet(Automata* aut) {
+  vector<const GlobalVariable*> all_routes;
+  for (const auto& d : directions_) {
+    all_routes.push_back(d.route);
+  }
+
+  LocalVariable* any_route_set =
+      aut->ImportVariable(any_route_set_.get());
+
+  const vector<const automata::GlobalVariable*>&v = all_routes;
+
+  Def().Rept(&Automata::Op::IfReg0, v)
+      .ActReg0(any_route_set);
+
+  for (const auto& d : directions_) {
+    Def().IfReg1(aut->ImportVariable(*d.route))
+        .ActReg1(any_route_set);
+  }
+}
+
+void TurnoutBase::TurnoutRoute(Automata* aut) {
+  LocalVariable* any_route_setting_in_progress =
+      aut->ImportVariable(tmp_route_setting_in_progress_.get());
+
+  for (const auto& d : directions_) {
+    Def().IfState(StInit)
+        .ActReg0(aut->ImportVariable(d.route))
+        .ActReg0(aut->ImportVariable(d.route_pending));
+  }
+
+  for (const auto& d : directions_) {
+    SimulateRoute(aut, d.from, d.to, any_route_setting_in_progress,
+                  aut->ImportVariable(d.route_pending),
+                  { d.route, any_route_set_.get() },
+                  {});
+  }
+}
 
 }  // namespace automata
