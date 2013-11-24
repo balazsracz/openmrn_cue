@@ -75,9 +75,7 @@ class StandardPluginAutomata : public automata::Automata {
     brd->AddAutomata(this);
   }
 
-  virtual void Body() {
-    plugins_->RunAll(this);
-  }
+  virtual void Body() { plugins_->RunAll(this); }
 
   virtual Board* board() { return brd_; }
 
@@ -103,11 +101,12 @@ bool BindSequence(const std::initializer_list<StraightTrackInterface*>& pieces);
 
 // Interface for finding real occupancy detectors at a track piece.
 class OccupancyLookupInterface {
-public:
+ public:
   virtual ~OccupancyLookupInterface() {}
 
   // Returns the first (real) occupancy detector within train length from the
-  // interface `from'. Returns NULL if no such detector was found. The interface is interpreted by
+  // interface `from'. Returns NULL if no such detector was found. The interface
+  // is interpreted by
   virtual const GlobalVariable* LookupCloseDetector(
       const CtrlTrackInterface* from) = 0;
 
@@ -119,14 +118,14 @@ public:
 
 class CtrlTrackInterface {
  public:
-  CtrlTrackInterface(const EventBlock::Allocator& allocator, OccupancyLookupInterface* parent)
+  CtrlTrackInterface(const EventBlock::Allocator& allocator,
+                     OccupancyLookupInterface* parent)
       : out_try_set_route(allocator.Allocate("out_try_set_route")),
         in_route_set_success(allocator.Allocate("in_route_set_success")),
         in_route_set_failure(allocator.Allocate("in_route_set_failure")),
         out_route_released(allocator.Allocate("out_route_released")),
         lookup_if_(parent),
         binding_(nullptr) {}
-
 
   std::unique_ptr<GlobalVariable> out_try_set_route;
   std::unique_ptr<GlobalVariable> in_route_set_success;
@@ -156,9 +155,7 @@ class CtrlTrackInterface {
     return lookup_if_->LookupFarDetector(this);
   }
 
-  CtrlTrackInterface* binding() const {
-    return binding_;
-  }
+  CtrlTrackInterface* binding() const { return binding_; }
 
   void Bind(CtrlTrackInterface* other) {
     binding_ = other;
@@ -173,12 +170,10 @@ class CtrlTrackInterface {
   CtrlTrackInterface* binding_;
 };
 
-void SimulateOccupancy(Automata* aut,
-                       Automata::LocalVariable* sim_occ,
+void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
                        Automata::LocalVariable* tmp_seen_train_in_next,
                        const Automata::LocalVariable& route_set,
-                       CtrlTrackInterface* past_if,
-                       CtrlTrackInterface* next_if,\
+                       CtrlTrackInterface* past_if, CtrlTrackInterface* next_if,
                        OpCallback* release_cb);
 
 class StraightTrack : public StraightTrackInterface,
@@ -194,10 +189,10 @@ class StraightTrack : public StraightTrackInterface,
         route_pending_ab_(allocator.Allocate("route_pending_ab")),
         route_pending_ba_(allocator.Allocate("route_pending_ba")),
         tmp_seen_train_in_next_(allocator.Allocate("tmp_seen_train_in_next")),
-        tmp_route_setting_in_progress_(allocator.Allocate("tmp_route_setting_in_progress"))
-  {
-    AddAutomataPlugin(20, NewCallbackPtr(
-        this, &StraightTrack::SimulateAllOccupancy));
+        tmp_route_setting_in_progress_(
+            allocator.Allocate("tmp_route_setting_in_progress")) {
+    AddAutomataPlugin(
+        20, NewCallbackPtr(this, &StraightTrack::SimulateAllOccupancy));
   }
 
   virtual CtrlTrackInterface* side_a() { return &side_a_; }
@@ -243,17 +238,17 @@ class StraightTrack : public StraightTrackInterface,
 };
 
 class StraightTrackWithDetector : public StraightTrack {
-public:
+ public:
   StraightTrackWithDetector(const EventBlock::Allocator& allocator,
                             GlobalVariable* detector)
-    : StraightTrack(allocator),
-      detector_(detector) {
+      : StraightTrack(allocator), detector_(detector) {
     // No occupancy simulation needed.
     RemoveAutomataPlugins(20);
-    AddAutomataPlugin(20, NewCallbackPtr(
-        this, &StraightTrackWithDetector::DetectorOccupancy));
-    AddAutomataPlugin(30, NewCallbackPtr(
-        this, &StraightTrackWithDetector::DetectorRoute));
+    AddAutomataPlugin(
+        20,
+        NewCallbackPtr(this, &StraightTrackWithDetector::DetectorOccupancy));
+    AddAutomataPlugin(
+        30, NewCallbackPtr(this, &StraightTrackWithDetector::DetectorRoute));
   }
 
   virtual const GlobalVariable* LookupCloseDetector(
@@ -269,7 +264,7 @@ public:
     return NULL;
   }
 
-protected:
+ protected:
   void DetectorRoute(Automata* aut);
   void DetectorOccupancy(Automata* aut);
 
@@ -277,7 +272,7 @@ protected:
 };
 
 class StraightTrackWithRawDetector : public StraightTrackWithDetector {
-public:
+ public:
   StraightTrackWithRawDetector(const EventBlock::Allocator& allocator,
                                const GlobalVariable* raw_detector)
       : StraightTrackWithDetector(allocator, nullptr),
@@ -285,11 +280,12 @@ public:
         debounce_temp_var_(allocator.Allocate("tmp_debounce")) {
     detector_ = simulated_occupancy_.get();
     RemoveAutomataPlugins(20);
-    AddAutomataPlugin(20, NewCallbackPtr(
-        this, &StraightTrackWithRawDetector::RawDetectorOccupancy));
+    AddAutomataPlugin(
+        20, NewCallbackPtr(
+                this, &StraightTrackWithRawDetector::RawDetectorOccupancy));
   }
 
-protected:
+ protected:
   void RawDetectorOccupancy(Automata* aut);
 
   const GlobalVariable* raw_detector_;
@@ -297,11 +293,11 @@ protected:
 };
 
 class StraightTrackShort : public StraightTrack {
-public:
+ public:
   StraightTrackShort(const EventBlock::Allocator& allocator)
-    : StraightTrack(allocator) {
-    AddAutomataPlugin(30, NewCallbackPtr(
-        (StraightTrack*)this, &StraightTrack::SimulateAllRoutes));
+      : StraightTrack(allocator) {
+    AddAutomataPlugin(30, NewCallbackPtr((StraightTrack*)this,
+                                         &StraightTrack::SimulateAllRoutes));
   }
 
   virtual const GlobalVariable* LookupCloseDetector(
@@ -318,11 +314,11 @@ public:
 };
 
 class StraightTrackLong : public StraightTrack {
-public:
+ public:
   StraightTrackLong(const EventBlock::Allocator& allocator)
-    : StraightTrack(allocator) {
-    AddAutomataPlugin(30, NewCallbackPtr(
-        this, &StraightTrack::SimulateAllRoutes));
+      : StraightTrack(allocator) {
+    AddAutomataPlugin(30,
+                      NewCallbackPtr(this, &StraightTrack::SimulateAllRoutes));
   }
 
   virtual const GlobalVariable* LookupCloseDetector(
@@ -343,20 +339,17 @@ public:
 class SignalPiece : public StraightTrackShort {
  public:
   SignalPiece(const EventBlock::Allocator& allocator,
-              GlobalVariable* request_green,
-              GlobalVariable* signal)
+              GlobalVariable* request_green, GlobalVariable* signal)
       : StraightTrackShort(allocator),
         request_green_(request_green),
         signal_(signal) {
     // We "override" the occupancy detection by just copying the occupancy
     // value from the previous piece of track.
     RemoveAutomataPlugins(20);
-    AddAutomataPlugin(20, NewCallbackPtr(
-        this, &SignalPiece::SignalOccupancy));
+    AddAutomataPlugin(20, NewCallbackPtr(this, &SignalPiece::SignalOccupancy));
     // Signals have custom route setting logic in the forward direction.
     RemoveAutomataPlugins(30);
-    AddAutomataPlugin(30, NewCallbackPtr(
-        this, &SignalPiece::SignalRoute));
+    AddAutomataPlugin(30, NewCallbackPtr(this, &SignalPiece::SignalRoute));
   }
 
   virtual const GlobalVariable* LookupCloseDetector(
@@ -379,7 +372,6 @@ class SignalPiece : public StraightTrackShort {
   GlobalVariable* signal_;
 };
 
-
 class TurnoutInterface {
  public:
   virtual CtrlTrackInterface* side_points() = 0;
@@ -387,7 +379,9 @@ class TurnoutInterface {
   virtual CtrlTrackInterface* side_thrown() = 0;
 };
 
-class TurnoutBase : public TurnoutInterface, private OccupancyLookupInterface, public virtual AutomataPlugin {
+class TurnoutBase : public TurnoutInterface,
+                    private OccupancyLookupInterface,
+                    public virtual AutomataPlugin {
  public:
   TurnoutBase(const EventBlock::Allocator& allocator)
       : side_points_(EventBlock::Allocator(&allocator, "points", 8), this),
@@ -405,36 +399,37 @@ class TurnoutBase : public TurnoutInterface, private OccupancyLookupInterface, p
         any_route_set_(allocator.Allocate("any_route_set")),
         turnout_state_(allocator.Allocate("turnout_state")),
         tmp_seen_train_in_next_(allocator.Allocate("tmp_seen_train_in_next")),
-        tmp_route_setting_in_progress_(allocator.Allocate("tmp_route_setting_in_progress"))
-  {
-    directions_.push_back(Direction(&side_points_, &side_closed_, route_set_PC_.get(), route_pending_PC_.get()));
-    directions_.push_back(Direction(&side_points_, &side_thrown_, route_set_PT_.get(), route_pending_PT_.get()));
-    directions_.push_back(Direction(&side_closed_, &side_points_, route_set_CP_.get(), route_pending_CP_.get()));
-    directions_.push_back(Direction(&side_thrown_, &side_points_, route_set_TP_.get(), route_pending_TP_.get()));
+        tmp_route_setting_in_progress_(
+            allocator.Allocate("tmp_route_setting_in_progress")) {
+    directions_.push_back(Direction(&side_points_, &side_closed_,
+                                    route_set_PC_.get(),
+                                    route_pending_PC_.get()));
+    directions_.push_back(Direction(&side_points_, &side_thrown_,
+                                    route_set_PT_.get(),
+                                    route_pending_PT_.get()));
+    directions_.push_back(Direction(&side_closed_, &side_points_,
+                                    route_set_CP_.get(),
+                                    route_pending_CP_.get()));
+    directions_.push_back(Direction(&side_thrown_, &side_points_,
+                                    route_set_TP_.get(),
+                                    route_pending_TP_.get()));
     AddAutomataPlugin(20, NewCallbackPtr(this, &TurnoutBase::TurnoutOccupancy));
     AddAutomataPlugin(30, NewCallbackPtr(this, &TurnoutBase::TurnoutRoute));
-    AddAutomataPlugin(35, NewCallbackPtr(this, &TurnoutBase::PopulateAnyRouteSet));
+    AddAutomataPlugin(35,
+                      NewCallbackPtr(this, &TurnoutBase::PopulateAnyRouteSet));
   }
 
-  virtual CtrlTrackInterface* side_points() {
-    return &side_points_;
-  }
-  virtual CtrlTrackInterface* side_closed() {
-    return &side_closed_;
-  }
-  virtual CtrlTrackInterface* side_thrown() {
-    return &side_thrown_;
-  }
-  
+  virtual CtrlTrackInterface* side_points() { return &side_points_; }
+  virtual CtrlTrackInterface* side_closed() { return &side_closed_; }
+  virtual CtrlTrackInterface* side_thrown() { return &side_thrown_; }
+
  protected:
   CtrlTrackInterface side_points_;
   CtrlTrackInterface side_closed_;
   CtrlTrackInterface side_thrown_;
 
   struct Direction {
-    Direction(CtrlTrackInterface* f,
-              CtrlTrackInterface* t,
-              GlobalVariable* r,
+    Direction(CtrlTrackInterface* f, CtrlTrackInterface* t, GlobalVariable* r,
               GlobalVariable* rp)
         : from(f), to(t), route(r), route_pending(rp) {}
     CtrlTrackInterface* from;
@@ -500,14 +495,12 @@ class FixedTurnout : public TurnoutBase {
   void FixTurnoutState(Automata* aut);
 
   State state_;
-  
+
   const CtrlTrackInterface* FindOtherSide(const CtrlTrackInterface* s) {
     if (s == &side_closed_) return &side_points_;
     if (s == &side_thrown_) return &side_points_;
-    if (s == &side_points_ &&
-        state_ == TURNOUT_CLOSED) return &side_closed_;
-    if (s == &side_points_ &&
-        state_ == TURNOUT_THROWN) return &side_thrown_;
+    if (s == &side_points_ && state_ == TURNOUT_CLOSED) return &side_closed_;
+    if (s == &side_points_ && state_ == TURNOUT_THROWN) return &side_thrown_;
     assert(0);
     return nullptr;
   }
@@ -515,4 +508,4 @@ class FixedTurnout : public TurnoutBase {
 
 }  // namespace automata
 
-#endif // _AUTOMATA_CONTROL_LOGIC_HXX_
+#endif  // _AUTOMATA_CONTROL_LOGIC_HXX_
