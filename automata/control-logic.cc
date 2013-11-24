@@ -234,6 +234,15 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
   LocalVariable* route1 = aut->ImportVariable(route_set_ab_.get());
   LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
 
+  // During boot we purposefully emit an event on the raw detector. This is a
+  // poor-man's query: if the raw detector is implemented as a bit PC, then it
+  // will respond with another event if the input doesn't match what we
+  // emitted.
+  Def()
+      .IfState(StInit)
+      .ActReg1(aut->ImportVariable(const_cast<GlobalVariable *>(raw_detector_)))
+      .ActReg1(last);
+
   // If there is a flip, we start a timer. The timer length depends on the
   // edge.
   Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy);
@@ -246,7 +255,7 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
       .IfTimerDone().IfReg0(*last)
       .ActReg1(occ);
   Def()
-      .IfTimerDone().IfReg1(*last)
+      .IfTimerDone().IfReg1(*last).IfReg1(*occ)
       .ActReg0(route1)
       .ActReg0(route2)
       .ActReg0(occ);
@@ -350,15 +359,19 @@ void SimulateSignalFwdRoute(Automata* aut,
       .IfReg0(*out_try_set_route)
       .IfReg0(*out_route_set_success)
       .IfReg0(*out_route_set_failure)
-      .ActReg1(out_try_set_route);
+      .IfReg0(*any_route_setting_in_progress)
+      .ActReg1(out_try_set_route)
+      .ActReg1(any_route_setting_in_progress);
 
   Def().IfReg1(*out_route_set_success)
       .ActReg0(out_route_set_success)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
       .ActReg1(signal);
 
   Def().IfReg1(*out_route_set_failure)
       .ActReg0(out_route_set_failure)
+      .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
       .ActReg0(signal);
 }

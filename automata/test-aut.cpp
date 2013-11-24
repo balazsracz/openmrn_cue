@@ -23,6 +23,7 @@ using namespace automata;
 Board brd;
 
 EventBasedVariable is_paused(&brd,
+                             "is_paused",
                              BRACZ_LAYOUT | 0x0000,
                              BRACZ_LAYOUT | 0x0001,
                              7, 31, 3);
@@ -60,6 +61,7 @@ GlobalVariable* NewTempVariable(Board* board) {
   }
   return new EventBasedVariable(
       board,
+      StringPrintf("tmp_var_%d", counter),
       BRACZ_LAYOUT | 0x3000 | (counter << 1),
       BRACZ_LAYOUT | 0x3000 | (counter << 1) | 1,
       client, offset, bit);
@@ -112,6 +114,7 @@ class StrategyAutomata : public Automata {
 unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
 
 EventBasedVariable led(&brd,
+                       "led",
                        0x0502010202650012ULL,
                        0x0502010202650013ULL,
                        7, 31, 1);

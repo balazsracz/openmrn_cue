@@ -8,7 +8,8 @@
 #include "src/automata_control.h"
 
 extern const unsigned long long NODE_ADDRESS;
-const unsigned long long NODE_ADDRESS = 0x050101011432ULL;
+//const unsigned long long NODE_ADDRESS = 0x050101011432ULL;
+const unsigned long long NODE_ADDRESS = 0x050101011433ULL;
 
 
 extern "C" void resetblink(uint32_t pattern);
@@ -42,13 +43,14 @@ class I2CCheckedInUpdater : public I2CInUpdater {
 
 I2C i2c(P0_5, P0_4);
 
-uint32_t state_25;
-uint32_t state_26;
-I2COutUpdater extender0(&i2c, 0x25, {}, (uint8_t*)&state_25, 2);
-I2COutUpdater extender1(&i2c, 0x26, {}, (uint8_t*)&state_26, 2);
+//uint32_t state_25;
+//uint32_t state_26;
+uint32_t state_27;
+I2COutUpdater extender0(&i2c, 0x27, {}, (uint8_t*)&state_27, 2);
+//I2COutUpdater extender1(&i2c, 0x26, {}, (uint8_t*)&state_26, 2);
 
-I2CInUpdater in_extender0(&i2c, 0x25, {}, ((uint8_t*)&state_25) + 2, 1, 2);
-I2CInUpdater in_extender1(&i2c, 0x26, {}, ((uint8_t*)&state_26) + 2, 1, 2);
+I2CInUpdater in_extender0(&i2c, 0x27, {}, ((uint8_t*)&state_27) + 2, 1, 2);
+//I2CInUpdater in_extender1(&i2c, 0x26, {}, ((uint8_t*)&state_26) + 2, 1, 2);
 
 //SynchronousUpdater i2c_updater({&extender0, &extender1, &in_extender0, &in_extender1});
 

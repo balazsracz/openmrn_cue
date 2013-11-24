@@ -9,6 +9,7 @@ using namespace std;
 #include "system.hxx"
 #include "operations.hxx"
 #include "variables.hxx"
+#include "registry.hxx"
 
 #include "bracz-layout.hxx"
 #include "control-logic.hxx"
@@ -23,17 +24,44 @@ using namespace automata;
 Board brd;
 
 EventBasedVariable is_paused(&brd,
+                             "is_paused",
                              BRACZ_LAYOUT | 0x0000,
                              BRACZ_LAYOUT | 0x0001,
                              7, 31, 3);
 
 EventBasedVariable blink_off(&brd,
+                             "blink_off",
                              BRACZ_LAYOUT | 0x0002,
                              BRACZ_LAYOUT | 0x0003,
                              7, 31, 2);
 
+EventBasedVariable power_acc(&brd,
+                             "power_accessories",
+                             BRACZ_LAYOUT | 0x0004,
+                             BRACZ_LAYOUT | 0x0005,
+                             7, 31, 1);
 
-I2CBoard b5(0x25), b6(0x26), b1(0x21), b3(0x23);
+EventBasedVariable short_det(&brd,
+                             "short_detected",
+                             BRACZ_LAYOUT | 0x0006,
+                             BRACZ_LAYOUT | 0x0007,
+                             7, 31, 0);
+
+EventBasedVariable overcur(&brd,
+                             "overcurrent_detected",
+                             BRACZ_LAYOUT | 0x0008,
+                             BRACZ_LAYOUT | 0x0009,
+                             7, 30, 7);
+
+EventBasedVariable sendmeasure(&brd,
+                             "send_current_measurements",
+                             BRACZ_LAYOUT | 0x000a,
+                             BRACZ_LAYOUT | 0x000b,
+                             7, 30, 6);
+
+
+
+I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b3(0x23);
 
 
 /*StateRef StGreen(2);
@@ -50,6 +78,7 @@ LPC11C lpc11_back;
 
 PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
 PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
+PhysicalSignal B475(&b7.InBrownGrey, &b7.RelGreen);
 
 PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
 PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
@@ -65,6 +94,7 @@ GlobalVariable* NewTempVariable(Board* board) {
   }
   return new EventBasedVariable(
       board,
+      StringPrintf("tmp_var_%d", counter),
       BRACZ_LAYOUT | 0x3000 | (counter << 1),
       BRACZ_LAYOUT | 0x3000 | (counter << 1) | 1,
       client, offset, bit);
@@ -73,6 +103,7 @@ GlobalVariable* NewTempVariable(Board* board) {
 unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
 
 EventBasedVariable led(&brd,
+                       "led",
                        0x0502010202650012ULL,
                        0x0502010202650013ULL,
                        7, 31, 1);
@@ -91,6 +122,7 @@ DefAut(blinkaut, brd, {
     DefCopy(*rep, ImportVariable(&b3.LedRed));
     DefCopy(*rep, ImportVariable(&b5.LedRed));
     DefCopy(*rep, ImportVariable(&b6.LedRed));
+    DefCopy(*rep, ImportVariable(&b7.LedRed));
     DefCopy(*rep, ImportVariable(&panda_bridge.l4));
     DefCopy(*rep, ImportVariable(&lpc11_back.l0));
     });
@@ -106,7 +138,7 @@ class StandardBlock : public StraightTrackInterface {
         body_(EventBlock::Allocator(&alloc, "body", 24, 8)),
         body_det_(EventBlock::Allocator(&alloc, "body_det", 24, 8),
                   physical->sensor_raw),
-        signal_(EventBlock::Allocator(&alloc, "body_det", 24, 8), request_green_.get(),
+        signal_(EventBlock::Allocator(&alloc, "signal", 24, 8), request_green_.get(),
                 physical->signal_raw),
         physical_(physical),
         aut_body_(brd, &body_),
@@ -136,6 +168,8 @@ class StandardBlock : public StraightTrackInterface {
   StandardPluginAutomata aut_body_;
   StandardPluginAutomata aut_body_det_;
   StandardPluginAutomata aut_signal_;
+
+  DISALLOW_COPY_AND_ASSIGN(StandardBlock);
 };
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
@@ -144,13 +178,15 @@ StandardBlock Block_WWB14(&brd, &WWB14,
                           EventBlock::Allocator(logic.allocator(), "WWB14", 80));
 StandardBlock Block_A301(&brd, &A301,
                          EventBlock::Allocator(logic.allocator(), "A301", 80));
-//StandardBlock Block_YYC23(&brd, &YYC23,
-//                          BRACZ_LAYOUT | 0x3900 | 0, 48*2);
+StandardBlock Block_B475(&brd, &B475,
+                         EventBlock::Allocator(logic.allocator(), "B475", 80));
+StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
+                                                              "YYC23", 80));
 StandardBlock Block_XXB1(&brd, &XXB1,
                          EventBlock::Allocator(logic.allocator(), "XXB1", 80));
 
-#define BLOCK_SEQUENCE   &Block_XXB1, &Block_A301,  &Block_WWB14,  /*&Block_YYC23,*/  &Block_XXB1
-
+#define BLOCK_SEQUENCE \
+  &Block_XXB1, &Block_A301, &Block_WWB14, &Block_B475, &Block_YYC23, &Block_XXB1
 
 std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE };
 
@@ -180,6 +216,7 @@ DefAut(display, brd, {
     DefCopy(ImportVariable(Block_XXB1.detector()), ImportVariable(&panda_bridge.l0));
     DefCopy(ImportVariable(Block_A301.detector()), ImportVariable(&panda_bridge.l1));
     DefCopy(ImportVariable(Block_WWB14.detector()), ImportVariable(&panda_bridge.l2));
+    DefCopy(ImportVariable(Block_YYC23.detector()), ImportVariable(&panda_bridge.l3));
   });
 
 /*DefAut(auto_green, brd, {
@@ -254,6 +291,16 @@ int main(int argc, char** argv) {
     for (const auto& it : m) {
       fprintf(f, "%04x: %s\n", it.first * 2, it.second.c_str());
     }
+    fclose(f);
+
+    f = fopen("jmri-out.xml", "w");
+    assert(f);
+    PrintAllEventVariables(f);
+    fclose(f);
+
+    f = fopen("var-bash-list.txt", "w");
+    assert(f);
+    PrintAllEventVariablesInBashFormat(f);
     fclose(f);
 
     return 0;

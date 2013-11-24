@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdarg.h>
 
 #include "system.hxx"
 #include "../cs/src/automata_defs.h"
@@ -35,6 +36,7 @@ void Board::RenderPreamble(string* output) {
         v->SetId(output->size());
         v->Render(output);
     }
+    fprintf(stderr, "%d global variables, total size: %d\n", global_variables_.size(), output->size());
     // Terminate the global variable list.
     output->push_back(0);
 }
@@ -48,6 +50,7 @@ void Board::RenderAutomatas(string* output) {
         (*output)[a.ptr_offset] = a.offset & 0xff;
         (*output)[a.ptr_offset + 1] = (a.offset >> 8) & 0xff;
     }
+    fprintf(stderr, "%d automtas, total output size: %d\n", automatas_.size(), output->size());
 }
 
 Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {
@@ -152,14 +155,14 @@ GlobalVariable* EventBlock::Allocator::Allocate(const string& name) const {
 }
 
 void ClearOffsetMap() {
-  g_ofs_map->clear();
+  if (g_ofs_map) g_ofs_map->clear();
 }
 
 map<int, string>* GetOffsetMap() {
   return g_ofs_map;
 }
 
-}
+}  // namespace automata
 
 const string& GetNameForOffset(int ofs) {
   static string empty;
@@ -169,4 +172,25 @@ const string& GetNameForOffset(int ofs) {
   } else {
     return empty;
   }
+}
+
+string StringPrintf(const char* format, ...) {
+  static const int kBufSize = 1000;
+  char buffer[kBufSize];
+  va_list ap;
+
+  va_start(ap, format);
+  int n = vsnprintf(buffer, kBufSize, format, ap);
+  va_end(ap);
+  HASSERT(n >= 0);
+  if (n < kBufSize) {
+    return string(buffer, n);
+  }
+  string ret(n + 1, 0);
+  va_start(ap, format);
+  n = vsnprintf(&ret[0], ret.size(), format, ap);
+  va_end(ap);
+  HASSERT(n >= 0);
+  ret.resize(n);
+  return ret;
 }

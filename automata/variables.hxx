@@ -1,8 +1,13 @@
 #ifndef _bracz_train_automata_variables_hxx_
 #define _bracz_train_automata_variables_hxx_
 
+#include <string>
+
+using std::string;
+
 #include "system.hxx"
 #include "operations.hxx"
+#include "registry.hxx"
 
 #include "../cs/src/base.h"  // for constants in decodeoffset.
 
@@ -67,18 +72,26 @@ class EventVariableBase : public GlobalVariable {
 */
 class EventBasedVariable : public EventVariableBase {
  public:
-  EventBasedVariable(Board* brd, uint64_t event_on, uint64_t event_off,
-                     int counter)
-      : EventVariableBase(brd), event_on_(event_on), event_off_(event_off) {
+  EventBasedVariable(Board* brd, const string& name, uint64_t event_on,
+                     uint64_t event_off, int counter)
+      : EventVariableBase(brd),
+        event_on_(event_on),
+        event_off_(event_off),
+        name_(name) {
     int client, offset, bit;
     HASSERT(DecodeOffset(counter, &client, &offset, &bit));
     SetArgs(client, offset, bit);
+    RegisterEventVariable(name, event_on, event_off);
   }
 
-  EventBasedVariable(Board* brd, uint64_t event_on, uint64_t event_off,
-                     int client, int offset, int bit)
-      : EventVariableBase(brd), event_on_(event_on), event_off_(event_off) {
+  EventBasedVariable(Board* brd, const string& name, uint64_t event_on,
+                     uint64_t event_off, int client, int offset, int bit)
+      : EventVariableBase(brd),
+        event_on_(event_on),
+        event_off_(event_off),
+        name_(name) {
     SetArgs(client, offset, bit);
+    RegisterEventVariable(name, event_on, event_off);
   }
   virtual ~EventBasedVariable() {}
 
@@ -91,6 +104,8 @@ class EventBasedVariable : public EventVariableBase {
     RenderHelper(output);
   }
 
+  const string& name() const { return name_; }
+
  private:
   void SetArgs(int client, int offset, int bit) {
     arg1_ = (0 << 5) | (client & 0b11111);
@@ -98,6 +113,7 @@ class EventBasedVariable : public EventVariableBase {
   }
 
   uint64_t event_on_, event_off_;
+  string name_;
 };
 
 class EventBlock : public EventVariableBase {
@@ -160,7 +176,8 @@ class EventBlock : public EventVariableBase {
 
     // Concatenates parent->name() and 'name', adding a '.' as separator if both
     // are non-empty.
-    static string CreateNameFromParent(const Allocator* parent, const string& name) {
+    static string CreateNameFromParent(const Allocator* parent,
+                                       const string& name) {
       if (name.empty()) return parent->name();
       if (parent->name().empty()) return name;
       string ret = parent->name();
@@ -201,6 +218,7 @@ class BlockVariable : public GlobalVariable {
     int arg = allocator->Reserve(1);
     SetArg(arg);
     parent_->SetMinSize(arg);
+    RegisterEventVariable(name_, event_on(), event_off());
   }
 
   virtual void Render(string* output) {
