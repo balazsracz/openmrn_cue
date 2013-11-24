@@ -326,27 +326,9 @@ void SimulateSignalFwdRoute(Automata* aut,
       .Rept(&Automata::Op::IfReg0, const_current_route)
       .Rept(&Automata::Op::IfReg0, conflicting_routes)
       // then we accept the incoming route
-      .ActReg1(any_route_setting_in_progress)
-      // and move the route set request to pending
-      .ActReg1(current_route_setting_in_progress)
-      .ActReg0(in_try_set_route);
-
-  // If we didn't make it to pending, we reject the incoming route.
-  Def()
-      .IfReg1(*in_try_set_route)
-      .IfReg0(*any_route_setting_in_progress)
-      .ActReg1(in_route_set_failure)
-      .ActReg0(in_route_set_success)
-      .ActReg0(in_try_set_route);
-
-  // If we are pending, we immediately accept the route.
-  Def()
-      .IfReg1(*current_route_setting_in_progress)
       // For safety, we set the signal to red if we accepted a route.
       .ActReg0(signal)
-      .Rept(&Automata::Op::ActReg1, current_route)
-      .ActReg0(current_route_setting_in_progress)
-      .ActReg0(any_route_setting_in_progress)
+      .ActReg0(in_try_set_route)
       .ActReg0(in_route_set_failure)
       .ActReg1(in_route_set_success);
 
@@ -367,6 +349,7 @@ void SimulateSignalFwdRoute(Automata* aut,
       .ActReg0(out_route_set_success)
       .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
+      .Rept(&Automata::Op::ActReg1, current_route)
       .ActReg1(signal);
 
   Def().IfReg1(*out_route_set_failure)
@@ -404,6 +387,9 @@ void SignalPiece::SignalRoute(Automata* aut) {
                          { route_set_ba_.get() },
                          signal_,
                          request_green_);
+
+  aut->DefCopy(aut->ImportVariable(*route_set_ab_),
+               aut->ImportVariable(signal_));
 }
 
 const CtrlTrackInterface* StraightTrack::FindOtherSide(
