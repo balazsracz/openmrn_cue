@@ -35,8 +35,33 @@ EventBasedVariable blink_off(&brd,
                              BRACZ_LAYOUT | 0x0003,
                              7, 31, 2);
 
+EventBasedVariable power_acc(&brd,
+                             "power_accessories",
+                             BRACZ_LAYOUT | 0x0004,
+                             BRACZ_LAYOUT | 0x0005,
+                             7, 31, 1);
 
-I2CBoard b5(0x25), b6(0x26), b1(0x21), b3(0x23);
+EventBasedVariable short_det(&brd,
+                             "short_detected",
+                             BRACZ_LAYOUT | 0x0006,
+                             BRACZ_LAYOUT | 0x0007,
+                             7, 31, 0);
+
+EventBasedVariable overcur(&brd,
+                             "overcurrent_detected",
+                             BRACZ_LAYOUT | 0x0008,
+                             BRACZ_LAYOUT | 0x0009,
+                             7, 30, 7);
+
+EventBasedVariable sendmeasure(&brd,
+                             "send_current_measurements",
+                             BRACZ_LAYOUT | 0x000a,
+                             BRACZ_LAYOUT | 0x000b,
+                             7, 30, 6);
+
+
+
+I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b3(0x23);
 
 
 /*StateRef StGreen(2);
@@ -53,6 +78,7 @@ LPC11C lpc11_back;
 
 PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
 PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
+PhysicalSignal B475(&b7.InBrownGrey, &b7.RelGreen);
 
 PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
 PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
@@ -96,6 +122,7 @@ DefAut(blinkaut, brd, {
     DefCopy(*rep, ImportVariable(&b3.LedRed));
     DefCopy(*rep, ImportVariable(&b5.LedRed));
     DefCopy(*rep, ImportVariable(&b6.LedRed));
+    DefCopy(*rep, ImportVariable(&b7.LedRed));
     DefCopy(*rep, ImportVariable(&panda_bridge.l4));
     DefCopy(*rep, ImportVariable(&lpc11_back.l0));
     });
@@ -151,13 +178,15 @@ StandardBlock Block_WWB14(&brd, &WWB14,
                           EventBlock::Allocator(logic.allocator(), "WWB14", 80));
 StandardBlock Block_A301(&brd, &A301,
                          EventBlock::Allocator(logic.allocator(), "A301", 80));
-//StandardBlock Block_YYC23(&brd, &YYC23,
-//                          BRACZ_LAYOUT | 0x3900 | 0, 48*2);
+StandardBlock Block_B475(&brd, &B475,
+                         EventBlock::Allocator(logic.allocator(), "B475", 80));
+StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
+                                                              "YYC23", 80));
 StandardBlock Block_XXB1(&brd, &XXB1,
                          EventBlock::Allocator(logic.allocator(), "XXB1", 80));
 
-#define BLOCK_SEQUENCE   &Block_XXB1, &Block_A301,  &Block_WWB14,  /*&Block_YYC23,*/  &Block_XXB1
-
+#define BLOCK_SEQUENCE \
+  &Block_XXB1, &Block_A301, &Block_WWB14, &Block_B475, &Block_YYC23, &Block_XXB1
 
 std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE };
 
@@ -187,6 +216,7 @@ DefAut(display, brd, {
     DefCopy(ImportVariable(Block_XXB1.detector()), ImportVariable(&panda_bridge.l0));
     DefCopy(ImportVariable(Block_A301.detector()), ImportVariable(&panda_bridge.l1));
     DefCopy(ImportVariable(Block_WWB14.detector()), ImportVariable(&panda_bridge.l2));
+    DefCopy(ImportVariable(Block_YYC23.detector()), ImportVariable(&panda_bridge.l3));
   });
 
 /*DefAut(auto_green, brd, {
