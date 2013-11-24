@@ -131,47 +131,6 @@ DefAut(testaut, brd, {
     Def().IfState(StInit).ActState(StBase);
     });
 
-class StandardBlock : public StraightTrackInterface {
- public:
-  StandardBlock(Board* brd, PhysicalSignal* physical, const EventBlock::Allocator& alloc)
-      : request_green_(alloc.Allocate("request_green")),
-        body_(EventBlock::Allocator(&alloc, "body", 24, 8)),
-        body_det_(EventBlock::Allocator(&alloc, "body_det", 24, 8),
-                  physical->sensor_raw),
-        signal_(EventBlock::Allocator(&alloc, "signal", 24, 8), request_green_.get(),
-                physical->signal_raw),
-        physical_(physical),
-        aut_body_(brd, &body_),
-        aut_body_det_(brd, &body_det_),
-        aut_signal_(brd, &signal_) {
-    BindSequence({&body_, &body_det_, &signal_});
-  }
-
-  virtual CtrlTrackInterface* side_a() { return body_.side_a(); }
-  virtual CtrlTrackInterface* side_b() { return signal_.side_b(); }
-
-  GlobalVariable* request_green() { return request_green_.get(); }
-  const GlobalVariable& route() { return *body_det_.route_set_ab_; }
-  const GlobalVariable& detector() { return *body_det_.simulated_occupancy_; }
-
- private:
-  unique_ptr<GlobalVariable> request_green_;
-
- public:
-  StraightTrackLong body_;
-  StraightTrackWithRawDetector body_det_;
-  SignalPiece signal_;
-
- private:
-  PhysicalSignal* physical_;
-
-  StandardPluginAutomata aut_body_;
-  StandardPluginAutomata aut_body_det_;
-  StandardPluginAutomata aut_signal_;
-
-  DISALLOW_COPY_AND_ASSIGN(StandardBlock);
-};
-
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 
 StandardBlock Block_WWB14(&brd, &WWB14,
