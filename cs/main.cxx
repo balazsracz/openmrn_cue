@@ -316,15 +316,18 @@ MbedGPIOListener led_6(BRACZ_LAYOUT | 0x203a,
 
 #ifdef ONLY_CPP_EVENT
 
-BlinkerBit blinker_bit(BRACZ_LAYOUT | 0x2500,
-                       BRACZ_LAYOUT | 0x2501);
+//BlinkerBit blinker_bit(BRACZ_LAYOUT | 0x2500,
+//                       BRACZ_LAYOUT | 0x2501);
+BlinkerBit blinker_bit(BRACZ_LAYOUT | 0x20A0,
+                       BRACZ_LAYOUT | 0x20A1);
 BitEventConsumer blinker_bit_handler(&blinker_bit);
 
 Executor* DefaultWriteFlowExecutor() {
   return &main_executor;
 }
 
-FlowUpdater updater(&main_executor, {&extender0, &extender1, &in_extender0, &in_extender1});
+//FlowUpdater updater(&main_executor, {&extender0, &extender1, &in_extender0, &in_extender1});
+FlowUpdater updater(&main_executor, {&extender0, &in_extender0});
 
 #else
 
@@ -475,13 +478,16 @@ int appl_main(int argc, char *argv[])
 #if defined(TARGET_LPC11Cxx)
 
 #ifdef ONLY_CPP_EVENT
-    extern uint32_t state_25;
+    /*extern uint32_t state_25;
     BitRangeEventPC pc_25(node, BRACZ_LAYOUT | 0x2500, &state_25, 24);
     extern uint32_t state_26;
-    BitRangeEventPC pc_26(node, BRACZ_LAYOUT | 0x2600, &state_26, 24);
+    BitRangeEventPC pc_26(node, BRACZ_LAYOUT | 0x2600, &state_26, 24);*/
+    extern uint32_t state_27;
+    BitRangeEventPC pc_27(node, BRACZ_LAYOUT | 0x2700, &state_27, 24);
 
-    ListenerToEventProxy listener_25(&pc_25);
-    ListenerToEventProxy listener_26(&pc_26);
+    /*ListenerToEventProxy listener_25(&pc_25);
+      ListenerToEventProxy listener_26(&pc_26);*/
+    ListenerToEventProxy listener_27(&pc_27);
 
 #else
     // Consume one led and one relay per board.
@@ -698,8 +704,9 @@ int appl_main(int argc, char *argv[])
 #elif defined(TARGET_LPC11Cxx)
 
 #ifdef ONLY_CPP_EVENT
-    in_extender0.SetListener(&listener_25);
-    in_extender1.SetListener(&listener_26);
+    /*in_extender0.SetListener(&listener_25);
+      in_extender1.SetListener(&listener_26);*/
+    in_extender0.SetListener(&listener_27);
 
 #else
     MemoryBitSetProducer produce_i2c0(node, BRACZ_LAYOUT | 0x2520);
