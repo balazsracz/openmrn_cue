@@ -308,6 +308,9 @@ protected:
   void Run(int count = 1) {
     for (int i = 0; i < count; ++i) {
       WaitForEventThread();
+      if ((i % 3) == 2) {
+        runner_->AddPendingTick();
+      }
       runner_->RunAllAutomata();
     }
     WaitForEventThread();
