@@ -117,14 +117,10 @@ protected:
 class Automata {
 public:
   Automata(const string& name) : timer_bit_(0), output_(NULL), aut(this), name_(name) {
-        // We add the timer variable to the map with a fake key in order to
-        // reserve local bit 0.
-        used_variables_[NULL] = timer_bit_;
+        ClearUsedVariables();
     }
     Automata() : timer_bit_(0), output_(NULL), aut(this) {
-        // We add the timer variable to the map with a fake key in order to
-        // reserve local bit 0.
-        used_variables_[NULL] = timer_bit_;
+        ClearUsedVariables();
     }
     ~Automata() {}
 
@@ -158,6 +154,8 @@ public:
     void DefCopy(const LocalVariable& src, LocalVariable* dst);
     void DefNCopy(const LocalVariable& src, LocalVariable* dst);
 
+    void ClearUsedVariables();
+
 protected:
     virtual void Body() = 0;
 
@@ -173,6 +171,7 @@ protected:
 
 private:
     friend class Op;
+    void RenderImportVariable(const GlobalVariable& var, int local_id);
 
     map<const GlobalVariable*, LocalVariable> used_variables_;
     string name_;

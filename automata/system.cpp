@@ -60,6 +60,34 @@ Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {
     return &ret;
 }
 
+void Automata::RenderImportVariable(const GlobalVariable& var,
+                                    int local_id) {
+  vector<uint8_t> op;
+  vector<uint8_t> empty;
+  op.push_back(_ACT_IMPORT_VAR);
+  uint8_t b1 = 0;
+  uint8_t b2 = 0;
+  uint16_t arg = output_ ? var.GetId().arg : 0;
+  HASSERT(arg < (8<<8));
+  b1 = (arg >> 8) << 5;
+  HASSERT(local_id < 32);
+  b1 |= (local_id & 31);
+  b2 = arg & 0xff;
+  op.push_back(b1);
+  op.push_back(b2); // argument, low bits
+  int gofs = output_ ? var.GetId().id : 0;
+  op.push_back(gofs & 0xff);
+  op.push_back((gofs >> 8) & 0xff);
+  Op::CreateOperation(output_, empty, op);
+}
+
+void Automata::ClearUsedVariables() {
+  used_variables_.clear();
+  // We add the timer variable to the map with a fake key in order to
+  // reserve local bit 0.
+  used_variables_[NULL] = timer_bit_;
+}
+
 const Automata::LocalVariable& Automata::ImportVariable(
     const GlobalVariable& var) {
   int next_id = used_variables_.size();
@@ -67,6 +95,7 @@ const Automata::LocalVariable& Automata::ImportVariable(
   if (ret.id < 0) {
     ret.id = next_id;
     assert(ret.id < MAX_IMPORT_VAR);
+    RenderImportVariable(var, ret.id);
   }
   return ret;
 }
@@ -74,35 +103,10 @@ const Automata::LocalVariable& Automata::ImportVariable(
 void Automata::Render(string* output) {
     output_ = NULL;
     // This will allocate all variables without outputing anything.
-    Body();
+    //Body();
     output_ = output;
-    // Adds variable imports.
-    vector<uint8_t> op;
-    vector<uint8_t> empty;
-    for (auto& it : used_variables_) {
-        if (it.first) {
-            op.clear();
-            op.push_back(_ACT_IMPORT_VAR);
-            uint8_t b1 = 0;
-            uint8_t b2 = 0;
-            uint16_t arg = output ? it.first->GetId().arg : 0;
-            HASSERT(arg < (8<<8));
-            b1 = (arg >> 8) << 5;
-            HASSERT(it.second.id < 32);
-            b1 |= (it.second.id & 31);
-            b2 = arg & 0xff;
-            op.push_back(b1);
-            op.push_back(b2); // argument, low bits
-            int gofs = output ? it.first->GetId().id : 0;
-            op.push_back(gofs & 0xff);
-            op.push_back((gofs >> 8) & 0xff);
-            Op::CreateOperation(output, empty, op);
-        } else {
-            // Checks that the timer bit is the NULL.
-            assert(it.second.id == 0);
-        }
-    }
     // Actually renders the body.
+    ClearUsedVariables();
     Body();
     if (output_) {
       output->push_back(0);  // EOF byte for the runner.
