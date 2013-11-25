@@ -22,11 +22,11 @@ class LogicTest : public AutomataNodeTests {
 
   struct TestBlock {
     TestBlock(LogicTest* test, const string& name)
-        : detector(test),
+        : inverted_detector(test),
           signal_green(test),
-          physical_signal(&detector, &signal_green),
+          physical_signal(&inverted_detector, &signal_green),
           b(&test->brd, &physical_signal, EventBlock::Allocator(&test->alloc(), name, 80)) {}
-    FakeBit detector;
+    FakeBit inverted_detector;
     FakeBit signal_green;
     PhysicalSignal physical_signal;
     StandardBlock b;
@@ -825,9 +825,23 @@ TEST_F(LogicTest, Signal) {
   });
 
   SetupRunner(&brd);
-  Run(2);
+
+  // No trains initially.
+  first.inverted_detector.Set(true);
+  second.inverted_detector.Set(true);
+  Run(1);
+
+  // No trains initially.
+  first.inverted_detector.Set(true);
+  second.inverted_detector.Set(true);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*second.b.body_det_.simulated_occupancy_));
+
 
   // Sets the first train's route until the first signal.
+  LOG(INFO, "Setting route to first signal.");
+  before.detector.Set(true);
   SetVar(*before.b.side_b()->out_try_set_route, true);
   Run(5);
   EXPECT_FALSE(QueryVar(*before.b.side_b()->out_try_set_route));
@@ -836,12 +850,16 @@ TEST_F(LogicTest, Signal) {
 
   EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
   // the route is not yet beyond the signal
-  EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_)); 
+  EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));
   EXPECT_FALSE(first.signal_green.Get());
 
+  EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
   // First train shows up at first signal.
-  first.detector.Set(true);
-  Run(5);
+  LOG(INFO, "First train shows up at first signal.");
+  first.inverted_detector.Set(false);
+  Run(12);
+  EXPECT_TRUE(QueryVar(*first.b.body_det_.simulated_occupancy_));
+
   EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
   EXPECT_FALSE(first.signal_green.Get());
 
@@ -849,6 +867,7 @@ TEST_F(LogicTest, Signal) {
   EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
 
   // and gets a green
+  LOG(INFO, "First train gets a green at first signal.");
   SetVar(*first.b.request_green(), true);
   Run(1);
   EXPECT_TRUE(QueryVar(*first.b.request_green()));
@@ -871,10 +890,14 @@ TEST_F(LogicTest, Signal) {
 
   EXPECT_TRUE(QueryVar(*first.b.body_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*first.b.body_.simulated_occupancy_));
 
+
+  EXPECT_TRUE(QueryVar(*first.b.body_det_.simulated_occupancy_));
   // and leaves the block
-  first.detector.Set(false);
-  Run(10);
+  LOG(INFO, "train left first block.");
+  first.inverted_detector.Set(true);
+  Run(15);
   EXPECT_FALSE(QueryVar(*first.b.body_.simulated_occupancy_));
   EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
   EXPECT_FALSE(QueryVar(*first.b.signal_.simulated_occupancy_));
@@ -887,6 +910,7 @@ TEST_F(LogicTest, Signal) {
   EXPECT_FALSE(QueryVar(*first.b.body_.side_b()->out_try_set_route));
 
   // We run a second route until the first signal
+  LOG(INFO, "Second train: sets route to first signal.");
   SetVar(*first.b.body_.side_b()->out_try_set_route, true);
   Run(5);
   // let's dump all bits that are set
@@ -910,6 +934,7 @@ TEST_F(LogicTest, Signal) {
   EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
 
   // We try to set another green, but the previous train blocks this.
+  LOG(INFO, "Second train: try get green (and fail).");
   SetVar(*first.b.request_green(), true);
   Run(1);
   EXPECT_TRUE(QueryVar(*first.b.request_green()));
@@ -922,9 +947,10 @@ TEST_F(LogicTest, Signal) {
   EXPECT_FALSE(first.signal_green.Get());
 
   // First train reaches second signal.
-  second.detector.Set(true);
+  LOG(INFO, "First train reaches second signal and first train tries to get green again(fail).");
+  second.inverted_detector.Set(false);
   SetVar(*first.b.request_green(), true);
-  Run(10);
+  Run(14);
   EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
   EXPECT_TRUE(QueryVar(*second.b.body_det_.route_set_ab_));
   EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
@@ -933,17 +959,20 @@ TEST_F(LogicTest, Signal) {
   EXPECT_FALSE(QueryVar(*first.b.request_green()));
   EXPECT_FALSE(first.signal_green.Get());
 
+  LOG(INFO, "First train gets green at second signal.");
   SetVar(*second.b.request_green(), true);
   Run(5);
   EXPECT_TRUE(second.signal_green.Get());
   EXPECT_TRUE(QueryVar(*second.b.signal_.route_set_ab_));
 
-  second.detector.Set(false);
+  LOG(INFO, "First train leaves from second signal.");
+  second.inverted_detector.Set(true);
   Run(10);
   EXPECT_FALSE(second.signal_green.Get());
   EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
 
   // Now the second train can go.
+  LOG(INFO, "Second train gets green to second signal.");
   SetVar(*first.b.request_green(), true);
   Run(10);
   EXPECT_FALSE(QueryVar(*first.b.request_green()));
@@ -1011,8 +1040,8 @@ TEST_F(LogicTest, 100trainz) {
   Run(2);
 
   // The initial state is a train at both blocks.
-  first.detector.Set(true);
-  second.detector.Set(true);
+  first.inverted_detector.Set(true);
+  second.inverted_detector.Set(true);
 
   for (int i = 0; i < 100; ++i) {
     Run(10);
@@ -1040,7 +1069,7 @@ TEST_F(LogicTest, 100trainz) {
     EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
 
     // Makes the front train leave.
-    second.detector.Set(false);
+    second.inverted_detector.Set(false);
     Run(10);
     EXPECT_FALSE(second.request_green.Get());
     EXPECT_FALSE(second.signal_green.Get());
@@ -1067,7 +1096,7 @@ TEST_F(LogicTest, 100trainz) {
     }
 
     // Rear train leaves its block.
-    first.detector.Set(false);
+    first.inverted_detector.Set(false);
     Run(10);
     EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));  // route gone.
     EXPECT_FALSE(QueryVar(*first.b.body_det_.route_set_ab_));
@@ -1083,14 +1112,14 @@ TEST_F(LogicTest, 100trainz) {
     EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
 
     // Second train reaches rear block.
-    second.detector.Set(true);
+    second.inverted_detector.Set(true);
     Run(10);
     EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
     EXPECT_TRUE(QueryVar(*second.b.body_det_.route_set_ab_));
     EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
 
     // Third train reaches second block.
-    first.detector.Set(true);
+    first.inverted_detector.Set(true);
     Run(10);
   }
 }
