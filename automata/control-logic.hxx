@@ -218,6 +218,8 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(LogicTest, Signal0);
   FRIEND_TEST(LogicTest, Signal);
   FRIEND_TEST(LogicTest, 100trainz);
+  FRIEND_TEST(LogicTest, DISABLED_100trainz);
+  FRIEND_TEST(LogicTest, FixedTurnout);
 
   friend class StandardBlock;
 
@@ -419,6 +421,8 @@ class TurnoutInterface {
   virtual CtrlTrackInterface* side_thrown() = 0;
 };
 
+void ClearAutomataVariables(Automata* aut);
+
 class TurnoutBase : public TurnoutInterface,
                     private OccupancyLookupInterface,
                     public virtual AutomataPlugin {
@@ -454,6 +458,7 @@ class TurnoutBase : public TurnoutInterface,
                                     route_set_TP_.get(),
                                     route_pending_TP_.get()));
     AddAutomataPlugin(20, NewCallbackPtr(this, &TurnoutBase::TurnoutOccupancy));
+    AddAutomataPlugin(29, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(30, NewCallbackPtr(this, &TurnoutBase::TurnoutRoute));
     AddAutomataPlugin(35,
                       NewCallbackPtr(this, &TurnoutBase::PopulateAnyRouteSet));
@@ -464,6 +469,8 @@ class TurnoutBase : public TurnoutInterface,
   virtual CtrlTrackInterface* side_thrown() { return &side_thrown_; }
 
  protected:
+  FRIEND_TEST(LogicTest, FixedTurnout);
+
   CtrlTrackInterface side_points_;
   CtrlTrackInterface side_closed_;
   CtrlTrackInterface side_thrown_;
@@ -509,6 +516,7 @@ class TurnoutBase : public TurnoutInterface,
   void TurnoutRoute(Automata* aut);
 };
 
+
 class FixedTurnout : public TurnoutBase {
  public:
   enum State {
@@ -519,6 +527,26 @@ class FixedTurnout : public TurnoutBase {
   FixedTurnout(State state, const EventBlock::Allocator& allocator)
       : TurnoutBase(allocator) {
     AddAutomataPlugin(10, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
+
+    directions_.clear();
+    directions_.push_back(Direction(&side_closed_, &side_points_,
+                                    route_set_CP_.get(),
+                                    route_pending_CP_.get()));
+    directions_.push_back(Direction(&side_thrown_, &side_points_,
+                                    route_set_TP_.get(),
+                                    route_pending_TP_.get()));
+    switch (state) {
+      case TURNOUT_CLOSED:
+        directions_.push_back(Direction(&side_points_, &side_closed_,
+                                        route_set_PC_.get(),
+                                        route_pending_PC_.get()));
+        break;
+      case TURNOUT_THROWN:
+        directions_.push_back(Direction(&side_points_, &side_thrown_,
+                                        route_set_PT_.get(),
+                                        route_pending_PT_.get()));
+        break;
+    }
   }
 
   virtual const GlobalVariable* LookupCloseDetector(

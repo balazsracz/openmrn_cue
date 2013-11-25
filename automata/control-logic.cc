@@ -467,4 +467,9 @@ void TurnoutBase::TurnoutRoute(Automata* aut) {
   }
 }
 
+void ClearAutomataVariables(Automata* aut) {
+  aut->ClearUsedVariables();
+}
+
+
 }  // namespace automata

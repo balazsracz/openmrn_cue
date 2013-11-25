@@ -41,6 +41,24 @@ class LogicTest : public AutomataNodeTests {
     StraightTrackWithDetector b;
   };
 
+  struct TestShortTrack {
+    TestShortTrack(LogicTest* test, const string& name)
+        : b(EventBlock::Allocator(&test->alloc(), name, 24)),
+          aut_body(name, &test->brd, &b) {}
+    StraightTrackShort b;
+    StandardPluginAutomata aut_body;
+  };
+
+  struct TestFixedTurnout {
+    TestFixedTurnout(LogicTest* test, FixedTurnout::State state, const string& name)
+        : b(state, EventBlock::Allocator(&test->alloc(), name, 48, 32)),
+          aut_body(name, &test->brd, &b) {}
+    FixedTurnout b;
+    StandardPluginAutomata aut_body;
+  };
+
+
+
   Board brd;
   EventBlock block_;
 };
@@ -985,13 +1003,145 @@ TEST_F(LogicTest, Signal) {
   EXPECT_TRUE(QueryVar(*mid.route_set_ab_));
 }
 
-TEST_F(LogicTest, FixedTurnout) {
-  
+//              ------station_lr>>---
+// ----left>---/----<<station_rl-----\----<right---
 
+TEST_F(LogicTest, FixedTurnout) {
+  static TestDetectorBlock end_left(this, "end_left");
+  static TestDetectorBlock end_right(this, "end_right");
+  TestShortTrack mid_left(this, "mid_left");
+  TestShortTrack mid_right(this, "mid_right");
+  TestBlock left(this, "left");
+  TestBlock right(this, "right");
+  TestBlock station_lr(this, "station_lr");
+  TestBlock station_rl(this, "station_rl");
+  TestFixedTurnout turnout_l(this, FixedTurnout::TURNOUT_THROWN, "turnout_l");
+  TestFixedTurnout turnout_r(this, FixedTurnout::TURNOUT_CLOSED, "turnout_r");
+
+  BindSequence({&end_left.b, &mid_left.b, &left.b});
+  BindSequence({&end_right.b, &mid_right.b, &right.b});
+  left.b.side_b()->Bind(turnout_l.b.side_points());
+  right.b.side_b()->Bind(turnout_r.b.side_points());
+
+  station_lr.b.side_a()->Bind(turnout_l.b.side_thrown());
+  station_lr.b.side_b()->Bind(turnout_r.b.side_thrown());
+
+  station_rl.b.side_b()->Bind(turnout_l.b.side_closed());
+  station_rl.b.side_a()->Bind(turnout_r.b.side_closed());
+
+  // This will immediately accept a route at the end stop.
+  DefAut(strategyaut, brd, {
+    LocalVariable* try_set_route =
+        ImportVariable(end_left.b.side_b()->binding()->out_try_set_route.get());
+    LocalVariable* route_set_succcess =
+        ImportVariable(end_left.b.side_b()->in_route_set_success.get());
+    Def().IfReg1(*try_set_route).ActReg0(try_set_route).ActReg1(
+        route_set_succcess);
+    try_set_route = ImportVariable(
+        end_right.b.side_b()->binding()->out_try_set_route.get());
+    route_set_succcess =
+        ImportVariable(end_right.b.side_b()->in_route_set_success.get());
+    Def().IfReg1(*try_set_route).ActReg0(try_set_route).ActReg1(
+        route_set_succcess);
+  });
+
+  SetupRunner(&brd);
+  end_left.detector.Set(false);
+  end_right.detector.Set(false);
+  left.inverted_detector.Set(true);
+  right.inverted_detector.Set(true);
+  station_lr.inverted_detector.Set(true);
+  station_rl.inverted_detector.Set(true);
+  Run(1);
+  left.inverted_detector.Set(true);
+  right.inverted_detector.Set(true);
+  station_lr.inverted_detector.Set(true);
+  station_rl.inverted_detector.Set(true);
+  Run(15);
+
+  EXPECT_FALSE(QueryVar(*left.b.body_det_.simulated_occupancy_));
+
+  // Source a train from left and right.
+  end_left.detector.Set(true);
+  end_right.detector.Set(true);
+  SetVar(*end_left.b.side_b()->out_try_set_route, true);
+  SetVar(*end_right.b.side_b()->out_try_set_route, true);
+  Run(12);
+  EXPECT_FALSE(QueryVar(*end_left.b.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*end_left.b.side_b()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(*left.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*mid_left.b.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*end_right.b.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*end_right.b.side_b()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*right.b.body_det_.route_set_ab_));
+
+  // Both trains reach their stops on open track outside of the station.
+  end_left.detector.Set(false);
+  end_right.detector.Set(false);
+  left.inverted_detector.Set(false);
+  right.inverted_detector.Set(false);
+  Run(12);
+
+  EXPECT_FALSE(QueryVar(*mid_left.b.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ab_));
+
+  EXPECT_FALSE(QueryVar(*left.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+
+  // Give them green.
+  LOG(INFO, "Giving green to left train");
+  SetVar(*left.b.request_green(), true);
+  Run(5);
+  EXPECT_TRUE(left.signal_green.Get());
+  EXPECT_TRUE(QueryVar(*left.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+
+  EXPECT_TRUE(QueryVar(*left.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*turnout_l.b.route_set_PT_));
+  EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
+
+  EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_TRUE(QueryVar(*station_lr.b.body_det_.route_set_ab_));
+
+  left.inverted_detector.Set(true);
+  Run(15);
+
+  EXPECT_FALSE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
+
+  // Arrives in the station.
+  station_lr.inverted_detector.Set(false);
+  Run(15);
+
+  EXPECT_FALSE(QueryVar(*left.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_lr.b.body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*turnout_l.b.any_route_set_));
+
+  // But cannot go out to the right because there is a train there.
+  SetVar(*station_lr.b.request_green(), true);
+  Run(10);
+  EXPECT_FALSE(QueryVar(*station_lr.b.signal_.route_set_ab_));
+
+  // Right train comes in.
+  SetVar(*right.b.request_green(), true);
+  Run(5);
+  EXPECT_TRUE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_TRUE(QueryVar(*turnout_r.b.route_set_PC_));
+  EXPECT_TRUE(QueryVar(*station_rl.b.body_.route_set_ab_));
+  right.inverted_detector.Set(true);
+  station_rl.inverted_detector.Set(false);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_FALSE(QueryVar(*turnout_r.b.route_set_PC_));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+
+  
 
 }
 
-TEST_F(LogicTest, 100trainz) {
+TEST_F(LogicTest, DISABLED_100trainz) {
   TestDetectorBlock before(this, "before");
   static StraightTrackLong mid(alloc());
   DefAut(autmid, brd, { mid.RunAll(this); });
