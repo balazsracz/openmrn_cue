@@ -70,7 +70,7 @@ GlobalVariable* NewTempVariable(Board* board) {
 
 class StrategyAutomata : public Automata {
  public:
-  StrategyAutomata() {}
+  StrategyAutomata(const string& name) : Automata(name) {}
 
  protected:
   static const int kTimeTakenToGoBusy = 2;

@@ -116,7 +116,12 @@ protected:
  */
 class Automata {
 public:
-  Automata() : timer_bit_(0), output_(NULL), aut(this) {
+  Automata(const string& name) : timer_bit_(0), output_(NULL), aut(this), name_(name) {
+        // We add the timer variable to the map with a fake key in order to
+        // reserve local bit 0.
+        used_variables_[NULL] = timer_bit_;
+    }
+    Automata() : timer_bit_(0), output_(NULL), aut(this) {
         // We add the timer variable to the map with a fake key in order to
         // reserve local bit 0.
         used_variables_[NULL] = timer_bit_;
@@ -170,10 +175,11 @@ private:
     friend class Op;
 
     map<const GlobalVariable*, LocalVariable> used_variables_;
+    string name_;
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 
-#define DefCustomAut(name, boardref, base, body...) class Aut##name : public base {public:  Aut##name(decltype(boardref)* board) : board_(board) {board_->AddAutomata(this); } protected: decltype(boardref)* board_; virtual Board* board() {return board_;} virtual void Body() body  } name##instance(&(boardref))
+#define DefCustomAut(name, boardref, base, body...) class Aut##name : public base {public:  Aut##name(decltype(boardref)* board) : base(#name), board_(board) {board_->AddAutomata(this); } protected: decltype(boardref)* board_; virtual Board* board() {return board_;} virtual void Body() body  } name##instance(&(boardref))
 
 #define DefAut(name, boardref, body...) DefCustomAut(name, boardref, automata::Automata, body)
 

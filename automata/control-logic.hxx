@@ -68,8 +68,8 @@ class AutomataPlugin {
 // A straight automata definition that calls all the plugins.
 class StandardPluginAutomata : public automata::Automata {
  public:
-  StandardPluginAutomata(Board* brd, AutomataPlugin* plugins)
-      : plugins_(plugins), brd_(brd) {
+  StandardPluginAutomata(const string& name, Board* brd, AutomataPlugin* plugins)
+      : automata::Automata(name), plugins_(plugins), brd_(brd) {
     brd->AddAutomata(this);
   }
 
@@ -215,6 +215,7 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(LogicTest, SimulatedOccupancy_SimultSetting);
   FRIEND_TEST(LogicTest, ReverseRoute);
   FRIEND_TEST(LogicTest, MultiRoute);
+  FRIEND_TEST(LogicTest, Signal0);
   FRIEND_TEST(LogicTest, Signal);
   FRIEND_TEST(LogicTest, 100trainz);
 
@@ -380,9 +381,9 @@ class StandardBlock : public StraightTrackInterface {
         signal_(EventBlock::Allocator(&alloc, "signal", 24, 8), request_green_.get(),
                 physical->signal_raw),
         physical_(physical),
-        aut_body_(brd, &body_),
-        aut_body_det_(brd, &body_det_),
-        aut_signal_(brd, &signal_) {
+        aut_body_(alloc.name() + ".body", brd, &body_),
+        aut_body_det_(alloc.name() + ".body_det", brd, &body_det_),
+        aut_signal_(alloc.name() + ".signal", brd, &signal_) {
     BindSequence({&body_, &body_det_, &signal_});
   }
 
