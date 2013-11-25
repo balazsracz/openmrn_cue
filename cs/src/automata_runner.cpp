@@ -559,7 +559,13 @@ void AutomataRunner::AddPendingTick() {
 }
 
 void AutomataRunner::RunAllAutomata() {
-  for (auto aut : all_automata_) {
+  if (pending_ticks_) {
+    for (auto* aut : all_automata_) {
+      aut->Tick();
+    }
+    --pending_ticks_;
+  }
+  for (auto* aut : all_automata_) {
     ResetForAutomata(aut).Run();
   }
 }
@@ -585,12 +591,6 @@ void* automata_thread(void* arg) {
           runner->thread_exited_ = true;
           return NULL;
         }
-	if (runner->pending_ticks_) {
-	    for (auto aut : runner->all_automata_) {
-		aut->Tick();
-	    }
-	    --runner->pending_ticks_;
-	}
 	if (automata_running()) {
 	    runner->RunAllAutomata();
             UpdateSlaves();
