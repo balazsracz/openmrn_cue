@@ -11,7 +11,7 @@
 
 #include "base.h"
 
-#define DCC_NUM_LOCO 16
+#define DCC_NUM_LOCO 18
 
 class PacketBase;
 

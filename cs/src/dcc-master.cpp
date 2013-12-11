@@ -181,8 +181,12 @@ const struct const_loco_db_t const_lokdb[] = {
   // id 14
   { 18, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "185 595-6", DCC_28 },
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
+  // id 15
+  { 26, { 0,  0xff, }, { LIGHT,  0xff, },
+    "Re 460 HAG", MARKLIN_OLD | PUSHPULL },
+  // id 16
+  { 38, { 0,  0xff, }, { LIGHT,  0xff, },
+    "BDe 4/4 1460", MARKLIN_OLD | PUSHPULL },
   { 0, {0, }, {0,}, "", 0},
 };
 
@@ -290,7 +294,7 @@ struct dcc_master_state_t {
 
   struct prio {
     // loco ID - 0..DCC_NUM_LOCO - 1.
-    unsigned id : 4;
+    unsigned id : 5;
     // which item changed. 15 = speed.
     unsigned what : 4;
 #define PRIO_LSPEED 14
