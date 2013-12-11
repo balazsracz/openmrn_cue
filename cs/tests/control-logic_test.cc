@@ -1137,7 +1137,34 @@ TEST_F(LogicTest, FixedTurnout) {
   EXPECT_FALSE(QueryVar(*turnout_r.b.route_set_PC_));
   EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
 
-  
+  // Left->Right train goes out.
+  SetVar(*station_lr.b.request_green(), true);
+  Run(10);
+  EXPECT_TRUE(QueryVar(*station_lr.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
+
+  right.inverted_detector.Set(false);
+  Run(15);
+  EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
+
+  right.inverted_detector.Set(true);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
+  end_right.detector.Set(true);
+  Run(15);
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
+  right.inverted_detector.Set(false);
+  Run(15);
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
+  end_right.detector.Set(false);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ba_));
+  EXPECT_FALSE(QueryVar(*right.b.body_.route_set_ba_));
 
 }
 
