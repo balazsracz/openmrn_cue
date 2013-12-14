@@ -4,7 +4,7 @@
 
 namespace {
 ProxyNotifiable write_helper_busy;
-WriteHelper helper(DefaultWriteFlowExecutor());
+NMRAnet::WriteHelper helper;
 }
 
 uint8_t ListenerToEventProxy::OnChanged(uint8_t offset, uint8_t previous_value,

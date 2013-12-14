@@ -4,7 +4,7 @@
 #include "event_registry.hxx"
 #include "updater.hxx"
 #include "nmranet_types.h"
-#include "core/nmranet_event.h"
+//#include "core/nmranet_event.h"
 
 template <class I> class MemoryToggleEventHandler : public EventHandler {
  public:
@@ -133,8 +133,9 @@ template <class I> class MemoryBitProducer : public Updatable {
         last_state_(0), last_state_count_(0) {
     event_[0] = event_off;
     event_[1] = event_on;
-    nmranet_event_producer(node, event_[0], EVENT_STATE_INVALID);
-    nmranet_event_producer(node, event_[1], EVENT_STATE_INVALID);
+    //! @TODO(balazs.racz): FIX
+    //nmranet_event_producer(node, event_[0], EVENT_STATE_INVALID);
+    //nmranet_event_producer(node, event_[1], EVENT_STATE_INVALID);
   }
 
   virtual void PerformUpdate() {
@@ -142,8 +143,9 @@ template <class I> class MemoryBitProducer : public Updatable {
     if (state == last_state_) {
       if (last_state_count_ < BIT_PRODUCER_UNCHANGED_COUNT) {
         if (++last_state_count_ >= BIT_PRODUCER_UNCHANGED_COUNT) {
-          nmranet_event_produce(node_, event_[state], EVENT_STATE_VALID);
-          nmranet_event_produce(node_, event_[state ^ 1], EVENT_STATE_INVALID);
+          //! @TODO(balazs.racz): FIX
+          //nmranet_event_produce(node_, event_[state], EVENT_STATE_VALID);
+          //nmranet_event_produce(node_, event_[state ^ 1], EVENT_STATE_INVALID);
         }
       }
     } else {

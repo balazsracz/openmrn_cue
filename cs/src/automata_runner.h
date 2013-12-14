@@ -11,13 +11,14 @@ using std::vector;
 
 #include "cs_config.h"
 #include "os/os.h"
-#include "core/nmranet_node.h"
 #include "base.h"
 #include "automata_control.h"
 #include "automata_defs.h"
 
 typedef uint16_t aut_offset_t;
 typedef uint8_t insn_t;
+
+namespace NMRAnet { class AsyncNode; }
 
 class Automata;
 
@@ -102,7 +103,7 @@ private:
 
 class AutomataRunner {
 public:
-  AutomataRunner(node_t node, const insn_t* base_pointer,
+  AutomataRunner(NMRAnet::AsyncNode* node, const insn_t* base_pointer,
                  bool with_thread = true);
     ~AutomataRunner();
 
@@ -206,7 +207,7 @@ private:
     //! Points to the current automata.
     Automata* current_automata_;
     //! The OpenMRN node used for generating sourced events.
-    node_t openmrn_node_;
+    NMRAnet::AsyncNode* openmrn_node_;
 
     //! Counts how many ticks we need to apply in the next run of the automatas.
     int pending_ticks_;

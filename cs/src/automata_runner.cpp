@@ -14,7 +14,7 @@
 #include <memory>
 
 #include "utils/macros.h"
-#include "core/nmranet_event.h"
+//#include "core/nmranet_event.h"
 
 #include "common_event_handlers.hxx"
 
@@ -24,11 +24,11 @@
 #include "dcc-master.h"
 
 #include "utils/logging.h"
-#include "nmranet/WriteFlow.hxx"
+#include "nmranet/NMRAnetWriteFlow.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 
 // This write helper will only ever be used synchronously.
-static WriteHelper automata_write_helper(nullptr);
+static NMRAnet::WriteHelper automata_write_helper;
 
 /*
   TODOS:
@@ -173,16 +173,17 @@ void AutomataRunner::import_variable() {
 
 class EventBit : public ReadWriteBit, MemoryToggleEventHandler<uint8_t> {
 public:
-    EventBit(node_t node,
+    EventBit(NMRAnet::AsyncNode* node,
              uint64_t event_on, uint64_t event_off,
              uint8_t mask, uint8_t* ptr)
         : MemoryToggleEventHandler<uint8_t>(event_on, event_off, mask, ptr),
           defined_(false) {
         if (0) fprintf(stderr,"event bit create on node %p\n", node);
-        nmranet_event_producer(node, event_on, EVENT_STATE_INVALID);
-        nmranet_event_producer(node, event_off, EVENT_STATE_INVALID);
-        nmranet_event_consumer(node, event_on, EVENT_STATE_INVALID);
-        nmranet_event_consumer(node, event_off, EVENT_STATE_INVALID);
+        //! @TODO(balazs.racz) FIXME
+        //nmranet_event_producer(node, event_on, EVENT_STATE_INVALID);
+        //nmranet_event_producer(node, event_off, EVENT_STATE_INVALID);
+        //nmranet_event_consumer(node, event_on, EVENT_STATE_INVALID);
+        //nmranet_event_consumer(node, event_off, EVENT_STATE_INVALID);
     }
 
     virtual bool Read(uint16_t, node_t node, Automata* aut) {
@@ -197,12 +198,14 @@ public:
         if ((value == last_value) && defined_) return;
         if (value) {
             *memory_ |= mask_;
-            nmranet_event_produce(node, event_on_, EVENT_STATE_VALID);
-            nmranet_event_produce(node, event_off_, EVENT_STATE_INVALID);
+            //! @TODO(balazs.racz) FIXME
+            //nmranet_event_produce(node, event_on_, EVENT_STATE_VALID);
+            //nmranet_event_produce(node, event_off_, EVENT_STATE_INVALID);
         } else {
             *memory_ &= ~mask_;
-            nmranet_event_produce(node, event_on_, EVENT_STATE_INVALID);
-            nmranet_event_produce(node, event_off_, EVENT_STATE_VALID);
+            //! @TODO(balazs.racz) FIXME
+            //nmranet_event_produce(node, event_on_, EVENT_STATE_INVALID);
+            //nmranet_event_produce(node, event_off_, EVENT_STATE_VALID);
         }
     }
 
@@ -218,11 +221,11 @@ public:
 
 class EventBlockBit : public ReadWriteBit {
  public:
-  EventBlockBit(WriteHelper::node_type node,
+  EventBlockBit(NMRAnet::WriteHelper::node_type node,
                 uint64_t event_base,
                 size_t size)
       : storage_(new uint32_t[(size + 31) >> 5]),
-        handler_(new BitRangeEventPC(node, event_base, storage_, size)) {
+        handler_(new NMRAnet::BitRangeEventPC(node, event_base, storage_, size)) {
     size_t sz = (size + 31) >> 5;
     memset(&storage_[0], 0, sz * sizeof(storage_[0]));
   }
@@ -236,12 +239,14 @@ class EventBlockBit : public ReadWriteBit {
   }
 
   virtual void Write(uint16_t arg, node_t node, Automata* aut, bool value) {
-    return handler_->Set(arg, value, &automata_write_helper, nullptr);
+    SyncNotifiable n;
+    return handler_->Set(arg, value, &automata_write_helper, &n);
+    n.WaitForNotification();
   }
 
  private:
   uint32_t* storage_;
-  std::unique_ptr<BitRangeEventPC> handler_;
+  std::unique_ptr<NMRAnet::BitRangeEventPC> handler_;
 };
 
 ReadWriteBit* AutomataRunner::create_variable() {
@@ -599,7 +604,7 @@ void* automata_thread(void* arg) {
     return NULL;
 }
 
-AutomataRunner::AutomataRunner(node_t node, const insn_t* base_pointer,
+AutomataRunner::AutomataRunner(NMRAnet::AsyncNode* node, const insn_t* base_pointer,
                                bool with_thread)
     : ip_(0),
       aut_srcplace_(254),

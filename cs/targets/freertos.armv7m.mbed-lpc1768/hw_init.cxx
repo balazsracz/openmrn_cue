@@ -19,8 +19,8 @@ static serial_t* stdio_serial;
 
 //Serial st(USBTX, USBRX);
 
-DEFINE_PIPE(can_pipe0, sizeof(struct can_frame));
-DEFINE_PIPE(can_pipe1, sizeof(struct can_frame));
+DEFINE_PIPE(can_pipe0, &g_executor, sizeof(struct can_frame));
+DEFINE_PIPE(can_pipe1, &g_executor, sizeof(struct can_frame));
 VIRTUAL_DEVTAB_ENTRY(canp0v0, can_pipe0, "/dev/canp0v0", 16);
 VIRTUAL_DEVTAB_ENTRY(canp0v1, can_pipe0, "/dev/canp0v1", 16);
 

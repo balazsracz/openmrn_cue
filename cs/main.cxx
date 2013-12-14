@@ -31,7 +31,9 @@
  * @date 16 September 2012
  */
 
+#ifndef __STDC_VERSION__
 #define __STDC_VERSION__ 199901L
+#endif
 
 #ifdef TARGET_LPC2368
 #include "LPC23xx.h"
@@ -59,10 +61,6 @@
 #include "os/OS.hxx"
 #include "os/watchdog.h"
 #include "utils/pipe.hxx"
-#include "if/nmranet_if.h"
-#include "core/nmranet_node.h"
-#include "core/nmranet_event.h"
-#include "core/nmranet_datagram.h"
 #include "nmranet_config.h"
 
 #include "src/host_packet.h"
@@ -75,7 +73,6 @@
 #include "src/updater.hxx"
 #include "src/timer_updater.hxx"
 #include "src/event_range_listener.hxx"
-#include "core/nmranet_node_private.h"
 
 #ifdef TARGET_PIC32MX
 #include "plib.h"
@@ -166,15 +163,7 @@ int __wrap___cxa_atexit(void) {
 }
 
 
-node_t node;
-
-
-// This is a trick we play on the linker to pull in these symbols. Otherwise we
-// won't be able to link the binary, since there are back-references to these
-// symbols from lower-level libraries.
-void (*unused_f)(node_t, uint64_t, uint64_t)=&nmranet_identify_consumers;
-void (*unused_g)(node_t, uint64_t, uint64_t)=&nmranet_identify_producers;
-
+NMRAnet::AsyncNode* node;
 
 #ifdef HAVE_MBED
 
@@ -382,7 +371,7 @@ DECLARE_PIPE(can_pipe1);
 #endif
 
 #ifdef SNIFFER
-DEFINE_PIPE(gc_pipe, 1);
+DEFINE_PIPE(gc_pipe, &g_executor, 1);
 
 #include "utils/gc_pipe.hxx"
 #endif
