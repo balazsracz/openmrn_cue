@@ -100,6 +100,8 @@ public:
     StartFlowAt(ST(StartUpdateTimer));
   }
 
+  UpdateQueue* queue() { return &queue_; }
+
   ControlFlowAction StartUpdateTimer() {
     //WakeUpRepeatedly(&sleep_data_, MSEC_TO_PERIOD(50));
     return CallImmediately(ST(WaitForWakeup));
