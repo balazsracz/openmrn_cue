@@ -55,8 +55,8 @@
 
  */
 
-extern Executor g_executor;
-DEFINE_PIPE(usb_vcom_pipe0, &g_executor, 1);
+ThreadExecutor vcom_executor("vcom_thread", 0, 900);
+DEFINE_PIPE(usb_vcom_pipe0, &vcom_executor, 1);
 DECLARE_PIPE(can_pipe0);
 
 //! Class to handle data that comes from the virtual COM pipe and is to be sent
