@@ -132,7 +132,7 @@ public:
           bit_(node, EVENT_ID, EVENT_ID + 1, &state_, (uint8_t)1),
           producer_(&bit_)
     {
-        StartFlowAt(ST(blinker));
+        StartFlowAt(ST(handle_sleep));
     }
 
 private:
@@ -175,7 +175,6 @@ public:
     virtual void SetState(bool new_value)
     {
         state_ = new_value;
-        //HASSERT(0);
 #ifdef __linux__
         LOG(INFO, "bit %s set to %d", name_, state_);
 #else
@@ -193,6 +192,8 @@ private:
     bool state_;
 };
 
+DigitalIn startpin(p20);
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -200,6 +201,7 @@ private:
  */
 int appl_main(int argc, char* argv[])
 {
+    startpin.mode(PullUp);
     PacketQueue::initialize("/dev/serUSB0");
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
     can_pipe1.AddPhysicalDeviceToPipe("/dev/can0", "can1_rx_thread", 512);
@@ -215,6 +217,9 @@ int appl_main(int argc, char* argv[])
     NMRAnet::AliasInfo info;
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
     NMRAnet::AddEventHandlerToIf(&g_if_can);
+    resetblink(0x80002A);
+    while(startpin) {}
+    resetblink(0);
     g_executor.ThreadBody();
     return 0;
 }
