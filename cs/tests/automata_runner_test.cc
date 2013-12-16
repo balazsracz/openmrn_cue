@@ -407,6 +407,11 @@ TEST_F(AutomataTests, EventVar) {
   string output;
   //brd.Render(&output);
   //EXPECT_EQ("", output);
+  // The query packet.
+  ExpectPacket(":X1991422AN0502010202650012;");
+  // Responds itself straight away.
+  ExpectPacket(":X1954522AN0502010202650012;");
+
   SetupRunner(&brd);
   runner_->RunAllAutomata();
 }
@@ -464,6 +469,12 @@ TEST_F(AutomataTests, EventVar2) {
   string output;
   //brd.Render(&output);
   //EXPECT_EQ("", output);
+
+  // The query packet.
+  ExpectPacket(":X1991422AN0502010202650012;");
+  // Responds itself straight away.
+  ExpectPacket(":X1954522AN0502010202650012;");
+
   SetupRunner(&brd);
   ExpectPacket(":X195B422AN0502010202650012;");
   ExpectPacket(":X195B422AN0502010202650013;");

@@ -184,6 +184,8 @@ public:
           pc_(&bit_),
           defined_(false) {
         if (0) fprintf(stderr,"event bit create on node %p\n", node);
+        pc_.SendQuery(&automata_write_helper, &notify_);
+        notify_.WaitForNotification();
     }
 
     virtual bool Read(uint16_t, NMRAnet::AsyncNode*, Automata* aut) {

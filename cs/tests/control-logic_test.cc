@@ -18,6 +18,8 @@ class LogicTest : public AutomataNodeTests {
     // We ignore all event messages on the CAN bus. THese are checked with more
     // high-level constructs.
     EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X195B422AN"))).Times(AtLeast(0));
+    EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X1991422AN"))).Times(AtLeast(0));
+    EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X1954522AN"))).Times(AtLeast(0));
   }
 
   const EventBlock::Allocator& alloc() { return *block_.allocator(); }
