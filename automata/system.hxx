@@ -15,9 +15,9 @@ using std::map;
 #define HASSERT(x) do { if (!(x)) {fprintf(stderr, "Assertion failed: " #x); abort();} } while(0)
 #endif
 
-string StringPrintf(const char* format, ...);
-
 namespace automata {
+
+string StringPrintf(const char* format, ...);
 
 #ifndef DISALLOW_COPY_AND_ASSIGN
 //! Put this into the private section of a class to prevent the default copy

@@ -12,9 +12,7 @@
 
 #include "src/automata_runner.h"
 #include "nmranet_config.h"
-
-#include "utils/test_main.hxx"
-
+#include "automata_tests_helper.hxx"
 
 using automata::Board;
 using automata::StateRef;
@@ -130,8 +128,6 @@ TEST(RunnerTest, SingleEmptyAutomataBoard) {
     r.RunAllAutomata();
   }
 }
-
-#include "automata_tests_helper.hxx"
 
 TEST_F(AutomataTests, DefAct0) {
   automata::Board brd;
@@ -396,16 +392,6 @@ TEST_F(AutomataTests, LoadEventId) {
 }
 
 TEST_F(AutomataTests, EventVar) {
-#ifdef CPP_EVENT_HANDLER
-  extern void EnsureCompatEventHandlerExists();
-  EnsureCompatEventHandlerExists();
-#endif
-  node_ = nmranet_node_create(0x02010d000001ULL, nmranet_if_,
-                              "Test Node", NULL);
-  ASSERT_TRUE(node_);
-  nmranet_node_user_description(node_, "Test Node");
-  nmranet_node_initialized(node_);
-
   Board brd;
   using automata::EventBasedVariable;
   EventBasedVariable led(&brd,
@@ -416,8 +402,7 @@ TEST_F(AutomataTests, EventVar) {
   static automata::GlobalVariable* var;
   var = &led;
   DefAut(testaut1, brd, {
-      
-ImportVariable(var);
+      ImportVariable(var);
     });
   string output;
   //brd.Render(&output);
@@ -461,28 +446,6 @@ CanDebugPipeMember printer(&can_pipe0);
 
 
 TEST_F(AutomataTests, EventVar2) {
-  node_ = nmranet_node_create(0x02010d000002ULL, nmranet_if_,
-                              "Test Node2", NULL);
-  ASSERT_TRUE(node_);
-  fprintf(stderr,"node_=%p\n", node_);
-  nmranet_node_user_description(node_, "Test Node2");
-
-  nmranet_event_producer(node_, 0x0502010202650012ULL, EVENT_STATE_INVALID);
-  nmranet_event_producer(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
-  nmranet_node_initialized(node_);
-  WaitForEventThread();
-
-  os_thread_t thread;
-  os_thread_create(&thread, "event_process_thread",
-                   0, 2048, &AutomataTests::DispatchThread,
-                   node_);
-
-  nmranet_event_produce(node_, 0x0502010202650012ULL, EVENT_STATE_INVALID);
-  nmranet_event_produce(node_, 0x0502010202650012ULL, EVENT_STATE_VALID);
-  nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_INVALID);
-  nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
-  WaitForEventThread();
-
   Board brd;
   using automata::EventBasedVariable;
   EventBasedVariable led(&brd,
@@ -502,6 +465,8 @@ TEST_F(AutomataTests, EventVar2) {
   //brd.Render(&output);
   //EXPECT_EQ("", output);
   SetupRunner(&brd);
+  ExpectPacket(":X195B422AN0502010202650012;");
+  ExpectPacket(":X195B422AN0502010202650013;");
   runner_->RunAllAutomata();
   WaitForEventThread();
 }

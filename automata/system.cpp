@@ -178,6 +178,7 @@ const string& GetNameForOffset(int ofs) {
   }
 }
 
+namespace automata {
 string StringPrintf(const char* format, ...) {
   static const int kBufSize = 1000;
   char buffer[kBufSize];
@@ -197,4 +198,5 @@ string StringPrintf(const char* format, ...) {
   HASSERT(n >= 0);
   ret.resize(n);
   return ret;
+}
 }
