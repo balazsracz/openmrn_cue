@@ -42,6 +42,7 @@
 #include "executor/executor.hxx"
 #include "nmranet_can.h"
 #include "nmranet_config.h"
+#include "os/watchdog.h"
 
 #include "nmranet/AsyncIfCan.hxx"
 #include "nmranet/NMRAnetIf.hxx"
@@ -55,8 +56,11 @@
 // for logging implementation
 #include "src/host_packet.h"
 #include "src/usb_proto.h"
+#include "src/can-queue.h"
 
 #include "src/mbed_i2c_update.hxx"
+#include "src/automata_runner.h"
+#include "src/automata_control.h"
 
 
 // DEFINE_PIPE(gc_can_pipe, 1);
@@ -70,6 +74,8 @@ DEFINE_PIPE(can_pipe1, &g_executor, sizeof(struct can_frame));
 static const NMRAnet::NodeID NODE_ID = 0x050101011434ULL;
 
 extern "C" {
+extern insn_t automata_code[];
+
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
 extern const size_t CAN_TX_BUFFER_SIZE;
 extern const size_t CAN_RX_BUFFER_SIZE;
@@ -90,33 +96,12 @@ void log_output(char* buf, int size) {
     PacketQueue::instance()->TransmitPacket(pkt);
 }
 
-/*VIRTUAL_DEVTAB_ENTRY(canp0v0, can_pipe0, "/dev/canp0v0", 16);
-VIRTUAL_DEVTAB_ENTRY(canp0v1, can_pipe0, "/dev/canp0v1", 16);
-
-VIRTUAL_DEVTAB_ENTRY(canp1v0, can_pipe1, "/dev/canp1v0", 16);
-VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
-
-//I2C i2c(P0_10, P0_11); for panda CS
-I2C i2c(P0_27, P0_28);
-
-uint32_t state_21;
-uint32_t state_22;
-uint32_t state_23;
-
-I2COutUpdater extender0(&i2c, 0x21, {}, (uint8_t*)&state_21, 2);
-I2COutUpdater extender1(&i2c, 0x22, {}, (uint8_t*)&state_22, 2);
-I2COutUpdater extender2(&i2c, 0x23, {}, (uint8_t*)&state_23, 2);
-
-I2CInUpdater in_extender0(&i2c, 0x21, {}, ((uint8_t*)&state_21) + 2, 1, 2);
-I2CInUpdater in_extender1(&i2c, 0x22, {}, ((uint8_t*)&state_22) + 2, 1, 2);
-I2CInUpdater in_extender2(&i2c, 0x23, {}, ((uint8_t*)&state_23) + 2, 1, 2);
-
 
 NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 4);
 
-static const uint64_t EVENT_ID = 0x050101011441FF00ULL;
+static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 0;
 
 Executor* DefaultWriteFlowExecutor() {
@@ -201,6 +186,33 @@ DigitalIn startpin(p20);
  */
 int appl_main(int argc, char* argv[])
 {
+    start_watchdog(5000);
+    add_watchdog_reset_timer(500);
+    PacketQueue::initialize("/dev/serUSB0");
+    can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
+    //can_pipe1.AddPhysicalDeviceToPipe(, "can1_rx_thread", 512);
+
+    int fd = open("/dev/can0", O_RDWR);
+    ASSERT(fd >= 0);
+    dcc_can_init(fd);
+
+    LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
+    NMRAnet::BitEventConsumer consumer(&logger);
+    BlinkerFlow blinker(&g_node);
+    g_if_can.AddWriteFlows(1, 1);
+    g_if_can.set_alias_allocator(
+        new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
+    NMRAnet::AliasInfo info;
+    g_if_can.alias_allocator()->empty_aliases()->Release(&info);
+    NMRAnet::AddEventHandlerToIf(&g_if_can);
+
+    AutomataRunner runner(&g_node, automata_code);
+    resume_all_automata();
+
+    g_executor.ThreadBody();
+    return 0;
+
+    /*
     startpin.mode(PullUp);
     PacketQueue::initialize("/dev/serUSB0");
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
@@ -221,5 +233,5 @@ int appl_main(int argc, char* argv[])
     while(startpin) {}
     resetblink(0);
     g_executor.ThreadBody();
-    return 0;
+    return 0;*/
 }
