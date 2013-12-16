@@ -216,15 +216,10 @@ protected:
 
   friend class EventListener;
 
-  class EventListener : public EventHandler {
+  class EventListener {
    public:
     EventListener(NMRAnet::AsyncNode* node, const automata::GlobalVariable& var)
         : memoryBit_(node, var.event_on(), var.event_off(), &value_, 1), consumer_(&memoryBit_), value_(0) {
-      NMRAnet::NMRAnetEventRegistry::instance()->RegisterHandler(&consumer_, 0, 0);
-    }
-
-    virtual ~EventListener() {
-      NMRAnet::NMRAnetEventRegistry::instance()->UnregisterHandler(&consumer_, 0, 0);
     }
 
     bool value() {
