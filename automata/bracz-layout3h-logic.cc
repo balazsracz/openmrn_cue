@@ -244,6 +244,19 @@ int main(int argc, char** argv) {
     fwrite(output.data(), 1, output.size(), f);
     fclose(f);
 
+    f = fopen("automata.cout", "wb");
+    fprintf(f, "const char automata_code[] = {\n  ");
+    int c = 0;
+    for (char t : output) {
+      fprintf(f, "0x%02x, ", (uint8_t)t);
+      if (++c >= 12) {
+        fprintf(f, "\n  ");
+        c = 0;
+      }
+    }
+    fprintf(f, "};\n");
+    fclose(f);
+
     f = fopen("variables.txt", "w");
     assert(f);
     map<int, string>& m(*automata::GetOffsetMap());
