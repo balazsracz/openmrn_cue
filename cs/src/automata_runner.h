@@ -25,8 +25,8 @@ class Automata;
 class ReadWriteBit {
 public:
   virtual ~ReadWriteBit() {}
-  virtual bool Read(uint16_t arg, node_t node, Automata* aut) = 0;
-  virtual void Write(uint16_t arg, node_t node, Automata* aut, bool value) = 0;
+  virtual bool Read(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut) = 0;
+  virtual void Write(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut, bool value) = 0;
 };
 
 
@@ -80,10 +80,10 @@ private:
     public:
 	TimerBit(int id) : id_(id) {}
 	virtual ~TimerBit() {}
-        virtual bool Read(uint16_t, node_t, Automata* aut) {
+        virtual bool Read(uint16_t, NMRAnet::AsyncNode*, Automata* aut) {
 	    return *GetStateByte(OFS_TIMER);
 	}
-	virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
+	virtual void Write(uint16_t, NMRAnet::AsyncNode*, Automata* aut, bool value) {
 	    diewith(CS_DIE_AUT_WRITETIMERBIT);
 	}
 	int GetId() {

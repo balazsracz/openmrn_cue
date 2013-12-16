@@ -5,9 +5,11 @@
 #define __STDC_VERSION__ 199901L
 #endif
 
-#define LOGLEVEL VERBOSE
+//#define LOGLEVEL VERBOSE
 // Workaroundfor bug in <memory> for gcc 2.6.2 lpcxpresso newlib
+#ifndef __CR2_C___4_6_2_BITS_SHARED_PTR_H__
 #define __CR2_C___4_6_2_BITS_SHARED_PTR_H__
+#endif
 
 #include <stdio.h>
 
@@ -29,6 +31,8 @@
 
 // This write helper will only ever be used synchronously.
 static NMRAnet::WriteHelper automata_write_helper;
+static SyncNotifiable notify_;
+
 
 /*
   TODOS:
@@ -171,50 +175,37 @@ void AutomataRunner::import_variable() {
 }
 
 
-class EventBit : public ReadWriteBit, MemoryToggleEventHandler<uint8_t> {
+class EventBit : public ReadWriteBit {
 public:
     EventBit(NMRAnet::AsyncNode* node,
              uint64_t event_on, uint64_t event_off,
              uint8_t mask, uint8_t* ptr)
-        : MemoryToggleEventHandler<uint8_t>(event_on, event_off, mask, ptr),
+        : bit_(node, event_on, event_off, ptr, mask),
+          pc_(&bit_),
           defined_(false) {
         if (0) fprintf(stderr,"event bit create on node %p\n", node);
-        //! @TODO(balazs.racz) FIXME
-        //nmranet_event_producer(node, event_on, EVENT_STATE_INVALID);
-        //nmranet_event_producer(node, event_off, EVENT_STATE_INVALID);
-        //nmranet_event_consumer(node, event_on, EVENT_STATE_INVALID);
-        //nmranet_event_consumer(node, event_off, EVENT_STATE_INVALID);
     }
 
-    virtual bool Read(uint16_t, node_t node, Automata* aut) {
+    virtual bool Read(uint16_t, NMRAnet::AsyncNode*, Automata* aut) {
       // TODO(balazs.racz): we should consider CHECK failing here if
       // !defined. That will force us to explicitly reset every bit in StInit.
-        return ((*memory_) & mask_);
+      return bit_.GetCurrentState();
     }
 
-    virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, NMRAnet::AsyncNode* node, Automata* aut, bool value) {
         if (0) fprintf(stderr,"event bit write to node %p\n", node);
-        bool last_value = !!((*memory_) & mask_);
+        bool last_value = bit_.GetCurrentState();
         if ((value == last_value) && defined_) return;
-        if (value) {
-            *memory_ |= mask_;
-            //! @TODO(balazs.racz) FIXME
-            //nmranet_event_produce(node, event_on_, EVENT_STATE_VALID);
-            //nmranet_event_produce(node, event_off_, EVENT_STATE_INVALID);
-        } else {
-            *memory_ &= ~mask_;
-            //! @TODO(balazs.racz) FIXME
-            //nmranet_event_produce(node, event_on_, EVENT_STATE_INVALID);
-            //nmranet_event_produce(node, event_off_, EVENT_STATE_VALID);
-        }
+        bit_.SetState(value);
+        pc_.SendEventReport(&automata_write_helper, &notify_);
+        notify_.WaitForNotification();
+        notify_.Reset();
+        defined_ = true;
     }
-
-  virtual void HandleEvent(uint64_t event) {
-    defined_ = true;
-    MemoryToggleEventHandler<uint8_t>::HandleEvent(event);
-  }
 
  private:
+  NMRAnet::MemoryBit<uint8_t> bit_;
+  NMRAnet::BitEventPC pc_;
   // This bit is true if we've already seen an event that defines this bit.
   bool defined_;
 };
@@ -234,14 +225,14 @@ class EventBlockBit : public ReadWriteBit {
     delete[] storage_;
   }
 
-  virtual bool Read(uint16_t arg, node_t node, Automata* aut) {
+  virtual bool Read(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut) {
     return handler_->Get(arg);
   }
 
-  virtual void Write(uint16_t arg, node_t node, Automata* aut, bool value) {
-    SyncNotifiable n;
-    return handler_->Set(arg, value, &automata_write_helper, &n);
-    n.WaitForNotification();
+  virtual void Write(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut, bool value) {
+    return handler_->Set(arg, value, &automata_write_helper, &notify_);
+    notify_.WaitForNotification();
+    notify_.Reset();
   }
 
  private:
