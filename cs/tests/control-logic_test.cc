@@ -7,14 +7,18 @@
 #include "automata_tests_helper.hxx"
 #include "../automata/control-logic.hxx"
 
-#include "utils/test_main.hxx"
+using ::testing::HasSubstr;
 
 namespace automata {
 
 class LogicTest : public AutomataNodeTests {
  protected:
   LogicTest()
-      : block_(&brd, BRACZ_LAYOUT|0xC000, "blk") {}
+      : block_(&brd, BRACZ_LAYOUT|0xC000, "blk") {
+    // We ignore all event messages on the CAN bus. THese are checked with more
+    // high-level constructs.
+    EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X195B422AN"))).Times(AtLeast(0));
+  }
 
   const EventBlock::Allocator& alloc() { return *block_.allocator(); }
 
@@ -70,7 +74,7 @@ TEST_F(LogicTest, TestFramework) {
   DefAut(testaut, brd, {
     DefCopy(ImportVariable(input), ImportVariable(&ev_var));
   });
-  EventListener listen_event(ev_var);
+  EventListener listen_event(node_, ev_var);
   SetupRunner(&brd);
   Run();
   Run();
@@ -113,8 +117,8 @@ TEST_F(LogicTest, TestFramework3) {
   std::unique_ptr<GlobalVariable> hh(alloc().Allocate("testbit2"));
   static GlobalVariable* v = h.get();
   static GlobalVariable* w = hh.get();
-  EventListener ldst(*v);
-  EventListener lsrc(*w);
+  EventListener ldst(node_, *v);
+  EventListener lsrc(node_, *w);
   DefAut(testaut2, brd, {
     DefCopy(ImportVariable(*w), ImportVariable(v));
   });
@@ -149,9 +153,9 @@ TEST_F(LogicTest, SimulatedOccupancy_SingleShortPiece) {
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(after.side_a());
 
-  EventListener sim_occ(*piece.simulated_occupancy_);
-  EventListener seen_train(*piece.tmp_seen_train_in_next_);
-  EventListener released(*piece.side_b()->out_route_released);
+  EventListener sim_occ(node_, *piece.simulated_occupancy_);
+  EventListener seen_train(node_, *piece.tmp_seen_train_in_next_);
+  EventListener released(node_, *piece.side_b()->out_route_released);
 
   DefAut(strategyaut, brd, { piece.SimulateAllOccupancy(this); });
 
@@ -194,8 +198,8 @@ TEST_F(LogicTest, SimulatedOccupancy_MultipleShortPiece) {
   piece.side_b()->Bind(piece2.side_a());
   piece2.side_b()->Bind(after.side_a());
 
-  EventListener sim_occ(*piece.simulated_occupancy_);
-  EventListener sim_occ2(*piece2.simulated_occupancy_);
+  EventListener sim_occ(node_, *piece.simulated_occupancy_);
+  EventListener sim_occ2(node_, *piece2.simulated_occupancy_);
 
   DefAut(strategyaut, brd, {
     piece.SimulateAllOccupancy(this);
@@ -269,10 +273,10 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
   piece3.side_b()->Bind(piece4.side_a());
   piece4.side_b()->Bind(after.side_a());
 
-  EventListener sim_occ(*piece.simulated_occupancy_);
-  EventListener sim_occ2(*piece2.simulated_occupancy_);
-  EventListener sim_occ3(*piece3.simulated_occupancy_);
-  EventListener sim_occ4(*piece4.simulated_occupancy_);
+  EventListener sim_occ(node_, *piece.simulated_occupancy_);
+  EventListener sim_occ2(node_, *piece2.simulated_occupancy_);
+  EventListener sim_occ3(node_, *piece3.simulated_occupancy_);
+  EventListener sim_occ4(node_, *piece4.simulated_occupancy_);
 
   DefAut(strategyaut, brd, {
     piece.SimulateAllOccupancy(this);
