@@ -199,7 +199,6 @@ public:
         bit_.SetState(value);
         pc_.SendEventReport(&automata_write_helper, &notify_);
         notify_.WaitForNotification();
-        notify_.Reset();
         defined_ = true;
     }
 
@@ -232,7 +231,6 @@ class EventBlockBit : public ReadWriteBit {
   virtual void Write(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut, bool value) {
     handler_->Set(arg, value, &automata_write_helper, &notify_);
     notify_.WaitForNotification();
-    notify_.Reset();
   }
 
  private:
