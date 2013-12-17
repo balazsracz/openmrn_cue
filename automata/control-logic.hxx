@@ -427,6 +427,12 @@ class TurnoutBase : public TurnoutInterface,
                     private OccupancyLookupInterface,
                     public virtual AutomataPlugin {
  public:
+  enum State {
+    TURNOUT_CLOSED,
+    TURNOUT_THROWN,
+    TURNOUT_DONTCARE
+  };
+
   TurnoutBase(const EventBlock::Allocator& allocator)
       : side_points_(EventBlock::Allocator(&allocator, "points", 8), this),
         side_closed_(EventBlock::Allocator(&allocator, "closed", 8), this),
@@ -447,16 +453,20 @@ class TurnoutBase : public TurnoutInterface,
             allocator.Allocate("tmp_route_setting_in_progress")) {
     directions_.push_back(Direction(&side_points_, &side_closed_,
                                     route_set_PC_.get(),
-                                    route_pending_PC_.get()));
+                                    route_pending_PC_.get(),
+                                    TURNOUT_CLOSED));
     directions_.push_back(Direction(&side_points_, &side_thrown_,
                                     route_set_PT_.get(),
-                                    route_pending_PT_.get()));
+                                    route_pending_PT_.get(),
+                                    TURNOUT_THROWN));
     directions_.push_back(Direction(&side_closed_, &side_points_,
                                     route_set_CP_.get(),
-                                    route_pending_CP_.get()));
+                                    route_pending_CP_.get(),
+                                    TURNOUT_DONTCARE));
     directions_.push_back(Direction(&side_thrown_, &side_points_,
                                     route_set_TP_.get(),
-                                    route_pending_TP_.get()));
+                                    route_pending_TP_.get(),
+                                    TURNOUT_DONTCARE));
     AddAutomataPlugin(20, NewCallbackPtr(this, &TurnoutBase::TurnoutOccupancy));
     AddAutomataPlugin(29, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(30, NewCallbackPtr(this, &TurnoutBase::TurnoutRoute));
@@ -477,12 +487,13 @@ class TurnoutBase : public TurnoutInterface,
 
   struct Direction {
     Direction(CtrlTrackInterface* f, CtrlTrackInterface* t, GlobalVariable* r,
-              GlobalVariable* rp)
-        : from(f), to(t), route(r), route_pending(rp) {}
+              GlobalVariable* rp, State state_cond)
+        : from(f), to(t), route(r), route_pending(rp), state_condition(state_cond) {}
     CtrlTrackInterface* from;
     CtrlTrackInterface* to;
     GlobalVariable* route;
     GlobalVariable* route_pending;
+    State state_condition;
   };
 
   vector<Direction> directions_;
@@ -519,32 +530,34 @@ class TurnoutBase : public TurnoutInterface,
 
 class FixedTurnout : public TurnoutBase {
  public:
-  enum State {
-    TURNOUT_CLOSED,
-    TURNOUT_THROWN
-  };
-
   FixedTurnout(State state, const EventBlock::Allocator& allocator)
-      : TurnoutBase(allocator) {
-    AddAutomataPlugin(10, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
+      : TurnoutBase(allocator), state_(state) {
+    AddAutomataPlugin(9, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
 
     directions_.clear();
     directions_.push_back(Direction(&side_closed_, &side_points_,
                                     route_set_CP_.get(),
-                                    route_pending_CP_.get()));
+                                    route_pending_CP_.get(),
+                                    TURNOUT_DONTCARE));
     directions_.push_back(Direction(&side_thrown_, &side_points_,
                                     route_set_TP_.get(),
-                                    route_pending_TP_.get()));
+                                    route_pending_TP_.get(),
+                                    TURNOUT_DONTCARE));
     switch (state) {
       case TURNOUT_CLOSED:
         directions_.push_back(Direction(&side_points_, &side_closed_,
                                         route_set_PC_.get(),
-                                        route_pending_PC_.get()));
+                                        route_pending_PC_.get(),
+                                        TURNOUT_CLOSED));
         break;
       case TURNOUT_THROWN:
         directions_.push_back(Direction(&side_points_, &side_thrown_,
                                         route_set_PT_.get(),
-                                        route_pending_PT_.get()));
+                                        route_pending_PT_.get(),
+                                        TURNOUT_THROWN));
+        break;
+      case TURNOUT_DONTCARE:
+        assert(false);
         break;
     }
   }

@@ -168,6 +168,7 @@ map<int, string>* GetOffsetMap() {
 
 }  // namespace automata
 
+namespace NMRAnet {
 const string& GetNameForOffset(int ofs) {
   static string empty;
   automata::OfsMap::const_iterator it = automata::g_ofs_map->find(ofs);
@@ -176,6 +177,7 @@ const string& GetNameForOffset(int ofs) {
   } else {
     return empty;
   }
+}
 }
 
 namespace automata {

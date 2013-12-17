@@ -57,7 +57,9 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
 typedef std::initializer_list<GlobalVariable*> MutableVarList;
 typedef std::initializer_list<const GlobalVariable*> ConstVarList;
 
-void SimulateRoute(Automata* aut, CtrlTrackInterface* before,
+void SimulateRoute(Automata* aut,
+                   OpCallback* condition_cb,
+                   CtrlTrackInterface* before,
                    CtrlTrackInterface* after,
                    LocalVariable* any_route_setting_in_progress,
                    LocalVariable* current_route_setting_in_progress,
@@ -88,6 +90,7 @@ void SimulateRoute(Automata* aut, CtrlTrackInterface* before,
   // We reject the request immediately if there is another route setting in
   // progress.
   Def()
+      .RunCallback(condition_cb)
       .IfReg1(*in_try_set_route)
       .IfReg1(*any_route_setting_in_progress)
       .ActReg1(in_route_set_failure)
@@ -95,6 +98,7 @@ void SimulateRoute(Automata* aut, CtrlTrackInterface* before,
       .ActReg0(in_try_set_route);
   // We also reject if the outgoing route request hasn't returned to zero yet.
   Def()
+      .RunCallback(condition_cb)
       .IfReg1(*in_try_set_route)
       .IfReg1(*out_try_set_route)
       .ActReg1(in_route_set_failure)
@@ -102,6 +106,7 @@ void SimulateRoute(Automata* aut, CtrlTrackInterface* before,
       .ActReg0(in_try_set_route);
   // Check if we can propagate the route setting request.
   Def()
+      .RunCallback(condition_cb)
       .IfReg1(*in_try_set_route)
       .IfReg0(*any_route_setting_in_progress)
       .Rept(&Automata::Op::IfReg0, const_current_route)
@@ -117,6 +122,7 @@ void SimulateRoute(Automata* aut, CtrlTrackInterface* before,
       // and propagate request
       .ActReg1(out_try_set_route);
   Def()
+      .RunCallback(condition_cb)
       .IfReg1(*in_try_set_route)
       .IfReg0(*any_route_setting_in_progress)
       // so we failed to propagate; reject the request.
@@ -154,10 +160,10 @@ void StraightTrack::SimulateAllRoutes(Automata* aut) {
       .ActReg0(aut->ImportVariable(route_set_ba_.get()))
       .ActReg0(aut->ImportVariable(route_pending_ab_.get()))
       .ActReg0(aut->ImportVariable(route_pending_ba_.get()));
-  SimulateRoute(aut, side_a(), side_b(), any_route_setting_in_progress,
+  SimulateRoute(aut, nullptr, side_a(), side_b(), any_route_setting_in_progress,
                 aut->ImportVariable(route_pending_ab_.get()),
                 {route_set_ab_.get()}, {route_set_ba_.get()});
-  SimulateRoute(aut, side_b(), side_a(), any_route_setting_in_progress,
+  SimulateRoute(aut, nullptr, side_b(), side_a(), any_route_setting_in_progress,
                 aut->ImportVariable(route_pending_ba_.get()),
                 {route_set_ba_.get()}, {route_set_ab_.get()});
 }
@@ -174,10 +180,10 @@ void StraightTrackWithDetector::DetectorRoute(Automata* aut) {
   // We use the detector as a conflicting route. This will prevent a route
   // being set across a straight track (in either direction) if the detector
   // shows not empty.
-  SimulateRoute(aut, side_a(), side_b(), any_route_setting_in_progress,
+  SimulateRoute(aut, nullptr, side_a(), side_b(), any_route_setting_in_progress,
                 aut->ImportVariable(route_pending_ab_.get()),
                 {route_set_ab_.get()}, {route_set_ba_.get(), detector_});
-  SimulateRoute(aut, side_b(), side_a(), any_route_setting_in_progress,
+  SimulateRoute(aut, nullptr, side_b(), side_a(), any_route_setting_in_progress,
                 aut->ImportVariable(route_pending_ba_.get()),
                 {route_set_ba_.get()}, {route_set_ab_.get(), detector_});
 }
@@ -337,7 +343,7 @@ void SignalPiece::SignalRoute(Automata* aut) {
       .ActReg0(aut->ImportVariable(route_pending_ba_.get()));
 
   // In direction b->a the signal track is completely normal.
-  SimulateRoute(aut, side_b(), side_a(), any_route_setting_in_progress,
+  SimulateRoute(aut, nullptr, side_b(), side_a(), any_route_setting_in_progress,
                 aut->ImportVariable(route_pending_ba_.get()),
                 {route_set_ba_.get()}, {route_set_ab_.get()});
 
@@ -420,6 +426,8 @@ void FixedTurnout::FixTurnoutState(Automata* aut) {
     Def().ActReg0(turnoutstate);
   } else if (state_ == TURNOUT_THROWN) {
     Def().ActReg1(turnoutstate);
+  } else {
+    assert(0);
   }
 }
 
@@ -451,6 +459,14 @@ void TurnoutBase::PopulateAnyRouteSet(Automata* aut) {
   }
 }
 
+void TurnoutDirectionCheck(const LocalVariable& state, bool set, Automata::Op* op) {
+  if (set) {
+    op->IfReg1(state);
+  } else {
+    op->IfReg0(state);
+  }
+}
+
 void TurnoutBase::TurnoutRoute(Automata* aut) {
   LocalVariable* any_route_setting_in_progress =
       aut->ImportVariable(tmp_route_setting_in_progress_.get());
@@ -459,9 +475,26 @@ void TurnoutBase::TurnoutRoute(Automata* aut) {
     Def().IfState(StInit).ActReg0(aut->ImportVariable(d.route)).ActReg0(
         aut->ImportVariable(d.route_pending));
   }
+  const LocalVariable& state = aut->ImportVariable(*turnout_state_);
+  // Passes if state == 0 (closed).
+  auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+  // Passes if state == 1 (thrown).
+  auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
 
   for (const auto& d : directions_) {
-    SimulateRoute(aut, d.from, d.to, any_route_setting_in_progress,
+    OpCallback* cb = nullptr;
+    switch(d.state_condition) {
+      case TURNOUT_CLOSED:
+        cb = &closed_condition;
+        break;
+      case TURNOUT_THROWN:
+        cb = &thrown_condition;
+        break;
+      case TURNOUT_DONTCARE:
+        cb = nullptr;
+        break;
+    }
+    SimulateRoute(aut, cb, d.from, d.to, any_route_setting_in_progress,
                   aut->ImportVariable(d.route_pending),
                   {d.route, any_route_set_.get()}, {});
   }

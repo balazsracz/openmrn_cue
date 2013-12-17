@@ -1097,6 +1097,8 @@ TEST_F(LogicTest, FixedTurnout) {
 
   // Give them green.
   LOG(INFO, "Giving green to left train");
+  EXPECT_TRUE(QueryVar(*turnout_l.b.turnout_state_));
+  EXPECT_FALSE(QueryVar(*turnout_r.b.turnout_state_));
   SetVar(*left.b.request_green(), true);
   Run(5);
   EXPECT_TRUE(left.signal_green.Get());
