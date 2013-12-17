@@ -27,6 +27,7 @@ public:
   virtual ~ReadWriteBit() {}
   virtual bool Read(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut) = 0;
   virtual void Write(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut, bool value) = 0;
+  virtual void Initialize(NMRAnet::AsyncNode* node) {}
 };
 
 
@@ -134,6 +135,9 @@ public:
 
     //! Do the program-specific part of the initialization.
     void CreateVarzAndAutomatas();
+
+    /// Sends out query messages for every bit.
+    void InitializeState();
 
   //===============Accessors for testing================
 

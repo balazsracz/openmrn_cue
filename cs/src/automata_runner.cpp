@@ -184,8 +184,11 @@ public:
           pc_(&bit_),
           defined_(false) {
         if (0) fprintf(stderr,"event bit create on node %p\n", node);
-        pc_.SendQuery(&automata_write_helper, &notify_);
-        notify_.WaitForNotification();
+    }
+
+    virtual void Initialize(NMRAnet::AsyncNode*) {
+      pc_.SendQuery(&automata_write_helper, &notify_);
+      notify_.WaitForNotification();
     }
 
     virtual bool Read(uint16_t, NMRAnet::AsyncNode*, Automata* aut) {
@@ -566,6 +569,15 @@ void AutomataRunner::RunAllAutomata() {
   }
 }
 
+void AutomataRunner::InitializeState() {
+  while (openmrn_node_ && !openmrn_node_->is_initialized()) {
+    usleep(1000);
+  }
+  for (auto it : declared_bits_) {
+    it.second->Initialize(openmrn_node_);
+  }
+}
+
 static long long automata_tick_callback(void* runner, void*) {
     ASSERT(runner);
     static int count = 0;
@@ -579,6 +591,7 @@ static long long automata_tick_callback(void* runner, void*) {
 
 void* automata_thread(void* arg) {
     AutomataRunner* runner = (AutomataRunner*)arg;
+    runner->InitializeState();
     runner->automata_timer_ = os_timer_create(&automata_tick_callback, runner, NULL);
     os_timer_start(runner->automata_timer_, MSEC_TO_NSEC(100));  // 10 HZ
     while(1) {
