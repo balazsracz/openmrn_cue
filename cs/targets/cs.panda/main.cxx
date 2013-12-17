@@ -203,7 +203,7 @@ int appl_main(int argc, char* argv[])
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
-    BlinkerFlow blinker(&g_node);
+    //BlinkerFlow blinker(&g_node);
     g_if_can.AddWriteFlows(1, 1);
     g_if_can.set_alias_allocator(
         new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
