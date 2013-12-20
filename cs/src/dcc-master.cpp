@@ -187,6 +187,13 @@ const struct const_loco_db_t const_lokdb[] = {
   // id 16
   { 38, { 0,  0xff, }, { LIGHT,  0xff, },
     "BDe 4/4 1460", MARKLIN_OLD | PUSHPULL },
+  // id 17
+  { 48, { 0,  0xff, }, { LIGHT,  0xff, },
+    "Re 6/6 11665", MARKLIN_NEW },
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
 };
 
@@ -273,6 +280,7 @@ void UpdateByteCounter();
 struct dcc_master_state_t {
   uint8_t free_packet_count;
   unsigned alive : 1;
+  unsigned enabled : 1;
   unsigned service_mode : 1;
   unsigned service_mode_request : 2;
   unsigned service_mode_had_ack : 1;
@@ -374,6 +382,14 @@ static void DccLoop_HandlePacketToMaster(const PacketBase& can_buf) {
     }
     case CANCMD_NOACK: {
       dcc_master.service_mode_had_noack = 1;
+      break;
+    }
+    case CANCMD_DISABLE: {
+      dcc_master.enabled = 0;
+      break;
+    }
+    case CANCMD_ENABLE: {
+      dcc_master.enabled = 1;
       break;
     }
     default:
@@ -1029,6 +1045,7 @@ static void HandleServiceMode() {
 void DccLoop_ProcessIO() {
   uint8_t log_pkt[6];
   if (dcc_master.alive &&
+      dcc_master.enabled &&
       dcc_master.service_mode) {
     log_pkt_to_host_ = CDST_HOST;
     uint8_t tmp = dcc_master.service_mode_state;
@@ -1044,6 +1061,7 @@ void DccLoop_ProcessIO() {
     }
   }
   if (dcc_master.alive &&
+      dcc_master.enabled &&
       !dcc_master.service_mode &&
       dcc_master.free_packet_count > 0) {
 
@@ -1119,6 +1137,7 @@ void DccLoop_Timer() {
 }
 
 void DccLoop_Init() {
+  dcc_master.enabled = 1;
   uint8_t i;
   for (i = 0; i < DCC_NUM_LOCO /* const_lokdb[i].address*/; ++i) {
     dcc_master_loco[i].address = const_lokdb[i].address;

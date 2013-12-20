@@ -58,6 +58,8 @@ struct cmd_t {
 #define CANCMD_RESET 13
 #define CANCMD_DEADBAND 15
 #define CANCMD_BREAK 17
+#define CANCMD_DISABLE 19
+#define CANCMD_ENABLE 21
 
 // log values are defined in usb_proto.h
 
