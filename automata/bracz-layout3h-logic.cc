@@ -82,6 +82,7 @@ PhysicalSignal B475(&b7.InBrownGrey, &b7.RelGreen);
 
 PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
 PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
+PhysicalSignal XXB2(&b1.InOraRed, &b1.RelBlue);
 
 
 int next_temp_bit = 480;
@@ -143,6 +144,9 @@ StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
                                                               "YYC23", 80));
 StandardBlock Block_XXB1(&brd, &XXB1,
                          EventBlock::Allocator(logic.allocator(), "XXB1", 80));
+StandardBlock Block_XXB2(&brd, &XXB2,
+                         EventBlock::Allocator(logic.allocator(), "XXB2", 80));
+
 
 #define BLOCK_SEQUENCE \
   &Block_XXB1, &Block_A301, &Block_WWB14, &Block_B475, &Block_YYC23, &Block_XXB1
