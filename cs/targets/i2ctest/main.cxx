@@ -52,29 +52,48 @@ class TestBlinker : public ControlFlow {
   }
 
   ControlFlowAction GetHardware() {
-    return Allocate(g_i2c_driver.allocator(), ST(SendMessage));
+    return Allocate(g_i2c_driver.allocator(), ST(StartReceive));
   }
 
-  ControlFlowAction SendMessage() {
+  ControlFlowAction StartReceive() {
+    g_i2c_driver.StartRead(0x24, 0, 1, this);
+    return WaitAndCall(ST(ReadDone));
+  }
+
+  ControlFlowAction ReadDone() {
+    if (g_i2c_driver.success()) {
+      data_read_ = g_i2c_driver.read_buffer()[0];
+      return YieldAndCall(ST(StartSend));
+    } else {
+      data_read_ = 0;
+      g_i2c_driver.Release();
+      return YieldAndCall(ST(GetHardware));
+    }
+  }
+
+  ControlFlowAction StartSend() {
     static int count = 0;
     uint8_t* buf = g_i2c_driver.write_buffer();
-    buf[0] = (count++ >> 9) & 1 ? 1 : 2;
+    buf[0] = (count++ >> 9) & 1;
+    resetblink(buf[0] & 1);
+    if (data_read_ & 4) buf[0] |= 2;
     buf[1] = 0;
     g_i2c_driver.StartWrite(0x24, 2, this);
     return WaitAndCall(ST(WriteDone));
   }
 
   ControlFlowAction WriteDone() {
-    if (g_i2c_driver.success()) {
+    /*if (g_i2c_driver.success()) {
       resetblink(0);
     } else {
       resetblink(1);
-    }
+      }*/
     g_i2c_driver.Release();
     return Sleep(&sleep_, MSEC_TO_NSEC(1), ST(GetHardware));
   }
 
  private:
+  uint8_t data_read_;
   SleepData sleep_;
 };
 

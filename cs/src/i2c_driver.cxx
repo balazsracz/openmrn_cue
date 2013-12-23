@@ -182,6 +182,7 @@ void I2CDriver::isr() {
   }
   case 0x58: // Data received and nack sent.
   {
+    read_bytes_[read_offset_++] = dev()->I2DAT;
     // End of transfer.
     TransferDoneFromISR(true);
     break;
