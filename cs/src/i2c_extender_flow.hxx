@@ -2,10 +2,15 @@
 #define _BRACZ_TRAIN_I2C_EXTENDER_FLOW_HXX_
 
 #include "src/i2c_driver.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
 
-extern Executor g_executor;
 extern I2CDriver g_i2c_driver;
-extern NMRAnet::AsyncNode g_node;
+
+extern "C" { void resetblink(uint32_t pattern); }
+
+namespace NMRAnet {
+class AsyncNode;
+}
 
 static const int DATA_REPEAT_COUNT = 3;
 static NMRAnet::WriteHelper g_i2c_write_helper;
@@ -15,7 +20,13 @@ public:
   I2cExtenderBoard(uint8_t address, Executor *executor,
                    NMRAnet::AsyncNode *node)
       : ControlFlow(executor, nullptr), address_(address),
-        bit_pc_(node, BRACZ_LAYOUT | (address << 8), io_data_, 24) {
+        bit_pc_(node, BRACZ_LAYOUT | (address << 8), &io_store_, 24) {
+    io_store_ = 1;
+    // This code only works for little-endian otherwise the bitrange-eventpc
+    // will export different bytes than what we read from i2c.
+    HASSERT(io_data_[0] == 1);
+    io_store_ = 0;
+    memset(signal_data_, 1, sizeof(signal_data_));
     StartFlowAt(ST(GetHardware));
   }
 
@@ -47,6 +58,7 @@ public:
       return YieldAndCall(ST(StartSend));
     } else {
       // Failure to read, start over counting and try again later.
+      resetblink(0x80000A02);
       data_count_ = 0;
       g_i2c_driver.Release();
       return YieldAndCall(ST(GetHardware));
@@ -66,17 +78,19 @@ public:
   }
 
   ControlFlowAction StartSend() {
-    static int count = 0;
     uint8_t *buf = g_i2c_driver.write_buffer();
     buf[0] = io_data_[0];
     buf[1] = io_data_[1];
-    g_i2c_driver.StartWrite(address_, 2, this);
+    memcpy(buf + 2, signal_data_, sizeof(signal_data_));
+    g_i2c_driver.StartWrite(address_, 2 + sizeof(signal_data_), this);
     return WaitAndCall(ST(WriteDone));
   }
 
   ControlFlowAction WriteDone() {
-    if (!g_i2c_driver.success()) {
-      resetblink(1);
+    if (g_i2c_driver.success()) {
+      resetblink(0);
+    } else {
+      resetblink(0x80000A02);
     }
     g_i2c_driver.Release();
     return CallImmediately(ST(GetHardware));
@@ -94,8 +108,14 @@ private:
   uint8_t data_count_;
   // Stable version of the data. offset 0-1 is outgoing bit-based data; offset
   // 2 is the stable incoming data.
-  uint8_t io_data_[3];
-  BitRangeEventPC bit_pc_;
+  union {
+    uint8_t io_data_[4];
+    uint32_t io_store_;
+  };
+
+  uint8_t signal_data_[8];
+
+  NMRAnet::BitRangeEventPC bit_pc_;
 };
 
 #endif // _BRACZ_TRAIN_I2C_EXTENDER_FLOW_HXX_
