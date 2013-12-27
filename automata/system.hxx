@@ -156,6 +156,9 @@ public:
 
     void ClearUsedVariables();
 
+    static void RenderImportVariable(string* output,
+                                     const GlobalVariable& var, int local_id);
+
 protected:
     virtual void Body() = 0;
 
@@ -171,7 +174,6 @@ protected:
 
 private:
     friend class Op;
-    void RenderImportVariable(const GlobalVariable& var, int local_id);
 
     map<const GlobalVariable*, LocalVariable> used_variables_;
     string name_;
