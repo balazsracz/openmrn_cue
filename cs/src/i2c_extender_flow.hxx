@@ -20,7 +20,8 @@ public:
   I2cExtenderBoard(uint8_t address, Executor *executor,
                    NMRAnet::AsyncNode *node)
       : ControlFlow(executor, nullptr), address_(address),
-        bit_pc_(node, BRACZ_LAYOUT | (address << 8), &io_store_, 24) {
+        bit_pc_(node, BRACZ_LAYOUT | (address << 8), &io_store_, 24),
+        signal_c_(node, (BRACZ_LAYOUT & (~0xFFFFFF)) | (address << 16), signal_data_, sizeof(signal_data_)) {
     io_store_ = 1;
     // This code only works for little-endian otherwise the bitrange-eventpc
     // will export different bytes than what we read from i2c.
@@ -116,6 +117,7 @@ private:
   uint8_t signal_data_[8];
 
   NMRAnet::BitRangeEventPC bit_pc_;
+  NMRAnet::ByteRangeEventC signal_c_;
 };
 
 #endif // _BRACZ_TRAIN_I2C_EXTENDER_FLOW_HXX_
