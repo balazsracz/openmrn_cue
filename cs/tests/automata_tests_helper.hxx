@@ -34,6 +34,8 @@ class GMockBit : public ReadWriteBit {
  public:
   MOCK_METHOD3(Read, bool(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut));
   MOCK_METHOD4(Write, void(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut, bool value));
+  MOCK_METHOD1(GetState, uint8_t(uint16_t arg));
+  MOCK_METHOD2(SetState, void(uint16_t arg, uint8_t state));
 };
 
 

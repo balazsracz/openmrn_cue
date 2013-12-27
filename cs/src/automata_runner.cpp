@@ -135,6 +135,15 @@ void AutomataRunner::Run() {
                 }
                 delete declared_bits_[offset];
                 declared_bits_[offset] = newbit;
+            } else if (insn == _ACT_SET_VAR_VALUE) {
+                arg = load_insn();
+                int offset = arg >> 5;
+                int var = arg & 31;
+                arg = load_insn();
+                if (ip_ > endcond) {
+                    diewith(CS_DIE_AUT_TWOBYTEFAIL);
+                }
+                GetBit(var)->SetState(offset, arg);
             } else if ((insn & _ACT_MISCA_MASK) == _ACT_MISCA_BASE) {
 		if (ip_ >= endcond) {
 		    diewith(CS_DIE_AUT_TWOBYTEFAIL);
@@ -538,6 +547,18 @@ void AutomataRunner::eval_action2(insn_t insn, insn_t arg) {
     case _ACT_READ_GLOBAL_ASPECT: {
 	aut_signal_aspect_ = get_signal_aspect(arg);
 	return;
+    }
+    case _ACT_SET_VAR_VALUE_ASPECT: {
+        unsigned offset = arg >> 5;
+        unsigned var = arg & 31;
+        GetBit(var)->SetState(offset, aut_signal_aspect_);
+        return;
+    }
+    case _ACT_GET_VAR_VALUE_ASPECT: {
+        unsigned offset = arg >> 5;
+        unsigned var = arg & 31;
+        aut_signal_aspect_ = GetBit(var)->GetState(offset);
+        return;
     }
     }
     diewith(CS_DIE_AUT_HALT);

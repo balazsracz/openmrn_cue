@@ -27,6 +27,8 @@ public:
   virtual ~ReadWriteBit() {}
   virtual bool Read(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut) = 0;
   virtual void Write(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut, bool value) = 0;
+  virtual uint8_t GetState(uint16_t arg) { HASSERT(0); return 0; }
+  virtual void SetState(uint16_t arg, uint8_t state) { HASSERT(0); }
   virtual void Initialize(NMRAnet::AsyncNode* node) {}
 };
 

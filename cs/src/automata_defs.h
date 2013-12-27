@@ -124,6 +124,20 @@
 // event Y, replacing the last bbb+1 bytes. Then bbb+1 bytes will follow for the
 // new content in big-endian form.
 #define _ACT_SET_EVENTID (_ACT_MISCA_BASE | 5)
+// Sets a byte-valued variable.
+// Arguments: 0bfffvvvvv <value>, where vvvvv is the local variable ID
+// (imported variable), fff is the offset which to set to, and value is the
+// value to set it to.
+#define _ACT_SET_VAR_VALUE (_ACT_MISC_BASE | 3)
+// Sets a byte-valued variable to the signal aspect value.  Argument:
+// 0bfffvvvvv, where vvvvv is the local variable ID (imported variable), fff is
+// the offset which to set to.
+#define _ACT_SET_VAR_VALUE_ASPECT (_ACT_MISCA_BASE | 6)
+// Reads a byte-valued variable into the signal aspect accumulator.  Argument:
+// 0bfffvvvvv, where vvvvv is the local variable ID (imported variable), fff is
+// the offset which to read from.
+#define _ACT_GET_VAR_VALUE_ASPECT (_ACT_MISCA_BASE | 7)
+
 
 // 0b0011.....
 #define _ACT_MISCA_BASE 0x30

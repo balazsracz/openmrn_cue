@@ -196,6 +196,43 @@ TEST_F(AutomataTests, DefIfReg0) {
   runner_->RunAllAutomata();
 }
 
+TEST_F(AutomataTests, SetValue) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), SetState(3, 0xaa));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetValue(wv, 3, 0xaa);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, SetValueFromAspect) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), SetState(2, 0x55));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetAspect(0x55).ActSetValueFromAspect(wv, 2);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, GetValueFromAspect) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), GetState(4)).WillOnce(Return(0x5a));
+  EXPECT_CALL(wb.mock(), SetState(2, 0x5a));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetAspect(0x55).ActGetValueToAspect(*wv, 4).ActSetValueFromAspect(wv, 2);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
 TEST_F(AutomataTests, CopyAutomataBoard) {
   automata::Board brd;
   static FakeBit mbit1(this);
@@ -416,7 +453,6 @@ TEST_F(AutomataTests, EventVar) {
   SetupRunner(&brd);
   runner_->RunAllAutomata();
 }
-
 
 class CanDebugPipeMember : public PipeMember {
  public:

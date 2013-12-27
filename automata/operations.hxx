@@ -159,6 +159,40 @@ public:
         return *this;
     }
 
+  Op& ActSetAspect(uint8_t value) {
+    acts_.push_back(_ACT_SET_ASPECT);
+    acts_.push_back(value);
+    return *this;
+  }
+
+  Op& ActSetValue(Automata::LocalVariable* var, unsigned offset, uint8_t value) {
+    acts_.push_back(_ACT_SET_VAR_VALUE);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var->GetId() & 31);
+    acts_.push_back(v);
+    acts_.push_back(value);
+    return *this;
+  }
+
+  Op& ActSetValueFromAspect(Automata::LocalVariable* var, unsigned offset) {
+    acts_.push_back(_ACT_SET_VAR_VALUE_ASPECT);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var->GetId() & 31);
+    acts_.push_back(v);
+    return *this;
+  }
+
+  Op& ActGetValueToAspect(const Automata::LocalVariable& var, unsigned offset) {
+    acts_.push_back(_ACT_GET_VAR_VALUE_ASPECT);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var.GetId() & 31);
+    acts_.push_back(v);
+    return *this;
+  }
+
   Op& RunCallback(OpCallback* cb) {
     if (cb) cb->Run(this);
     return *this;
