@@ -50,6 +50,7 @@ extern Board brd;
 struct I2CBoard {
   I2CBoard(int a)
       : name_(StringPrintf("B%d", a-0x20)),
+        signal_offset_(0),
         LedRed(
             &brd,
             name_ + "LedRed",
@@ -143,7 +144,13 @@ struct I2CBoard {
             BRACZ_LAYOUT | (a<<8) | 0x2b,
             a & 0xf, OFS_IOB, 4) {}
 
+  int GetSignalOffset() {
+    return signal_offset_++;
+  }
+
   string name_;
+  // next free signal offset.
+  int signal_offset_;
 
   EventBasedVariable LedRed, LedGreen;
 
