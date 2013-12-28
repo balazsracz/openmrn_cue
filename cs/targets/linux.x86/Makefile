@@ -5,14 +5,13 @@ TEST_EXTRA_OBJS += error.o
 
 include $(OPENMRNPATH)/etc/prog.mk
 
-SYSLIBRARIES += -lautomata
+SUBDIRS += automata
+#SYSLIBRARIES += -lautomata
 
 $(EXECUTABLE)$(EXTENTION): lib/libautomata.a depmake
 #$(EXECUTABLE)$(EXTENTION): depmake
 
-lib/libautomata.a:
-	$(MAKE) -C ../../../automata
-	ln -sf $(realpath ../../../automata/libautomata.a) lib/
+#lib/libautomata.a:
 
 .PHONY: depmake
 
