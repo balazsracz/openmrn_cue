@@ -252,6 +252,45 @@ class EventBlockBit : public ReadWriteBit {
   std::unique_ptr<NMRAnet::BitRangeEventPC> handler_;
 };
 
+class EventByteBlock : public ReadWriteBit {
+ public:
+  EventByteBlock(NMRAnet::WriteHelper::node_type node,
+                 uint64_t event_base,
+                 size_t size)
+      : storage_(new uint8_t[size]),
+        handler_(new NMRAnet::ByteRangeEventP(node, event_base, storage_, size)) {
+      memset(&storage_[0], 0, size);
+  }
+
+  ~EventByteBlock() {
+    delete[] storage_;
+  }
+
+  virtual bool Read(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut) {
+      HASSERT(0);
+  }
+
+  virtual void Write(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut, bool value) {
+      HASSERT(0); 
+  }
+
+  virtual uint8_t GetState(uint16_t arg) {
+      return storage_[arg];
+  }
+
+  virtual void SetState(uint16_t arg, uint8_t state) {
+      if (storage_[arg] != state) {
+          storage_[arg] = state;
+          handler_->Update(arg, &automata_write_helper, &notify_);
+          notify_.WaitForNotification();
+      }
+  }
+
+ private:
+  uint8_t* storage_;
+  std::unique_ptr<NMRAnet::ByteRangeEventP> handler_;
+};
+
 ReadWriteBit* AutomataRunner::create_variable() {
     uint8_t arg1 = load_insn();
     uint8_t arg2 = load_insn();
@@ -267,6 +306,9 @@ ReadWriteBit* AutomataRunner::create_variable() {
     case 1: {
         uint16_t size = ((client & 7) << 8) | arg2;
         return new EventBlockBit(openmrn_node_, aut_eventids_[0], size);
+    }
+    case 2: {
+        return new EventByteBlock(openmrn_node_, aut_eventids_[0], arg2);
     }
     default:
         diewith(CS_DIE_UNSUPPORTED);
