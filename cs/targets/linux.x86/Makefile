@@ -8,7 +8,7 @@ include $(OPENMRNPATH)/etc/prog.mk
 SUBDIRS += automata
 #SYSLIBRARIES += -lautomata
 
-$(EXECUTABLE)$(EXTENTION): lib/libautomata.a depmake
+$(EXECUTABLE)$(EXTENTION): lib/libautomata.a logic-demo.o depmake
 #$(EXECUTABLE)$(EXTENTION): depmake
 
 #lib/libautomata.a:
@@ -18,15 +18,19 @@ $(EXECUTABLE)$(EXTENTION): lib/libautomata.a depmake
 #depmake:
 #	make -C $(OPENMRNPATH)/targets/$(TARGET) all
 
-rr-crossing.c : rr-crossing.cout
+OBJS += logic-demo.o
 
-.PHONY: rr-crossing.cout
+logic-demo.o: logic-demo.cout
+	$(CC) $(CFLAGS) -x c $< -o $@
+	$(CC) -MM $(CFLAGS) -x c $< > $*.d
 
-rr-crossing.cout :
-	+$(MAKE) -C $(APP_PATH)/../automata rr-crossing.cout
-	cp -f $(APP_PATH)/../automata/rr-crossing.cout $@
+.PHONY: logic-demo.cout
+
+logic-demo.cout:
+	+$(MAKE) -C $(APP_PATH)/../automata logic-demo.cout
+	ln -sf $(APP_PATH)/../automata/logic-demo.cout $@
 
 cleangen:
-	rm -f rr-crossing.cout
+	rm -f logic-demo.c
 
-veryclean clean: cleangen
+veryclean: cleangen
