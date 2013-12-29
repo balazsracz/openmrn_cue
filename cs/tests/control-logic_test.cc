@@ -1291,4 +1291,98 @@ TEST_F(LogicTest, DISABLED_100trainz) {
   }
 }
 
+TEST_F(LogicTest, Magnets) {
+  FakeBit v0s0(this);
+  FakeBit v0s1(this);
+  FakeBit v1s0(this);
+  FakeBit v1s1(this);
+
+  FakeBit cmd0(this);
+  FakeBit cmd1(this);
+
+  MagnetCommandAutomata aut(&brd, alloc());
+  MagnetDef def0(&aut, "v0", &v0s0, &v0s1, cmd0);
+  MagnetDef def1(&aut, "v1", &v1s0, &v1s1, cmd1);
+
+  v0s0.Set(true);
+  v1s1.Set(true);
+
+  cmd0.Set(false);
+  cmd1.Set(false);
+
+  SetupRunner(&brd);
+  Run(2);
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(5);  // adds one tick
+  // No command
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+  
+  cmd1.Set(true);
+  Run(2);
+  // Tick is not done yet.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // Tick is here, command taken
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_TRUE(v1s1.Get());
+
+  Run(2);
+  // Next tick not here yet
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_TRUE(v1s1.Get());
+
+  Run(3);
+  // Next tick: turns off signal
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  // Now we command both together.
+  cmd0.Set(true);
+  cmd1.Set(false);
+
+  Run();
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // First signal comes.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_TRUE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // second signal comes.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_TRUE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // All done.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+}
+
 }  // namespace automata

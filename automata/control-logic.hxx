@@ -587,6 +587,38 @@ class FixedTurnout : public TurnoutBase {
   }
 };
 
+class MagnetCommandAutomata;
+
+struct MagnetDef {
+  MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVariable* closed, GlobalVariable* thrown, const GlobalVariable& cmd); 
+  // This variable will be pulled when the command is zero (closed).
+  GlobalVariable* set_0;
+  // This variable will be pulled when the command is one (thrown).
+  GlobalVariable* set_1;
+
+  // This variable sets the commanded state.
+  const GlobalVariable& command;
+  // allocated by the magnetcommandautomata.
+  std::unique_ptr<GlobalVariable> current_state;
+  // Initialized by the magnetcommandautomata.
+  StateRef aut_state;
+  string name_;
+};
+
+class MagnetCommandAutomata : private virtual AutomataPlugin {
+ public:
+  MagnetCommandAutomata(Board* brd, const EventBlock::Allocator& alloc);
+
+  // Adds a magnet to this automata.
+  void AddMagnet(MagnetDef* def);
+
+ private:
+  EventBlock::Allocator alloc_;
+
+  StandardPluginAutomata aut_;
+};
+
+
 }  // namespace automata
 
 #endif  // _AUTOMATA_CONTROL_LOGIC_HXX_
