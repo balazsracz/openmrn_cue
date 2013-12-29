@@ -9,6 +9,8 @@
 
 namespace automata {
 
+__attribute__((__weak__)) int FIRST_USER_STATE_ID = 10;
+
 Board::~Board() {
 }
 
