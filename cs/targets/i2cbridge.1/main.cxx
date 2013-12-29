@@ -139,7 +139,7 @@ int appl_main(int argc, char* argv[])
 #ifdef TARGET_LPC11Cxx
   lpc11cxx::CreateCanDriver(&can_pipe);
 #endif
-    BlinkerFlow blinker(&g_node);
+  //BlinkerFlow blinker(&g_node);
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
     g_if_can.AddWriteFlows(1, 1);
