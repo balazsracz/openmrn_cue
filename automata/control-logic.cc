@@ -459,6 +459,37 @@ void TurnoutBase::PopulateAnyRouteSet(Automata* aut) {
   }
 }
 
+void TurnoutBase::ProxyDetectors(Automata* aut) {
+  LocalVariable* proxy_next = aut->ImportVariable(detector_next_.get());
+  LocalVariable* proxy_far = aut->ImportVariable(detector_far_.get());
+  const LocalVariable& closed_next = aut->ImportVariable(*side_closed_.LookupNextDetector());
+  const LocalVariable& thrown_next = aut->ImportVariable(*side_thrown_.LookupNextDetector());
+  const LocalVariable& turnout_state = aut->ImportVariable(*turnout_state_);
+  Def().IfReg0(turnout_state).IfReg0(closed_next).ActReg0(proxy_next);
+  Def().IfReg0(turnout_state).IfReg1(closed_next).ActReg1(proxy_next);
+  Def().IfReg1(turnout_state).IfReg0(thrown_next).ActReg0(proxy_next);
+  Def().IfReg1(turnout_state).IfReg1(thrown_next).ActReg1(proxy_next);
+
+  const GlobalVariable* global_detector_far = nullptr;
+  global_detector_far = side_closed_.LookupFarDetector();
+  if (global_detector_far) {
+    const LocalVariable& det = aut->ImportVariable(*global_detector_far);
+    Def().IfReg0(turnout_state).IfReg1(det).ActReg1(proxy_far);
+    Def().IfReg0(turnout_state).IfReg0(det).ActReg0(proxy_far);
+  } else {
+    Def().IfReg0(turnout_state).ActReg0(proxy_far);
+  }
+
+  global_detector_far = side_thrown_.LookupFarDetector();
+  if (global_detector_far) {
+    const LocalVariable& det = aut->ImportVariable(*global_detector_far);
+    Def().IfReg1(turnout_state).IfReg1(det).ActReg1(proxy_far);
+    Def().IfReg1(turnout_state).IfReg0(det).ActReg0(proxy_far);
+  } else {
+    Def().IfReg1(turnout_state).ActReg0(proxy_far);
+  }
+}
+
 void TurnoutDirectionCheck(const LocalVariable& state, bool set, Automata::Op* op) {
   if (set) {
     op->IfReg1(state);
@@ -508,7 +539,7 @@ void ClearAutomataVariables(Automata* aut) {
 void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
   HASSERT(def->aut_state.state != 0);
   LocalVariable* current_state = aut->ImportVariable(def->current_state.get());
-  const LocalVariable& command = aut->ImportVariable(def->command);
+  const LocalVariable& command = aut->ImportVariable(*def->command);
   LocalVariable* set_0 = aut->ImportVariable(def->set_0);
   LocalVariable* set_1 = aut->ImportVariable(def->set_1);
   Def()
@@ -560,10 +591,10 @@ void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
 }
 
-MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVariable* closed, GlobalVariable* thrown, const GlobalVariable& cmd)
-    : set_0(closed), set_1(thrown), command(cmd), aut_state(0), name_(name) {
+MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVariable* closed, GlobalVariable* thrown)
+    : set_0(closed), set_1(thrown), command(nullptr), aut_state(0), name_(name) {
   aut->AddMagnet(this);
-} 
+}
 
 
 }  // namespace automata

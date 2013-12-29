@@ -1052,6 +1052,7 @@ TEST_F(LogicTest, FixedTurnout) {
   });
 
   SetupRunner(&brd);
+  // No trains anywhere.
   end_left.detector.Set(false);
   end_right.detector.Set(false);
   left.inverted_detector.Set(true);
@@ -1173,7 +1174,6 @@ TEST_F(LogicTest, FixedTurnout) {
   Run(15);
   EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ba_));
   EXPECT_FALSE(QueryVar(*right.b.body_.route_set_ba_));
-
 }
 
 TEST_F(LogicTest, DISABLED_100trainz) {
@@ -1301,8 +1301,10 @@ TEST_F(LogicTest, Magnets) {
   FakeBit cmd1(this);
 
   MagnetCommandAutomata aut(&brd, alloc());
-  MagnetDef def0(&aut, "v0", &v0s0, &v0s1, cmd0);
-  MagnetDef def1(&aut, "v1", &v1s0, &v1s1, cmd1);
+  MagnetDef def0(&aut, "v0", &v0s0, &v0s1);
+  def0.command = &cmd0;
+  MagnetDef def1(&aut, "v1", &v1s0, &v1s1);
+  def1.command = &cmd1;
 
   v0s0.Set(true);
   v1s1.Set(true);
