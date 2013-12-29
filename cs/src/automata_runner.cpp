@@ -636,6 +636,8 @@ void AutomataRunner::InitializeState() {
   while (openmrn_node_ && !openmrn_node_->is_initialized()) {
     usleep(1000);
   }
+  // This is only called when running with_thread.
+  CreateVarzAndAutomatas();
   for (auto it : declared_bits_) {
     it.second->Initialize(openmrn_node_);
   }
@@ -684,12 +686,12 @@ AutomataRunner::AutomataRunner(NMRAnet::AsyncNode* node, const insn_t* base_poin
       request_thread_exit_(false),
       thread_exited_(false) {
     memset(imported_bits_, 0, sizeof(imported_bits_));
-    CreateVarzAndAutomatas();
     os_sem_init(&automata_sem_, 0);
     if (with_thread) {
       os_thread_create(&automata_thread_handle_, "automata", 0,
                        AUTOMATA_THREAD_STACK_SIZE, automata_thread, this);
     } else {
+      CreateVarzAndAutomatas();
       automata_thread_handle_ = 0;
       automata_timer_ = 0;
       thread_exited_ = true;
