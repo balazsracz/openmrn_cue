@@ -165,6 +165,17 @@ public:
     return *this;
   }
 
+  Op& ActUpAspect() {
+    acts_.push_back(_ACT_UP_ASPECT);
+    return *this;
+  }
+
+  Op& IfAspect(uint8_t value) {
+    ifs_.push_back(_IF_ASPECT);
+    ifs_.push_back(value);
+    return *this;
+  }
+
   Op& ActSetValue(Automata::LocalVariable* var, unsigned offset, uint8_t value) {
     acts_.push_back(_ACT_SET_VAR_VALUE);
     HASSERT(offset < 8);
