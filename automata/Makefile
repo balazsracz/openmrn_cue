@@ -2,7 +2,7 @@ CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32 -Wall
 
 OBJS=system.o control-logic.o registry.o
 
-AUTS = rr-crossing.cpp
+AUTS = rr-crossing.cpp logic-demo.cpp
 OUTPUTS = $(AUTS:.cpp=.cout)
 BINS = $(AUTS:.cpp=)
 
