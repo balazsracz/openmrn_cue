@@ -39,7 +39,7 @@ const size_t main_stack_size = 900;
 
 NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 4);
+NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 5);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2400ULL;
 const int main_priority = 0;
@@ -127,7 +127,8 @@ private:
 };
 
 I2CDriver g_i2c_driver;
-I2cExtenderBoard brd_24(0x24, &g_executor, &g_node);
+I2cExtenderBoard brd_25(0x25, &g_executor, &g_node);
+I2cExtenderBoard brd_27(0x27, &g_executor, &g_node);
 
 /** Entry point to application.
  * @param argc number of command line arguments
