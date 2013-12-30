@@ -192,9 +192,9 @@ int appl_main(int argc, char* argv[])
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
     //can_pipe1.AddPhysicalDeviceToPipe(, "can1_rx_thread", 512);
 
-    int fd = open("/dev/can0", O_RDWR);
+    /*int fd = open("/dev/can0", O_RDWR);
     ASSERT(fd >= 0);
-    dcc_can_init(fd);
+    dcc_can_init(fd);*/
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
@@ -206,8 +206,8 @@ int appl_main(int argc, char* argv[])
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
     NMRAnet::AddEventHandlerToIf(&g_if_can);
 
-    AutomataRunner runner(&g_node, automata_code);
-    resume_all_automata();
+    //AutomataRunner runner(&g_node, automata_code);
+    //resume_all_automata();
 
     g_executor.ThreadBody();
     return 0;
