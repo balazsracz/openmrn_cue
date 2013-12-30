@@ -42,6 +42,8 @@ I2CDriver::I2CDriver() : done_(nullptr) {
 #endif
   InitHardware();
   Release();
+  os_timer_start(os_timer_create(&I2CDriver::Timeout, nullptr, nullptr),
+                 MSEC_TO_NSEC(500));
 }
 
 I2CDriver *I2CDriver::instance_ = nullptr;
@@ -88,11 +90,16 @@ void I2C_IRQHandler(void) { I2CDriver::instance_->isr(); }
 void I2CDriver::InitHardware() {
   // Enables power to the i2c hardware circuit.
   LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 5);
-  LPC_SYSCON->PRESETCTRL |= 1 << 1;
+  // Pulls reset line to the i2c hardware circuit.
+  LPC_SYSCON->PRESETCTRL &= ~(1 << 1);
 
   // Sets up interrupt, but does not enable it yet.
   NVIC_DisableIRQ(IRQn());
   NVIC_SetPriority(IRQn(), 1);
+
+  // Releases reset line to the i2c hardware circuit.
+  LPC_SYSCON->PRESETCTRL |= 1 << 1;
+
 
   // Sets frequency.
   // No peripheral clock divider on the M0
@@ -104,7 +111,7 @@ void I2CDriver::InitHardware() {
   dev()->SCLH = pulse;
   
   // Clears all status requests and enables on I2C state machine.
-  dev()->I2CONCLR = CON_AA | CON_SI | CON_STO | CON_STA;
+  dev()->I2CONCLR = CON_EN | CON_AA | CON_SI | CON_STO | CON_STA;
   dev()->I2CONSET = CON_EN;
   
   // Sets output pins to I2C mode.
@@ -114,6 +121,7 @@ void I2CDriver::InitHardware() {
 }
 
 #endif
+
 
 void I2CDriver::StartTransaction() {
   NVIC_EnableIRQ(IRQn());
@@ -193,15 +201,38 @@ void I2CDriver::isr() {
   } // switch
 
   dev()->I2CONCLR = CON_SI;
+  timeout_ = 0;  // reset watchdog flag.
+
 #ifdef INTERRUPT_ACK
   LPC_VIC->Address = 0;
 #endif
 }
 
+/* static */
+long long I2CDriver::Timeout(void*, void*) {
+  if (!instance_->done_) {
+    // No transaction in progress.
+    return OS_TIMER_RESTART;
+  }
+  if (!instance_->timeout_) {
+    // We set the flag to act upon it next time.
+    instance_->timeout_ = 1;
+    return OS_TIMER_RESTART;
+  }
+  // Now: we have a timeout condition.
+  instance_->InitHardware(); // will disable IRQ.
+
+  instance_->success_ = false;
+  extern Executor g_executor;
+  g_executor.Add(instance_);
+
+  return OS_TIMER_RESTART;
+}
+
 void I2CDriver::TransferDoneFromISR(bool succeeded) {
   dev()->I2CONSET = CON_STO;
   NVIC_DisableIRQ(IRQn());
-  success_ = succeeded;
+  success_ = succeeded ? 1 : 0;
   extern Executor g_executor;
   g_executor.AddFromIsr(this);
 }

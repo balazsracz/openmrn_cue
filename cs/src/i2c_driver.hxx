@@ -38,6 +38,7 @@ public:
 
  public:
   static I2CDriver* instance_;
+  static long long Timeout(void*, void*);
   // called by the interrupt service routine.
   void isr();
 
@@ -71,8 +72,12 @@ public:
   // Next byte to receive to read_bytes_ array.
   uint8_t read_offset_;
 
-  // true if transfer succeeded.
-  bool success_;
+  // non-zero if transfer succeeded.
+  uint8_t success_ : 1;
+
+  // This is set to 1 if a timeout tick has happened since the last ISR.
+  uint8_t timeout_ : 1;
+  // NULL if no transaction is pending.
   Notifiable* done_;
   // Allocator that owns *this and hands out authorization to use the I2C
   // hardware.
