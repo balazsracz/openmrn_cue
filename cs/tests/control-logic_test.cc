@@ -63,7 +63,13 @@ class LogicTest : public AutomataNodeTests {
     StandardPluginAutomata aut_body;
   };
 
-
+  struct TestMovableTurnout {
+    TestMovableTurnout(LogicTest* test, const string& name)
+        : b(EventBlock::Allocator(&test->alloc(), name, 48, 32)),
+          aut_body(name, &test->brd, &b) {}
+    MovableTurnout b;
+    StandardPluginAutomata aut_body;
+  };
 
   Board brd;
   EventBlock block_;
@@ -1174,6 +1180,24 @@ TEST_F(LogicTest, FixedTurnout) {
   Run(15);
   EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ba_));
   EXPECT_FALSE(QueryVar(*right.b.body_.route_set_ba_));
+}
+
+
+//              ----<<station_1-----
+// ----<left---/----<<station_2-----\----<right---
+TEST_F(LogicTest, MovableTurnout) {
+  static TestDetectorBlock end_left(this, "end_left");
+  static TestDetectorBlock end_right(this, "end_right");
+  TestShortTrack mid_left(this, "mid_left");
+  TestShortTrack mid_right(this, "mid_right");
+  TestBlock left(this, "left");
+  TestBlock right(this, "right");
+  TestBlock station_lr(this, "station_lr");
+  TestBlock station_rl(this, "station_rl");
+  TestFixedTurnout turnout_l(this, FixedTurnout::TURNOUT_THROWN, "turnout_l");
+  TestFixedTurnout turnout_r(this, FixedTurnout::TURNOUT_CLOSED, "turnout_r");
+
+  
 }
 
 TEST_F(LogicTest, DISABLED_100trainz) {
