@@ -41,7 +41,7 @@ I2CDriver::I2CDriver() : done_(nullptr) {
   //NVIC_SetVector(IRQn(), irqptr[id]);
 #endif
   InitHardware();
-  allocator_.TypedRelease(this);
+  Release();
 }
 
 I2CDriver *I2CDriver::instance_ = nullptr;
@@ -49,6 +49,7 @@ I2CDriver *I2CDriver::instance_ = nullptr;
 void I2CDriver::StartWrite(uint8_t address, uint8_t len, Notifiable *done) {
   address_ = address;
   write_offset_ = 0;
+  HASSERT(len <= kMaxWriteSize);
   write_len_ = len;
   read_offset_ = 0;
   read_len_ = 0;
@@ -60,8 +61,10 @@ void I2CDriver::StartRead(uint8_t address, uint8_t write_len, uint8_t read_len,
                           Notifiable *done) {
   address_ = address;
   write_offset_ = 0;
+  HASSERT(write_len <= kMaxWriteSize);
   write_len_ = write_len;
   read_offset_ = 0;
+  HASSERT(read_len <= kMaxReadSize);
   read_len_ = read_len;
   done_ = done;
   StartTransaction();

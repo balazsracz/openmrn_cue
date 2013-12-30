@@ -42,8 +42,7 @@ public:
 
   ControlFlowAction ReadDone() {
     if (g_i2c_driver.success()) {
-      new_data_ = g_i2c_driver.read_buffer()[0];
-      if (new_data_ == io_data_[kReadByteOffset]) {
+      if (g_i2c_driver.read_buffer()[0] == new_data_) {
         // Checks if we had enough repeats to call this data stable.
         if (++data_count_ == DATA_REPEAT_COUNT) {
           return YieldAndCall(ST(UpdateIncomingData));
@@ -55,6 +54,7 @@ public:
       } else {
         // Data changed, start over counting.
         data_count_ = 0;
+        new_data_ = g_i2c_driver.read_buffer()[0];
       }
       return YieldAndCall(ST(StartSend));
     } else {
