@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 #include <map>
+
+#include "../cs/src/automata_defs.h"
+
 using std::string;
 using std::vector;
 using std::map;
@@ -111,15 +114,16 @@ protected:
     DISALLOW_COPY_AND_ASSIGN(GlobalVariable);
 };
 
+extern int FIRST_USER_STATE_ID;
 
 /** Represents a concrete automata in the current board.
  */
 class Automata {
 public:
-  Automata(const string& name) : timer_bit_(0), output_(NULL), aut(this), name_(name) {
+    Automata(const string& name) : timer_bit_(0), output_(NULL), aut(this), name_(name), next_user_state_(FIRST_USER_STATE_ID) {
         ClearUsedVariables();
     }
-    Automata() : timer_bit_(0), output_(NULL), aut(this) {
+    Automata() : timer_bit_(0), output_(NULL), aut(this), next_user_state_(FIRST_USER_STATE_ID) {
         ClearUsedVariables();
     }
     ~Automata() {}
@@ -151,10 +155,19 @@ public:
 
     const LocalVariable& timer_bit() { return timer_bit_; }
 
+    int NewUserState() {
+      int id = next_user_state_++;
+      HASSERT(!(id & _IF_STATE_MASK));
+      return id;
+    }
+
     void DefCopy(const LocalVariable& src, LocalVariable* dst);
     void DefNCopy(const LocalVariable& src, LocalVariable* dst);
 
     void ClearUsedVariables();
+
+    static void RenderImportVariable(string* output,
+                                     const GlobalVariable& var, int local_id);
 
 protected:
     virtual void Body() = 0;
@@ -171,10 +184,10 @@ protected:
 
 private:
     friend class Op;
-    void RenderImportVariable(const GlobalVariable& var, int local_id);
 
     map<const GlobalVariable*, LocalVariable> used_variables_;
     string name_;
+    int next_user_state_;
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 

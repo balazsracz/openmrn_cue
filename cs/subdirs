@@ -2,6 +2,6 @@ SUBDIRS ?= \
           src
 
 ifeq ($(strip $(TARGET)),linux.x86)
-SUBDIRS += pipe
+SUBDIRS += pipe automata
 
 endif

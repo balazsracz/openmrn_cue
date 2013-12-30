@@ -63,7 +63,13 @@ class LogicTest : public AutomataNodeTests {
     StandardPluginAutomata aut_body;
   };
 
-
+  struct TestMovableTurnout {
+    TestMovableTurnout(LogicTest* test, const string& name)
+        : b(EventBlock::Allocator(&test->alloc(), name, 48, 32)),
+          aut_body(name, &test->brd, &b) {}
+    MovableTurnout b;
+    StandardPluginAutomata aut_body;
+  };
 
   Board brd;
   EventBlock block_;
@@ -1052,6 +1058,7 @@ TEST_F(LogicTest, FixedTurnout) {
   });
 
   SetupRunner(&brd);
+  // No trains anywhere.
   end_left.detector.Set(false);
   end_right.detector.Set(false);
   left.inverted_detector.Set(true);
@@ -1173,7 +1180,24 @@ TEST_F(LogicTest, FixedTurnout) {
   Run(15);
   EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ba_));
   EXPECT_FALSE(QueryVar(*right.b.body_.route_set_ba_));
+}
 
+
+//              ----<<station_1-----
+// ----<left---/----<<station_2-----\----<right---
+TEST_F(LogicTest, MovableTurnout) {
+  static TestDetectorBlock end_left(this, "end_left");
+  static TestDetectorBlock end_right(this, "end_right");
+  TestShortTrack mid_left(this, "mid_left");
+  TestShortTrack mid_right(this, "mid_right");
+  TestBlock left(this, "left");
+  TestBlock right(this, "right");
+  TestBlock station_lr(this, "station_lr");
+  TestBlock station_rl(this, "station_rl");
+  TestFixedTurnout turnout_l(this, FixedTurnout::TURNOUT_THROWN, "turnout_l");
+  TestFixedTurnout turnout_r(this, FixedTurnout::TURNOUT_CLOSED, "turnout_r");
+
+  
 }
 
 TEST_F(LogicTest, DISABLED_100trainz) {
@@ -1289,6 +1313,102 @@ TEST_F(LogicTest, DISABLED_100trainz) {
     first.inverted_detector.Set(false);
     Run(15);
   }
+}
+
+TEST_F(LogicTest, Magnets) {
+  FakeBit v0s0(this);
+  FakeBit v0s1(this);
+  FakeBit v1s0(this);
+  FakeBit v1s1(this);
+
+  FakeBit cmd0(this);
+  FakeBit cmd1(this);
+
+  MagnetCommandAutomata aut(&brd, alloc());
+  MagnetDef def0(&aut, "v0", &v0s0, &v0s1);
+  def0.command = &cmd0;
+  MagnetDef def1(&aut, "v1", &v1s0, &v1s1);
+  def1.command = &cmd1;
+
+  v0s0.Set(true);
+  v1s1.Set(true);
+
+  cmd0.Set(false);
+  cmd1.Set(false);
+
+  SetupRunner(&brd);
+  Run(2);
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(5);  // adds one tick
+  // No command
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+  
+  cmd1.Set(true);
+  Run(2);
+  // Tick is not done yet.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // Tick is here, command taken
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_TRUE(v1s1.Get());
+
+  Run(2);
+  // Next tick not here yet
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_TRUE(v1s1.Get());
+
+  Run(3);
+  // Next tick: turns off signal
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  // Now we command both together.
+  cmd0.Set(true);
+  cmd1.Set(false);
+
+  Run();
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // First signal comes.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_TRUE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // second signal comes.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_TRUE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
+
+  Run(3);
+  // All done.
+  EXPECT_FALSE(v0s0.Get());
+  EXPECT_FALSE(v0s1.Get());
+  EXPECT_FALSE(v1s0.Get());
+  EXPECT_FALSE(v1s1.Get());
 }
 
 }  // namespace automata

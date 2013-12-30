@@ -50,6 +50,8 @@ extern Board brd;
 struct I2CBoard {
   I2CBoard(int a)
       : name_(StringPrintf("B%d", a-0x20)),
+        address_(a),
+        signal_offset_(0),
         LedRed(
             &brd,
             name_ + "LedRed",
@@ -143,7 +145,18 @@ struct I2CBoard {
             BRACZ_LAYOUT | (a<<8) | 0x2b,
             a & 0xf, OFS_IOB, 4) {}
 
+  // Allocates a new signal variable off this extender board. Returns the base
+  // eventid.
+  uint64_t NewSignalVariable() {
+    return ((BRACZ_LAYOUT & ~0xffffff) |
+            (address_ << 16) |
+            ((signal_offset_++ * 2) << 8));
+  }
+
   string name_;
+  uint8_t address_;
+  // next free signal offset.
+  int signal_offset_;
 
   EventBasedVariable LedRed, LedGreen;
 
@@ -158,6 +171,12 @@ struct I2CBoard {
   EventBasedVariable InA3;
 };
 
+struct I2CSignal {
+  I2CSignal(I2CBoard* extender, uint8_t signal_id, const string& name)
+      : signal(&brd, name, extender->NewSignalVariable(), signal_id) {}
+
+  SignalVariable signal;
+};
 
 struct PandaControlBoard {
   PandaControlBoard()

@@ -249,6 +249,52 @@ class BlockVariable : public GlobalVariable {
   string name_;
 };
 
+/**
+   A global variable implementation that sets a signal variable to a given
+value.  */
+class SignalVariable : public EventVariableBase {
+ public:
+  SignalVariable(Board* brd, const string& name, uint64_t event_base,
+                 uint8_t signal_id)
+      : EventVariableBase(brd),
+        event_base_(event_base),
+        signal_id_(signal_id),
+        name_(name) {
+  }
+
+  virtual ~SignalVariable() {}
+
+  virtual uint64_t event_on() const { HASSERT(0); return 0; }
+  virtual uint64_t event_off() const { HASSERT(0); return 0; }
+
+  virtual void Render(string* output) {
+    CreateEventId(0, event_base_, output);
+    // @TODO(bracz) is 2 a free variable definition type?
+    arg1_ = (2 << 5);  // We have some unused bits here.
+    arg2_ = 2;  // size -- number of bytes to export.
+    RenderHelper(output);
+    // We use local id 30 to import the variable straight away. This will
+    // override any other previous signal import, but that's fine, because we
+    // are in the preamble and not in an automata.
+    Automata::RenderImportVariable(output, *this, 30);
+    Automata::LocalVariable fixed_var(30);
+    // We fix the first byte of the newly created variable to the signal ID.
+    Automata::Op(nullptr, output).ActSetValue(&fixed_var, 0, signal_id_);
+  }
+
+  const string& name() const { return name_; }
+
+ private:
+  void SetArgs(int client, int offset, int bit) {
+    arg1_ = (0 << 5) | (client & 0b11111);
+    arg2_ = (offset << 3) | (bit & 7);
+  }
+
+  uint64_t event_base_;
+  uint8_t signal_id_;
+  string name_;
+};
+
 void ClearOffsetMap();
 map<int, string>* GetOffsetMap();
 

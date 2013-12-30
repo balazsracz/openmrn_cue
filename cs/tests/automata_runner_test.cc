@@ -196,6 +196,43 @@ TEST_F(AutomataTests, DefIfReg0) {
   runner_->RunAllAutomata();
 }
 
+TEST_F(AutomataTests, SetValue) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), SetState(3, 0xaa));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetValue(wv, 3, 0xaa);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, SetValueFromAspect) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), SetState(2, 0x55));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetAspect(0x55).ActSetValueFromAspect(wv, 2);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, GetValueFromAspect) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), GetState(4)).WillOnce(Return(0x5a));
+  EXPECT_CALL(wb.mock(), SetState(2, 0x5a));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetAspect(0x55).ActGetValueToAspect(*wv, 4).ActSetValueFromAspect(wv, 2);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
 TEST_F(AutomataTests, CopyAutomataBoard) {
   automata::Board brd;
   static FakeBit mbit1(this);
@@ -417,7 +454,6 @@ TEST_F(AutomataTests, EventVar) {
   runner_->RunAllAutomata();
 }
 
-
 class CanDebugPipeMember : public PipeMember {
  public:
   CanDebugPipeMember(Pipe* parent)
@@ -445,11 +481,6 @@ class CanDebugPipeMember : public PipeMember {
 };
 
 CanDebugPipeMember printer(&can_pipe0);
-
-
-
-
-
 
 TEST_F(AutomataTests, EventVar2) {
   Board brd;
@@ -483,6 +514,48 @@ TEST_F(AutomataTests, EventVar2) {
   WaitForEventThread();
 }
 
+TEST_F(AutomataTests, SignalVar) {
+  Board brd;
+  using automata::EventBasedVariable;
+  using automata::SignalVariable;
+  static FakeBit trigger_stop(this);
+  static FakeBit trigger_f3(this);
+  uint8_t consumer_data[10] = {0,};
+  static const uint64_t EVENTID = 0x0501010114FF6000;
+  NMRAnet::ByteRangeEventC consumer(node_, EVENTID, consumer_data, 10);
+  static SignalVariable signalvar(&brd, "signal_name", EVENTID + 4*256, 0x5a);
+  WaitForEventThread();
+  DefAut(testaut1, brd, {
+      auto sg = ImportVariable(&signalvar);
+      auto tstop = ImportVariable(trigger_stop);
+      auto tgof3 = ImportVariable(trigger_f3);
+      Def().IfReg1(tstop).ActSetValue(sg, 1, A_STOP);
+      Def().IfReg1(tgof3).ActSetAspect(A_F3).ActSetValueFromAspect(sg, 1);
+    });
+  trigger_stop.Set(false);
+  trigger_f3.Set(false);
+  string output;
+  ExpectAnyPacket(); // ignore produced packets.
+  SetupRunner(&brd);
+  WaitForEventThread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(0, consumer_data[5]);
+  runner_->RunAllAutomata();
+  WaitForEventThread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(0, consumer_data[5]);
+  trigger_stop.Set(true);
+  runner_->RunAllAutomata();
+  WaitForEventThread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(1, consumer_data[5]);
+  trigger_stop.Set(false);
+  trigger_f3.Set(true);
+  runner_->RunAllAutomata();
+  WaitForEventThread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(5, consumer_data[5]);
+}
 
 TEST_F(AutomataTests, EmptyTest) {
   WaitForEventThread();

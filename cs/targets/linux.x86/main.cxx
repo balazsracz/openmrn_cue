@@ -49,16 +49,24 @@
 #include "nmranet/NMRAnetAsyncEventHandler.hxx"
 #include "nmranet/NMRAnetAsyncDefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
+#include "utils/socket_listener.hxx"
+#include "utils/gc_pipe.hxx"
+
+#include "src/automata_runner.h"
+#include "src/automata_control.h"
 
 // DEFINE_PIPE(gc_can_pipe, 1);
 
 Executor g_executor;
 
 DEFINE_PIPE(can_pipe, &g_executor, sizeof(struct can_frame));
+DEFINE_PIPE(can_pipe0, &g_executor, sizeof(struct can_frame));
+
 
 static const NMRAnet::NodeID NODE_ID = 0x050101011441ULL;
 
 extern "C" {
+extern insn_t automata_code[];
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
 extern const size_t CAN_TX_BUFFER_SIZE;
 extern const size_t CAN_RX_BUFFER_SIZE;
@@ -148,6 +156,9 @@ private:
     bool state_;
 };
 
+ThreadExecutor gc_pipe_executor("gc_pipe_executor", 0, 0);
+DEFINE_PIPE(gc_pipe, &gc_pipe_executor, 1);
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -155,9 +166,12 @@ private:
  */
 int appl_main(int argc, char* argv[])
 {
-#ifdef TARGET_LPC11Cxx
-    lpc11cxx::CreateCanDriver(&can_pipe);
-#endif
+    std::unique_ptr<GCAdapterBase> adapter(
+        GCAdapterBase::CreateGridConnectAdapter(&gc_pipe, &can_pipe, false));
+    int conn_fd = ConnectSocket("localhost", 8082);
+    HASSERT(conn_fd >= 0);
+    gc_pipe.AddPhysicalDeviceToPipe(conn_fd, conn_fd, "socket_rw", 0);
+
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
     BlinkerFlow blinker(&g_node);
@@ -167,6 +181,10 @@ int appl_main(int argc, char* argv[])
     NMRAnet::AliasInfo info;
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
     NMRAnet::AddEventHandlerToIf(&g_if_can);
+
+    AutomataRunner runner(&g_node, automata_code);
+    resume_all_automata();
+
     g_executor.ThreadBody();
     return 0;
 }
