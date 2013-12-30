@@ -55,6 +55,7 @@ void I2CDriver::StartWrite(uint8_t address, uint8_t len, Notifiable *done) {
   write_len_ = len;
   read_offset_ = 0;
   read_len_ = 0;
+  timeout_ = 0;
   done_ = done;
   StartTransaction();
 }
@@ -68,6 +69,7 @@ void I2CDriver::StartRead(uint8_t address, uint8_t write_len, uint8_t read_len,
   read_offset_ = 0;
   HASSERT(read_len <= kMaxReadSize);
   read_len_ = read_len;
+  timeout_ = 0;
   done_ = done;
   StartTransaction();
 }
