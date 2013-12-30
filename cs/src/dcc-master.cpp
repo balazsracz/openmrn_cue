@@ -189,7 +189,10 @@ const struct const_loco_db_t const_lokdb[] = {
     "BDe 4/4 1460", MARKLIN_OLD | PUSHPULL },
   // id 17
   { 48, { 0,  0xff, }, { LIGHT,  0xff, },
-    "Re 6/6 11665", MARKLIN_NEW },
+    "Re 4/4 II 11239", MARKLIN_NEW },
+  // id 18
+  { 66, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "Re 6/6 11665", DCC_128 },
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
