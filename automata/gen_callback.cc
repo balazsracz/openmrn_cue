@@ -310,6 +310,8 @@ class CbTemplate {
 
 int main(int argc, char*argv[]) {
   string s;
+  printf("// Generated file. Do not edit.\n");
+  printf("#include <type_traits>\n\n");
   for (bool has_ret : {false}) {
     for (int unb = 0; unb <= 2; unb++) {
       CbTemplate t(unb, 0, false, has_ret);
