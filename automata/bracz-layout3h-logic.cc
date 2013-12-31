@@ -85,6 +85,8 @@ PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
 PhysicalSignal XXB2(&b1.InOraRed, &b1.RelBlue);
 
 
+
+
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
   int counter = next_temp_bit++;
@@ -134,6 +136,15 @@ DefAut(testaut, brd, {
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 
+MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
+
+MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &b3.ActOraGreen, &b3.ActOraRed);
+MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey, &b3.ActBlueBrown);
+
+StandardMovableTurnout Turnout_XXW8(&brd, EventBlock::Allocator(logic.allocator(), "XX.W8", 40), &Magnet_XXW8);
+
+StandardFixedTurnout Turnout_XXW1(&brd, EventBlock::Allocator(logic.allocator(), "XX.W1", 40), FixedTurnout::TURNOUT_CLOSED);
+
 StandardBlock Block_WWB14(&brd, &WWB14,
                           EventBlock::Allocator(logic.allocator(), "WWB14", 80));
 StandardBlock Block_A301(&brd, &A301,
@@ -149,11 +160,18 @@ StandardBlock Block_XXB2(&brd, &XXB2,
 
 
 #define BLOCK_SEQUENCE \
-  &Block_XXB1, &Block_A301, &Block_WWB14, &Block_B475, &Block_YYC23, &Block_XXB1
+  &Block_A301, &Block_WWB14, &Block_B475, &Block_YYC23
 
-std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE };
+std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE, &Block_XXB1 };
 
 bool ignored1 = BindSequence({BLOCK_SEQUENCE});
+bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
+bool ignored3 = Block_XXB1.side_a()->Bind(Turnout_XXW8.b.side_closed());
+bool ignored4 = Block_XXB2.side_a()->Bind(Turnout_XXW8.b.side_thrown());
+bool ignored5 = Block_A301.side_a()->Bind(Turnout_XXW1.b.side_points());
+bool ignored6 = Block_XXB1.side_b()->Bind(Turnout_XXW1.b.side_closed());
+bool ignored7 = Block_XXB2.side_b()->Bind(Turnout_XXW1.b.side_thrown());
+
 
 DefAut(control_logic, brd, {
     StateRef StWaiting(4);
