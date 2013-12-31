@@ -20,6 +20,15 @@ callback-specializations.hxx: gen_callback
 
 gencb: callback-specializations.hxx
 
+.cpp.o:
+	$(CXX) $(CXXFLAGS) -c -o $@ $(abspath $<)
+
+.cxx.o:
+	$(CXX) $(CXXFLAGS) -c -o $@ $(abspath $<)
+
+.cc.o:
+	$(CXX) $(CXXFLAGS) -c -o $@ $(abspath $<)
+
 
 libautomata.a: $(OBJS)
 	$(AR) cr $@ $+

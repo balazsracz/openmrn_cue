@@ -431,6 +431,12 @@ void FixedTurnout::FixTurnoutState(Automata* aut) {
   }
 }
 
+void MovableTurnout::CopyState(Automata* aut) {
+  LocalVariable* turnoutstate = aut->ImportVariable(turnout_state_.get());
+  const LocalVariable& physical_state = aut->ImportVariable(*magnet_->current_state);
+  aut->DefCopy(physical_state, turnoutstate);
+}
+
 void TurnoutBase::TurnoutOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
   auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
@@ -553,7 +559,6 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
       .IfReg0(*current_state)
       .ActState(def->aut_state)
       .ActTimer(1)
-      .ActReg1(current_state)
       .ActReg1(set_1);
   Def()
       .IfState(StBase)
@@ -567,6 +572,16 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
   Def()
       .IfState(def->aut_state)
       .IfTimerDone()
+      .IfReg1(*set_1)
+      .ActReg0(set_1)
+      .ActReg1(current_state)
+      .ActState(StBase);
+  Def()
+      .IfState(def->aut_state)
+      .IfTimerDone()
+      .IfReg1(*set_0)
+      .ActReg0(current_state)
+      .ActReg0(set_0)
       .ActState(StBase);
   Def()
       .IfState(StBase)
@@ -580,7 +595,7 @@ void MagnetAutomataFinal(Automata* aut) {
 }
 
 MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const EventBlock::Allocator& alloc)
-      : alloc_(&alloc, "magnets", 16), aut_("magnets", brd, this) {
+      : alloc_(&alloc, "magnets", 32), aut_("magnets", brd, this) {
   //AddAutomataPlugin(1, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
   AddAutomataPlugin(100, NewCallbackPtr(&MagnetAutomataFinal));
 }
@@ -588,6 +603,9 @@ MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const EventBlock::Alloc
 void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
   def->aut_state.state = aut_.NewUserState();
   def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
+  def->command.reset(alloc_.Allocate(def->name_ + ".command"));
+  // We do not set locked yet because it is ignored.
+  //def->.reset(alloc_.Allocate(def->name_ + ".command"));
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
 }
 

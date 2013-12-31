@@ -93,10 +93,14 @@ struct MagnetDef {
   // This variable will be pulled when the command is one (thrown).
   GlobalVariable *set_1;
 
-  // This variable sets the commanded state. Set by MovableTurnout.
-  const GlobalVariable *command;
-  // allocated by the magnetcommandautomata.
+  // Thnese variables are allocated by the magnetcommandautomata.
+
+  // This variable sets the commanded state.
+  std::unique_ptr<GlobalVariable> command;
+  // This variable tracks the current state.
   std::unique_ptr<GlobalVariable> current_state;
+  // True if the current state must not be changed
+  std::unique_ptr<GlobalVariable> locked;
   // Initialized by the magnetcommandautomata.
   StateRef aut_state;
   string name_;
@@ -559,6 +563,24 @@ protected:
   std::unique_ptr<GlobalVariable> detector_far_;
 
 private:
+  virtual const GlobalVariable *
+  LookupCloseDetector(const CtrlTrackInterface *from) {
+    if (from == &side_points_) {
+      return detector_next_.get();
+    } else {
+      return side_points_.binding()->LookupCloseDetector();
+    }
+  }
+
+  virtual const GlobalVariable *
+  LookupFarDetector(const CtrlTrackInterface *from) {
+    if (from == &side_points_) {
+      return detector_far_.get();
+    } else {
+      return side_points_.binding()->LookupFarDetector();
+    }
+  }
+
   void PopulateAnyRouteSet(Automata *aut);
   void ProxyDetectors(Automata *aut);
   void TurnoutOccupancy(Automata *aut);
@@ -569,10 +591,14 @@ class MovableTurnout : public TurnoutBase {
  public:
   MovableTurnout(const EventBlock::Allocator &allocator, MagnetDef* def)
       : TurnoutBase(allocator), magnet_(def) {
-    magnet_->command = turnout_state_.get();
+    AddAutomataPlugin(110,
+                      NewCallbackPtr(this, &MovableTurnout::CopyState));
   }
 
  private:
+  // Copies the turnout state from the physical turnout's actual state.
+  void CopyState(Automata* aut);
+
   MagnetDef* magnet_;
 };
 
@@ -603,24 +629,6 @@ public:
     case TURNOUT_DONTCARE:
       assert(false);
       break;
-    }
-  }
-
-  virtual const GlobalVariable *
-  LookupCloseDetector(const CtrlTrackInterface *from) {
-    if (from == &side_points_) {
-      return detector_next_.get();
-    } else {
-      return side_points_.binding()->LookupCloseDetector();
-    }
-  }
-
-  virtual const GlobalVariable *
-  LookupFarDetector(const CtrlTrackInterface *from) {
-    if (from == &side_points_) {
-      return detector_far_.get();
-    } else {
-      return side_points_.binding()->LookupFarDetector();
     }
   }
 

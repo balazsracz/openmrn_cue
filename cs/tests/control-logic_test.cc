@@ -14,7 +14,8 @@ namespace automata {
 class LogicTest : public AutomataNodeTests {
  protected:
   LogicTest()
-      : block_(&brd, BRACZ_LAYOUT|0xC000, "blk") {
+      : block_(&brd, BRACZ_LAYOUT|0xC000, "blk"),
+        magnet_aut_(&brd, alloc()) {
     // We ignore all event messages on the CAN bus. THese are checked with more
     // high-level constructs.
     EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X195B422AN"))).Times(AtLeast(0));
@@ -65,14 +66,21 @@ class LogicTest : public AutomataNodeTests {
 
   struct TestMovableTurnout {
     TestMovableTurnout(LogicTest* test, const string& name)
-        : b(EventBlock::Allocator(&test->alloc(), name, 48, 32)),
+        : set_0(test),
+          set_1(test),
+          magnet(&test->magnet_aut_, name + ".mgn", &set_0, &set_1),
+          b(EventBlock::Allocator(&test->alloc(), name, 48, 32), &magnet),
           aut_body(name, &test->brd, &b) {}
+    FakeBit set_0;
+    FakeBit set_1;
+    MagnetDef magnet;
     MovableTurnout b;
     StandardPluginAutomata aut_body;
   };
 
   Board brd;
   EventBlock block_;
+  MagnetCommandAutomata magnet_aut_;
 };
 
 TEST_F(LogicTest, TestFramework) {
@@ -1321,20 +1329,15 @@ TEST_F(LogicTest, Magnets) {
   FakeBit v1s0(this);
   FakeBit v1s1(this);
 
-  FakeBit cmd0(this);
-  FakeBit cmd1(this);
-
   MagnetCommandAutomata aut(&brd, alloc());
   MagnetDef def0(&aut, "v0", &v0s0, &v0s1);
-  def0.command = &cmd0;
   MagnetDef def1(&aut, "v1", &v1s0, &v1s1);
-  def1.command = &cmd1;
 
   v0s0.Set(true);
   v1s1.Set(true);
 
-  cmd0.Set(false);
-  cmd1.Set(false);
+  SetVar(*def0.command, false);
+  SetVar(*def1.command, false);
 
   SetupRunner(&brd);
   Run(2);
@@ -1350,7 +1353,7 @@ TEST_F(LogicTest, Magnets) {
   EXPECT_FALSE(v1s0.Get());
   EXPECT_FALSE(v1s1.Get());
   
-  cmd1.Set(true);
+  SetVar(*def1.command, true);
   Run(2);
   // Tick is not done yet.
   EXPECT_FALSE(v0s0.Get());
@@ -1380,8 +1383,8 @@ TEST_F(LogicTest, Magnets) {
   EXPECT_FALSE(v1s1.Get());
 
   // Now we command both together.
-  cmd0.Set(true);
-  cmd1.Set(false);
+  SetVar(*def0.command, true);
+  SetVar(*def1.command, false);
 
   Run();
   EXPECT_FALSE(v0s0.Get());
