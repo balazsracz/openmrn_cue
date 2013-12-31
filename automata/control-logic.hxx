@@ -257,6 +257,7 @@ protected:
   FRIEND_TEST(LogicTest, 100trainz);
   FRIEND_TEST(LogicTest, DISABLED_100trainz);
   FRIEND_TEST(LogicTest, FixedTurnout);
+  FRIEND_TEST(LogicTest, MovableTurnout);
 
   friend class StandardBlock;
 
@@ -515,6 +516,7 @@ public:
 
 protected:
   FRIEND_TEST(LogicTest, FixedTurnout);
+  FRIEND_TEST(LogicTest, MovableTurnout);
 
   CtrlTrackInterface side_points_;
   CtrlTrackInterface side_closed_;

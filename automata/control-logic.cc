@@ -468,8 +468,8 @@ void TurnoutBase::PopulateAnyRouteSet(Automata* aut) {
 void TurnoutBase::ProxyDetectors(Automata* aut) {
   LocalVariable* proxy_next = aut->ImportVariable(detector_next_.get());
   LocalVariable* proxy_far = aut->ImportVariable(detector_far_.get());
-  const LocalVariable& closed_next = aut->ImportVariable(*side_closed_.LookupNextDetector());
-  const LocalVariable& thrown_next = aut->ImportVariable(*side_thrown_.LookupNextDetector());
+  const LocalVariable& closed_next = aut->ImportVariable(*side_closed_.binding()->LookupNextDetector());
+  const LocalVariable& thrown_next = aut->ImportVariable(*side_thrown_.binding()->LookupNextDetector());
   const LocalVariable& turnout_state = aut->ImportVariable(*turnout_state_);
   Def().IfReg0(turnout_state).IfReg0(closed_next).ActReg0(proxy_next);
   Def().IfReg0(turnout_state).IfReg1(closed_next).ActReg1(proxy_next);
@@ -477,7 +477,7 @@ void TurnoutBase::ProxyDetectors(Automata* aut) {
   Def().IfReg1(turnout_state).IfReg1(thrown_next).ActReg1(proxy_next);
 
   const GlobalVariable* global_detector_far = nullptr;
-  global_detector_far = side_closed_.LookupFarDetector();
+  global_detector_far = side_closed_.binding()->LookupFarDetector();
   if (global_detector_far) {
     const LocalVariable& det = aut->ImportVariable(*global_detector_far);
     Def().IfReg0(turnout_state).IfReg1(det).ActReg1(proxy_far);
@@ -486,7 +486,7 @@ void TurnoutBase::ProxyDetectors(Automata* aut) {
     Def().IfReg0(turnout_state).ActReg0(proxy_far);
   }
 
-  global_detector_far = side_thrown_.LookupFarDetector();
+  global_detector_far = side_thrown_.binding()->LookupFarDetector();
   if (global_detector_far) {
     const LocalVariable& det = aut->ImportVariable(*global_detector_far);
     Def().IfReg1(turnout_state).IfReg1(det).ActReg1(proxy_far);

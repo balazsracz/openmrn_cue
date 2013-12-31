@@ -1190,22 +1190,189 @@ TEST_F(LogicTest, FixedTurnout) {
   EXPECT_FALSE(QueryVar(*right.b.body_.route_set_ba_));
 }
 
-
-//              ----<<station_1-----
+//                  b         a
+//     b   a    ----<<station_1-----     b    a
 // ----<left---/----<<station_2-----\----<right---
 TEST_F(LogicTest, MovableTurnout) {
   static TestDetectorBlock end_left(this, "end_left");
   static TestDetectorBlock end_right(this, "end_right");
-  TestShortTrack mid_left(this, "mid_left");
   TestShortTrack mid_right(this, "mid_right");
   TestBlock left(this, "left");
   TestBlock right(this, "right");
-  TestBlock station_lr(this, "station_lr");
-  TestBlock station_rl(this, "station_rl");
-  TestFixedTurnout turnout_l(this, FixedTurnout::TURNOUT_THROWN, "turnout_l");
-  TestFixedTurnout turnout_r(this, FixedTurnout::TURNOUT_CLOSED, "turnout_r");
+  TestBlock station_1(this, "station_1");
+  TestBlock station_2(this, "station_2");
+  TestMovableTurnout turnout_r(this, "turnout_r");
+  TestFixedTurnout turnout_l(this, FixedTurnout::TURNOUT_CLOSED, "turnout_l");
 
-  
+  BindSequence({&left.b, &end_left.b});
+  BindSequence({&end_right.b, &mid_right.b, &right.b});
+  station_1.b.side_b()->Bind(turnout_l.b.side_thrown());
+  station_1.b.side_a()->Bind(turnout_r.b.side_thrown());
+  station_2.b.side_b()->Bind(turnout_l.b.side_closed());
+  station_2.b.side_a()->Bind(turnout_r.b.side_closed());
+
+  left.b.side_a()->Bind(turnout_l.b.side_points());
+  right.b.side_b()->Bind(turnout_r.b.side_points());
+
+  SetupRunner(&brd);
+  // No trains anywhere.
+  end_right.detector.Set(false);
+  end_left.detector.Set(false);
+  left.inverted_detector.Set(true);
+  right.inverted_detector.Set(true);
+  station_1.inverted_detector.Set(true);
+  station_2.inverted_detector.Set(true);
+  // Turnout closed.
+  SetVar(*turnout_r.magnet.command, false);
+  SetVar(*turnout_r.magnet.current_state, false);
+  Run(1);
+  left.inverted_detector.Set(true);
+  right.inverted_detector.Set(true);
+  station_1.inverted_detector.Set(true);
+  station_2.inverted_detector.Set(true);
+  Run(15);
+
+  // Test turnout detector proxy.
+  EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupNextDetector()));
+  EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupFarDetector()));
+  station_2.inverted_detector.Set(false);
+  Run(15);
+  EXPECT_TRUE(QueryVar(*turnout_r.b.side_points()->LookupNextDetector()));
+  EXPECT_TRUE(QueryVar(*turnout_r.b.side_points()->LookupFarDetector()));
+  station_2.inverted_detector.Set(true);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupNextDetector()));
+  EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupFarDetector()));
+
+
+  for (int i = 0; i < 2; i++) {
+  // Source a train from the right.
+  end_right.detector.Set(true);
+  SetVar(*end_right.b.side_b()->out_try_set_route, true);
+  Run(12);
+  EXPECT_FALSE(QueryVar(*end_right.b.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*end_right.b.side_b()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*right.b.body_det_.route_set_ab_));
+
+  // Train reaches its stops on open track outside of the station.
+  end_right.detector.Set(false);
+  right.inverted_detector.Set(false);
+  Run(12);
+
+  EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+
+  LOG(INFO, "Giving green to first train");
+  SetVar(*right.b.request_green(), true);
+  Run(5);
+  EXPECT_FALSE(QueryVar(*right.b.request_green()));
+  EXPECT_TRUE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_TRUE(QueryVar(*turnout_r.b.route_set_PC_));
+  EXPECT_TRUE(QueryVar(*station_2.b.body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_2.b.body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
+  right.inverted_detector.Set(true);
+  station_2.inverted_detector.Set(false);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_FALSE(QueryVar(*turnout_r.b.route_set_PC_));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_2.b.body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
+
+  // Source another train.
+  end_right.detector.Set(true);
+  SetVar(*end_right.b.side_b()->out_try_set_route, true);
+  Run(12);
+  EXPECT_FALSE(QueryVar(*end_right.b.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*end_right.b.side_b()->binding()->in_route_set_success));
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*right.b.body_det_.route_set_ab_));
+
+  // Train 2 reaches its stop on open track outside of the station.
+  end_right.detector.Set(false);
+  right.inverted_detector.Set(false);
+  Run(12);
+
+  EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+
+  EXPECT_TRUE(QueryVar(*station_2.b.body_det_.route_set_ab_));
+
+  LOG(INFO, "Trying green to second train");
+  SetVar(*right.b.request_green(), true);
+  Run(5);
+  EXPECT_FALSE(QueryVar(*right.b.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*right.b.side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+
+  // Switch the turnout.
+  SetVar(*turnout_r.magnet.command, true);
+  Run(5);
+  EXPECT_TRUE(turnout_r.set_1.Get());
+  Run(5);
+  EXPECT_FALSE(turnout_r.set_1.Get());
+
+  // Give green again, this time it works.
+  SetVar(*right.b.request_green(), true);
+  Run(5);
+  EXPECT_FALSE(QueryVar(*right.b.request_green()));
+  EXPECT_TRUE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_TRUE(QueryVar(*turnout_r.b.route_set_PT_));
+  EXPECT_TRUE(QueryVar(*station_1.b.body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_1.b.body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_1.b.signal_.route_set_ab_));
+  right.inverted_detector.Set(true);
+  station_1.inverted_detector.Set(false);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
+  EXPECT_FALSE(QueryVar(*turnout_r.b.route_set_PT_));
+  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_1.b.body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_1.b.signal_.route_set_ab_));
+
+  // Get train 1 out.
+  SetVar(*station_1.b.request_green(), true);
+  Run(5);
+  EXPECT_TRUE(QueryVar(*station_1.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
+  left.inverted_detector.Set(false);
+  station_1.inverted_detector.Set(true);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*turnout_l.b.any_route_set_));
+
+  SetVar(*station_2.b.request_green(), true);
+  Run(5);
+  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
+
+  // And we will make the train disappear from the left block.
+  left.inverted_detector.Set(true);
+  Run(15);
+  EXPECT_FALSE(QueryVar(*left.b.body_.route_set_ab_));
+
+  // So that train 2 can leave too
+  SetVar(*station_2.b.request_green(), true);
+  Run(5);
+  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_2.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
+  left.inverted_detector.Set(false);
+  station_2.inverted_detector.Set(true);
+  Run(15);
+
+  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
+
+  // Reset the turnout and make seocnd train disappear.
+  left.inverted_detector.Set(true);
+  SetVar(*turnout_r.magnet.command, false);
+  Run(15);
+  }  // rinse repeat.
 }
 
 TEST_F(LogicTest, DISABLED_100trainz) {
