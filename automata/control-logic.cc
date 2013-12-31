@@ -595,7 +595,7 @@ void MagnetAutomataFinal(Automata* aut) {
 }
 
 MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const EventBlock::Allocator& alloc)
-      : alloc_(&alloc, "magnets", 32), aut_("magnets", brd, this) {
+      : alloc_(&alloc, "magnets", 64), aut_("magnets", brd, this) {
   //AddAutomataPlugin(1, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
   AddAutomataPlugin(100, NewCallbackPtr(&MagnetAutomataFinal));
 }

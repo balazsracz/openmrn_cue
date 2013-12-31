@@ -192,9 +192,10 @@ public:
 
   CtrlTrackInterface *binding() const { return binding_; }
 
-  void Bind(CtrlTrackInterface *other) {
+  bool Bind(CtrlTrackInterface *other) {
     binding_ = other;
     other->binding_ = this;
+    return true;
   }
 
 private:
@@ -237,7 +238,7 @@ public:
   void SimulateAllRoutes(Automata *aut);
 
 protected:
-  void Bind(CtrlTrackInterface *me, CtrlTrackInterface *opposite);
+  bool Bind(CtrlTrackInterface *me, CtrlTrackInterface *opposite);
 
   CtrlTrackInterface side_a_;
   CtrlTrackInterface side_b_;
@@ -638,6 +639,31 @@ private:
   void FixTurnoutState(Automata *aut);
 
   State state_;
+};
+
+
+class StandardMovableTurnout {
+ public:
+  StandardMovableTurnout(Board* brd, const EventBlock::Allocator &alloc,
+                         MagnetDef* magnet)
+      : b(alloc, magnet),
+        aut_(alloc.name(), brd, &b) {}
+
+  MovableTurnout b;
+ private:
+  StandardPluginAutomata aut_;
+};
+
+class StandardFixedTurnout {
+ public:
+  StandardFixedTurnout(Board* brd, const EventBlock::Allocator &alloc,
+                       FixedTurnout::State state)
+      : b(state, alloc),
+        aut_(alloc.name(), brd, &b) {}
+
+  FixedTurnout b;
+ private:
+  StandardPluginAutomata aut_;
 };
 
 } // namespace automata
