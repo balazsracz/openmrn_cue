@@ -1,5 +1,5 @@
 include $(APP_PATH)/config.mk
-SUBDIRS = cs.panda cs.mbed i2cbridge.1 linux.x86 i2ctest
+SUBDIRS = cs.panda cs.mbed i2cbridge.1 linux.x86 i2ctest i2cbridge.panda
 
 ifdef PROD
 SUBDIRS += prod.i2cbridge.27
