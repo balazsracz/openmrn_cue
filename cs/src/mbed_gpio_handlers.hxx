@@ -10,10 +10,14 @@
 #include "mbed.h"
 
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/NMRAnetAsyncNode.hxx"
 
-extern node_t node;
+namespace NMRAnet {
+class AsyncNode;
+}
+extern NMRAnet::DefaultAsyncNode g_node;
 
-class MbedGPIOListener : public BitEventInterface, public BitEventConsumer {
+class MbedGPIOListener : public NMRAnet::BitEventInterface, public NMRAnet::BitEventConsumer {
  public:
   MbedGPIOListener(uint64_t event_on, uint64_t event_off,
                    PinName pin)
@@ -34,8 +38,8 @@ class MbedGPIOListener : public BitEventInterface, public BitEventConsumer {
     if (new_value) *memory_on_ = mask_; else *memory_off_ = mask_;
   }
 
-  virtual node_t node() {
-    return ::node;
+  virtual NMRAnet::AsyncNode* node() {
+    return &g_node;
   }
 
  private:
