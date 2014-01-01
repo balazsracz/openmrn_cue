@@ -9,7 +9,11 @@
 #define I2STAT STAT
 
 #elif defined(TARGET_LPC2368)
+#include "mbed.h"
 #include "LPC23xx.h"
+#include "i2c_api.h"
+#include "pinmap.h"
+
 #elif defined(TARGET_LPC1768)
 #include "LPC17xx.h"
 #elif !defined(__FreeRTOS__)
@@ -26,7 +30,7 @@
 
 #include "i2c_driver.hxx"
 
-#include "executor/executor.hxx"
+//#include "executor/executor.hxx"
 
 #define CON_AA 4
 #define CON_SI 8
@@ -34,11 +38,14 @@
 #define CON_STA 32
 #define CON_EN 64
 
+// For panda i2cbridge: we use i2c 1.
+
 I2CDriver::I2CDriver() : done_(nullptr) {
   HASSERT(!instance_);
   instance_ = this;
 #ifndef TARGET_LPC11Cxx
   //NVIC_SetVector(IRQn(), irqptr[id]);
+#elif defined(TARGET_LPC2368)
 #endif
   InitHardware();
   Release();
@@ -120,6 +127,53 @@ void I2CDriver::InitHardware() {
   // I2C mode, standard / fastmode with input glitch filter.
   LPC_IOCON->PIO0_4 = 1;
   LPC_IOCON->PIO0_5 = 1;
+}
+
+#elif defined(TARGET_LPC2368)
+
+extern "C" {
+  void I2C_IRQHandler(void);
+
+  void RealIrqHandler() {
+    I2CDriver::instance_->isr();
+  }
+}
+
+// Returns the NVIC interrupt request number for this instance.
+::IRQn I2CDriver::IRQn() { return I2C0_IRQn; }
+
+// Returns the hardware address for the device.
+LPC_I2C_TypeDef *I2CDriver::dev() { return LPC_I2C0; }
+
+void I2CDriver::InitHardware() {
+  // Disables power to the i2c hardware circuit (I2C1).
+  /*LPC_SC->*/PCONP &= ~(1 << 19);
+  // Enables power to the i2c hardware circuit (I2C1).
+  /*LPC_SC->*/PCONP |= 1 << 19;
+
+  // Sets up interrupt, but does not enable it yet.
+  NVIC_DisableIRQ(IRQn());
+  //NVIC_SetPriority(IRQn(), 1);
+  NVIC_SetVector(IRQn(), (uint32_t) &I2C_IRQHandler);
+
+  // Sets frequency.
+  // No peripheral clock divider on the M0
+  uint32_t PCLK = SystemCoreClock;
+  uint32_t hz = 100000;  // 100 kHz
+  uint32_t pulse = PCLK / (hz * 2);
+  // I2C Rate. We use 50% duty cycle (same time low and high).
+  dev()->I2SCLL = pulse;
+  dev()->I2SCLH = pulse;
+
+  // Clears all status requests and enables on I2C state machine.
+  dev()->I2CONCLR = CON_EN | CON_AA | CON_SI | CON_STO | CON_STA;
+  dev()->I2CONSET = CON_EN;
+
+  // Sets output pins to I2C mode.
+  pin_function(P0_27, 1);
+  pin_function(P0_28, 1);
+  // We don't need to set pin mode, because P0_27 and P0_28 are dedicated i2c
+  // open-drain pins with no selectable mode.
 }
 
 #endif
@@ -204,10 +258,6 @@ void I2CDriver::isr() {
 
   dev()->I2CONCLR = CON_SI;
   timeout_ = 0;  // reset watchdog flag.
-
-#ifdef INTERRUPT_ACK
-  LPC_VIC->Address = 0;
-#endif
 }
 
 /* static */
