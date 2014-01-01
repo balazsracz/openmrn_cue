@@ -422,10 +422,19 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
 
 void FixedTurnout::FixTurnoutState(Automata* aut) {
   LocalVariable* turnoutstate = aut->ImportVariable(turnout_state_.get());
+  // We always fix the turnout state to be the same as at definition-time,
+  // except if there is a route set that slices up the turnout. In that case we
+  // "fake" the turnout to be sliced up and pointing the other way. This is
+  // necessary so that the LookupNextDetector() calls give an accurate value
+  // for the blocks to follow. Otherwise they might not see that there is a
+  // train coming from behind and the SimulateOccupancy feature would give
+  // false values.
   if (state_ == TURNOUT_CLOSED) {
-    Def().ActReg0(turnoutstate);
+    Def().IfReg1(aut->ImportVariable(*route_set_TP_)).ActReg1(turnoutstate);
+    Def().IfReg0(aut->ImportVariable(*route_set_TP_)).ActReg0(turnoutstate);
   } else if (state_ == TURNOUT_THROWN) {
-    Def().ActReg1(turnoutstate);
+    Def().IfReg1(aut->ImportVariable(*route_set_CP_)).ActReg0(turnoutstate);
+    Def().IfReg0(aut->ImportVariable(*route_set_CP_)).ActReg1(turnoutstate);
   } else {
     assert(0);
   }
@@ -548,10 +557,23 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
   const LocalVariable& command = aut->ImportVariable(*def->command);
   LocalVariable* set_0 = aut->ImportVariable(def->set_0);
   LocalVariable* set_1 = aut->ImportVariable(def->set_1);
+  // Make output bits zero and reach a known state to release any magnets.
   Def()
       .IfState(StInit)
+      .ActReg1(set_0)
       .ActReg0(set_0)
+      .ActReg1(set_1);
       .ActReg0(set_1);
+  // This will force an update at boot.
+  Def()
+      .IfState(StInit)
+      .IfReg0(command)
+      .ActReg1(current_state);
+  Def()
+      .IfState(StInit)
+      .IfReg1(command)
+      .ActReg0(current_state);
+  // Pulls the magnet if we can get the lock.
   Def()
       .IfState(StBase)
       .IfTimerDone()
@@ -569,6 +591,7 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
       .ActTimer(1)
       .ActReg0(current_state)
       .ActReg1(set_0);
+  // Releases the magnets and the lock.
   Def()
       .IfState(def->aut_state)
       .IfTimerDone()
@@ -583,6 +606,7 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
       .ActReg0(current_state)
       .ActReg0(set_0)
       .ActState(StBase);
+  // Safety: set magnets to zero.
   Def()
       .IfState(StBase)
       .ActReg0(set_0)

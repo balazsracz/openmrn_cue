@@ -162,7 +162,7 @@ StandardBlock Block_XXB2(&brd, &XXB2,
 #define BLOCK_SEQUENCE \
   &Block_A301, &Block_WWB14, &Block_B475, &Block_YYC23
 
-std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE, &Block_XXB1 };
+std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE };
 
 bool ignored1 = BindSequence({BLOCK_SEQUENCE});
 bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
@@ -186,12 +186,98 @@ DefAut(control_logic, brd, {
       Def()
           .IfReg0(ImportVariable(is_paused))
           .IfReg1(ImportVariable(current->detector()))
-          .IfReg0(ImportVariable(next->route()))
+          .IfReg0(ImportVariable(next->route_in()))
           .IfReg0(ImportVariable(next->detector()))
           .ActReg1(ImportVariable(current->request_green()));
     }
   });
 
+DefAut(XXleft, brd, {
+    StateRef StWaiting(4);
+    StateRef StTry1(NewUserState());
+    StateRef StTry2(NewUserState());
+    Def()
+        .IfState(StInit)
+        .ActState(StWaiting)
+        .ActTimer(4);
+    Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
+
+    StandardBlock* next = &Block_A301;
+
+    Def()
+        .IfReg0(ImportVariable(is_paused))
+        .IfReg0(ImportVariable(next->route_in()))
+        .IfReg0(ImportVariable(next->detector()))
+        .IfState(StTry1)
+        .IfReg0(ImportVariable(Block_XXB1.detector()))
+        .IfReg1(ImportVariable(Block_XXB2.detector()))
+        .ActState(StTry2);
+    Def()
+        .IfReg0(ImportVariable(is_paused))
+        .IfReg0(ImportVariable(next->route_in()))
+        .IfReg0(ImportVariable(next->detector()))
+        .IfState(StTry2)
+        .IfReg1(ImportVariable(Block_XXB1.detector()))
+        .IfReg0(ImportVariable(Block_XXB2.detector()))
+        .ActState(StTry1);
+
+    Def()
+        .IfReg0(ImportVariable(is_paused))
+        .IfReg0(ImportVariable(next->route_in()))
+        .IfReg0(ImportVariable(next->detector()))
+        .IfState(StTry1)
+        .IfReg1(ImportVariable(Block_XXB1.detector()))
+        .ActReg1(ImportVariable(Block_XXB1.request_green()));
+
+    Def()
+        .IfReg0(ImportVariable(is_paused))
+        .IfReg0(ImportVariable(next->route_in()))
+        .IfReg0(ImportVariable(next->detector()))
+        .IfState(StTry2)
+        .IfReg1(ImportVariable(Block_XXB2.detector()))
+        .ActReg1(ImportVariable(Block_XXB2.request_green()));
+
+    // This flips the state 1<->2 when an outgoing route is set.
+    Def()
+        .IfState(StTry1)
+        .IfReg1(ImportVariable(Block_XXB1.route_out()))
+        .ActState(StTry2);
+    Def()
+        .IfState(StTry2)
+        .IfReg1(ImportVariable(Block_XXB2.route_out()))
+        .ActState(StTry1);
+  });
+
+DefAut(XXin, brd, {
+    StateRef StWaiting(4);
+    StateRef StTry1(NewUserState());
+    StateRef StTry2(NewUserState());
+    Def()
+        .IfState(StInit)
+        .ActState(StWaiting)
+        .ActTimer(4);
+    Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
+
+    StandardBlock* current = &Block_YYC23;
+    StandardBlock* next;
+    next = &Block_XXB1;
+    Def()
+        .IfReg0(ImportVariable(is_paused))
+        .IfReg1(ImportVariable(current->detector()))
+        .IfReg0(ImportVariable(Turnout_XXW8.state()))
+        .IfReg0(ImportVariable(next->route_in()))
+        .IfReg0(ImportVariable(next->detector()))
+        .ActReg1(ImportVariable(current->request_green()));
+
+    next = &Block_XXB2;
+    Def()
+        .IfReg0(ImportVariable(is_paused))
+        .IfReg1(ImportVariable(current->detector()))
+        .IfReg1(ImportVariable(Turnout_XXW8.state()))
+        .IfReg0(ImportVariable(next->route_in()))
+        .IfReg0(ImportVariable(next->detector()))
+        .ActReg1(ImportVariable(current->request_green()));
+  });
 
 DefAut(display, brd, {
     DefCopy(ImportVariable(Block_XXB1.detector()), ImportVariable(&panda_bridge.l0));

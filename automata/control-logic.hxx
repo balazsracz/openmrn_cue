@@ -431,8 +431,10 @@ public:
   virtual CtrlTrackInterface *side_b() { return signal_.side_b(); }
 
   GlobalVariable *request_green() { return request_green_.get(); }
-  const GlobalVariable &route() { return *body_det_.route_set_ab_; }
+  const GlobalVariable &route_in() { return *body_det_.route_set_ab_; }
+  const GlobalVariable &route_out() { return *signal_.route_set_ab_; }
   const GlobalVariable &detector() { return *body_det_.simulated_occupancy_; }
+
 
 private:
   std::unique_ptr<GlobalVariable> request_green_;
@@ -598,6 +600,8 @@ class MovableTurnout : public TurnoutBase {
                       NewCallbackPtr(this, &MovableTurnout::CopyState));
   }
 
+  MagnetDef* magnet() { return magnet_; }
+
  private:
   // Copies the turnout state from the physical turnout's actual state.
   void CopyState(Automata* aut);
@@ -648,6 +652,9 @@ class StandardMovableTurnout {
                          MagnetDef* magnet)
       : b(alloc, magnet),
         aut_(alloc.name(), brd, &b) {}
+
+  GlobalVariable* command() { return b.magnet()->command.get(); }
+  const GlobalVariable& state() { return *b.magnet()->current_state; }
 
   MovableTurnout b;
  private:
