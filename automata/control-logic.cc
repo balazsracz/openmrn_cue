@@ -562,7 +562,7 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
       .IfState(StInit)
       .ActReg1(set_0)
       .ActReg0(set_0)
-      .ActReg1(set_1);
+      .ActReg1(set_1)
       .ActReg0(set_1);
   // This will force an update at boot.
   Def()
