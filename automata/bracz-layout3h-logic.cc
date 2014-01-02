@@ -18,51 +18,28 @@ using namespace std;
 
 using namespace automata;
 
-
-
-
 Board brd;
 
-EventBasedVariable is_paused(&brd,
-                             "is_paused",
-                             BRACZ_LAYOUT | 0x0000,
-                             BRACZ_LAYOUT | 0x0001,
-                             7, 31, 3);
+EventBasedVariable is_paused(&brd, "is_paused", BRACZ_LAYOUT | 0x0000,
+                             BRACZ_LAYOUT | 0x0001, 7, 31, 3);
 
-EventBasedVariable blink_off(&brd,
-                             "blink_off",
-                             BRACZ_LAYOUT | 0x0002,
-                             BRACZ_LAYOUT | 0x0003,
-                             7, 31, 2);
+EventBasedVariable blink_off(&brd, "blink_off", BRACZ_LAYOUT | 0x0002,
+                             BRACZ_LAYOUT | 0x0003, 7, 31, 2);
 
-EventBasedVariable power_acc(&brd,
-                             "power_accessories",
-                             BRACZ_LAYOUT | 0x0004,
-                             BRACZ_LAYOUT | 0x0005,
-                             7, 31, 1);
+EventBasedVariable power_acc(&brd, "power_accessories", BRACZ_LAYOUT | 0x0004,
+                             BRACZ_LAYOUT | 0x0005, 7, 31, 1);
 
-EventBasedVariable short_det(&brd,
-                             "short_detected",
-                             BRACZ_LAYOUT | 0x0006,
-                             BRACZ_LAYOUT | 0x0007,
-                             7, 31, 0);
+EventBasedVariable short_det(&brd, "short_detected", BRACZ_LAYOUT | 0x0006,
+                             BRACZ_LAYOUT | 0x0007, 7, 31, 0);
 
-EventBasedVariable overcur(&brd,
-                             "overcurrent_detected",
-                             BRACZ_LAYOUT | 0x0008,
-                             BRACZ_LAYOUT | 0x0009,
-                             7, 30, 7);
+EventBasedVariable overcur(&brd, "overcurrent_detected", BRACZ_LAYOUT | 0x0008,
+                           BRACZ_LAYOUT | 0x0009, 7, 30, 7);
 
-EventBasedVariable sendmeasure(&brd,
-                             "send_current_measurements",
-                             BRACZ_LAYOUT | 0x000a,
-                             BRACZ_LAYOUT | 0x000b,
-                             7, 30, 6);
-
-
+EventBasedVariable sendmeasure(&brd, "send_current_measurements",
+                               BRACZ_LAYOUT | 0x000a, BRACZ_LAYOUT | 0x000b, 7,
+                               30, 6);
 
 I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22), b3(0x23);
-
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -74,7 +51,6 @@ StateRef StUser2(11);
 PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
-
 
 PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
 PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
@@ -88,8 +64,6 @@ PhysicalSignal XXB3(&b1.InOraRed, &b1.RelBlue);
 
 PhysicalSignal YYB2(&b2.InBrownGrey, &b2.RelGreen);
 
-
-
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
   int counter = next_temp_bit++;
@@ -98,231 +72,250 @@ GlobalVariable* NewTempVariable(Board* board) {
     fprintf(stderr, "Too many local variables. Cannot allocate more.");
     abort();
   }
-  return new EventBasedVariable(
-      board,
-      StringPrintf("tmp_var_%d", counter),
-      BRACZ_LAYOUT | 0x3000 | (counter << 1),
-      BRACZ_LAYOUT | 0x3000 | (counter << 1) | 1,
-      client, offset, bit);
+  return new EventBasedVariable(board, StringPrintf("tmp_var_%d", counter),
+                                BRACZ_LAYOUT | 0x3000 | (counter << 1),
+                                BRACZ_LAYOUT | 0x3000 | (counter << 1) | 1,
+                                client, offset, bit);
 }
 
 unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
 
-EventBasedVariable led(&brd,
-                       "led",
-                       0x0502010202650012ULL,
-                       0x0502010202650013ULL,
-                       7, 31, 1);
+EventBasedVariable led(&brd, "led", 0x0502010202650012ULL,
+                       0x0502010202650013ULL, 7, 31, 1);
 
 DefAut(blinkaut, brd, {
-    const int kBlinkSpeed = 3;
-    LocalVariable* rep(ImportVariable(blink_variable.get()));
-    const LocalVariable& lblink_off(ImportVariable(blink_off));
-    Def().IfState(StInit).ActState(StUser1);
-    Def().IfState(StUser1).IfTimerDone().IfReg0(lblink_off)
-        .ActTimer(kBlinkSpeed).ActState(StUser2).ActReg0(rep);
-    Def().IfState(StUser2).IfTimerDone().IfReg0(lblink_off)
-        .ActTimer(kBlinkSpeed).ActState(StUser1).ActReg1(rep);
+  const int kBlinkSpeed = 3;
+  LocalVariable* rep(ImportVariable(blink_variable.get()));
+  const LocalVariable& lblink_off(ImportVariable(blink_off));
+  Def().IfState(StInit).ActState(StUser1);
+  Def()
+      .IfState(StUser1)
+      .IfTimerDone()
+      .IfReg0(lblink_off)
+      .ActTimer(kBlinkSpeed)
+      .ActState(StUser2)
+      .ActReg0(rep);
+  Def()
+      .IfState(StUser2)
+      .IfTimerDone()
+      .IfReg0(lblink_off)
+      .ActTimer(kBlinkSpeed)
+      .ActState(StUser1)
+      .ActReg1(rep);
 
-    DefCopy(*rep, ImportVariable(&b1.LedRed));
-    DefCopy(*rep, ImportVariable(&b3.LedRed));
-    DefCopy(*rep, ImportVariable(&b5.LedRed));
-    DefCopy(*rep, ImportVariable(&b6.LedRed));
-    DefCopy(*rep, ImportVariable(&b7.LedRed));
-    DefCopy(*rep, ImportVariable(&panda_bridge.l4));
-    DefCopy(*rep, ImportVariable(&lpc11_back.l0));
-    });
+  DefCopy(*rep, ImportVariable(&b1.LedRed));
+  DefCopy(*rep, ImportVariable(&b3.LedRed));
+  DefCopy(*rep, ImportVariable(&b5.LedRed));
+  DefCopy(*rep, ImportVariable(&b6.LedRed));
+  DefCopy(*rep, ImportVariable(&b7.LedRed));
+  DefCopy(*rep, ImportVariable(&panda_bridge.l4));
+  DefCopy(*rep, ImportVariable(&lpc11_back.l0));
+});
 
-DefAut(testaut, brd, {
-    Def().IfState(StInit).ActState(StBase);
-    });
+DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase); });
+
+// Adds the necessary conditions that represent if there is a train at the
+// source track waiting to depart.
+void IfSourceTrackReady(StandardBlock* track, Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg1(op->parent()->ImportVariable(track->detector()))
+      .IfReg0(op->parent()->ImportVariable(track->route_out()));
+}
+
+// Adds the necessary conditions that represent if the destination track is
+// ready to receive a train.
+void IfDstTrackReady(StandardBlock* track, Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(track->route_in()))
+      .IfReg0(op->parent()->ImportVariable(track->detector()));
+}
+
+void SimpleFollowStrategy(StandardBlock* src, StandardBlock* dst, Automata* aut) {
+  auto src_cb = NewCallback(&IfSourceTrackReady, src);
+  auto dst_cb = NewCallback(&IfDstTrackReady, dst);
+  Def().RunCallback(&src_cb).RunCallback(&dst_cb).ActReg1(aut->ImportVariable(src->request_green()));
+}
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 
 MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 
-MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &b3.ActOraGreen, &b3.ActOraRed);
-MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey, &b3.ActBlueBrown);
-MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b2.ActBlueGrey, &b2.ActBlueBrown);
-
-StandardMovableTurnout Turnout_XXW8(&brd, EventBlock::Allocator(logic.allocator(), "XX.W8", 40), &Magnet_XXW8);
-StandardFixedTurnout Turnout_XXW7(&brd, EventBlock::Allocator(logic.allocator(), "XX.W7", 40), FixedTurnout::TURNOUT_CLOSED); // we ignore the magnets here
-StandardFixedTurnout Turnout_XXW1(&brd, EventBlock::Allocator(logic.allocator(), "XX.W1", 40), FixedTurnout::TURNOUT_CLOSED);
-StandardFixedTurnout Turnout_XXW2(&brd, EventBlock::Allocator(logic.allocator(), "XX.W2", 40), FixedTurnout::TURNOUT_THROWN);
-
-StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic.allocator(), "YY.W6", 40), FixedTurnout::TURNOUT_THROWN);
-
-StandardFixedTurnout Turnout_W381(&brd, EventBlock::Allocator(logic.allocator(), "W381", 40), FixedTurnout::TURNOUT_THROWN);
-StandardFixedTurnout Turnout_W382(&brd, EventBlock::Allocator(logic.allocator(), "W382", 40), FixedTurnout::TURNOUT_CLOSED);
-StandardMovableTurnout Turnout_W481(&brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
-
-
-StandardBlock Block_WWB14(&brd, &WWB14,
-                          EventBlock::Allocator(logic.allocator(), "WWB14", 80));
+StandardBlock Block_WWB14(&brd, &WWB14, EventBlock::Allocator(logic.allocator(),
+                                                              "WW.B14", 80));
 StandardBlock Block_A301(&brd, &A301,
                          EventBlock::Allocator(logic.allocator(), "A301", 80));
 StandardBlock Block_B475(&brd, &B475,
                          EventBlock::Allocator(logic.allocator(), "B475", 80));
 
-StandardBlock Block_YYB2(&brd, &YYB2, EventBlock::Allocator(logic.allocator(),
-                                                            "YYB2", 80));
+StandardFixedTurnout Turnout_W381(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "W381", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+StandardFixedTurnout Turnout_W382(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "W382", 40),
+                                  FixedTurnout::TURNOUT_CLOSED);
+MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b2.ActBlueGrey, &b2.ActBlueBrown);
+StandardMovableTurnout Turnout_W481(
+    &brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
+
+StandardBlock Block_YYB2(&brd, &YYB2,
+                         EventBlock::Allocator(logic.allocator(), "YY.B2", 80));
 StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
-                                                              "YYC23", 80));
+                                                              "YY.C23", 80));
+StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "YY.W6", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+
+StandardFixedTurnout Turnout_XXW1(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "XX.W1", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+StandardFixedTurnout Turnout_XXW2(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "XX.W2", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey,
+                      &b3.ActBlueBrown);
+StandardFixedTurnout Turnout_XXW7(
+    &brd, EventBlock::Allocator(logic.allocator(), "XX.W7", 40),
+    FixedTurnout::TURNOUT_CLOSED);  // we ignore the magnets here
+MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &b3.ActOraGreen, &b3.ActOraRed);
+StandardMovableTurnout Turnout_XXW8(
+    &brd, EventBlock::Allocator(logic.allocator(), "XX.W8", 40), &Magnet_XXW8);
 
 StandardBlock Block_XXB1(&brd, &XXB1,
-                         EventBlock::Allocator(logic.allocator(), "XXB1", 80));
+                         EventBlock::Allocator(logic.allocator(), "XX.B1", 80));
 StandardBlock Block_XXB2(&brd, &XXB2,
-                         EventBlock::Allocator(logic.allocator(), "XXB2", 80));
+                         EventBlock::Allocator(logic.allocator(), "XX.B2", 80));
 StandardBlock Block_XXB3(&brd, &XXB3,
-                         EventBlock::Allocator(logic.allocator(), "XXB3", 80));
+                         EventBlock::Allocator(logic.allocator(), "XX.B3", 80));
 
+#define BLOCK_SEQUENCE &Block_A301, &Block_WWB14, &Block_B475
 
-#define BLOCK_SEQUENCE \
-  &Block_A301, &Block_WWB14, &Block_B475
-
-std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE, &Block_YYC23 };
+std::vector<StandardBlock*> block_sequence = {BLOCK_SEQUENCE, &Block_YYC23};
 
 bool ignored1 = BindSequence({BLOCK_SEQUENCE});
-bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
+/*bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
 bool ignored3 = Block_XXB1.side_a()->Bind(Turnout_XXW8.b.side_closed());
 bool ignored4 = Block_XXB3.side_a()->Bind(Turnout_XXW8.b.side_thrown());
 bool ignored5 = Block_A301.side_a()->Bind(Turnout_XXW1.b.side_points());
 bool ignored6 = Block_XXB1.side_b()->Bind(Turnout_XXW1.b.side_closed());
-bool ignored7 = Block_XXB3.side_b()->Bind(Turnout_XXW1.b.side_thrown());
+bool ignored7 = Block_XXB3.side_b()->Bind(Turnout_XXW1.b.side_thrown());*/
 
-bool ign = BindPairs({
-    {Block_YYC23.side_b(), Turnout_YYW6.b.side_closed() },
-    {Block_YYB2.side_a(), Turnout_YYW6.b.side_thrown() },
-    {Turnout_YYW6.b.side_points(), Turnout_XXW8.b.side_points()},
-    {Block_XXB1.side_a(), Turnout_XXW8.b.side_closed()},
-    {Turnout_XXW7.b.side_points(), Turnout_XXW8.b.side_thrown()},
-    {Block_XXB2.side_b(), Turnout_XXW7.b.side_thrown() },
-    {Block_XXB3.side_a(), Turnout_XXW7.b.side_closed() },
-    {Block_XXB1.side_b(), Turnout_XXW1.b.side_closed()},
-    {Block_XXB2.side_a(), Turnout_XXW2.b.side_thrown()},
-    {Block_XXB3.side_b(), Turnout_XXW2.b.side_closed()},
-    {Turnout_XXW1.b.side_thrown(), Turnout_XXW2.b.side_points()},
-    {Turnout_XXW1.b.side_points(), Turnout_W382.b.side_closed()},
-    {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
-    {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
-    {Turnout_W381.b.side_thrown(), Block_A301.side_a()},
-    {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
-    {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
-    {Block_B475.side_b(), Turnout_W481.b.side_points()},
-  });
+bool ign =
+    BindPairs({{Block_YYC23.side_b(), Turnout_YYW6.b.side_closed()},
+               {Block_YYB2.side_a(), Turnout_YYW6.b.side_thrown()},
+               {Turnout_YYW6.b.side_points(), Turnout_XXW8.b.side_points()},
+               {Block_XXB1.side_a(), Turnout_XXW8.b.side_closed()},
+               {Turnout_XXW7.b.side_points(), Turnout_XXW8.b.side_thrown()},
+               {Block_XXB2.side_b(), Turnout_XXW7.b.side_thrown()},
+               {Block_XXB3.side_a(), Turnout_XXW7.b.side_closed()},
+               {Block_XXB1.side_b(), Turnout_XXW1.b.side_closed()},
+               {Block_XXB2.side_a(), Turnout_XXW2.b.side_thrown()},
+               {Block_XXB3.side_b(), Turnout_XXW2.b.side_closed()},
+               {Turnout_XXW1.b.side_thrown(), Turnout_XXW2.b.side_points()},
+               {Turnout_XXW1.b.side_points(), Turnout_W382.b.side_closed()},
+               {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
+               {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
+               {Turnout_W381.b.side_thrown(), Block_A301.side_a()},
+               {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
+               {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
+               {Block_B475.side_b(), Turnout_W481.b.side_points()}, });
 
 DefAut(control_logic, brd, {
-    StateRef StWaiting(4);
-    Def()
-        .IfState(StInit)
-        .ActState(StWaiting)
-        .ActTimer(4)
-        .ActReg1(ImportVariable(&is_paused));
-    for (size_t i = 0; i < block_sequence.size() - 1; ++i) {
-      StandardBlock* current = block_sequence[i];
-      StandardBlock* next = block_sequence[i+1];
-      Def()
-          .IfReg0(ImportVariable(is_paused))
-          .IfReg1(ImportVariable(current->detector()))
-          .IfReg0(ImportVariable(next->route_in()))
-          .IfReg0(ImportVariable(next->detector()))
-          .ActReg1(ImportVariable(current->request_green()));
-    }
-  });
+  StateRef StWaiting(4);
+  Def().IfState(StInit).ActState(StWaiting).ActTimer(4).ActReg1(
+      ImportVariable(&is_paused));
+  for (size_t i = 0; i < block_sequence.size() - 1; ++i) {
+    SimpleFollowStrategy(block_sequence[i], block_sequence[i + 1], this);
+  }
+  SimpleFollowStrategy(&Block_XXB2, &Block_YYB2, this);
+  SimpleFollowStrategy(&Block_YYB2, &Block_A301, this);
+});
 
 DefAut(XXleft, brd, {
-    StateRef StWaiting(4);
-    StateRef StTry1(NewUserState());
-    StateRef StTry2(NewUserState());
-    Def()
-        .IfState(StInit)
-        .ActState(StWaiting)
-        .ActTimer(4);
-    Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
+  StateRef StWaiting(4);
+  StateRef StTry1(NewUserState());
+  StateRef StTry2(NewUserState());
+  Def().IfState(StInit).ActState(StWaiting).ActTimer(4);
+  Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
 
-    StandardBlock* next = &Block_A301;
+  StandardBlock* next = &Block_A301;
 
-    Def()
-        .IfReg0(ImportVariable(is_paused))
-        .IfReg0(ImportVariable(next->route_in()))
-        .IfReg0(ImportVariable(next->detector()))
-        .IfState(StTry1)
-        .IfReg0(ImportVariable(Block_XXB1.detector()))
-        .IfReg1(ImportVariable(Block_XXB3.detector()))
-        .ActState(StTry2);
-    Def()
-        .IfReg0(ImportVariable(is_paused))
-        .IfReg0(ImportVariable(next->route_in()))
-        .IfReg0(ImportVariable(next->detector()))
-        .IfState(StTry2)
-        .IfReg1(ImportVariable(Block_XXB1.detector()))
-        .IfReg0(ImportVariable(Block_XXB3.detector()))
-        .ActState(StTry1);
+  Def()
+      .IfReg0(ImportVariable(is_paused))
+      .IfReg0(ImportVariable(next->route_in()))
+      .IfReg0(ImportVariable(next->detector()))
+      .IfState(StTry1)
+      .IfReg0(ImportVariable(Block_XXB1.detector()))
+      .IfReg1(ImportVariable(Block_XXB3.detector()))
+      .ActState(StTry2);
+  Def()
+      .IfReg0(ImportVariable(is_paused))
+      .IfReg0(ImportVariable(next->route_in()))
+      .IfReg0(ImportVariable(next->detector()))
+      .IfState(StTry2)
+      .IfReg1(ImportVariable(Block_XXB1.detector()))
+      .IfReg0(ImportVariable(Block_XXB3.detector()))
+      .ActState(StTry1);
 
-    Def()
-        .IfReg0(ImportVariable(is_paused))
-        .IfReg0(ImportVariable(next->route_in()))
-        .IfReg0(ImportVariable(next->detector()))
-        .IfState(StTry1)
-        .IfReg1(ImportVariable(Block_XXB1.detector()))
-        .ActReg1(ImportVariable(Block_XXB1.request_green()));
+  Def()
+      .IfReg0(ImportVariable(is_paused))
+      .IfReg0(ImportVariable(next->route_in()))
+      .IfReg0(ImportVariable(next->detector()))
+      .IfState(StTry1)
+      .IfReg1(ImportVariable(Block_XXB1.detector()))
+      .ActReg1(ImportVariable(Block_XXB1.request_green()));
 
-    Def()
-        .IfReg0(ImportVariable(is_paused))
-        .IfReg0(ImportVariable(next->route_in()))
-        .IfReg0(ImportVariable(next->detector()))
-        .IfState(StTry2)
-        .IfReg1(ImportVariable(Block_XXB3.detector()))
-        .ActReg1(ImportVariable(Block_XXB3.request_green()));
+  Def()
+      .IfReg0(ImportVariable(is_paused))
+      .IfReg0(ImportVariable(next->route_in()))
+      .IfReg0(ImportVariable(next->detector()))
+      .IfState(StTry2)
+      .IfReg1(ImportVariable(Block_XXB3.detector()))
+      .ActReg1(ImportVariable(Block_XXB3.request_green()));
 
-    // This flips the state 1<->2 when an outgoing route is set.
-    Def()
-        .IfState(StTry1)
-        .IfReg1(ImportVariable(Block_XXB1.route_out()))
-        .ActState(StTry2);
-    Def()
-        .IfState(StTry2)
-        .IfReg1(ImportVariable(Block_XXB3.route_out()))
-        .ActState(StTry1);
-  });
+  // This flips the state 1<->2 when an outgoing route is set.
+  Def().IfState(StTry1).IfReg1(ImportVariable(Block_XXB1.route_out())).ActState(
+      StTry2);
+  Def().IfState(StTry2).IfReg1(ImportVariable(Block_XXB3.route_out())).ActState(
+      StTry1);
+});
 
 DefAut(XXin, brd, {
-    StateRef StWaiting(4);
-    StateRef StTry1(NewUserState());
-    StateRef StTry2(NewUserState());
-    Def()
-        .IfState(StInit)
-        .ActState(StWaiting)
-        .ActTimer(4);
-    Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
+  StateRef StWaiting(4);
+  StateRef StTry1(NewUserState());
+  StateRef StTry2(NewUserState());
+  Def().IfState(StInit).ActState(StWaiting).ActTimer(4);
+  Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
 
-    StandardBlock* current = &Block_YYC23;
-    StandardBlock* next;
-    next = &Block_XXB1;
-    Def()
-        .IfReg0(ImportVariable(is_paused))
-        .IfReg1(ImportVariable(current->detector()))
-        .IfReg0(ImportVariable(Turnout_XXW8.state()))
-        .IfReg0(ImportVariable(next->route_in()))
-        .IfReg0(ImportVariable(next->detector()))
-        .ActReg1(ImportVariable(current->request_green()));
+  StandardBlock* current = &Block_YYC23;
+  StandardBlock* next;
+  next = &Block_XXB1;
+  Def()
+      .IfReg0(ImportVariable(is_paused))
+      .IfReg1(ImportVariable(current->detector()))
+      .IfReg0(ImportVariable(Turnout_XXW8.state()))
+      .IfReg0(ImportVariable(next->route_in()))
+      .IfReg0(ImportVariable(next->detector()))
+      .ActReg1(ImportVariable(current->request_green()));
 
-    next = &Block_XXB3;
-    Def()
-        .IfReg0(ImportVariable(is_paused))
-        .IfReg1(ImportVariable(current->detector()))
-        .IfReg1(ImportVariable(Turnout_XXW8.state()))
-        .IfReg0(ImportVariable(next->route_in()))
-        .IfReg0(ImportVariable(next->detector()))
-        .ActReg1(ImportVariable(current->request_green()));
-  });
+  next = &Block_XXB3;
+  Def()
+      .IfReg0(ImportVariable(is_paused))
+      .IfReg1(ImportVariable(current->detector()))
+      .IfReg1(ImportVariable(Turnout_XXW8.state()))
+      .IfReg0(ImportVariable(next->route_in()))
+      .IfReg0(ImportVariable(next->detector()))
+      .ActReg1(ImportVariable(current->request_green()));
+});
 
 DefAut(display, brd, {
-    DefCopy(ImportVariable(Block_XXB1.detector()), ImportVariable(&panda_bridge.l0));
-    DefCopy(ImportVariable(Block_A301.detector()), ImportVariable(&panda_bridge.l1));
-    DefCopy(ImportVariable(Block_WWB14.detector()), ImportVariable(&panda_bridge.l2));
-    DefCopy(ImportVariable(Block_YYC23.detector()), ImportVariable(&panda_bridge.l3));
-  });
+  DefCopy(ImportVariable(Block_XXB1.detector()),
+          ImportVariable(&panda_bridge.l0));
+  DefCopy(ImportVariable(Block_A301.detector()),
+          ImportVariable(&panda_bridge.l1));
+  DefCopy(ImportVariable(Block_WWB14.detector()),
+          ImportVariable(&panda_bridge.l2));
+  DefCopy(ImportVariable(Block_YYC23.detector()),
+          ImportVariable(&panda_bridge.l3));
+});
 
 /*DefAut(auto_green, brd, {
     DefNCopy(ImportVariable(*S201.sensor_raw),
@@ -332,7 +325,6 @@ DefAut(display, brd, {
     DefNCopy(ImportVariable(*S501.sensor_raw),
             ImportVariable(S501.signal_raw));
             });*/
-
 
 /*DefCustomAut(magictest, brd, StrategyAutomata, {
     SensorDebounce(ImportVariable(*S501.sensor_raw),
@@ -381,45 +373,44 @@ DefAut(xcopier2, brd, {
 
 */
 
-
 int main(int argc, char** argv) {
-    FILE* f = fopen("automata.bin", "wb");
-    assert(f);
-    string output;
-    brd.Render(&output);
-    fwrite(output.data(), 1, output.size(), f);
-    fclose(f);
+  FILE* f = fopen("automata.bin", "wb");
+  assert(f);
+  string output;
+  brd.Render(&output);
+  fwrite(output.data(), 1, output.size(), f);
+  fclose(f);
 
-    f = fopen("automata.cout", "wb");
-    fprintf(f, "const char automata_code[] = {\n  ");
-    int c = 0;
-    for (char t : output) {
-      fprintf(f, "0x%02x, ", (uint8_t)t);
-      if (++c >= 12) {
-        fprintf(f, "\n  ");
-        c = 0;
-      }
+  f = fopen("automata.cout", "wb");
+  fprintf(f, "const char automata_code[] = {\n  ");
+  int c = 0;
+  for (char t : output) {
+    fprintf(f, "0x%02x, ", (uint8_t)t);
+    if (++c >= 12) {
+      fprintf(f, "\n  ");
+      c = 0;
     }
-    fprintf(f, "};\n");
-    fclose(f);
+  }
+  fprintf(f, "};\n");
+  fclose(f);
 
-    f = fopen("variables.txt", "w");
-    assert(f);
-    map<int, string>& m(*automata::GetOffsetMap());
-    for (const auto& it : m) {
-      fprintf(f, "%04x: %s\n", it.first * 2, it.second.c_str());
-    }
-    fclose(f);
+  f = fopen("variables.txt", "w");
+  assert(f);
+  map<int, string>& m(*automata::GetOffsetMap());
+  for (const auto& it : m) {
+    fprintf(f, "%04x: %s\n", it.first * 2, it.second.c_str());
+  }
+  fclose(f);
 
-    f = fopen("jmri-out.xml", "w");
-    assert(f);
-    PrintAllEventVariables(f);
-    fclose(f);
+  f = fopen("jmri-out.xml", "w");
+  assert(f);
+  PrintAllEventVariables(f);
+  fclose(f);
 
-    f = fopen("var-bash-list.txt", "w");
-    assert(f);
-    PrintAllEventVariablesInBashFormat(f);
-    fclose(f);
+  f = fopen("var-bash-list.txt", "w");
+  assert(f);
+  PrintAllEventVariablesInBashFormat(f);
+  fclose(f);
 
-    return 0;
+  return 0;
 };
