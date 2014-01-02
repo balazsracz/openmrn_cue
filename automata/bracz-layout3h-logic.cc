@@ -129,10 +129,17 @@ void IfDstTrackReady(StandardBlock* track, Automata::Op* op) {
       .IfReg0(op->parent()->ImportVariable(track->detector()));
 }
 
-void SimpleFollowStrategy(StandardBlock* src, StandardBlock* dst, Automata* aut) {
+void SimpleFollowStrategy(
+    StandardBlock* src, StandardBlock* dst,
+    const std::initlaizer_list<const GlobalVariable*>& route_points,
+    Automata* aut) {
   auto src_cb = NewCallback(&IfSourceTrackReady, src);
   auto dst_cb = NewCallback(&IfDstTrackReady, dst);
-  Def().RunCallback(&src_cb).RunCallback(&dst_cb).ActReg1(aut->ImportVariable(src->request_green()));
+  Def()
+      .RunCallback(&src_cb)
+      .Rept(&Automata::Op::IfReg0, route_points)
+      .RunCallback(&dst_cb)
+      .ActReg1(aut->ImportVariable(src->request_green()));
 }
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
@@ -223,10 +230,12 @@ DefAut(control_logic, brd, {
   Def().IfState(StInit).ActState(StWaiting).ActTimer(4).ActReg1(
       ImportVariable(&is_paused));
   for (size_t i = 0; i < block_sequence.size() - 1; ++i) {
-    SimpleFollowStrategy(block_sequence[i], block_sequence[i + 1], this);
+    SimpleFollowStrategy(block_sequence[i], block_sequence[i + 1], {}, this);
   }
-  SimpleFollowStrategy(&Block_XXB2, &Block_YYB2, this);
-  SimpleFollowStrategy(&Block_YYB2, &Block_A301, this);
+  SimpleFollowStrategy(&Block_XXB2, &Block_YYB2, {Turnout_XXW8.b.any_route()},
+                       this);
+  SimpleFollowStrategy(&Block_YYB2, &Block_A301, {Turnout_W382.b.any_route()},
+                       this);
 });
 
 DefAut(XXleft, brd, {

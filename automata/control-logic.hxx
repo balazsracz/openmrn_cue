@@ -521,6 +521,8 @@ public:
   virtual CtrlTrackInterface *side_closed() { return &side_closed_; }
   virtual CtrlTrackInterface *side_thrown() { return &side_thrown_; }
 
+  const GlobalVariable* any_route() { return *any_route_set_; }
+
 protected:
   FRIEND_TEST(LogicTest, FixedTurnout);
   FRIEND_TEST(LogicTest, MovableTurnout);
