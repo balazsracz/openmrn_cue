@@ -135,6 +135,10 @@ public:
 bool
 BindSequence(const std::initializer_list<StraightTrackInterface *> &pieces);
 
+// Binds together pairs of interfaces. The return value is always true.
+bool BindPairs(const std::initializer_list<std::initializer_list<CtrlTrackInterface*>> &pieces);
+
+
 // Interface for finding real occupancy detectors at a track piece.
 class OccupancyLookupInterface {
 public:

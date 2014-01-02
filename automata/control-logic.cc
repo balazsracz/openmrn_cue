@@ -23,6 +23,16 @@ bool BindSequence(
   return true;
 }
 
+bool BindPairs(const std::initializer_list<std::initializer_list<CtrlTrackInterface*> > &pieces) {
+  for (const auto& p : pieces) {
+    assert(p.size() == 2);
+    CtrlTrackInterface*const *const entries = p.begin();
+    entries[0]->Bind(entries[1]);
+  }
+  return true;
+}
+
+
 typedef Automata::LocalVariable LocalVariable;
 
 // This funciton will be called from SimulateOccupancy when the simulated
