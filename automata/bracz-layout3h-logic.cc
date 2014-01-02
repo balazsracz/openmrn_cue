@@ -232,13 +232,13 @@ DefAut(control_logic, brd, {
   for (size_t i = 0; i < block_sequence.size() - 1; ++i) {
     SimpleFollowStrategy(block_sequence[i], block_sequence[i + 1], {}, this);
   }
-  SimpleFollowStrategy(&Block_XXB2, &Block_YYB2, {Turnout_XXW8.b.any_route()},
+  /*SimpleFollowStrategy(&Block_XXB2, &Block_YYB2, {Turnout_XXW8.b.any_route()},
                        this);
   SimpleFollowStrategy(&Block_YYB2, &Block_A301, {Turnout_W382.b.any_route()},
-                       this);
+  this);*/
 });
 
-DefAut(XXleft, brd, {
+/*DefAut(XXleft, brd, {
   StateRef StWaiting(4);
   StateRef StTry1(NewUserState());
   StateRef StTry2(NewUserState());
@@ -285,7 +285,7 @@ DefAut(XXleft, brd, {
       StTry2);
   Def().IfState(StTry2).IfReg1(ImportVariable(Block_XXB3.route_out())).ActState(
       StTry1);
-});
+      });*/
 
 /*DefAut(XXin, brd, {
   StateRef StWaiting(4);
@@ -457,8 +457,6 @@ DefAut(returnloop, brd, {
 
       });*/
 
-
-
 DefAut(returnloop1, brd, {
   // 1 if the last train went from back->front.
   static GlobalVariable* v_last_to_front = NewTempVariable(&brd);
@@ -495,50 +493,52 @@ DefAut(returnloop1, brd, {
   static StateRef StSendToXXB3(NewUserState());
 
   // If the circle is free, let's look for a train to send.
-  Def().IfState(StBase).IfReg0(busy)
-      .ActState(StTrySendTrain);
+  Def().IfState(StBase).IfReg0(busy).ActState(StTrySendTrain);
 
   // We check which way the last train went, and try to go the other way now.
-  Def().IfState(StTrySendTrain)
-      .IfReg0(*last_to_front)
-      .ActState(StTryFrontToBack);
+  Def().IfState(StTrySendTrain).IfReg0(*last_to_front).ActState(
+      StTryFrontToBack);
 
-  Def().IfState(StTrySendTrain)
-      .ActState(StTryBackToFront);
+  Def().IfState(StTrySendTrain).ActState(StTryBackToFront);
 
   // Checks if we can send a train front->back.
-  Def().IfState(StTryFrontToBack)
+  Def()
+      .IfState(StTryFrontToBack)
       .RunCallback(&xxb2_depart)
       .RunCallback(&yyb2_arrive)
       .ActReg1(xxb2_reqgreen)
       .ActReg0(last_to_front)
       .ActState(StFrontPending);
 
-  Def().IfState(StTryFrontToBack)
+  Def()
+      .IfState(StTryFrontToBack)
       // We failed to send front to back. Try reverse.
       .IfReg0(*last_to_front)
       .ActState(StTryBackToFront);
 
-  Def().IfState(StTryFrontToBack)
+  Def()
+      .IfState(StTryFrontToBack)
       // We failed to send any train. Try again later.
       .ActState(StBase);
 
   // When the route setting is completed, return to the starting state.
-  Def().IfState(StFrontPending)
+  Def()
+      .IfState(StFrontPending)
       .IfReg0(*xxb2_reqgreen)
       .ActReg0(last_to_front)
       .ActState(StBase);
 
-
   // Trying to send a train back to front. Check if our preferred direction is
   // available.
-  Def().IfState(StTryBackToFront)
+  Def()
+      .IfState(StTryBackToFront)
       .IfReg0(*last_front_t1)
       .RunCallback(&yyc23_depart)
       .RunCallback(&xxb1_arrive)
       .ActState(StSendToXXB1);
 
-  Def().IfState(StTryBackToFront)
+  Def()
+      .IfState(StTryBackToFront)
       .IfReg1(*last_front_t1)
       .RunCallback(&yyc23_depart)
       .RunCallback(&xxb3_arrive)
@@ -546,49 +546,256 @@ DefAut(returnloop1, brd, {
 
   // The same conditions as above, but without the restriction of the last
   // direction.
-  Def().IfState(StTryBackToFront)
+  Def()
+      .IfState(StTryBackToFront)
       .RunCallback(&yyc23_depart)
       .RunCallback(&xxb1_arrive)
       .ActState(StSendToXXB1);
 
-  Def().IfState(StTryBackToFront)
+  Def()
+      .IfState(StTryBackToFront)
       .RunCallback(&yyc23_depart)
       .RunCallback(&xxb3_arrive)
       .ActState(StSendToXXB3);
 
-  Def().IfState(StTryBackToFront)
+  Def()
+      .IfState(StTryBackToFront)
       // back->front failed, look other way
-      .IfReg1(*last_to_front) // if we haven't yet done so
+      .IfReg1(*last_to_front)  // if we haven't yet done so
       .ActState(StTryFrontToBack);
 
-  Def().IfState(StTryBackToFront)
+  Def()
+      .IfState(StTryBackToFront)
       // Try again later.
       .ActState(StBase);
 
-  Def().IfState(StSendToXXB1)
-      .ActReg0(xxw8_cmd);
+  Def().IfState(StSendToXXB1).ActReg0(xxw8_cmd);
 
-  Def().IfState(StSendToXXB1)
+  Def()
+      .IfState(StSendToXXB1)
       .IfReg0(xxw8_state)
       .ActReg1(yyc23_reqgreen)
       .ActReg1(last_front_t1)
       .ActState(StBackPending);
 
-  Def().IfState(StSendToXXB3)
-      .ActReg1(xxw8_cmd);
+  Def().IfState(StSendToXXB3).ActReg1(xxw8_cmd);
 
-  Def().IfState(StSendToXXB3)
+  Def()
+      .IfState(StSendToXXB3)
       .IfReg1(xxw8_state)
       .ActReg1(yyc23_reqgreen)
       .ActReg0(last_front_t1)
       .ActState(StBackPending);
 
-  Def().IfState(StBackPending)
+  Def()
+      .IfState(StBackPending)
       .IfReg0(*yyc23_reqgreen)
       .ActReg1(last_to_front)
       .ActState(StBase);
-  });
+});
 
+DefAut(front_exclusion, brd, {
+  // 1 if the last inbound train went to XX, 0 if to YY.
+  static GlobalVariable* v_last_to_front = NewTempVariable(&brd);
+  LocalVariable* last_to_front = ImportVariable(v_last_to_front);
+  // 1 if the last outbound train went from XX, 0 if from YY.
+  static GlobalVariable* v_last_from_front = NewTempVariable(&brd);
+  LocalVariable* last_from_front = ImportVariable(v_last_from_front);
+  // 1 if the last outbound front train went from track 1.
+  static GlobalVariable* v_last_front_t1 = NewTempVariable(&brd);
+  LocalVariable* last_front_t1 = ImportVariable(v_last_front_t1);
+
+  // External interface. These trigger our main loops.
+  auto b475_depart = NewCallback(&IfSourceTrackReady, &Block_B475);
+  auto a301_arrive = NewCallback(&IfDstTrackReady, &Block_A301);
+
+  // Inbound conditions.
+  auto yyc23_arrive = NewCallback(&IfDstTrackReady, &Block_YYC23);
+  auto xxb2_arrive = NewCallback(&IfDstTrackReady, &Block_XXB2);
+
+  // Outbound conditions.
+  auto xxb1_depart = NewCallback(&IfSourceTrackReady, &Block_XXB1);
+  auto xxb3_depart = NewCallback(&IfSourceTrackReady, &Block_XXB3);
+  auto yyb2_depart = NewCallback(&IfSourceTrackReady, &Block_YYB2);
+
+  // These will tell us if the back / front track is available.
+  const LocalVariable& busy_4 = ImportVariable(*Turnout_W481.b.any_route());
+  const LocalVariable& busy_3 = ImportVariable(*Turnout_W382.b.any_route());
+
+  LocalVariable* w481_cmd = ImportVariable(Magnet_W481.command.get());
+  const LocalVariable& w481_state = ImportVariable(*Magnet_W481.current_state);
+
+  // Outbound go.
+  LocalVariable* xxb1_reqgreen = ImportVariable(Block_XXB1.request_green());
+  LocalVariable* xxb3_reqgreen = ImportVariable(Block_XXB3.request_green());
+  LocalVariable* yyb2_reqgreen = ImportVariable(Block_YYB2.request_green());
+  // Inbound go.
+  LocalVariable* b475_reqgreen = ImportVariable(Block_B475.request_green());
+
+  static StateRef StTryInbound(NewUserState());
+  static StateRef StWaitInboundToXXB2(NewUserState());
+  static StateRef StRunInboundToXXB2(NewUserState());
+  static StateRef StPendingInbound(NewUserState());
+  static StateRef StInboundToYYC23(NewUserState());
+  static StateRef StRunInboundToYYC23(NewUserState());
+  static StateRef StTryOutbound(NewUserState());
+  static StateRef StPendingYYB2(NewUserState());
+  static StateRef StPendingXXB1(NewUserState());
+  static StateRef StPendingXXB3(NewUserState());
+  /*static StateRef (NewUserState());
+  static StateRef (NewUserState());
+  static StateRef (NewUserState());
+  static StateRef (NewUserState());*/
+
+
+  Def().IfState(StInit).ActState(StBase);
+
+  Def().IfState(StBase).RunCallback(&b475_depart).IfReg0(busy_4).ActState(
+      StTryInbound);
+
+  Def().IfState(StBase).RunCallback(&a301_arrive).IfReg0(busy_3).ActState(
+      StTryOutbound);
+
+  // Pick inbound trains (front or back). First try with the preference.
+  Def().IfState(StTryInbound).IfReg0(*last_to_front).RunCallback(&xxb2_arrive)
+      .ActState(StWaitInboundToXXB2);
+
+  Def().IfState(StTryInbound).IfReg1(*last_to_front).RunCallback(&yyc23_arrive)
+      .IfReg0(busy_4)
+      .ActState(StInboundToYYC23);
+
+  // Then try without the preference.
+  Def().IfState(StTryInbound).RunCallback(&xxb2_arrive)
+      .IfReg0(busy_4)  // we essentially skip the wait here.
+      .IfReg0(busy_3)
+      .ActState(StWaitInboundToXXB2);
+
+  Def().IfState(StTryInbound).RunCallback(&yyc23_arrive)
+      .IfReg0(busy_4)
+      .ActState(StInboundToYYC23);
+
+  // No space or no track for inbound trains. Try outbound.
+  Def().IfState(StTryInbound)
+      .IfReg0(busy_3)
+      .RunCallback(&a301_arrive)
+      .ActState(StTryOutbound);
+  // fail.
+  Def().IfState(StTryInbound)
+      .ActState(StBase);
+
+
+  // This wait state purposefully doesn't have an exit. We know that the
+  // destination track is free and the source track has a train. We just have
+  // to wait for the interlocking to be free and we are willing to wait that
+  // out.
+  Def().IfState(StWaitInboundToXXB2)
+      .IfReg0(busy_4)
+      .IfReg0(busy_3)
+      .RunCallback(&b475_depart)
+      .RunCallback(&xxb2_arrive)
+      .ActReg1(w481_cmd)
+      .ActState(StRunInboundToXXB2);
+
+  // Waits for the turnout to reach the end position.
+  Def().IfState(StRunInboundToXXB2)
+      .IfReg1(w481_state)
+      .ActReg1(b475_reqgreen)
+      .ActReg1(last_to_front)
+      .ActState(StPendingInbound);
+
+  // Waits for the route setting to complete.
+  Def().IfState(StPendingInbound)
+      .IfReg0(*b475_reqgreen)
+      .ActState(StBase);
+
+  Def().IfState(StInboundToYYC23)
+      .RunCallback(&b475_depart)
+      .RunCallback(&yyc23_arrive)
+      .ActReg0(w481_cmd)
+      .ActState(StRunInboundToYYC23);
+
+  Def().IfState(StRunInboundToYYC23)
+      .IfReg0(w481_state)
+      .ActReg1(b475_reqgreen)
+      .ActReg0(last_to_front)
+      .ActState(StPendingInbound);
+
+  //  ====== outbound trains ======
+
+  Def().IfState(StTryOutbound)
+      .IfReg1(busy_3)  // no track.
+      .ActState(StBase);
+
+  // back
+  Def().IfState(StTryOutbound)
+      .IfReg1(*last_from_front)
+      .RunCallback(&yyb2_depart)
+      .ActReg1(yyb2_reqgreen)
+      .ActState(StPendingYYB2);
+
+  // front  x2
+  Def().IfState(StTryOutbound)
+      .IfReg0(*last_from_front)
+      .IfReg0(*last_front_t1)
+      .RunCallback(&xxb3_depart)
+      .ActReg1(xxb3_reqgreen)
+      .ActState(StPendingXXB3);
+
+  Def().IfState(StTryOutbound)
+      .IfReg0(*last_from_front)
+      .IfReg1(*last_front_t1)
+      .RunCallback(&xxb1_depart)
+      .ActReg1(xxb1_reqgreen)
+      .ActState(StPendingXXB1);
+  // front without track preference
+  Def().IfState(StTryOutbound)
+      .IfReg0(*last_from_front)
+      .RunCallback(&xxb3_depart)
+      .ActReg1(xxb3_reqgreen)
+      .ActState(StPendingXXB3);
+
+  Def().IfState(StTryOutbound)
+      .IfReg0(*last_from_front)
+      .RunCallback(&xxb1_depart)
+      .ActReg1(xxb1_reqgreen)
+      .ActState(StPendingXXB1);
+
+  // back witnout any preference
+  Def().IfState(StTryOutbound)
+      .RunCallback(&yyb2_depart)
+      .ActReg1(yyb2_reqgreen)
+      .ActState(StPendingYYB2);
+
+  // front without any preference
+  Def().IfState(StTryOutbound)
+      .RunCallback(&xxb3_depart)
+      .ActReg1(xxb3_reqgreen)
+      .ActState(StPendingXXB3);
+
+  Def().IfState(StTryOutbound)
+      .RunCallback(&xxb1_depart)
+      .ActReg1(xxb1_reqgreen)
+      .ActState(StPendingXXB1);
+
+  // Outbound pending closedown.
+  Def().IfState(StPendingYYB2)
+      .IfReg0(*yyb2_reqgreen)
+      .ActReg0(last_from_front)
+      .ActState(StBase);
+
+  Def().IfState(StPendingXXB1)
+      .IfReg0(*xxb1_reqgreen)
+      .ActReg1(last_from_front)
+      .ActReg1(last_front_t1)
+      .ActState(StBase);
+
+  Def().IfState(StPendingXXB3)
+      .IfReg0(*xxb3_reqgreen)
+      .ActReg1(last_from_front)
+      .ActReg0(last_front_t1)
+      .ActState(StBase);
+
+});
 
 /*DefAut(auto_green, brd, {
     DefNCopy(ImportVariable(*S201.sensor_raw),
