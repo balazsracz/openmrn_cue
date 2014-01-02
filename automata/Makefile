@@ -6,7 +6,7 @@ AUTS = rr-crossing.cpp logic-demo.cpp
 OUTPUTS = $(AUTS:.cpp=.cout)
 BINS = $(AUTS:.cpp=)
 
-all: lib test-aut bracz-layout3h-logic
+all: lib test-aut bracz-layout3h-logic bin
 
 -include *.d
 

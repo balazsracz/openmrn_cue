@@ -61,7 +61,7 @@ EventBasedVariable sendmeasure(&brd,
 
 
 
-I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b3(0x23);
+I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22), b3(0x23);
 
 
 /*StateRef StGreen(2);
@@ -81,9 +81,12 @@ PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
 PhysicalSignal B475(&b7.InBrownGrey, &b7.RelGreen);
 
 PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
-PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
-PhysicalSignal XXB2(&b1.InOraRed, &b1.RelBlue);
+PhysicalSignal XXB2(&b3.InBrownGrey, &b3.RelBlue);
 
+PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
+PhysicalSignal XXB3(&b1.InOraRed, &b1.RelBlue);
+
+PhysicalSignal YYB2(&b2.InBrownGrey, &b2.RelGreen);
 
 
 
@@ -140,10 +143,19 @@ MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 
 MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &b3.ActOraGreen, &b3.ActOraRed);
 MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey, &b3.ActBlueBrown);
+MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b2.ActBlueGrey, &b2.ActBlueBrown);
 
 StandardMovableTurnout Turnout_XXW8(&brd, EventBlock::Allocator(logic.allocator(), "XX.W8", 40), &Magnet_XXW8);
-
+StandardFixedTurnout Turnout_XXW7(&brd, EventBlock::Allocator(logic.allocator(), "XX.W7", 40), FixedTurnout::TURNOUT_CLOSED); // we ignore the magnets here
 StandardFixedTurnout Turnout_XXW1(&brd, EventBlock::Allocator(logic.allocator(), "XX.W1", 40), FixedTurnout::TURNOUT_CLOSED);
+StandardFixedTurnout Turnout_XXW2(&brd, EventBlock::Allocator(logic.allocator(), "XX.W2", 40), FixedTurnout::TURNOUT_THROWN);
+
+StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic.allocator(), "YY.W6", 40), FixedTurnout::TURNOUT_THROWN);
+
+StandardFixedTurnout Turnout_W381(&brd, EventBlock::Allocator(logic.allocator(), "W381", 40), FixedTurnout::TURNOUT_THROWN);
+StandardFixedTurnout Turnout_W382(&brd, EventBlock::Allocator(logic.allocator(), "W382", 40), FixedTurnout::TURNOUT_CLOSED);
+StandardMovableTurnout Turnout_W481(&brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
+
 
 StandardBlock Block_WWB14(&brd, &WWB14,
                           EventBlock::Allocator(logic.allocator(), "WWB14", 80));
@@ -151,27 +163,53 @@ StandardBlock Block_A301(&brd, &A301,
                          EventBlock::Allocator(logic.allocator(), "A301", 80));
 StandardBlock Block_B475(&brd, &B475,
                          EventBlock::Allocator(logic.allocator(), "B475", 80));
+
+StandardBlock Block_YYB2(&brd, &YYB2, EventBlock::Allocator(logic.allocator(),
+                                                            "YYB2", 80));
 StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
                                                               "YYC23", 80));
+
 StandardBlock Block_XXB1(&brd, &XXB1,
                          EventBlock::Allocator(logic.allocator(), "XXB1", 80));
 StandardBlock Block_XXB2(&brd, &XXB2,
                          EventBlock::Allocator(logic.allocator(), "XXB2", 80));
+StandardBlock Block_XXB3(&brd, &XXB3,
+                         EventBlock::Allocator(logic.allocator(), "XXB3", 80));
 
 
 #define BLOCK_SEQUENCE \
-  &Block_A301, &Block_WWB14, &Block_B475, &Block_YYC23
+  &Block_A301, &Block_WWB14, &Block_B475
 
-std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE };
+std::vector<StandardBlock*> block_sequence = { BLOCK_SEQUENCE, &Block_YYC23 };
 
 bool ignored1 = BindSequence({BLOCK_SEQUENCE});
 bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
 bool ignored3 = Block_XXB1.side_a()->Bind(Turnout_XXW8.b.side_closed());
-bool ignored4 = Block_XXB2.side_a()->Bind(Turnout_XXW8.b.side_thrown());
+bool ignored4 = Block_XXB3.side_a()->Bind(Turnout_XXW8.b.side_thrown());
 bool ignored5 = Block_A301.side_a()->Bind(Turnout_XXW1.b.side_points());
 bool ignored6 = Block_XXB1.side_b()->Bind(Turnout_XXW1.b.side_closed());
-bool ignored7 = Block_XXB2.side_b()->Bind(Turnout_XXW1.b.side_thrown());
+bool ignored7 = Block_XXB3.side_b()->Bind(Turnout_XXW1.b.side_thrown());
 
+bool ign = BindPairs({
+    {Block_YYC23.side_b(), Turnout_YYW6.b.side_closed() },
+    {Block_YYB2.side_a(), Turnout_YYW6.b.side_thrown() },
+    {Turnout_YYW6.b.side_points(), Turnout_XXW8.b.side_points()},
+    {Block_XXB1.side_a(), Turnout_XXW8.b.side_closed()},
+    {Turnout_XXW7.b.side_points(), Turnout_XXW8.b.side_thrown()},
+    {Block_XXB2.side_b(), Turnout_XXW7.b.side_thrown() },
+    {Block_XXB3.side_a(), Turnout_XXW7.b.side_closed() },
+    {Block_XXB1.side_b(), Turnout_XXW1.b.side_closed()},
+    {Block_XXB2.side_a(), Turnout_XXW2.b.side_thrown()},
+    {Block_XXB3.side_b(), Turnout_XXW2.b.side_closed()},
+    {Turnout_XXW1.b.side_thrown(), Turnout_XXW2.b.side_points()},
+    {Turnout_XXW1.b.side_points(), Turnout_W382.b.side_closed()},
+    {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
+    {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
+    {Turnout_W381.b.side_thrown(), Block_A301.side_a()},
+    {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
+    {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
+    {Block_B475.side_b(), Turnout_W481.b.side_points()},
+  });
 
 DefAut(control_logic, brd, {
     StateRef StWaiting(4);
@@ -210,7 +248,7 @@ DefAut(XXleft, brd, {
         .IfReg0(ImportVariable(next->detector()))
         .IfState(StTry1)
         .IfReg0(ImportVariable(Block_XXB1.detector()))
-        .IfReg1(ImportVariable(Block_XXB2.detector()))
+        .IfReg1(ImportVariable(Block_XXB3.detector()))
         .ActState(StTry2);
     Def()
         .IfReg0(ImportVariable(is_paused))
@@ -218,7 +256,7 @@ DefAut(XXleft, brd, {
         .IfReg0(ImportVariable(next->detector()))
         .IfState(StTry2)
         .IfReg1(ImportVariable(Block_XXB1.detector()))
-        .IfReg0(ImportVariable(Block_XXB2.detector()))
+        .IfReg0(ImportVariable(Block_XXB3.detector()))
         .ActState(StTry1);
 
     Def()
@@ -234,8 +272,8 @@ DefAut(XXleft, brd, {
         .IfReg0(ImportVariable(next->route_in()))
         .IfReg0(ImportVariable(next->detector()))
         .IfState(StTry2)
-        .IfReg1(ImportVariable(Block_XXB2.detector()))
-        .ActReg1(ImportVariable(Block_XXB2.request_green()));
+        .IfReg1(ImportVariable(Block_XXB3.detector()))
+        .ActReg1(ImportVariable(Block_XXB3.request_green()));
 
     // This flips the state 1<->2 when an outgoing route is set.
     Def()
@@ -244,7 +282,7 @@ DefAut(XXleft, brd, {
         .ActState(StTry2);
     Def()
         .IfState(StTry2)
-        .IfReg1(ImportVariable(Block_XXB2.route_out()))
+        .IfReg1(ImportVariable(Block_XXB3.route_out()))
         .ActState(StTry1);
   });
 
@@ -269,7 +307,7 @@ DefAut(XXin, brd, {
         .IfReg0(ImportVariable(next->detector()))
         .ActReg1(ImportVariable(current->request_green()));
 
-    next = &Block_XXB2;
+    next = &Block_XXB3;
     Def()
         .IfReg0(ImportVariable(is_paused))
         .IfReg1(ImportVariable(current->detector()))
