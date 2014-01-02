@@ -44,12 +44,10 @@ public:
     if (g_i2c_driver.success()) {
       if (g_i2c_driver.read_buffer()[0] == new_data_) {
         // Checks if we had enough repeats to call this data stable.
-        if (++data_count_ == DATA_REPEAT_COUNT) {
-          return YieldAndCall(ST(UpdateIncomingData));
-        }
-        // Prevents overflow.
-        if (data_count_ > DATA_REPEAT_COUNT) {
+        if (++data_count_ >= DATA_REPEAT_COUNT) {
+          // Prevents overflow.
           data_count_ = DATA_REPEAT_COUNT;
+          return YieldAndCall(ST(UpdateIncomingData));
         }
       } else {
         // Data changed, start over counting.
