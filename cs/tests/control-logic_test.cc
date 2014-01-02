@@ -1507,7 +1507,7 @@ TEST_F(LogicTest, Magnets) {
   SetVar(*def1.command, false);
 
   SetupRunner(&brd);
-  Run(2);
+  Run(40); // should be enough time for reset behavior.
   EXPECT_FALSE(v0s0.Get());
   EXPECT_FALSE(v0s1.Get());
   EXPECT_FALSE(v1s0.Get());

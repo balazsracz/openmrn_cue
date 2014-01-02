@@ -453,7 +453,18 @@ void FixedTurnout::FixTurnoutState(Automata* aut) {
 void MovableTurnout::CopyState(Automata* aut) {
   LocalVariable* turnoutstate = aut->ImportVariable(turnout_state_.get());
   const LocalVariable& physical_state = aut->ImportVariable(*magnet_->current_state);
-  aut->DefCopy(physical_state, turnoutstate);
+  const LocalVariable& route_thrown = aut->ImportVariable(*route_set_TP_);
+  const LocalVariable& route_closed = aut->ImportVariable(*route_set_CP_);
+  Def().IfReg1(route_thrown).ActReg1(turnoutstate);
+  Def().IfReg1(route_closed).ActReg0(turnoutstate);
+  Def()
+      .IfReg0(route_thrown).IfReg0(route_closed)
+      .IfReg1(physical_state)
+      .ActReg1(turnoutstate);
+  Def()
+      .IfReg0(route_thrown).IfReg0(route_closed)
+      .IfReg0(physical_state)
+      .ActReg0(turnoutstate);
 }
 
 void TurnoutBase::TurnoutOccupancy(Automata* aut) {
