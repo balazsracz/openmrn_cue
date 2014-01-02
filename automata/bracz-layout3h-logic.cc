@@ -131,7 +131,7 @@ void IfDstTrackReady(StandardBlock* track, Automata::Op* op) {
 
 void SimpleFollowStrategy(
     StandardBlock* src, StandardBlock* dst,
-    const std::initlaizer_list<const GlobalVariable*>& route_points,
+    const std::initializer_list<const GlobalVariable*>& route_points,
     Automata* aut) {
   auto src_cb = NewCallback(&IfSourceTrackReady, src);
   auto dst_cb = NewCallback(&IfDstTrackReady, dst);
@@ -287,7 +287,7 @@ DefAut(XXleft, brd, {
       StTry1);
 });
 
-DefAut(XXin, brd, {
+/*DefAut(XXin, brd, {
   StateRef StWaiting(4);
   StateRef StTry1(NewUserState());
   StateRef StTry2(NewUserState());
@@ -313,7 +313,7 @@ DefAut(XXin, brd, {
       .IfReg0(ImportVariable(next->route_in()))
       .IfReg0(ImportVariable(next->detector()))
       .ActReg1(ImportVariable(current->request_green()));
-});
+      });*/
 
 DefAut(display, brd, {
   DefCopy(ImportVariable(Block_XXB1.detector()),
@@ -325,6 +325,270 @@ DefAut(display, brd, {
   DefCopy(ImportVariable(Block_YYC23.detector()),
           ImportVariable(&panda_bridge.l3));
 });
+
+/*
+DefAut(returnloop, brd, {
+  static GlobalVariable* request_pending = NewTempVariable(&brd);
+  LocalVariable* pending = ImportVariable(request_pending);
+
+  static StateRef StFront1(NewUserState());  // YYC23 -> XXB1
+  static StateRef StFront3(NewUserState());  // YYC23 -> XXB3
+  static StateRef StBack1(NewUserState());   // XXB2 -> YYB2
+  static StateRef StBack2(NewUserState());   // alias for the above to guarantee
+                                      // fairness
+
+  static StateRef SettingFront1(NewUserState());
+  static StateRef SettingFront3(NewUserState());
+  static StateRef SettingBack1(NewUserState());
+  static StateRef SettingBack2(NewUserState());
+
+  Def().IfState(StInit).ActReg0(pending).ActState(StFront1);
+
+  Def()
+      .IfReg0(busy)
+      .IfState(StFront1)
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb1_arrive)
+      .ActState(SettingFront1);
+  Def()
+      .IfReg0(busy)
+      .IfState(StFront1)
+      // We failed to set stfront1, source train is missing or dst is busy.
+      // Let's try to send a train to the other front track.
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb3_arrive)
+      // Now we can run a train to the other track. Let's do that.
+      .ActState(SettingFront3);
+
+  Def()
+      .IfReg0(busy)
+      .IfState(StFront1)
+      // We failed to run a train to the front. Let's try to run one to the
+      // back.
+      .RunCallback(&xxb2_depart)
+      .RunCallback(&yyb2_arrive)
+      .ActState(StBack2);
+
+  Def()
+      .IfReg0(busy)
+      .IfState(StFront3)
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb3_arrive)
+      .ActState(SettingFront3);
+  Def()
+      .IfReg0(busy)
+      .IfState(StFront3)
+      // We failed to set stfront3, source train is missing or dst is busy.
+      // Let's try to send a train to the other front track.
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb1_arrive)
+      // Now we can run a train to the other track. Let's do that.
+      .ActState(SettingFront1);
+
+  Def()
+      .IfReg0(busy)
+      .IfState(StFront3)
+      // We failed to run a train to the front. Let's try to run one to the
+      // back.
+      .RunCallback(&xxb2_depart)
+      .RunCallback(&yyb2_arrive)
+      .ActState(StBack1);
+
+  Def()
+      .IfReg0(busy)
+      .IfReg0(*pending)
+      .IfState(StBack1)
+      .RunCallback(&xxb2_depart)
+      .RunCallback(&yyb2_arrive)
+      .ActReg1(xxb2_reqgreen)
+      .ActReg1(pending);
+
+  Def()
+      .IfState(StBack1)
+      .IfReg1(*pending)
+      .IfReg0(*xxb2_reqgreen)
+      .ActReg0(pending)
+      .ActState(StFront3);
+
+  Def()
+      .IfReg0(busy)
+      .IfReg0(*pending)
+      .IfState(StBack2)
+      .RunCallback(&xxb2_depart)
+      .RunCallback(&yyb2_arrive)
+      .ActReg1(xxb2_reqgreen)
+      .ActReg1(pending);
+
+  Def()
+      .IfState(StBack2)
+      .IfReg1(*pending)
+      .IfReg0(*xxb2_reqgreen)
+      .ActReg0(pending)
+      .ActState(StFront1);
+
+  Def().IfReg0(busy).IfReg0(*pending).IfState(SettingFront1).ActReg0(xxw8_cmd);
+  Def()
+      .IfReg0(busy)
+      .IfReg0(*pending)
+      .IfState(SettingFront1)
+      .IfReg0(xxw8_state)
+      .ActReg1(yyc23_reqgreen)
+      .ActReg1(pending);
+  Def().IfState(SettingFront1)
+      .IfReg1(*pending)
+      .IfReg0(*yyc23_reqgreen)
+      .ActReg0(pending)
+      .ActState(StBack1);
+
+  Def().IfReg0(busy).IfReg0(*pending).IfState(SettingFront3).ActReg1(xxw8_cmd);
+  Def()
+      .IfReg0(busy)
+      .IfReg0(*pending)
+      .IfState(SettingFront3)
+      .IfReg1(xxw8_state)
+      .ActReg1(yyc23_reqgreen)
+      .ActReg1(pending);
+  Def().IfState(SettingFront3)
+      .IfReg1(*pending)
+      .IfReg0(*yyc23_reqgreen)
+      .ActReg0(pending)
+      .ActState(StBack2);
+
+
+      });*/
+
+
+
+DefAut(returnloop1, brd, {
+  // 1 if the last train went from back->front.
+  static GlobalVariable* v_last_to_front = NewTempVariable(&brd);
+  LocalVariable* last_to_front = ImportVariable(v_last_to_front);
+  // 1 if the last back->front train went to track 1.
+  static GlobalVariable* v_last_front_t1 = NewTempVariable(&brd);
+  LocalVariable* last_front_t1 = ImportVariable(v_last_front_t1);
+
+  auto xxb2_depart = NewCallback(&IfSourceTrackReady, &Block_XXB2);
+  auto yyc23_depart = NewCallback(&IfSourceTrackReady, &Block_YYC23);
+
+  auto yyb2_arrive = NewCallback(&IfDstTrackReady, &Block_YYB2);
+  auto xxb1_arrive = NewCallback(&IfDstTrackReady, &Block_XXB1);
+  auto xxb3_arrive = NewCallback(&IfDstTrackReady, &Block_XXB3);
+
+  const LocalVariable& busy = ImportVariable(*Turnout_XXW8.b.any_route());
+
+  LocalVariable* xxw8_cmd = ImportVariable(Magnet_XXW8.command.get());
+  const LocalVariable& xxw8_state = ImportVariable(*Magnet_XXW8.current_state);
+
+  LocalVariable* yyc23_reqgreen = ImportVariable(Block_YYC23.request_green());
+  LocalVariable* xxb2_reqgreen = ImportVariable(Block_XXB2.request_green());
+
+  Def().IfState(StInit).ActState(StBase);
+
+  static StateRef StTrySendTrain(NewUserState());
+  static StateRef StTryFrontToBack(NewUserState());
+  static StateRef StTryBackToFront(NewUserState());
+
+  static StateRef StFrontPending(NewUserState());
+  static StateRef StBackPending(NewUserState());
+
+  static StateRef StSendToXXB1(NewUserState());
+  static StateRef StSendToXXB3(NewUserState());
+
+  // If the circle is free, let's look for a train to send.
+  Def().IfState(StBase).IfReg0(busy)
+      .ActState(StTrySendTrain);
+
+  // We check which way the last train went, and try to go the other way now.
+  Def().IfState(StTrySendTrain)
+      .IfReg0(*last_to_front)
+      .ActState(StTryFrontToBack);
+
+  Def().IfState(StTrySendTrain)
+      .ActState(StTryBackToFront);
+
+  // Checks if we can send a train front->back.
+  Def().IfState(StTryFrontToBack)
+      .RunCallback(&xxb2_depart)
+      .RunCallback(&yyb2_arrive)
+      .ActReg1(xxb2_reqgreen)
+      .ActReg0(last_to_front)
+      .ActState(StFrontPending);
+
+  Def().IfState(StTryFrontToBack)
+      // We failed to send front to back. Try reverse.
+      .IfReg0(*last_to_front)
+      .ActState(StTryBackToFront);
+
+  Def().IfState(StTryFrontToBack)
+      // We failed to send any train. Try again later.
+      .ActState(StBase);
+
+  // When the route setting is completed, return to the starting state.
+  Def().IfState(StFrontPending)
+      .IfReg0(*xxb2_reqgreen)
+      .ActReg0(last_to_front)
+      .ActState(StBase);
+
+
+  // Trying to send a train back to front. Check if our preferred direction is
+  // available.
+  Def().IfState(StTryBackToFront)
+      .IfReg0(*last_front_t1)
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb1_arrive)
+      .ActState(StSendToXXB1);
+
+  Def().IfState(StTryBackToFront)
+      .IfReg1(*last_front_t1)
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb3_arrive)
+      .ActState(StSendToXXB3);
+
+  // The same conditions as above, but without the restriction of the last
+  // direction.
+  Def().IfState(StTryBackToFront)
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb1_arrive)
+      .ActState(StSendToXXB1);
+
+  Def().IfState(StTryBackToFront)
+      .RunCallback(&yyc23_depart)
+      .RunCallback(&xxb3_arrive)
+      .ActState(StSendToXXB3);
+
+  Def().IfState(StTryBackToFront)
+      // back->front failed, look other way
+      .IfReg1(*last_to_front) // if we haven't yet done so
+      .ActState(StTryFrontToBack);
+
+  Def().IfState(StTryBackToFront)
+      // Try again later.
+      .ActState(StBase);
+
+  Def().IfState(StSendToXXB1)
+      .ActReg0(xxw8_cmd);
+
+  Def().IfState(StSendToXXB1)
+      .IfReg0(xxw8_state)
+      .ActReg1(yyc23_reqgreen)
+      .ActReg1(last_front_t1)
+      .ActState(StBackPending);
+
+  Def().IfState(StSendToXXB3)
+      .ActReg1(xxw8_cmd);
+
+  Def().IfState(StSendToXXB3)
+      .IfReg1(xxw8_state)
+      .ActReg1(yyc23_reqgreen)
+      .ActReg0(last_front_t1)
+      .ActState(StBackPending);
+
+  Def().IfState(StBackPending)
+      .IfReg0(*yyc23_reqgreen)
+      .ActReg1(last_to_front)
+      .ActState(StBase);
+  });
+
 
 /*DefAut(auto_green, brd, {
     DefNCopy(ImportVariable(*S201.sensor_raw),
