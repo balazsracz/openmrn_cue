@@ -127,7 +127,7 @@ private:
 };
 
 I2CDriver g_i2c_driver;
-I2cExtenderBoard brd_27(0x27, &g_executor, &g_node);
+I2cExtenderBoard brd_22(0x22, &g_executor, &g_node);
 
 /** Entry point to application.
  * @param argc number of command line arguments

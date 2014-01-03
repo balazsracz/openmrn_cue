@@ -54,7 +54,7 @@ LPC11C lpc11_back;
 
 PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
 PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
-PhysicalSignal B475(&b7.InBrownGrey, &b7.RelGreen);
+PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen);
 
 PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
 PhysicalSignal XXB2(&b3.InBrownGrey, &b3.RelBlue);
@@ -62,7 +62,7 @@ PhysicalSignal XXB2(&b3.InBrownGrey, &b3.RelBlue);
 PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
 PhysicalSignal XXB3(&b1.InOraRed, &b1.RelBlue);
 
-PhysicalSignal YYB2(&b2.InBrownGrey, &b2.RelGreen);
+PhysicalSignal YYB2(&b7.InBrownGrey, &b7.RelGreen);
 
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
@@ -104,6 +104,7 @@ DefAut(blinkaut, brd, {
       .ActReg1(rep);
 
   DefCopy(*rep, ImportVariable(&b1.LedRed));
+  DefCopy(*rep, ImportVariable(&b2.LedRed));
   DefCopy(*rep, ImportVariable(&b3.LedRed));
   DefCopy(*rep, ImportVariable(&b5.LedRed));
   DefCopy(*rep, ImportVariable(&b6.LedRed));
@@ -153,7 +154,7 @@ StandardBlock Block_A301(&brd, &A301,
 StandardBlock Block_B475(&brd, &B475,
                          EventBlock::Allocator(logic.allocator(), "B475", 80));
 
-StandardMiddleDetector Det_380(&brd, &b2.InOraRed,
+StandardMiddleDetector Det_380(&brd, &b7.InOraRed,
                                EventBlock::Allocator(logic.allocator(),
                                                      "Det380", 24, 8));
 
@@ -163,7 +164,7 @@ StandardFixedTurnout Turnout_W381(&brd, EventBlock::Allocator(logic.allocator(),
 StandardFixedTurnout Turnout_W382(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "W382", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
-MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b2.ActBlueGrey, &b2.ActBlueBrown);
+MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b7.ActBlueGrey, &b7.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
 
@@ -463,11 +464,12 @@ DefAut(returnloop, brd, {
       });*/
 
 DefAut(returnloop1, brd, {
+  static EventBlock::Allocator a(logic.allocator(), "interlocking.loop", 4);
   // 1 if the last train went from back->front.
-  static GlobalVariable* v_last_to_front = NewTempVariable(&brd);
+  static GlobalVariable* v_last_to_front = a.Allocate("last_to_front");
   LocalVariable* last_to_front = ImportVariable(v_last_to_front);
   // 1 if the last back->front train went to track 1.
-  static GlobalVariable* v_last_front_t1 = NewTempVariable(&brd);
+  static GlobalVariable* v_last_front_t1 = a.Allocate("last_to_front_t1");
   LocalVariable* last_front_t1 = ImportVariable(v_last_front_t1);
 
   auto xxb2_depart = NewCallback(&IfSourceTrackReady, &Block_XXB2);
@@ -600,14 +602,15 @@ DefAut(returnloop1, brd, {
 });
 
 DefAut(front_exclusion, brd, {
+  static EventBlock::Allocator a(logic.allocator(), "interlocking.front", 4);
   // 1 if the last inbound train went to XX, 0 if to YY.
-  static GlobalVariable* v_last_to_front = NewTempVariable(&brd);
+  static GlobalVariable* v_last_to_front = a.Allocate("last_in_to_front");
   LocalVariable* last_to_front = ImportVariable(v_last_to_front);
   // 1 if the last outbound train went from XX, 0 if from YY.
-  static GlobalVariable* v_last_from_front = NewTempVariable(&brd);
+  static GlobalVariable* v_last_from_front = a.Allocate("last_out_from_front");
   LocalVariable* last_from_front = ImportVariable(v_last_from_front);
   // 1 if the last outbound front train went from track 1.
-  static GlobalVariable* v_last_front_t1 = NewTempVariable(&brd);
+  static GlobalVariable* v_last_front_t1 = a.Allocate("last_out_from_front_t1");
   LocalVariable* last_front_t1 = ImportVariable(v_last_front_t1);
 
   // External interface. These trigger our main loops.
@@ -741,14 +744,14 @@ DefAut(front_exclusion, brd, {
   // front  x2
   Def().IfState(StTryOutbound)
       .IfReg0(*last_from_front)
-      .IfReg0(*last_front_t1)
+      .IfReg1(*last_front_t1)
       .RunCallback(&xxb3_depart)
       .ActReg1(xxb3_reqgreen)
       .ActState(StPendingXXB3);
 
   Def().IfState(StTryOutbound)
       .IfReg0(*last_from_front)
-      .IfReg1(*last_front_t1)
+      .IfReg0(*last_front_t1)
       .RunCallback(&xxb1_depart)
       .ActReg1(xxb1_reqgreen)
       .ActState(StPendingXXB1);

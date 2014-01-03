@@ -139,8 +139,8 @@ private:
 
 I2CDriver g_i2c_driver;
 I2cExtenderBoard brd_21(0x21, &g_executor, &g_node);
-I2cExtenderBoard brd_22(0x22, &g_executor, &g_node);
 I2cExtenderBoard brd_23(0x23, &g_executor, &g_node);
+I2cExtenderBoard brd_27(0x27, &g_executor, &g_node);
 
 
 MbedGPIOListener led_1(BRACZ_LAYOUT | 0x2030,
