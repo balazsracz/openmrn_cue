@@ -54,6 +54,7 @@ LPC11C lpc11_back;
 
 PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
 PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
+PhysicalSignal A360(&b2.InBrownBrown, &b2.RelBlue);
 PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen);
 
 PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
@@ -151,6 +152,8 @@ StandardBlock Block_WWB14(&brd, &WWB14, EventBlock::Allocator(logic.allocator(),
                                                               "WW.B14", 80));
 StandardBlock Block_A301(&brd, &A301,
                          EventBlock::Allocator(logic.allocator(), "A301", 80));
+StandardBlock Block_A360(&brd, &A360,
+                         EventBlock::Allocator(logic.allocator(), "A360", 80));
 StandardBlock Block_B475(&brd, &B475,
                          EventBlock::Allocator(logic.allocator(), "B475", 80));
 
@@ -198,7 +201,7 @@ StandardBlock Block_XXB2(&brd, &XXB2,
 StandardBlock Block_XXB3(&brd, &XXB3,
                          EventBlock::Allocator(logic.allocator(), "XX.B3", 80));
 
-#define BLOCK_SEQUENCE &Block_A301, &Block_WWB14, &Block_B475
+#define BLOCK_SEQUENCE &Block_A360, &Block_A301, &Block_WWB14, &Block_B475
 
 std::vector<StandardBlock*> block_sequence = {BLOCK_SEQUENCE};
 
@@ -226,7 +229,7 @@ bool ign =
                {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
                {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
                {Turnout_W381.b.side_thrown(), Det_380.side_a()},
-               {Det_380.side_b(), Block_A301.side_a()},
+               {Det_380.side_b(), Block_A360.side_a()},
                {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
                {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
                {Block_B475.side_b(), Turnout_W481.b.side_points()}, });
@@ -615,7 +618,7 @@ DefAut(front_exclusion, brd, {
 
   // External interface. These trigger our main loops.
   auto b475_depart = NewCallback(&IfSourceTrackReady, &Block_B475);
-  auto a301_arrive = NewCallback(&IfDstTrackReady, &Block_A301);
+  auto a360_arrive = NewCallback(&IfDstTrackReady, &Block_A360);
 
   // Inbound conditions.
   auto yyc23_arrive = NewCallback(&IfDstTrackReady, &Block_YYC23);
@@ -661,7 +664,7 @@ DefAut(front_exclusion, brd, {
   Def().IfState(StBase).RunCallback(&b475_depart).IfReg0(busy_4).ActState(
       StTryInbound);
 
-  Def().IfState(StBase).RunCallback(&a301_arrive).IfReg0(busy_3).ActState(
+  Def().IfState(StBase).RunCallback(&a360_arrive).IfReg0(busy_3).ActState(
       StTryOutbound);
 
   // Pick inbound trains (front or back). First try with the preference.
@@ -685,7 +688,7 @@ DefAut(front_exclusion, brd, {
   // No space or no track for inbound trains. Try outbound.
   Def().IfState(StTryInbound)
       .IfReg0(busy_3)
-      .RunCallback(&a301_arrive)
+      .RunCallback(&a360_arrive)
       .ActState(StTryOutbound);
   // fail.
   Def().IfState(StTryInbound)
