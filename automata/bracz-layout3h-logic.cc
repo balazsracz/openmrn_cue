@@ -153,6 +153,10 @@ StandardBlock Block_A301(&brd, &A301,
 StandardBlock Block_B475(&brd, &B475,
                          EventBlock::Allocator(logic.allocator(), "B475", 80));
 
+StandardMiddleDetector Det_380(&brd, &b2.InOraRed,
+                               EventBlock::Allocator(logic.allocator(),
+                                                     "Det380", 24, 8));
+
 StandardFixedTurnout Turnout_W381(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "W381", 40),
                                   FixedTurnout::TURNOUT_THROWN);
@@ -195,7 +199,7 @@ StandardBlock Block_XXB3(&brd, &XXB3,
 
 #define BLOCK_SEQUENCE &Block_A301, &Block_WWB14, &Block_B475
 
-std::vector<StandardBlock*> block_sequence = {BLOCK_SEQUENCE, &Block_YYC23};
+std::vector<StandardBlock*> block_sequence = {BLOCK_SEQUENCE};
 
 bool ignored1 = BindSequence({BLOCK_SEQUENCE});
 /*bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
@@ -220,7 +224,8 @@ bool ign =
                {Turnout_XXW1.b.side_points(), Turnout_W382.b.side_closed()},
                {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
                {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
-               {Turnout_W381.b.side_thrown(), Block_A301.side_a()},
+               {Turnout_W381.b.side_thrown(), Det_380.side_a()},
+               {Det_380.side_b(), Block_A301.side_a()},
                {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
                {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
                {Block_B475.side_b(), Turnout_W481.b.side_points()}, });

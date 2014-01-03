@@ -136,7 +136,7 @@ bool
 BindSequence(const std::initializer_list<StraightTrackInterface *> &pieces);
 
 // Binds together pairs of interfaces. The return value is always true.
-bool BindPairs(const std::initializer_list<std::initializer_list<CtrlTrackInterface*>> &pieces);
+bool BindPairs(const std::initializer_list<std::initializer_list<CtrlTrackInterface*> > &pieces);
 
 
 // Interface for finding real occupancy detectors at a track piece.
@@ -456,6 +456,19 @@ private:
   StandardPluginAutomata aut_signal_;
 
   DISALLOW_COPY_AND_ASSIGN(StandardBlock);
+};
+
+class StandardMiddleDetector : public StraightTrackWithRawDetector {
+ public:
+  StandardMiddleDetector(Board *brd, const GlobalVariable *sensor_raw,
+                         const EventBlock::Allocator &alloc)
+      : StraightTrackWithRawDetector(
+            EventBlock::Allocator(&alloc, "body_det", 24, 8),
+            sensor_raw),
+        aut_(alloc.name() + ".det", brd, this) {}
+
+ private:
+  StandardPluginAutomata aut_;
 };
 
 class TurnoutInterface {
