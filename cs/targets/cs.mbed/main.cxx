@@ -97,7 +97,7 @@ void log_output(char* buf, int size) {
 }
 
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 2);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 4);
 
@@ -199,7 +199,7 @@ int appl_main(int argc, char* argv[])
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
     BlinkerFlow blinker(&g_node);
-    g_if_can.AddWriteFlows(1, 1);
+    g_if_can.add_addressed_message_support(2);
     g_if_can.set_alias_allocator(
         new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
     NMRAnet::AliasInfo info;

@@ -89,7 +89,7 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 6);
 
@@ -177,7 +177,6 @@ int appl_main(int argc, char* argv[])
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
     //BlinkerFlow blinker(&g_node);
-    g_if_can.AddWriteFlows(1, 1);
     g_if_can.set_alias_allocator(
         new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
     NMRAnet::AliasInfo info;
