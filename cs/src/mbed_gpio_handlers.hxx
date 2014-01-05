@@ -35,7 +35,15 @@ class MbedGPIOListener : public NMRAnet::BitEventInterface, public NMRAnet::BitE
     return (*memory_read_) & mask_;
   }
   virtual void SetState(bool new_value) {
-    if (new_value) *memory_on_ = mask_; else *memory_off_ = mask_;
+    if (new_value) {
+      *memory_on_ = mask_;
+    } else {
+#ifdef TARGET_LPC11Cxx
+      *memory_off_ = 0;
+#else
+      *memory_off_ = mask_;
+#endif
+    }
   }
 
   virtual NMRAnet::AsyncNode* node() {
