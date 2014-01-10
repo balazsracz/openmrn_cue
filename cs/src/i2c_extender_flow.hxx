@@ -17,9 +17,9 @@ static NMRAnet::WriteHelper g_i2c_write_helper;
 
 class I2cExtenderBoard : public ControlFlow {
 public:
-  I2cExtenderBoard(uint8_t address, Executor *executor,
+  I2cExtenderBoard(I2CDriver* driver, uint8_t address, Executor *executor,
                    NMRAnet::AsyncNode *node)
-      : ControlFlow(executor, nullptr), address_(address),
+      : ControlFlow(executor, nullptr), driver_(driver), address_(address),
         bit_pc_(node, BRACZ_LAYOUT | (address << 8), &io_store_, 24),
         signal_c_(node, (BRACZ_LAYOUT & (~0xFFFFFF)) | (address << 16), signal_data_, sizeof(signal_data_)) {
     io_store_ = 1;
@@ -32,17 +32,17 @@ public:
   }
 
   ControlFlowAction GetHardware() {
-    return Allocate(g_i2c_driver.allocator(), ST(StartReceive));
+    return Allocate(driver_->allocator(), ST(StartReceive));
   }
 
   ControlFlowAction StartReceive() {
-    g_i2c_driver.StartRead(address_, 0, 1, this);
+    driver_->StartRead(address_, 0, 1, this);
     return WaitAndCall(ST(ReadDone));
   }
 
   ControlFlowAction ReadDone() {
-    if (g_i2c_driver.success()) {
-      if (g_i2c_driver.read_buffer()[0] == new_data_) {
+    if (driver_->success()) {
+      if (driver_->read_buffer()[0] == new_data_) {
         // Checks if we had enough repeats to call this data stable.
         if (++data_count_ >= DATA_REPEAT_COUNT) {
           // Prevents overflow.
@@ -52,14 +52,14 @@ public:
       } else {
         // Data changed, start over counting.
         data_count_ = 0;
-        new_data_ = g_i2c_driver.read_buffer()[0];
+        new_data_ = driver_->read_buffer()[0];
       }
       return YieldAndCall(ST(StartSend));
     } else {
       // Failure to read, start over counting and try again later.
       resetblink(0x80000A02);
       data_count_ = 0;
-      g_i2c_driver.Release();
+      driver_->Release();
       return YieldAndCall(ST(GetHardware));
     }
   }
@@ -77,21 +77,21 @@ public:
   }
 
   ControlFlowAction StartSend() {
-    uint8_t *buf = g_i2c_driver.write_buffer();
+    uint8_t *buf = driver_->write_buffer();
     buf[0] = io_data_[0];
     buf[1] = io_data_[1];
     memcpy(buf + 2, signal_data_, sizeof(signal_data_));
-    g_i2c_driver.StartWrite(address_, 2 + sizeof(signal_data_), this);
+    driver_->StartWrite(address_, 2 + sizeof(signal_data_), this);
     return WaitAndCall(ST(WriteDone));
   }
 
   ControlFlowAction WriteDone() {
-    if (g_i2c_driver.success()) {
+    if (driver_->success()) {
       resetblink(0);
     } else {
       resetblink(0x80000A02);
     }
-    g_i2c_driver.Release();
+    driver_->Release();
     return CallImmediately(ST(GetHardware));
   }
 
@@ -99,6 +99,7 @@ private:
   static const int kReadBitOffset = 16;
   static const int kReadByteOffset = 2;
 
+  I2CDriver* driver_;
   // I2C target address
   uint8_t address_;
   // Freshly read data.
