@@ -29,6 +29,7 @@ class MbedGPIOListener : public NMRAnet::BitEventInterface, public NMRAnet::BitE
     memory_off_ = gpio.reg_clr;
     memory_on_ = gpio.reg_set;
     memory_read_ = gpio.reg_in;
+    SetState(false);
   }
 
   virtual bool GetCurrentState() {
