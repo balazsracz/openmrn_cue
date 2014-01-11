@@ -40,6 +40,7 @@ EventBasedVariable sendmeasure(&brd, "send_current_measurements",
                                30, 6);
 
 I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22), b3(0x23);
+NativeIO n8(0x28);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -52,9 +53,13 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
-PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
 PhysicalSignal A360(&b2.InBrownBrown, &b2.RelBlue);
+PhysicalSignal A347(&n8.d1, &n8.r1);
+PhysicalSignal A321(&n8.d3, &n8.r3);
+PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
+PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
+PhysicalSignal B421(&n8.d2, &n8.r2);
+PhysicalSignal B447(&n8.d0, &n8.r0);
 PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen);
 
 PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
@@ -112,6 +117,7 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&b7.LedRed));
   DefCopy(*rep, ImportVariable(&panda_bridge.l4));
   DefCopy(*rep, ImportVariable(&lpc11_back.l0));
+  DefCopy(*rep, ImportVariable(&n8.l0));
 });
 
 DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase); });
@@ -152,8 +158,16 @@ StandardBlock Block_WWB14(&brd, &WWB14, EventBlock::Allocator(logic.allocator(),
                                                               "WW.B14", 80));
 StandardBlock Block_A301(&brd, &A301,
                          EventBlock::Allocator(logic.allocator(), "A301", 80));
+StandardBlock Block_A321(&brd, &A321,
+                         EventBlock::Allocator(logic.allocator(), "A321", 80));
+StandardBlock Block_A347(&brd, &A347,
+                         EventBlock::Allocator(logic.allocator(), "A347", 80));
 StandardBlock Block_A360(&brd, &A360,
                          EventBlock::Allocator(logic.allocator(), "A360", 80));
+StandardBlock Block_B421(&brd, &B421,
+                         EventBlock::Allocator(logic.allocator(), "B421", 80));
+StandardBlock Block_B447(&brd, &B447,
+                         EventBlock::Allocator(logic.allocator(), "B447", 80));
 StandardBlock Block_B475(&brd, &B475,
                          EventBlock::Allocator(logic.allocator(), "B475", 80));
 
@@ -201,7 +215,7 @@ StandardBlock Block_XXB2(&brd, &XXB2,
 StandardBlock Block_XXB3(&brd, &XXB3,
                          EventBlock::Allocator(logic.allocator(), "XX.B3", 80));
 
-#define BLOCK_SEQUENCE &Block_A360, &Block_A301, &Block_WWB14, &Block_B475
+#define BLOCK_SEQUENCE &Block_A360, &Block_A347, &Block_A321, &Block_A301, &Block_WWB14, &Block_B421, &Block_B447, &Block_B475
 
 std::vector<StandardBlock*> block_sequence = {BLOCK_SEQUENCE};
 

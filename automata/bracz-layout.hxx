@@ -235,6 +235,72 @@ struct LPC11C {
   EventBasedVariable l0;
 };
 
+struct NativeIO {
+  NativeIO(int a)
+      : name_(StringPrintf("N%d", a-0x20)),
+        l0(
+            &brd,
+            name_ + "L0",
+            BRACZ_LAYOUT | (a << 8) | 0x20,
+            BRACZ_LAYOUT | (a << 8) | 0x21,
+            a & 0xf, OFS_IOA, 7),
+        r0(
+            &brd,
+            name_ + "R0",
+            BRACZ_LAYOUT | (a << 8) | 0,
+            BRACZ_LAYOUT | (a << 8) | 1,
+            a & 0xf, OFS_IOA, 0),
+        r1(
+            &brd,
+            name_ + "R1",
+            BRACZ_LAYOUT | (a << 8) | 2,
+            BRACZ_LAYOUT | (a << 8) | 3,
+            a & 0xf, OFS_IOA, 1),
+        r2(
+            &brd,
+            name_ + "R2",
+            BRACZ_LAYOUT | (a << 8) | 4,
+            BRACZ_LAYOUT | (a << 8) | 5,
+            a & 0xf, OFS_IOA, 2),
+        r3(
+            &brd,
+            name_ + "R3",
+            BRACZ_LAYOUT | (a << 8) | 6,
+            BRACZ_LAYOUT | (a << 8) | 7,
+            a & 0xf, OFS_IOA, 3),
+        d0(
+            &brd,
+            name_ + "D0",
+            BRACZ_LAYOUT | (a << 8) | 0x10,
+            BRACZ_LAYOUT | (a << 8) | 0x11,
+            a & 0xf, OFS_IOB, 0),
+        d1(
+            &brd,
+            name_ + "D1",
+            BRACZ_LAYOUT | (a << 8) | 0x12,
+            BRACZ_LAYOUT | (a << 8) | 0x13,
+            a & 0xf, OFS_IOB, 1),
+        d2(
+            &brd,
+            name_ + "D2",
+            BRACZ_LAYOUT | (a << 8) | 0x14,
+            BRACZ_LAYOUT | (a << 8) | 0x15,
+            a & 0xf, OFS_IOB, 2),
+        d3(
+            &brd,
+            name_ + "D3",
+            BRACZ_LAYOUT | (a << 8) | 0x16,
+            BRACZ_LAYOUT | (a << 8) | 0x17,
+            a & 0xf, OFS_IOB, 3)
+  {}
+
+  string name_;
+  EventBasedVariable l0;
+  EventBasedVariable r0, r1, r2, r3;
+  EventBasedVariable d0, d1, d2, d3;
+};
+
+
 extern EventBasedVariable is_paused;
 
 
