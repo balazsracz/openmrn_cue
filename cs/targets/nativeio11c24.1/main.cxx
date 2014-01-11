@@ -43,7 +43,7 @@ NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 4);
 
-static const uint64_t EVENT_ID = 0x0501010114FF2400ULL;
+static const uint64_t EVENT_ID = 0x0501010114FF2820ULL;
 const int main_priority = 0;
 
 extern "C" {
@@ -119,11 +119,6 @@ class AllGPIOProducers : private Executable, private Notifiable {
 
  private:
   virtual void Run() {
-    if (last_read_bits_ & 1) {
-      blinker_pattern = 1;
-    } else {
-      blinker_pattern = 0;
-    }
     for (int i = 0; i < kPinCount; ++i) {
       if (!helper_busy_.HasBeenNotified()) return;
       uint32_t mask =  1<<i;
@@ -212,7 +207,6 @@ int appl_main(int argc, char* argv[])
   //BlinkerFlow blinker(&g_node);
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
-    g_if_can.AddWriteFlows(1, 1);
     g_if_can.set_alias_allocator(
         new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
     NMRAnet::AliasInfo info;
