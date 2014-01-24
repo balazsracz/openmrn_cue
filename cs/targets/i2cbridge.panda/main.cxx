@@ -53,6 +53,7 @@
 #include "nmranet/NMRAnetAsyncDefaultNode.hxx"
 
 #include "src/event_range_listener.hxx"
+#define EXT_SIGNAL_COUNT 4
 #include "src/i2c_extender_flow.hxx"
 #include "src/mbed_gpio_handlers.hxx"
 
@@ -89,7 +90,7 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1, 1);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 6);
 

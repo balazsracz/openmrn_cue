@@ -18,7 +18,9 @@
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
 #include "src/event_range_listener.hxx"
+#define EXT_SIGNAL_COUNT 4
 #include "src/i2c_extender_flow.hxx"
+#include "src/lpc11c_watchdog.hxx"
 
 // DEFINE_PIPE(gc_can_pipe, 1);
 
@@ -37,9 +39,10 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 1);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 9);
+WatchDogEventHandler g_watchdog(&g_node, WATCHDOG_EVENT_ID);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2400ULL;
 const int main_priority = 0;

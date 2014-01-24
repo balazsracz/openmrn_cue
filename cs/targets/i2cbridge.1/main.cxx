@@ -18,6 +18,7 @@
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
 #include "src/event_range_listener.hxx"
+#define EXT_SIGNAL_COUNT 4
 #include "src/i2c_extender_flow.hxx"
 
 // DEFINE_PIPE(gc_can_pipe, 1);
@@ -37,7 +38,7 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 2);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 5);
 

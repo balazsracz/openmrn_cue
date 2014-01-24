@@ -19,6 +19,7 @@
 
 #include "src/event_range_listener.hxx"
 #include "src/mbed_gpio_handlers.hxx"
+#include "src/lpc11c_watchdog.hxx"
 
 #include "mbed.h"
 
@@ -39,9 +40,10 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 1);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 4);
+WatchDogEventHandler g_watchdog(&g_node, WATCHDOG_EVENT_ID);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2820ULL;
 const int main_priority = 0;
@@ -109,7 +111,7 @@ class AllGPIOProducers : private Executable, private Notifiable {
         timer_(AllGPIOProducers::timer_callback, this, nullptr) {
     int next = 0;
     AddPort(next++, P2_11);
-    AddPort(next++, P0_10);
+    AddPort(next++, P0_6);  // TODO: this should  be 0_10 but that's SWCLK
     AddPort(next++, P0_9);
     AddPort(next++, P0_8);
     HASSERT(next == kPinCount);

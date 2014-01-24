@@ -78,7 +78,7 @@ extern insn_t automata_code[];
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
 extern const size_t CAN_TX_BUFFER_SIZE;
 extern const size_t CAN_RX_BUFFER_SIZE;
-const size_t CAN_RX_BUFFER_SIZE = 8;
+const size_t CAN_RX_BUFFER_SIZE = 32;
 const size_t CAN_TX_BUFFER_SIZE = 8;
   extern const size_t SERIAL_RX_BUFFER_SIZE;
   extern const size_t SERIAL_TX_BUFFER_SIZE;
@@ -103,9 +103,9 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 2);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 2, 10);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 4);
+NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 32);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 0;
