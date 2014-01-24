@@ -7,7 +7,7 @@
 
 class I2CDriver : public Executable {
 public:
-  static const int kMaxWriteSize = 10;
+  static const int kMaxWriteSize = 50;
   static const int kMaxReadSize = 4;
 
   I2CDriver();

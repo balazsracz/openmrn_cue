@@ -113,7 +113,7 @@ private:
     uint32_t io_store_;
   };
 
-  uint8_t signal_data_[8];
+  uint8_t signal_data_[EXT_SIGNAL_COUNT * 2];
 
   NMRAnet::BitRangeEventPC bit_pc_;
   NMRAnet::ByteRangeEventC signal_c_;
