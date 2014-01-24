@@ -39,6 +39,14 @@ EventBasedVariable sendmeasure(&brd, "send_current_measurements",
                                BRACZ_LAYOUT | 0x000a, BRACZ_LAYOUT | 0x000b, 7,
                                30, 6);
 
+EventBasedVariable watchdog(&brd, "reset_watchdog",
+                            BRACZ_LAYOUT | 0x0010, BRACZ_LAYOUT | 0x0010, 7,
+                            30, 5);
+
+EventBasedVariable reset_all_routes(&brd, "reset_routes",
+                            BRACZ_LAYOUT | 0x0012, BRACZ_LAYOUT | 0x0013, 7,
+                            30, 4);
+
 I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22), b3(0x23);
 NativeIO n8(0x28);
 
@@ -53,22 +61,103 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-PhysicalSignal A360(&b2.InBrownBrown, &b2.RelBlue);
-PhysicalSignal A347(&n8.d1, &n8.r1);
-PhysicalSignal A321(&n8.d3, &n8.r3);
-PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen);
-PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen);
-PhysicalSignal B421(&n8.d2, &n8.r2);
-PhysicalSignal B447(&n8.d0, &n8.r0);
-PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen);
+I2CSignal signal_XXB2_main(&b3, 8, "XX.B2.main");
+I2CSignal signal_XXB2_adv(&b3, 9, "XX.B2.adv");
 
-PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen);
-PhysicalSignal XXB2(&b3.InBrownGrey, &b3.RelBlue);
+I2CSignal signal_A301_main(&b5, 72, "A301.main");
+I2CSignal signal_A301_adv(&b5, 73, "A301.adv");
 
-PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen);
-PhysicalSignal XXB3(&b1.InOraRed, &b1.RelBlue);
+I2CSignal signal_A321_main(&b2, 36, "A321.main");
+I2CSignal signal_A321_adv(&b2, 37, "A321.adv");
+I2CSignal signal_A421_main(&b2, 42, "A421.main");
+I2CSignal signal_A421_adv(&b2, 43, "A421.adv");
 
-PhysicalSignal YYB2(&b7.InBrownGrey, &b7.RelGreen);
+I2CSignal signal_B321_main(&b2, 38, "B321.main");
+I2CSignal signal_B321_adv(&b2, 39, "B321.adv");
+I2CSignal signal_B421_main(&b2, 40, "B421.main");
+I2CSignal signal_B421_adv(&b2, 41, "B421.adv");
+
+I2CSignal signal_A347_main(&b2, 20, "A347.main");
+I2CSignal signal_A347_adv(&b2, 21, "A347.adv");
+
+I2CSignal signal_B447_main(&b2, 10, "B447.main");
+I2CSignal signal_B447_adv(&b2, 11, "B447.adv");
+
+I2CSignal signal_A360_main(&b2, 12, "A360.main");
+I2CSignal signal_A360_adv(&b2, 13, "A360.adv");
+I2CSignal signal_A460_main(&b2, 14, "A460.main");
+I2CSignal signal_A460_adv(&b2, 15, "A460.adv");
+
+I2CSignal signal_B360_adv(&b2, 17, "B360.adv");
+I2CSignal signal_B460_adv(&b2, 19, "B460.adv");
+
+I2CSignal signal_A375_adv(&b2, 75, "A375.adv");
+I2CSignal signal_A475_adv(&b2, 74, "A475.adv");
+
+I2CSignal signal_B375_main(&b2, 32, "B375.main");
+I2CSignal signal_B375_adv(&b2, 33, "B375.adv");
+I2CSignal signal_B475_main(&b2, 6, "B475.main");
+I2CSignal signal_B475_adv(&b2, 7, "B475.adv");
+
+I2CSignal signal_XXB1_main(&b1, 25, "XX.B1.main");
+I2CSignal signal_XXB3_main(&b1, 24, "XX.B3.main");
+
+I2CSignal signal_YYC23_main(&b3, 26, "YY.C23.main");
+I2CSignal signal_YYC23_adv(&b3, 27, "YY.C23.adv");
+
+I2CSignal signal_YYB2_main(&b7, 4, "YY.B2.main");
+I2CSignal signal_YYB2_adv(&b7, 5, "YY.B2.adv");
+
+I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main");
+I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
+
+
+PhysicalSignal A360(&b2.InBrownBrown, &b2.RelBlue,
+                    &signal_A360_main.signal, &signal_A360_adv.signal,
+                    &signal_B375_main.signal, &signal_B375_adv.signal,
+                    &signal_A375_adv.signal, &signal_B360_adv.signal);
+PhysicalSignal A347(&n8.d1, &n8.r1,
+                    &signal_A347_main.signal, &signal_A347_adv.signal,
+                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal A321(&n8.d3, &n8.r3,
+                    &signal_A321_main.signal, &signal_A321_adv.signal,
+                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen,
+                    &signal_A301_main.signal, &signal_A301_adv.signal,
+                    &signal_B321_main.signal, &signal_B321_adv.signal,
+                    nullptr, nullptr);
+PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen,
+                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
+                     nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal B421(&n8.d2, &n8.r2,
+                    &signal_B421_main.signal, &signal_B421_adv.signal,
+                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal B447(&n8.d0, &n8.r0,
+                    &signal_B447_main.signal, &signal_B447_adv.signal,
+                    &signal_A421_main.signal, &signal_A421_adv.signal,
+                    nullptr, nullptr);
+PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen,
+                    &signal_B475_main.signal, &signal_B475_adv.signal,
+                    &signal_A460_main.signal, &signal_A460_adv.signal,
+                    &signal_B460_adv.signal, &signal_A475_adv.signal);
+
+PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen,
+                     &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
+                     nullptr, nullptr, nullptr, nullptr);
+
+PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen,
+                    &signal_XXB1_main.signal, nullptr,
+                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal XXB2(&b3.InBrownGrey, &b3.RelBlue,
+                    &signal_XXB2_main.signal, &signal_XXB2_adv.signal,
+                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal XXB3(&b1.InOraRed, &b1.RelBlue,
+                    &signal_XXB3_main.signal, nullptr,
+                    nullptr, nullptr, nullptr, nullptr);
+
+PhysicalSignal YYB2(&b7.InBrownGrey, &b7.RelGreen,
+                    &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
+                    nullptr, nullptr, nullptr, nullptr);
 
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
@@ -88,6 +177,33 @@ unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
 
 EventBasedVariable led(&brd, "led", 0x0502010202650012ULL,
                        0x0502010202650013ULL, 7, 31, 1);
+
+class MagnetPause {
+ public:
+  MagnetPause(MagnetCommandAutomata* aut, GlobalVariable* power_magnets)
+      : power_magnets_(power_magnets) {
+    aut->AddAutomataPlugin(1, NewCallbackPtr(this, &MagnetPause::PauseImpl));
+  }
+
+ private:
+  void PauseImpl(Automata* aut) {
+    StateRef StPaused(3);
+    Automata::LocalVariable* power_acc(aut->ImportVariable(power_magnets_));
+    Def().IfState(StInit).ActReg1(power_acc);
+    Def().IfReg0(*power_acc).ActState(StPaused);
+    Def()
+        .IfReg1(*power_acc)
+        .IfState(StPaused)
+        .ActState(StBase);
+  }
+
+  GlobalVariable* power_magnets_;
+};
+
+DefAut(watchdog, brd, {
+    LocalVariable* w = ImportVariable(&watchdog);
+    Def().IfTimerDone().ActReg1(w).ActReg0(w).ActTimer(1);
+  });
 
 DefAut(blinkaut, brd, {
   const int kBlinkSpeed = 3;
@@ -126,8 +242,16 @@ DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase); });
 // source track waiting to depart.
 void IfSourceTrackReady(StandardBlock* track, Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
       .IfReg1(op->parent()->ImportVariable(track->detector()))
       .IfReg0(op->parent()->ImportVariable(track->route_out()));
+}
+
+// Adds the necessary conditions that represent if there is a train at the
+// source track waiting to depart.
+void IfSourceTrackWithRoute(StandardBlock* track, Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg1(op->parent()->ImportVariable(track->route_in()));
 }
 
 // Adds the necessary conditions that represent if the destination track is
@@ -142,17 +266,29 @@ void SimpleFollowStrategy(
     const std::initializer_list<const GlobalVariable*>& route_points,
     Automata* aut) {
   auto src_cb = NewCallback(&IfSourceTrackReady, src);
+  auto src_alt_cb = NewCallback(&IfSourceTrackWithRoute, src);
   auto dst_cb = NewCallback(&IfDstTrackReady, dst);
   Def()
       .RunCallback(&src_cb)
       .Rept(&Automata::Op::IfReg0, route_points)
       .RunCallback(&dst_cb)
       .ActReg1(aut->ImportVariable(src->request_green()));
+  // Aggressive set-to-green.
+  /*
+  Def()
+      .IfReg0(aut->ImportVariable(*src->request_green()))
+      .IfReg0(aut->ImportVariable(src->route_out()))
+      .RunCallback(&src_alt_cb)
+      .Rept(&Automata::Op::IfReg0, route_points)
+      .RunCallback(&dst_cb)
+      .ActReg1(aut->ImportVariable(src->request_green()));*/
 }
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 
 MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
+MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
+
 
 StandardBlock Block_WWB14(&brd, &WWB14, EventBlock::Allocator(logic.allocator(),
                                                               "WW.B14", 80));
@@ -520,7 +656,7 @@ DefAut(returnloop1, brd, {
   Def().IfState(StBase).IfReg0(busy).ActState(StTrySendTrain);
 
   // We check which way the last train went, and try to go the other way now.
-  Def().IfState(StTrySendTrain).IfReg0(*last_to_front).ActState(
+  Def().IfState(StTrySendTrain).IfReg1(*last_to_front).ActState(
       StTryFrontToBack);
 
   Def().IfState(StTrySendTrain).ActState(StTryBackToFront);
@@ -802,6 +938,10 @@ DefAut(front_exclusion, brd, {
       .ActReg1(xxb1_reqgreen)
       .ActState(StPendingXXB1);
 
+  // No trains found anywhere, go back to base state and try an inbound.
+  Def().IfState(StTryOutbound)
+      .ActState(StBase);
+
   // Outbound pending closedown.
   Def().IfState(StPendingYYB2)
       .IfReg0(*yyb2_reqgreen)
@@ -878,7 +1018,97 @@ DefAut(xcopier2, brd, {
 
 */
 
+
+void RgSignal(Automata* aut, const Automata::LocalVariable& route_set, Automata::LocalVariable* signal) {
+  Def().IfReg0(route_set).ActSetValue(signal, 1, A_STOP);
+  Def().IfReg1(route_set).ActSetValue(signal, 1, A_90);
+}
+
+void RedSignal(Automata* aut, Automata::LocalVariable* signal) {
+  Def().ActSetValue(signal, 1, A_STOP);
+}
+
+void BlockSignal(Automata* aut, StandardBlock* block) {
+  if (block->p()->main_sgn) {
+    RgSignal(aut, aut->ImportVariable(block->route_out()),
+             aut->ImportVariable(block->p()->main_sgn));
+  }
+  if (block->p()->adv_sgn) {
+    RgSignal(aut, aut->ImportVariable(block->route_out()),
+             aut->ImportVariable(block->p()->adv_sgn));
+  }
+  if (block->p()->in_adv_sgn) {
+    RgSignal(aut, aut->ImportVariable(block->route_out()),
+             aut->ImportVariable(block->p()->in_adv_sgn));
+  }
+  if (block->p()->r_main_sgn) {
+    RedSignal(aut, aut->ImportVariable(block->p()->r_main_sgn));
+  }
+  if (block->p()->r_adv_sgn) {
+    RedSignal(aut, aut->ImportVariable(block->p()->r_adv_sgn));
+  }
+  if (block->p()->r_in_adv_sgn) {
+    RedSignal(aut, aut->ImportVariable(block->p()->r_in_adv_sgn));
+  }
+}
+
+DefAut(signalaut, brd, {
+    BlockSignal(this, &Block_XXB1);
+    BlockSignal(this, &Block_XXB2);
+    BlockSignal(this, &Block_XXB3);
+    BlockSignal(this, &Block_YYB2);
+    BlockSignal(this, &Block_YYC23);
+    BlockSignal(this, &Block_WWB14);
+  });
+
+DefAut(signalaut2, brd, {
+    BlockSignal(this, &Block_A360);
+    BlockSignal(this, &Block_A347);
+    BlockSignal(this, &Block_A321);
+    BlockSignal(this, &Block_A301);
+    BlockSignal(this, &Block_B421);
+    BlockSignal(this, &Block_B447);
+    BlockSignal(this, &Block_B475);
+  });
+    /*    RgSignal(this, ImportVariable(Block_XXB2.route_out()),
+             ImportVariable(&signal_XXB2_main.signal));
+    RgSignal(this, ImportVariable(Block_XXB2.route_out()),
+             ImportVariable(&signal_XXB2_adv.signal));
+
+    RgSignal(this, ImportVariable(Block_A360.route_out()),
+             ImportVariable(&signal_A360_main.signal));
+    RgSignal(this, ImportVariable(Block_A360.route_out()),
+             ImportVariable(&signal_A375_adv.signal));
+
+    RgSignal(this, ImportVariable(Block_A347.route_in()),
+             ImportVariable(&signal_A360_adv.signal));
+
+    RgSignal(this, ImportVariable(Block_A347.route_out()),
+             ImportVariable(&signal_A347_main.signal));
+    RgSignal(this, ImportVariable(Block_A321.route_in()),
+             ImportVariable(&signal_A347_adv.signal));
+
+    RgSignal(this, ImportVariable(Block_A321.route_out()),
+             ImportVariable(&signal_A321_main.signal));
+    RgSignal(this, ImportVariable(Block_A301.route_in()),
+             ImportVariable(&signal_A321_adv.signal));
+
+    RgSignal(this, ImportVariable(Block_B475.route_out()),
+             ImportVariable(&signal_B475_main.signal));
+    RgSignal(this, ImportVariable(*Turnout_W481.b.any_route()),
+             ImportVariable(&signal_B475_adv.signal));
+
+    RgSignal(this, ImportVariable(Block_XXB1.route_out()),
+             ImportVariable(&signal_XXB1_main.signal));
+    RgSignal(this, ImportVariable(Block_XXB3.route_out()),
+             ImportVariable(&signal_XXB3_main.signal));
+
+    RedSignal(this, ImportVariable(&signal_B375_main.signal));
+    RedSignal(this, ImportVariable(&signal_B375_adv.signal));*/
+
 int main(int argc, char** argv) {
+  automata::reset_routes = &reset_all_routes;
+
   FILE* f = fopen("automata.bin", "wb");
   assert(f);
   string output;

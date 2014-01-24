@@ -7,6 +7,8 @@ namespace automata {
 StateRef StInit(0);
 StateRef StBase(1);
 
+GlobalVariable* reset_routes = nullptr;
+
 void HandleInitState(Automata* aut) { Def().IfState(StInit).ActState(StBase); }
 
 bool BindSequence(
@@ -97,6 +99,15 @@ void SimulateRoute(Automata* aut,
       .ActReg0(in_route_set_success)
       .ActReg0(in_route_set_failure);
 
+  if (reset_routes) {
+    Def().IfReg1(aut->ImportVariable(*reset_routes))
+      .ActReg0(out_try_set_route)
+      .ActReg0(any_route_setting_in_progress)
+      .ActReg0(in_route_set_success)
+      .ActReg0(in_route_set_failure)
+      .Rept(&Automata::Op::ActReg0, current_route);
+  }
+
   // We reject the request immediately if there is another route setting in
   // progress.
   Def()
@@ -166,6 +177,7 @@ void StraightTrack::SimulateAllRoutes(Automata* aut) {
       aut->ImportVariable(tmp_route_setting_in_progress_.get());
   Def()
       .IfState(StInit)
+      .ActReg1(aut->ImportVariable(route_set_ab_.get()))
       .ActReg0(aut->ImportVariable(route_set_ab_.get()))
       .ActReg0(aut->ImportVariable(route_set_ba_.get()))
       .ActReg0(aut->ImportVariable(route_pending_ab_.get()))
@@ -229,7 +241,11 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
   // emitted.
   Def()
       .IfState(StInit)
+      // Ensures proper initialization of raw detector
       .ActReg1(aut->ImportVariable(const_cast<GlobalVariable*>(raw_detector_)))
+      // This will make it fail-safe -- if destination HW is down, it will be
+      // marked as busy.
+      .ActReg0(aut->ImportVariable(const_cast<GlobalVariable*>(raw_detector_)))
       .ActReg1(last);
 
   // If there is a flip, we start a timer. The timer length depends on the
@@ -291,6 +307,15 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
       .ActReg0(in_route_set_success)
       .ActReg0(in_route_set_failure);
 
+  if (reset_routes) {
+    Def().IfReg1(aut->ImportVariable(*reset_routes))
+      .ActReg0(out_try_set_route)
+      .ActReg0(any_route_setting_in_progress)
+      .ActReg0(in_route_set_success)
+      .ActReg0(in_route_set_failure)
+      .Rept(&Automata::Op::ActReg0, current_route);
+  }
+
   // We reject the request immediately if there is another route setting in
   // progress.
   Def()
@@ -347,8 +372,11 @@ void SignalPiece::SignalRoute(Automata* aut) {
       aut->ImportVariable(tmp_route_setting_in_progress_.get());
   Def()
       .IfState(StInit)
+      .ActReg1(aut->ImportVariable(route_set_ab_.get()))
       .ActReg0(aut->ImportVariable(route_set_ab_.get()))
       .ActReg0(aut->ImportVariable(route_set_ba_.get()))
+      .ActReg1(aut->ImportVariable(signal_))  // ensures signals are zero
+      .ActReg0(aut->ImportVariable(signal_))
       .ActReg0(aut->ImportVariable(route_pending_ab_.get()))
       .ActReg0(aut->ImportVariable(route_pending_ba_.get()));
 
