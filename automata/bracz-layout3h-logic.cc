@@ -641,6 +641,8 @@ DefAut(returnloop1, brd, {
   LocalVariable* xxb2_reqgreen = ImportVariable(Block_XXB2.request_green());
 
   Def().IfState(StInit).ActState(StBase);
+  Def().IfReg1(ImportVariable(reset_all_routes)).ActState(StBase);
+
 
   static StateRef StTrySendTrain(NewUserState());
   static StateRef StTryFrontToBack(NewUserState());
@@ -810,6 +812,7 @@ DefAut(front_exclusion, brd, {
 
 
   Def().IfState(StInit).ActState(StBase);
+  Def().IfReg1(ImportVariable(reset_all_routes)).ActState(StBase);
 
   Def().IfState(StBase).RunCallback(&b475_depart).IfReg0(busy_4).ActState(
       StTryInbound);
