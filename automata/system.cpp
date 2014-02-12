@@ -52,7 +52,7 @@ void Board::RenderAutomatas(string* output) {
         (*output)[a.ptr_offset] = a.offset & 0xff;
         (*output)[a.ptr_offset + 1] = (a.offset >> 8) & 0xff;
     }
-    fprintf(stderr, "%d automtas, total output size: %d\n", automatas_.size(), output->size());
+    fprintf(stderr, "%d automatas, total output size: %d\n", automatas_.size(), output->size());
 }
 
 Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {

@@ -317,6 +317,11 @@ StandardFixedTurnout Turnout_W381(&brd, EventBlock::Allocator(logic.allocator(),
 StandardFixedTurnout Turnout_W382(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "W382", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
+
+StandardMiddleDetector Det_500(&brd, &b7.InBrownBrown,
+                               EventBlock::Allocator(logic.allocator(),
+                                                     "Det500", 24, 8));
+
 MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b7.ActBlueGrey, &b7.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
@@ -380,7 +385,8 @@ bool ign =
                {Block_XXB2.side_a(), Turnout_XXW2.b.side_thrown()},
                {Block_XXB3.side_b(), Turnout_XXW2.b.side_closed()},
                {Turnout_XXW1.b.side_thrown(), Turnout_XXW2.b.side_points()},
-               {Turnout_XXW1.b.side_points(), Turnout_W382.b.side_closed()},
+               {Turnout_XXW1.b.side_points(), Det_500.side_a()},
+               {Det_500.side_b(), Turnout_W382.b.side_closed()},
                {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
                {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
                {Turnout_W381.b.side_thrown(), Det_380.side_a()},
