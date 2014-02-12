@@ -325,6 +325,10 @@ StandardBlock Block_YYB2(&brd, &YYB2,
                          EventBlock::Allocator(logic.allocator(), "YY.B2", 80));
 StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
                                                               "YY.C23", 80));
+StandardMiddleDetector Det_YYC22(&brd, &b3.InOraGreen,
+                                 EventBlock::Allocator(logic.allocator(),
+                                                       "YY.C22", 24, 8));
+
 StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "YY.W6", 40),
                                   FixedTurnout::TURNOUT_THROWN);
@@ -365,7 +369,8 @@ bool ignored7 = Block_XXB3.side_b()->Bind(Turnout_XXW1.b.side_thrown());*/
 
 bool ign =
     BindPairs({{Block_YYC23.side_b(), Turnout_YYW6.b.side_closed()},
-               {Block_YYB2.side_a(), Turnout_YYW6.b.side_thrown()},
+               {Det_YYC22.side_b(), Turnout_YYW6.b.side_thrown()},
+               {Block_YYB2.side_a(), Det_YYC22.side_a()},
                {Turnout_YYW6.b.side_points(), Turnout_XXW8.b.side_points()},
                {Block_XXB1.side_a(), Turnout_XXW8.b.side_closed()},
                {Turnout_XXW7.b.side_points(), Turnout_XXW8.b.side_thrown()},
