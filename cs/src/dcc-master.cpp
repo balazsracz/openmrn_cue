@@ -179,8 +179,8 @@ const struct const_loco_db_t const_lokdb[] = {
   { 27, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
     "WLE ER20", MARKLIN_NEW },
   // id 14
-  { 18, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "185 595-6", DCC_28 },
+  { 58, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "185 595-6", DCC_28 }, // NOTE: hardware is programmed for addr 18
   // id 15
   { 26, { 0,  0xff, }, { LIGHT,  0xff, },
     "Re 460 HAG", MARKLIN_OLD | PUSHPULL },
@@ -197,7 +197,7 @@ const struct const_loco_db_t const_lokdb[] = {
   { 3, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "RBe 4/4 1423", DCC_28 | PUSHPULL },
   // id 20
-  { 18, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+  { 24, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
     "Taurus", MARKLIN_NEW },
   // id 21
   { 52, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
@@ -267,7 +267,8 @@ enum WriteState {
   SST_WAIT_VERIFY_2 = 10,
   SST_SEND_READ_BITS,
   SST_WAIT_READ,
-  SST_WAIT_READBIT
+  SST_WAIT_READBIT,
+  SST_EXIT_RESET,
 };
 
 enum ServiceModeRequest {
@@ -303,6 +304,8 @@ struct dcc_master_state_t {
   uint8_t service_mode_value;
   uint8_t service_mode_state;
   uint8_t service_mode_next_bit;
+  uint8_t service_mode_retry_counter;
+#define DCC_SERVICE_RETRY_COUNT 10
 
   // Holds the id of the last loco that we have addressed.
   uint8_t last_loco_id;
@@ -904,15 +907,20 @@ static void HandleServiceMode() {
         return;
       }
       if (dcc_master.service_mode_had_noack) {
-        // Send back an error message.
-        SendServiceModeResponse(DCC_ERR_NOACK, 0);
-        return;
+        if (dcc_master.service_mode_retry_counter++ > DCC_SERVICE_RETRY_COUNT) {
+          // Send back an error message.
+          SendServiceModeResponse(DCC_ERR_NOACK, 0);
+          return;
+        } else {
+          dcc_master.service_mode_state = SST_VERIFY;
+        }
       }
       break;
     }
     case SST_WAIT_READBIT: {
       // This is where most of the wait will happen.
       if (dcc_master.service_mode_had_ack) {
+        dcc_master.service_mode_retry_counter = 0;
         if (dcc_master.service_mode_next_bit & 0x8) {
           // Bit is set.
           dcc_master.service_mode_value |=
@@ -933,9 +941,14 @@ static void HandleServiceMode() {
       }
       if (dcc_master.service_mode_had_noack) {
         if (dcc_master.service_mode_next_bit & 8) {
-          // Send back an error message.
-          SendServiceModeResponse(DCC_ERR_NOACK, 0);
-          return;
+          if (dcc_master.service_mode_retry_counter++ > DCC_SERVICE_RETRY_COUNT) {
+            // Send back an error message.
+            SendServiceModeResponse(DCC_ERR_NOACK, 0);
+            return;
+          } else {
+            dcc_master.service_mode_next_bit &= ~8;
+            dcc_master.service_mode_state = SST_SEND_READ_BITS;
+          }
         } else {
           dcc_master.service_mode_next_bit |= 8;
           dcc_master.service_mode_state = SST_SEND_READ_BITS;
@@ -984,13 +997,21 @@ static void HandleServiceMode() {
         case SRQ_READ: {
           dcc_master.service_mode_state = SST_SEND_READ_BITS;
           dcc_master.service_mode_next_bit = 0;
+          dcc_master.service_mode_retry_counter = 0;
           break;
         }
         case SRQ_VERIFY: {
           dcc_master.service_mode_state = SST_VERIFY; //SST_SEND_WRITE;
+          dcc_master.service_mode_retry_counter = 0;
           break;
         }
       }
+      break;
+    }
+    case SST_EXIT_RESET: {
+      // Send a reset after the actions.
+      SendDccPacket(DCC_SERVICE_MODE_1X_CMD, 2, 0, 0, 0, 0);
+      dcc_master.service_mode_state = SST_WAIT_WRITE_2;
       break;
     }
     case SST_SEND_WRITE: {
