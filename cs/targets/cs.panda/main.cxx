@@ -38,8 +38,9 @@
 #include "mbed.h"
 
 #include "os/os.h"
-#include "utils/pipe.hxx"
-#include "executor/executor.hxx"
+#include "utils/PipeFlow.hxx"
+#include "utils/HubDevice.hxx"
+#include "executor/Executor.hxx"
 #include "nmranet_can.h"
 #include "nmranet_config.h"
 #include "os/watchdog.h"
@@ -64,11 +65,11 @@
 
 
 // DEFINE_PIPE(gc_can_pipe, 1);
-
-Executor g_executor;
-
-DEFINE_PIPE(can_pipe0, &g_executor, sizeof(struct can_frame));
-DEFINE_PIPE(can_pipe1, &g_executor, sizeof(struct can_frame));
+NO_THREAD nt;
+Executor<1> g_executor(nt);
+Service g_service(&g_executor);
+CanHubFlow can_hub0(&g_service);
+CanHubFlow can_hub1(&g_service);
 
 static const NMRAnet::NodeID NODE_ID = 0x050101011431ULL;
 
@@ -103,51 +104,13 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 2, 10);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+static NMRAnet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 32);
+NMRAnet::GlobalEventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 0;
-
-Executor* DefaultWriteFlowExecutor() {
-    return &g_executor;
-}
-
-class BlinkerFlow : public ControlFlow
-{
-public:
-    BlinkerFlow(NMRAnet::AsyncNode* node)
-        : ControlFlow(node->interface()->dispatcher()->executor(), nullptr),
-          state_(1),
-          bit_(node, EVENT_ID, EVENT_ID + 1, &state_, (uint8_t)1),
-          producer_(&bit_)
-    {
-        StartFlowAt(ST(blinker));
-    }
-
-private:
-    ControlFlowAction blinker()
-    {
-        state_ = !state_;
-#ifdef __linux__
-        LOG(INFO, "blink produce %d", state_);
-#endif
-        producer_.Update(&helper_, this);
-        return WaitAndCall(ST(handle_sleep));
-    }
-
-    ControlFlowAction handle_sleep()
-    {
-        return Sleep(&sleepData_, MSEC_TO_NSEC(1000), ST(blinker));
-    }
-
-    uint8_t state_;
-    NMRAnet::MemoryBit<uint8_t> bit_;
-    NMRAnet::BitEventProducer producer_;
-    NMRAnet::WriteHelper helper_;
-    SleepData sleepData_;
-};
 
 extern "C" { void resetblink(uint32_t pattern); }
 
@@ -194,8 +157,9 @@ int appl_main(int argc, char* argv[])
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
     PacketQueue::initialize("/dev/serUSB0");
-    can_pipe0.AddPhysicalDeviceToPipe("/dev/can1", "can0_rx_thread", 512);
-    //can_pipe1.AddPhysicalDeviceToPipe(, "can1_rx_thread", 512);
+
+    int can_fd = open("/dev/can1", O_RDWR);
+    FdHubPort<CanHubFlow> can_hub_port(&can_hub0, can_fd, EmptyNotifiable::DefaultInstance());
 
     int fd = open("/dev/can0", O_RDWR);
     ASSERT(fd >= 0);
@@ -204,16 +168,13 @@ int appl_main(int argc, char* argv[])
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
     //BlinkerFlow blinker(&g_node);
-    g_if_can.add_addressed_message_support(2);
-    g_if_can.set_alias_allocator(
-        new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
-    NMRAnet::AliasInfo info;
-    g_if_can.alias_allocator()->empty_aliases()->Release(&info);
-    NMRAnet::AddEventHandlerToIf(&g_if_can);
+    g_if_can.add_addressed_message_support();
+    // Bootstraps the alias allocation process.
+    g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
     AutomataRunner runner(&g_node, automata_code);
     resume_all_automata();
 
-    g_executor.ThreadBody();
+    g_executor.thread_body();
     return 0;
 }

@@ -2,17 +2,19 @@
 #ifndef _BRACZ_TRAIN_I2C_DRIVER_HXX_
 #define _BRACZ_TRAIN_I2C_DRIVER_HXX_
 
-#include "executor/allocator.hxx"
+#include "executor/notifiable.hxx"
+#include "utils/AsyncMutex.hxx"
 
+class ExecutorBase;
 
 class I2CDriver : public Executable {
 public:
   static const int kMaxWriteSize = 50;
   static const int kMaxReadSize = 4;
 
-  I2CDriver();
+  I2CDriver(ExecutorBase* e);
 
-  TypedAllocator<I2CDriver> *allocator() { return &allocator_; }
+  AsyncMutex *mutex() { return &mutex_; }
 
   uint8_t* write_buffer() { return write_bytes_; }
   uint8_t* read_buffer() { return read_bytes_; }
@@ -30,10 +32,6 @@ public:
 
   bool success() {
     return success_;
-  }
-
-  void Release() {
-    allocator_.TypedRelease(this);
   }
 
  public:
@@ -75,13 +73,16 @@ public:
   // non-zero if transfer succeeded.
   uint8_t success_ : 1;
 
+  // Use this executor for scheduling *this.
+  ExecutorBase* executor_;
+
   // This is set to 1 if a timeout tick has happened since the last ISR.
   uint8_t timeout_ : 1;
   // NULL if no transaction is pending.
   Notifiable* done_;
   // Allocator that owns *this and hands out authorization to use the I2C
   // hardware.
-  TypedAllocator<I2CDriver> allocator_;
+  AsyncMutex mutex_;
 };
 
 #endif // _BRACZ_TRAIN_I2C_DRIVER_HXX_

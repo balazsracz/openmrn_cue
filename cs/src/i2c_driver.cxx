@@ -30,7 +30,7 @@
 
 #include "i2c_driver.hxx"
 
-//#include "executor/executor.hxx"
+#include "executor/Executor.hxx"
 
 #define CON_AA 4
 #define CON_SI 8
@@ -40,7 +40,7 @@
 
 // For panda i2cbridge: we use i2c 1.
 
-I2CDriver::I2CDriver() : done_(nullptr) {
+I2CDriver::I2CDriver(ExecutorBase* e) : executor_(e), done_(nullptr) {
   HASSERT(!instance_);
   instance_ = this;
 #ifndef TARGET_LPC11Cxx
@@ -48,7 +48,6 @@ I2CDriver::I2CDriver() : done_(nullptr) {
 #elif defined(TARGET_LPC2368)
 #endif
   InitHardware();
-  Release();
   os_timer_start(os_timer_create(&I2CDriver::Timeout, nullptr, nullptr),
                  MSEC_TO_NSEC(500));
 }
@@ -275,8 +274,7 @@ long long I2CDriver::Timeout(void*, void*) {
   instance_->InitHardware(); // will disable IRQ.
 
   instance_->success_ = false;
-  extern Executor g_executor;
-  g_executor.Add(instance_);
+  instance_->executor_->add(instance_);
 
   return OS_TIMER_RESTART;
 }
@@ -285,14 +283,13 @@ void I2CDriver::TransferDoneFromISR(bool succeeded) {
   dev()->I2CONSET = CON_STO;
   NVIC_DisableIRQ(IRQn());
   success_ = succeeded ? 1 : 0;
-  extern Executor g_executor;
-  g_executor.AddFromIsr(this);
+  executor_->add_from_isr(this);
 }
 
 void I2CDriver::Run() {
   Notifiable* done = done_;
   done_ = nullptr;
-  done->Notify();
+  done->notify();
 }
 
 #endif // SKIP_DRIVER

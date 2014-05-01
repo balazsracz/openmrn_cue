@@ -12,8 +12,9 @@
 
 #include "os/os.h"
 #include "utils/logging.h"
-#include "utils/pipe.hxx"
 #include "utils/gc_pipe.hxx"
+#include "executor/Service.hxx"
+#include "utils/PipeFlow.hxx"
 
 #include "usb_proto.h"
 #include "automata_control.h"
@@ -55,21 +56,25 @@
 
  */
 
-ThreadExecutor vcom_executor("vcom_thread", 0, 900);
-DEFINE_PIPE(usb_vcom_pipe0, &vcom_executor, 1);
-DECLARE_PIPE(can_pipe0);
+Executor<1> vcom_executor("vcom_thread", 0, 900);
+Service vcom_service(&vcom_executor);
+HubFlow usb_vcom_pipe0(&vcom_service);
+extern CanHubFlow can_hub0;
+extern Service g_service;
 
 //! Class to handle data that comes from the virtual COM pipe and is to be sent
 //! on to the USB handler.
-class VCOMPipeMember : public PipeMember {
+class VCOMPipeMember : public HubPort {
 public:
-    VCOMPipeMember(int packet_id) : packet_id_(packet_id) {}
+  VCOMPipeMember(Service* service, int packet_id) : HubPort(service), packet_id_(packet_id) {}
 
-    virtual void write(const void* buf, size_t count) {
-	PacketBase out_pkt(count + 1);
-	out_pkt[0] = packet_id_;
-	memcpy(out_pkt.buf() + 1, buf, count);
-	PacketQueue::instance()->TransmitPacket(out_pkt);
+    virtual Action entry() {
+      int count = message()->data()->size();
+      PacketBase out_pkt(count + 1);
+      out_pkt[0] = packet_id_;
+      memcpy(out_pkt.buf() + 1, message()->data()->data(), count);
+      PacketQueue::instance()->TransmitPacket(out_pkt);
+      return release_and_exit();
     }
 
 private:
@@ -115,14 +120,14 @@ PacketQueue::PacketQueue(int fd) : synced_(false), fd_(fd) {
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
     os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(250));
     // Wires up packet receive from vcom0 to the USB host.
-    usb_vcom0_recv_ = new VCOMPipeMember(CMD_VCOM0);
-    usb_vcom_pipe0.RegisterMember(usb_vcom0_recv_);
-    gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_pipe0, false);
+    usb_vcom0_recv_ = new VCOMPipeMember(&g_service, CMD_VCOM0);
+    usb_vcom_pipe0.register_port(usb_vcom0_recv_);
+    gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_hub0, false);
 }
 
 PacketQueue::~PacketQueue() {
     delete gc_adapter_;
-    usb_vcom_pipe0.UnregisterMember(usb_vcom0_recv_);
+    usb_vcom_pipe0.unregister_port(usb_vcom0_recv_);
     delete usb_vcom0_recv_;
     os_timer_delete(sync_packet_timer_);
     // There is no way to destroy an os_mq_t.
@@ -275,9 +280,11 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	break;
     }
     case CMD_VCOM0: {
-	usb_vcom_pipe0.WriteToAll(usb_vcom0_recv_,
-				  in_pkt.buf() + 1, in_pkt.size() - 1);
-	break;
+      auto* b = usb_vcom_pipe0.alloc();
+      b->data()->assign((const char*)(in_pkt.buf() + 1), in_pkt.size() - 1);
+      b->data()->skipMember_ = usb_vcom0_recv_;
+      usb_vcom_pipe0.send(b);
+      break;
     }
     } // switch
 

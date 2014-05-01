@@ -31,8 +31,16 @@
 
 // This write helper will only ever be used synchronously.
 static NMRAnet::WriteHelper automata_write_helper;
-static SyncNotifiable notify_;
+static SyncNotifiable g_notify_wait;
+static BarrierNotifiable g_barrier_notify;
 
+static BarrierNotifiable* get_notifiable() {
+  return g_barrier_notify.reset(&g_notify_wait);
+}
+
+static void wait_for_notification() {
+  g_notify_wait.wait_for_notification();
+}
 
 /*
   TODOS:
@@ -196,8 +204,8 @@ public:
     }
 
     virtual void Initialize(NMRAnet::AsyncNode*) {
-      pc_.SendQuery(&automata_write_helper, &notify_);
-      notify_.WaitForNotification();
+      pc_.SendQuery(&automata_write_helper, get_notifiable());
+      wait_for_notification();
     }
 
     virtual bool Read(uint16_t, NMRAnet::AsyncNode*, Automata* aut) {
@@ -211,8 +219,8 @@ public:
         bool last_value = bit_.GetCurrentState();
         if ((value == last_value) && defined_) return;
         bit_.SetState(value);
-        pc_.SendEventReport(&automata_write_helper, &notify_);
-        notify_.WaitForNotification();
+        pc_.SendEventReport(&automata_write_helper, get_notifiable());
+        wait_for_notification();
         defined_ = true;
     }
 
@@ -243,8 +251,8 @@ class EventBlockBit : public ReadWriteBit {
   }
 
   virtual void Write(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut, bool value) {
-    handler_->Set(arg, value, &automata_write_helper, &notify_);
-    notify_.WaitForNotification();
+    handler_->Set(arg, value, &automata_write_helper, get_notifiable());
+    wait_for_notification();
   }
 
  private:
@@ -271,7 +279,7 @@ class EventByteBlock : public ReadWriteBit {
   }
 
   virtual void Write(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut, bool value) {
-      HASSERT(0); 
+      HASSERT(0);
   }
 
   virtual uint8_t GetState(uint16_t arg) {
@@ -281,8 +289,8 @@ class EventByteBlock : public ReadWriteBit {
   virtual void SetState(uint16_t arg, uint8_t state) {
       if (storage_[arg] != state) {
           storage_[arg] = state;
-          handler_->Update(arg, &automata_write_helper, &notify_);
-          notify_.WaitForNotification();
+          handler_->Update(arg, &automata_write_helper, get_notifiable());
+          wait_for_notification();
       }
   }
 

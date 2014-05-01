@@ -3,7 +3,6 @@
 
 #include "updater.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "executor/control_flow.hxx"
 
 class ListenerToEventProxy : public UpdateListener {
  public:

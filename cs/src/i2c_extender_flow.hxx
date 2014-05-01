@@ -28,71 +28,71 @@ public:
     HASSERT(io_data_[0] == 1);
     io_store_ = 0;
     memset(signal_data_, 1, sizeof(signal_data_));
-    StartFlowAt(ST(GetHardware));
+    start_flow(STATE(GetHardware));
   }
 
-  ControlFlowAction GetHardware() {
-    return Allocate(driver_->allocator(), ST(StartReceive));
+  Action GetHardware() {
+    return Allocate(driver_->allocator(), STATE(StartReceive));
   }
 
-  ControlFlowAction StartReceive() {
+  Action StartReceive() {
     driver_->StartRead(address_, 0, 1, this);
-    return WaitAndCall(ST(ReadDone));
+    return WaitAndCall(STATE(ReadDone));
   }
 
-  ControlFlowAction ReadDone() {
+  Action ReadDone() {
     if (driver_->success()) {
       if (driver_->read_buffer()[0] == new_data_) {
         // Checks if we had enough repeats to call this data stable.
         if (++data_count_ >= DATA_REPEAT_COUNT) {
           // Prevents overflow.
           data_count_ = DATA_REPEAT_COUNT;
-          return YieldAndCall(ST(UpdateIncomingData));
+          return yield_and_call(STATE(UpdateIncomingData));
         }
       } else {
         // Data changed, start over counting.
         data_count_ = 0;
         new_data_ = driver_->read_buffer()[0];
       }
-      return YieldAndCall(ST(StartSend));
+      return yield_and_call(STATE(StartSend));
     } else {
       // Failure to read, start over counting and try again later.
       resetblink(0x80000A02);
       data_count_ = 0;
       driver_->Release();
-      return YieldAndCall(ST(GetHardware));
+      return yield_and_call(STATE(GetHardware));
     }
   }
 
-  ControlFlowAction UpdateIncomingData() {
+  Action UpdateIncomingData() {
     for (int i = 0; i < 8; ++i) {
       bool old_state = bit_pc_.Get(kReadBitOffset + i);
       bool new_state = new_data_ & (1 << i);
       if (new_state != old_state) {
         bit_pc_.Set(kReadBitOffset + i, new_state, &g_i2c_write_helper, this);
-        return WaitForNotification();
+        return wait_for_notification();
       }
     }
-    return CallImmediately(ST(StartSend));
+    return call_immediately(STATE(StartSend));
   }
 
-  ControlFlowAction StartSend() {
+  Action StartSend() {
     uint8_t *buf = driver_->write_buffer();
     buf[0] = io_data_[0];
     buf[1] = io_data_[1];
     memcpy(buf + 2, signal_data_, sizeof(signal_data_));
     driver_->StartWrite(address_, 2 + sizeof(signal_data_), this);
-    return WaitAndCall(ST(WriteDone));
+    return WaitAndCall(STATE(WriteDone));
   }
 
-  ControlFlowAction WriteDone() {
+  Action WriteDone() {
     if (driver_->success()) {
       resetblink(0);
     } else {
       resetblink(0x80000A02);
     }
     driver_->Release();
-    return CallImmediately(ST(GetHardware));
+    return call_immediately(STATE(GetHardware));
   }
 
 private:
