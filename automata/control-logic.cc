@@ -338,6 +338,13 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
       .ActReg0(in_route_set_failure)
       .ActReg1(in_route_set_success);
 
+  // Reject the route if we didn't accept in the previous instruction.
+  Def()
+      .IfReg1(*in_try_set_route)
+      .ActReg1(in_route_set_failure)
+      .ActReg0(in_route_set_success)
+      .ActReg0(in_try_set_route);
+
   //  ===== Outgoing route setting ======
 
   LocalVariable* request_green = aut->ImportVariable(in_request_green);
