@@ -1,3 +1,4 @@
+#define LOGLEVEL WARNING
 #include "utils/logging.h"
 
 #include <fcntl.h>
@@ -56,11 +57,11 @@
 
  */
 
-Executor<1> vcom_executor("vcom_thread", 0, 900);
-Service vcom_service(&vcom_executor);
-HubFlow usb_vcom_pipe0(&vcom_service);
-extern CanHubFlow can_hub0;
 extern Service g_service;
+//Executor<1> vcom_executor("vcom_thread", 0, 900);
+//Service vcom_service(&vcom_executor);
+HubFlow usb_vcom_pipe0(&g_service);
+extern CanHubFlow can_hub0;
 
 //! Class to handle data that comes from the virtual COM pipe and is to be sent
 //! on to the USB handler.
@@ -108,6 +109,8 @@ const uint8_t syncpacket[] = {
 
 static long long sync_packet_callback(void*, void*) {
     PacketQueue::instance()->TransmitConstPacket(syncpacket);
+    extern char *heap_end;
+    LOG(ERROR, "sbrk %p", heap_end);
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
@@ -118,7 +121,7 @@ PacketQueue::PacketQueue(int fd) : synced_(false), fd_(fd) {
     os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
-    os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(250));
+    os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(1000));
     // Wires up packet receive from vcom0 to the USB host.
     usb_vcom0_recv_ = new VCOMPipeMember(&g_service, CMD_VCOM0);
     usb_vcom_pipe0.register_port(usb_vcom0_recv_);
