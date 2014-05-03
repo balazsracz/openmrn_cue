@@ -228,7 +228,7 @@ private:
     //! timers.
     os_thread_t automata_thread_handle_;
     // Set to true by the runner thread exiting.
-    bool thread_exited_;
+    volatile bool thread_exited_;
 
     friend void* automata_thread(void*);
 };
