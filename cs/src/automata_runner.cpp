@@ -693,6 +693,7 @@ AutomataRunner::AutomataRunner(NMRAnet::AsyncNode* node, const insn_t* base_poin
       pending_ticks_(0),
       request_thread_exit_(false),
       thread_exited_(false) {
+    automata_write_helper.set_wait_for_local_loopback(true);
     memset(imported_bits_, 0, sizeof(imported_bits_));
     os_sem_init(&automata_sem_, 0);
     if (with_thread) {
