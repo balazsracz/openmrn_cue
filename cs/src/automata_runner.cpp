@@ -28,6 +28,7 @@
 #include "utils/logging.h"
 #include "nmranet/NMRAnetWriteFlow.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/GlobalEventHandler.hxx"
 
 // This write helper will only ever be used synchronously.
 static NMRAnet::WriteHelper automata_write_helper;
@@ -648,6 +649,9 @@ void AutomataRunner::InitializeState() {
   CreateVarzAndAutomatas();
   for (auto it : declared_bits_) {
     it.second->Initialize(openmrn_node_);
+    while (NMRAnet::GlobalEventService::instance->event_processing_pending()) {
+      usleep(2000);
+    }
   }
 }
 
@@ -697,7 +701,7 @@ AutomataRunner::AutomataRunner(NMRAnet::AsyncNode* node, const insn_t* base_poin
     memset(imported_bits_, 0, sizeof(imported_bits_));
     os_sem_init(&automata_sem_, 0);
     if (with_thread) {
-      os_thread_create(&automata_thread_handle_, "automata", 0,
+      os_thread_create(&automata_thread_handle_, "automata", 1,
                        AUTOMATA_THREAD_STACK_SIZE, automata_thread, this);
     } else {
       CreateVarzAndAutomatas();
