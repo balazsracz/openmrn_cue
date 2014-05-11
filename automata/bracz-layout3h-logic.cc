@@ -1075,11 +1075,14 @@ DefAut(signalaut, brd, {
     BlockSignal(this, &Block_WWB14);
   });
 
-DefAut(signalaut2, brd, {
+DefAut(signalaut1, brd, {
     BlockSignal(this, &Block_A360);
     BlockSignal(this, &Block_A347);
     BlockSignal(this, &Block_A321);
     BlockSignal(this, &Block_A301);
+  });
+
+DefAut(signalaut2, brd, {
     BlockSignal(this, &Block_B421);
     BlockSignal(this, &Block_B447);
     BlockSignal(this, &Block_B475);
