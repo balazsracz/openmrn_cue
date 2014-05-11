@@ -1,6 +1,3 @@
-#include "gtest/gtest.h"
-#include "gmock/gmock.h"
-
 #include "utils/macros.h"
 
 #include "../automata/system.hxx"
@@ -14,7 +11,6 @@
 
 #include "nmranet_config.h"
 
-#include "pipe/pipe.hxx"
 #include "pipe/gc_format.h"
 #include "nmranet_can.h"
 
@@ -27,8 +23,6 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::Mock;
-
-DECLARE_PIPE(can_pipe0);
 
 class GMockBit : public ReadWriteBit {
  public:
@@ -164,7 +158,8 @@ class AutomataTests : public NMRAnet::AsyncNodeTest {
   }
 
   ~AutomataTests() {
-    WaitForEventThread();
+    wait_for_event_thread();
+    NMRAnet::AsyncNodeTest::wait();
     delete runner_;
   }
 
@@ -193,18 +188,19 @@ protected:
   }
 
   ~AutomataNodeTests() {
-    WaitForEventThread();
+    wait_for_event_thread();
+    AutomataTests::wait();
   }
 
   void Run(int count = 1) {
     for (int i = 0; i < count; ++i) {
-      WaitForEventThread();
+      wait_for_event_thread();
       if ((i % 3) == 2) {
         runner_->AddPendingTick();
       }
       runner_->RunAllAutomata();
     }
-    WaitForEventThread();
+    wait_for_event_thread();
   }
 
   void SetVar(const automata::GlobalVariable& var, bool value) {
@@ -213,7 +209,7 @@ protected:
     SyncNotifiable n;
     writeHelper_.WriteAsync(node_, NMRAnet::If::MTI_EVENT_REPORT, NMRAnet::WriteHelper::global(),
                             NMRAnet::EventIdToBuffer(eventid), &n);
-    n.WaitForNotification();
+    n.wait_for_notification();
   }
 
   friend class EventListener;
@@ -284,20 +280,20 @@ protected:
   class GlobalEventListener : private NMRAnet::SimpleEventHandler, public GlobalEventListenerBase {
    public:
     GlobalEventListener() {
-      NMRAnet::NMRAnetEventRegistry::instance()->RegisterHandler(this, 0, 0);
+      NMRAnet::NMRAnetEventRegistry::instance()->register_handlerr(this, 0, 63);
     }
 
     ~GlobalEventListener() {
-      NMRAnet::NMRAnetEventRegistry::instance()->UnregisterHandler(this, 0, 0);
+      NMRAnet::NMRAnetEventRegistry::instance()->unregister_handlerr(this, 0, 63);
     }
    private:
-    virtual void HandleEventReport(NMRAnet::EventReport* event, Notifiable* done) {
+    virtual void HandleEventReport(NMRAnet::EventReport* event, BarrierNotifiable* done) {
       IncomingEvent(event->event);
-      done->Notify();
+      done->notify();
     }
 
-    virtual void HandleIdentifyGlobal(NMRAnet::EventReport* event, Notifiable* done) {
-      done->Notify();
+    virtual void HandleIdentifyGlobal(NMRAnet::EventReport* event, BarrierNotifiable* done) {
+      done->notify();
     }
   };
 

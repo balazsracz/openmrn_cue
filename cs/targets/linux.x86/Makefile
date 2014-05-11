@@ -5,7 +5,6 @@ TEST_EXTRA_OBJS += error.o
 
 include $(OPENMRNPATH)/etc/prog.mk
 
-SUBDIRS += automata
 #SYSLIBRARIES += -lautomata
 
 $(EXECUTABLE)$(EXTENTION): lib/libautomata.a logic-demo.o depmake

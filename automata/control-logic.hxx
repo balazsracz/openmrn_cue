@@ -24,7 +24,7 @@ void HandleInitState(Automata *aut);
 struct PhysicalSignal {
   PhysicalSignal(const GlobalVariable *sensor, GlobalVariable *signal,
                  SignalVariable *main_sgn, SignalVariable *adv_sgn,
-                 SignalVariable *r_main_sgn, SignalVariable *r_sdv_sgn,
+                 SignalVariable *r_main_sgn, SignalVariable *r_adv_sgn,
                  SignalVariable *in_adv_sgn, SignalVariable *r_in_adv_sgn)
       : sensor_raw(sensor),
         signal_raw(signal),

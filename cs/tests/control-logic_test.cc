@@ -18,9 +18,9 @@ class LogicTest : public AutomataNodeTests {
         magnet_aut_(&brd, alloc()) {
     // We ignore all event messages on the CAN bus. THese are checked with more
     // high-level constructs.
-    EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X195B422AN"))).Times(AtLeast(0));
-    EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X1991422AN"))).Times(AtLeast(0));
-    EXPECT_CALL(can_bus_, MWrite(HasSubstr(":X1954522AN"))).Times(AtLeast(0));
+    EXPECT_CALL(canBus_, mwrite(HasSubstr(":X195B422AN"))).Times(AtLeast(0));
+    EXPECT_CALL(canBus_, mwrite(HasSubstr(":X1991422AN"))).Times(AtLeast(0));
+    EXPECT_CALL(canBus_, mwrite(HasSubstr(":X1954522AN"))).Times(AtLeast(0));
   }
 
   const EventBlock::Allocator& alloc() { return *block_.allocator(); }
@@ -31,7 +31,7 @@ class LogicTest : public AutomataNodeTests {
     TestBlock(LogicTest* test, const string& name)
         : inverted_detector(test),
           signal_green(test),
-          physical_signal(&inverted_detector, &signal_green),
+          physical_signal(&inverted_detector, &signal_green, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
           b(&test->brd, &physical_signal, EventBlock::Allocator(&test->alloc(), name, 80)) {}
     FakeBit inverted_detector;
     FakeBit signal_green;

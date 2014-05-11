@@ -454,33 +454,7 @@ TEST_F(AutomataTests, EventVar) {
   runner_->RunAllAutomata();
 }
 
-class CanDebugPipeMember : public PipeMember {
- public:
-  CanDebugPipeMember(Pipe* parent)
-      : parent_(parent) {
-    parent_->RegisterMember(this);
-  }
-
-  virtual ~CanDebugPipeMember() {
-    parent_->UnregisterMember(this);
-  }
-
-  virtual void write(const void* buf, size_t count) {
-    if (!count) return;
-    char outbuf[100];
-    const struct can_frame* frame = static_cast<const struct can_frame*>(buf);
-    while (count) {
-      assert(count >= sizeof(struct can_frame));
-      *gc_format_generate(frame, outbuf, 0) = '\0';
-      fprintf(stdout,"%s\n", outbuf);
-      count -= sizeof(*frame);
-    }
-  }
- private:
-  Pipe* parent_;
-};
-
-CanDebugPipeMember printer(&can_pipe0);
+GcPacketPrinter printer(&can_hub0);
 
 TEST_F(AutomataTests, EventVar2) {
   Board brd;
@@ -491,7 +465,7 @@ TEST_F(AutomataTests, EventVar2) {
                          0x0502010202650013ULL,
                          0, OFS_GLOBAL_BITS, 1);
   static automata::GlobalVariable* var;
-  WaitForEventThread();
+  wait_for_event_thread();
   var = &led;
   DefAut(testaut1, brd, {
       auto wv = ImportVariable(var);
@@ -508,10 +482,10 @@ TEST_F(AutomataTests, EventVar2) {
   //ExpectPacket(":X1954522AN0502010202650012;");
 
   SetupRunner(&brd);
-  ExpectPacket(":X195B422AN0502010202650012;");
-  ExpectPacket(":X195B422AN0502010202650013;");
+  expect_packet(":X195B422AN0502010202650012;");
+  expect_packet(":X195B422AN0502010202650013;");
   runner_->RunAllAutomata();
-  WaitForEventThread();
+  wait_for_event_thread();
 }
 
 TEST_F(AutomataTests, SignalVar) {
@@ -524,7 +498,7 @@ TEST_F(AutomataTests, SignalVar) {
   static const uint64_t EVENTID = 0x0501010114FF6000;
   NMRAnet::ByteRangeEventC consumer(node_, EVENTID, consumer_data, 10);
   static SignalVariable signalvar(&brd, "signal_name", EVENTID + 4*256, 0x5a);
-  WaitForEventThread();
+  wait_for_event_thread();
   DefAut(testaut1, brd, {
       auto sg = ImportVariable(&signalvar);
       auto tstop = ImportVariable(trigger_stop);
@@ -535,28 +509,28 @@ TEST_F(AutomataTests, SignalVar) {
   trigger_stop.Set(false);
   trigger_f3.Set(false);
   string output;
-  ExpectAnyPacket(); // ignore produced packets.
+  expect_any_packet(); // ignore produced packets.
   SetupRunner(&brd);
-  WaitForEventThread();
+  wait_for_event_thread();
   EXPECT_EQ(0x5a, consumer_data[4]);
   EXPECT_EQ(0, consumer_data[5]);
   runner_->RunAllAutomata();
-  WaitForEventThread();
+  wait_for_event_thread();
   EXPECT_EQ(0x5a, consumer_data[4]);
   EXPECT_EQ(0, consumer_data[5]);
   trigger_stop.Set(true);
   runner_->RunAllAutomata();
-  WaitForEventThread();
+  wait_for_event_thread();
   EXPECT_EQ(0x5a, consumer_data[4]);
   EXPECT_EQ(1, consumer_data[5]);
   trigger_stop.Set(false);
   trigger_f3.Set(true);
   runner_->RunAllAutomata();
-  WaitForEventThread();
+  wait_for_event_thread();
   EXPECT_EQ(0x5a, consumer_data[4]);
   EXPECT_EQ(5, consumer_data[5]);
 }
 
 TEST_F(AutomataTests, EmptyTest) {
-  WaitForEventThread();
+  wait_for_event_thread();
 }
