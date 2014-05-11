@@ -109,8 +109,10 @@ const uint8_t syncpacket[] = {
 
 static long long sync_packet_callback(void*, void*) {
     PacketQueue::instance()->TransmitConstPacket(syncpacket);
+#ifdef __FreeRTOS__
     extern char *heap_end;
     LOG(ERROR, "sbrk %p totalsize %lu", heap_end, (unsigned long)mainBufferPool->total_size());
+#endif
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 

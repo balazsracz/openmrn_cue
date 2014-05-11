@@ -76,6 +76,9 @@ static const NMRAnet::NodeID NODE_ID = 0x050101011431ULL;
 extern "C" {
 extern insn_t automata_code[];
 
+  /// @TODO(balazs.racz) these are probably outdated. need to use the constants
+  /// library.
+
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
 extern const size_t CAN_TX_BUFFER_SIZE;
 extern const size_t CAN_RX_BUFFER_SIZE;
