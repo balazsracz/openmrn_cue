@@ -59,6 +59,10 @@ public:
 	data_ = NULL;
     }
 
+    vector<uint8_t> as_vector() const {
+      return vector<uint8_t>(buf(), buf() + size());
+    }
+
 protected:
     size_t size_;
     uint8_t* data_;
@@ -107,19 +111,6 @@ protected:
     //! Static instance returned by instance(). Non-NULL if packet queue is
     //! running.
     static PacketQueue* instance_;
-};
-
-class MockPacketQueue : public PacketQueue {
- public:
-  MockPacketQueue() {
-    ASSERT(!instance_);
-    instance_ = this;
-  }
-
-  ~MockPacketQueue() {
-    ASSERT(instance_ == this);
-    instance_ = nullptr;
-  }
 };
 
 class DefaultPacketQueue : public PacketQueue {
