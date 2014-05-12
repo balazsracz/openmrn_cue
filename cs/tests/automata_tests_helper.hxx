@@ -11,7 +11,7 @@
 
 #include "nmranet_config.h"
 
-#include "pipe/gc_format.h"
+#include "utils/gc_format.h"
 #include "nmranet_can.h"
 
 #include "utils/async_if_test_helper.hxx"
