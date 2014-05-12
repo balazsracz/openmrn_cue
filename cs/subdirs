@@ -1,5 +1,7 @@
 SUBDIRS ?= \
-          src
+          src \
+	  custom \
+
 
 ifeq ($(strip $(TARGET)),linux.x86)
 SUBDIRS += automata
