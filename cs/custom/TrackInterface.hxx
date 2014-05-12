@@ -36,6 +36,8 @@
 #define _CUSTOM_TRACKINTERFACE_HXX_
 
 #include "dcc/Packet.hxx"
+#include "dcc/UpdateLoop.hxx"
+#include "utils/BufferQueue.hxx"
 #include "utils/PipeFlow.hxx"
 #include "utils/CanIf.hxx"
 
@@ -46,24 +48,56 @@ enum {
   CAN_ID_COMMANDSTATION = 0b11100000000,  // 0x700
 };
 
+enum {
+  TRACKCMD_KEEPALIVE = 1,
+  TRACKCMD_LOG = 3,
+  TRACKCMD_ACK = 5,
+  TRACKCMD_NOACK = 7,
+  TRACKCMD_POWERON = 9,
+  TRACKCMD_POWEROFF = 11,
+  TRACKCMD_RESET = 13,
+  TRACKCMD_DEADBAND = 15,
+  TRACKCMD_BREAK = 17,
+  TRACKCMD_DISABLE = 19,
+  TRACKCMD_ENABLE = 21,
+};
+
 /** This state flow will take every incoming packet and send it out on a CANbus
  * interface to the "track processor slave" address. That will go in a standard
  * packet so as not to disturb OpenLCB communication. */
 class TrackIfSend : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
  public:
   TrackIfSend(CanHubFlow* can_hub)
-      : StateFlow<Buffer<dcc::Packet>, QList<1> >(can_hub.service()),
+      : StateFlow<Buffer<dcc::Packet>, QList<1> >(can_hub->service()),
         device_(can_hub) {}
 
  private:
   Action entry() OVERRIDE;
   Action fill_packet();
 
-  CanHub* device_;
+  CanHubFlow* device_;
 };
 
-class TrackIfReceive : public
+class TrackIfReceive : public IncomingFrameFlow {
+ public:
+  /** Creates a port to listen on the feedback from the track processor.
+   * @param interface is the CAN bus port to listen on
+   * @param packet_q is a flow that will get an empty packet whenever the
+   * track processor is ready to receive the next outgoing packet. */
+  TrackIfReceive(CanIf* interface, PacketFlowInterface* packet_q);
+  ~TrackIfReceive();
 
+  Action entry() OVERRIDE;
+  Action handle_keepalive();
+  Action respond_keepalive();
+
+ private:
+  /** This pool will be the source of outgoing packet buffers. */
+  FixedPool pool_;
+  /** @TODO(balazs.racz) replace this with a service keeping all objects. */
+  CanIf* interface_;
+  PacketFlowInterface* packetQueue_;
+};
 
 }  // namespace bracz_custom
 
