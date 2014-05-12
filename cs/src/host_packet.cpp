@@ -91,16 +91,16 @@ PacketQueue* PacketQueue::instance_ = NULL;
 void PacketQueue::initialize(const char* serial_device) {
     int fd = open(serial_device, O_RDWR);
     ASSERT(fd >= 0);
-    instance_ = new PacketQueue(fd);
+    instance_ = new DefaultPacketQueue(fd);
 }
 
 void* tx_thread(void* p) {
-    ((PacketQueue*)p)->TxThreadBody();
+    ((DefaultPacketQueue*)p)->TxThreadBody();
     return NULL;
 }
 
 void* rx_thread(void* p) {
-    ((PacketQueue*)p)->RxThreadBody();
+    ((DefaultPacketQueue*)p)->RxThreadBody();
     return NULL;
 }
 
@@ -116,7 +116,7 @@ static long long sync_packet_callback(void*, void*) {
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
-PacketQueue::PacketQueue(int fd) : synced_(false), fd_(fd) {
+DefaultPacketQueue::DefaultPacketQueue(int fd) : synced_(false), fd_(fd) {
     tx_queue_ = os_mq_create(PACKET_TX_QUEUE_LENGTH, sizeof(PacketBase));
     os_thread_create(NULL, "host_pkt_tx", 0, PACKET_TX_THREAD_STACK_SIZE,
 		     tx_thread, this);
@@ -130,7 +130,7 @@ PacketQueue::PacketQueue(int fd) : synced_(false), fd_(fd) {
     gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_hub0, false);
 }
 
-PacketQueue::~PacketQueue() {
+DefaultPacketQueue::~DefaultPacketQueue() {
     delete gc_adapter_;
     usb_vcom_pipe0.unregister_port(usb_vcom0_recv_);
     delete usb_vcom0_recv_;
@@ -140,7 +140,7 @@ PacketQueue::~PacketQueue() {
     abort();
 }
 
-void PacketQueue::RxThreadBody() {
+void DefaultPacketQueue::RxThreadBody() {
     uint8_t size;
     while(1) {
 	ssize_t ret = read(fd_, &size, 1);
@@ -163,7 +163,7 @@ const uint8_t log_illegal_argument[] = { 2, CMD_SYSLOG, LOG_ILLEGAL_ARGUMENT };
 const uint8_t mod_state_success[] = {1, CMD_MOD_STATE};
 const uint8_t packet_misc_invalidarg[] = { 4, CMD_UMISC, 0x00, 0xff, 0x01 };
 
-void PacketQueue::ProcessPacket(PacketBase* pkt) {
+void DefaultPacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
     if (in_pkt.size() == 15 && in_pkt[0] == 0xe) {
       // We do not do detailed logging for the sync packets.
@@ -297,7 +297,7 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 }
 
 
-void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
+void DefaultPacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     PacketBase miscpacket(5);
     miscpacket[0] = CMD_UMISC;
     miscpacket[1] = in_pkt[1];
@@ -397,7 +397,7 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     PacketQueue::instance()->TransmitPacket(miscpacket);
 }
 
-void PacketQueue::TxThreadBody() {
+void DefaultPacketQueue::TxThreadBody() {
   while (!synced_) {
     size_t size = sizeof(syncpacket);
     const uint8_t* buf = syncpacket;
@@ -425,7 +425,7 @@ void PacketQueue::TxThreadBody() {
     }
 }
 
-void PacketQueue::TransmitPacket(PacketBase& packet) {
+void DefaultPacketQueue::TransmitPacket(PacketBase& packet) {
     os_mq_send(tx_queue_, &packet);
     packet.release(); // The memory is now owned by the queue.
 }

@@ -92,7 +92,7 @@ public:
 	delete packet;
     }
     //! Makes packet empty when done.
-    void TransmitPacket(PacketBase& packet);
+    virtual void TransmitPacket(PacketBase& packet) = 0;
 
     //! Transmits a packet from const memory. The first byte of the packet is
     //! the length, and that many following byte will be transmitted.
@@ -103,13 +103,32 @@ public:
     }
 
 
-private:
+protected:
     //! Static instance returned by instance(). Non-NULL if packet queue is
     //! running.
     static PacketQueue* instance_;
+};
 
-    PacketQueue(int fd);
-    ~PacketQueue();
+class MockPacketQueue : public PacketQueue {
+ public:
+  MockPacketQueue() {
+    ASSERT(!instance_);
+    instance_ = this;
+  }
+
+  ~MockPacketQueue() {
+    ASSERT(instance_ == this);
+    instance_ = nullptr;
+  }
+};
+
+class DefaultPacketQueue : public PacketQueue {
+ private:
+  friend class PacketQueue;
+    DefaultPacketQueue(int fd);
+    ~DefaultPacketQueue();
+
+    void TransmitPacket(PacketBase& packet) OVERRIDE;
 
     //! Received packet handler thread body.
     void RxThreadBody();
