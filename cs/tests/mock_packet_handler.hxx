@@ -3,14 +3,14 @@
 #include "src/host_packet.h"
 
 
-class MockPacketQueue : public PacketQueue {
+class MockHostPacketQueue : public PacketQueue {
  public:
-  MockPacketQueue() {
+  MockHostPacketQueue() {
     ASSERT(!instance_);
     instance_ = this;
   }
 
-  ~MockPacketQueue() {
+  ~MockHostPacketQueue() {
     ASSERT(instance_ == this);
     instance_ = nullptr;
   }
@@ -19,10 +19,10 @@ class MockPacketQueue : public PacketQueue {
 };
 
 
-class PacketTestHelper {
+class HostPacketTestHelper {
 #define EXPECT_HOST_PACKET(v...) \
-  EXPECT_CALL(packet_queue_, TransmitPacket(::testing::Property(&PacketBase::as_vector, ::testing::ContainerEq(vector<uint8_t>(v)))))
+  EXPECT_CALL(host_packet_queue_, TransmitPacket(::testing::Property(&PacketBase::as_vector, ::testing::ContainerEq(vector<uint8_t>(v)))))
 
  protected:
-  StrictMock<MockPacketQueue> packet_queue_;
+  StrictMock<MockHostPacketQueue> host_packet_queue_;
 };

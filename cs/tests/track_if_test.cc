@@ -8,16 +8,12 @@
 #include "src/usb_proto.h"
 #include "custom/HostLogging.hxx"
 
+class HostPacketQueueTest : public ::testing::Test, public HostPacketTestHelper {};
 
-
-class PacketQueueTest : public ::testing::Test, public PacketTestHelper {};
-
-
-TEST_F(PacketQueueTest, TestSendLog) {
+TEST_F(HostPacketQueueTest, TestSendLog) {
   EXPECT_HOST_PACKET({CMD_CAN_LOG, '%'});
   send_host_log_event(bracz_custom::HostLogEvent::MOSTA_DISCOVER);
 }
-
 
 class MockEmptyQueue : public PacketFlowInterface {
  public:
@@ -29,7 +25,7 @@ class MockEmptyQueue : public PacketFlowInterface {
   }
 };
 
-class TrackIfTest : public NMRAnet::AsyncCanTest, public PacketTestHelper {
+class TrackIfTest : public NMRAnet::AsyncCanTest, public HostPacketTestHelper {
  protected:
   TrackIfTest()
       : can_if_(&g_service, &can_hub0),

@@ -1,6 +1,7 @@
 SUBDIRS ?= \
           src \
 	  custom \
+	  commandstation \
 
 
 ifeq ($(strip $(TARGET)),linux.x86)
