@@ -37,6 +37,7 @@
 #include "commandstation/UpdateProcessor.hxx"
 
 #include "dcc/PacketSource.hxx"
+#include "custom/HostLogging.hxx"  // for PacketFlowInterface
 
 namespace commandstation {
 
@@ -105,6 +106,7 @@ StateFlowBase::Action UpdateProcessor::entry() {
     s->get_next_packet(0, message()->data());
   } else {
     // No update, no source. We are idle!
+    bracz_custom::send_host_log_event(bracz_custom::HostLogEvent::TRACK_IDLE);
     message()->data()->set_dcc_idle();
   }
   // We pass on the filled packet to the track processor.

@@ -41,6 +41,7 @@ enum class HostLogEvent {
   TRACK_ALIVE = '*',
   TRACK_PING = '^',
   TRACK_SENT = '@',
+  TRACK_IDLE = '?',
   NEWLINE = '\n',
   MOSTA_DISCOVER = '%',
   MOSTA_PING = ',',
