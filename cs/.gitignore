@@ -31,3 +31,12 @@ cg.dot
 cg.svg
 cg.debug.txt
 openmrnpath.mk
+timestamp
+arpreproc
+ldpreproc
+*.launch
+*.jtag
+*.map
+*.output
+gmon.out
+
