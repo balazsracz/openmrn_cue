@@ -1,3 +1,5 @@
+#include "src/cs_config.h"
+
 #define LOGLEVEL WARNING
 #include "utils/logging.h"
 
@@ -271,6 +273,7 @@ void DefaultPacketQueue::ProcessPacket(PacketBase* pkt) {
 	break;
     }
     case CMD_CAN_PKT: {
+#ifndef STATEFLOW_CS
 	// TODO(bracz): This memory copy could be avoided by rescaling
 	// CAN_START, CAN_D0, CAN_EIDH etc. to be at offset 1 instead.
 	PacketBase can_buf(in_pkt.size() + 1);
@@ -281,6 +284,7 @@ void DefaultPacketQueue::ProcessPacket(PacketBase* pkt) {
 	DccLoop_ProcessIO();
 	DccLoop_ProcessIO();
 	os_mutex_unlock(&dcc_mutex);
+#endif
 	// Strange that mosta-master does not need this packet.
 	break;
     }

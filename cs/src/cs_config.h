@@ -65,4 +65,7 @@ extern uint32_t blinker_pattern;
 //#define SECOND
 #endif
 
+#define STATEFLOW_CS
+
+
 #endif // _CS_CONFIG_H_

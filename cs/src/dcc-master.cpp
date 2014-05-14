@@ -7,6 +7,9 @@
 #include "base.h"
 #include "can-queue.h"
 #include "dcc-can-proto.h"
+#include "cs_config.h"
+
+#ifndef STATEFLOW_CS
 
 
 #define PRIORITY_SIZE 4
@@ -1205,3 +1208,5 @@ void DccLoop_EmergencyStop() {
   //CANQueue_ProcessIO();
   //CANProcessIO();
 }
+
+#endif
