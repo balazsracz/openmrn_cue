@@ -641,17 +641,19 @@ void AutomataRunner::RunAllAutomata() {
   }
 }
 
+DECLARE_CONST(automata_init_backoff);
+
 void AutomataRunner::InitializeState() {
   while (openmrn_node_ && !openmrn_node_->is_initialized()) {
-    usleep(1000);
+    usleep(2000);
   }
   // This is only called when running with_thread.
   CreateVarzAndAutomatas();
   for (auto it : declared_bits_) {
     it.second->Initialize(openmrn_node_);
-    while (NMRAnet::GlobalEventService::instance->event_processing_pending()) {
-      usleep(2000);
-    }
+    do {
+      usleep(config_automata_init_backoff());
+    } while (NMRAnet::GlobalEventService::instance->event_processing_pending());
   }
 }
 
