@@ -37,6 +37,8 @@
 
 #include "mbed.h"
 
+#include "src/cs_config.h"
+
 #include "os/os.h"
 #include "utils/PipeFlow.hxx"
 #include "utils/HubDevice.hxx"
@@ -62,6 +64,11 @@
 #include "src/mbed_i2c_update.hxx"
 #include "src/automata_runner.h"
 #include "src/automata_control.h"
+
+#include "custom/TrackInterface.hxx"
+#include "commandstation/UpdateProcessor.hxx"
+#include "dcc/Loco.hxx"
+#include "nmranet/TractionTrain.hxx"
 
 
 // DEFINE_PIPE(gc_can_pipe, 1);
@@ -113,7 +120,8 @@ NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
-const int main_priority = 0;
+const int main_priority = 2;
+OVERRIDE_CONST(main_thread_priority, 2);
 
 extern "C" { void resetblink(uint32_t pattern); }
 
@@ -150,6 +158,21 @@ private:
     bool state_;
 };
 
+#ifdef STATEFLOW_CS
+// Command station objects.
+CanIf can1_interface(&g_service, &can_hub1);
+bracz_custom::TrackIfSend track_send(&can_hub1);
+commandstation::UpdateProcessor cs_loop(&g_service, &track_send);
+bracz_custom::TrackIfReceive track_recv(&can1_interface, &cs_loop);
+static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
+bracz_custom::TrackPowerOnOffBit on_off(ON_EVENT_ID, ON_EVENT_ID+1, &track_send);
+NMRAnet::BitEventConsumer powerbit(&on_off);
+NMRAnet::TrainService traction_service(&g_if_can);
+dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
+NMRAnet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+OVERRIDE_CONST(automata_init_backoff, 10000);
+#endif
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -166,7 +189,11 @@ int appl_main(int argc, char* argv[])
 
     int fd = open("/dev/can0", O_RDWR);
     ASSERT(fd >= 0);
+#ifndef STATEFLOW_CS
     dcc_can_init(fd);
+#else
+    FdHubPort<CanHubFlow> can_hub1_port(&can_hub1, fd, EmptyNotifiable::DefaultInstance());
+#endif
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     NMRAnet::BitEventConsumer consumer(&logger);
@@ -175,8 +202,8 @@ int appl_main(int argc, char* argv[])
     // Bootstraps the alias allocation process.
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-    AutomataRunner runner(&g_node, automata_code);
-    resume_all_automata();
+    //AutomataRunner runner(&g_node, automata_code);
+    //resume_all_automata();
 
     g_executor.thread_body();
     return 0;
