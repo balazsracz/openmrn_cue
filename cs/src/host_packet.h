@@ -153,4 +153,11 @@ class DefaultPacketQueue : public PacketQueue {
     HubPortInterface* usb_vcom0_recv_;
 };
 
+namespace bracz_custom {
+
+/** Takes a CAN packet in MCP2515 format and sends it to the track CANbus. */
+void handle_can_packet_from_host(const uint8_t*, unsigned);
+
+}
+
 #endif // _HOST_PACKET_H_

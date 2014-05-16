@@ -273,7 +273,9 @@ void DefaultPacketQueue::ProcessPacket(PacketBase* pkt) {
 	break;
     }
     case CMD_CAN_PKT: {
-#ifndef STATEFLOW_CS
+#ifdef STATEFLOW_CS
+        bracz_custom::handle_can_packet_from_host(in_pkt.buf() + 1, in_pkt.size() - 1);
+#else
 	// TODO(bracz): This memory copy could be avoided by rescaling
 	// CAN_START, CAN_D0, CAN_EIDH etc. to be at offset 1 instead.
 	PacketBase can_buf(in_pkt.size() + 1);
