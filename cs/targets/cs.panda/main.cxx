@@ -70,6 +70,8 @@
 #include "dcc/Loco.hxx"
 #include "nmranet/TractionTrain.hxx"
 
+#include "custom/HostPacketCanPort.hxx"
+
 
 // DEFINE_PIPE(gc_can_pipe, 1);
 NO_THREAD nt;
@@ -193,6 +195,7 @@ int appl_main(int argc, char* argv[])
     dcc_can_init(fd);
 #else
     FdHubPort<CanHubFlow> can_hub1_port(&can_hub1, fd, EmptyNotifiable::DefaultInstance());
+    bracz_custom::init_host_packet_can_bridge(&can_hub1);
 #endif
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
