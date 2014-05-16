@@ -12,6 +12,7 @@
 #include "mosta-master.h"
 #include "dcc-master.h"
 #include "pic_can.h"
+#include "custom/MCPCanFrameFormat.hxx"
 
 //! File descriptor handling the CAN interface towards the DCC/MoSta CAN.
 static int mostacan_fd;
@@ -28,39 +29,17 @@ void CANQueue_SendPacket_back(const uint8_t* packet, can_opts_t opts) {
     struct can_frame frame = {0,};
     const uint8_t* data = packet;
     if (opts & (O_SKIP_TWO_BYTES)) data += 2;
-    bool extended = (data[1] & 0x08);
-    
-    CLR_CAN_FRAME_RTR(frame);
-    CLR_CAN_FRAME_ERR(frame);
-    if (extended) {
-	uint32_t id = data[0];
-	id <<= 3;
-	id |= data[1] >> 5;
-	id <<= 2;
-	id |= data[1] & 3;
-	id <<= 8;
-	id |= data[2];
-	if (opts & O_MARK) {
-	    id |= CANQueue_eidh_mask;
-	}
-	id <<= 8;
-	id |= data[3];
-	SET_CAN_FRAME_EFF(frame);
-	SET_CAN_FRAME_ID_EFF(frame, id);
-    } else {
-	uint32_t id = data[0];
-	id <<= 3;
-	id |= data[1] >> 5;
-	CLR_CAN_FRAME_EFF(frame);
-	SET_CAN_FRAME_ID(frame, id);
+    bracz_custom::mcp_to_frame(data, &frame);
+
+    if (opts & O_MARK) {
+      frame.can_id |= CANQueue_eidh_mask;
     }
-    int len = data[4];
-    frame.can_dlc = len;
-    memcpy(frame.data, data + 5, len);
+
     int res = write(mostacan_fd, &frame, sizeof(frame));
     ASSERT(res == sizeof(frame));
 
     if (opts & O_HOST) {
+        int len = data[4];
 	PacketBase pkt(len + 5 + 1);
 	pkt[0] = CMD_CAN_PKT;
 	memcpy(pkt.buf() + 1, data, 5+len);
@@ -77,25 +56,7 @@ void CANQueue_SendPacket_back(const uint8_t* packet, can_opts_t opts) {
 
 
 void can_frame_to_mcp_buffer(const struct can_frame& frame, uint8_t* pkt) {
-    pkt[CAN_LEN] = frame.can_dlc;
-    memcpy(&pkt[CAN_D0], frame.data, pkt[CAN_LEN]);
-    if (IS_CAN_FRAME_EFF(frame)) {
-	uint32_t id = GET_CAN_FRAME_ID_EFF(frame);
-	pkt[CAN_EIDL] = id & 0xff;
-	id >>= 8;
-	pkt[CAN_EIDH] = id & 0xff;
-	id >>= 8;
-	pkt[CAN_SIDL] = 0x08;
-	pkt[CAN_SIDL] |= id & 3;
-	id >>= 2;
-	pkt[CAN_SIDL] |= (id & 7) << 5;
-	id >>= 3;
-	pkt[CAN_SIDH] = id & 0xff;
-    } else {
-	uint32_t id = GET_CAN_FRAME_ID(frame);
-	pkt[CAN_SIDH] = id >> 3;
-	pkt[CAN_SIDL] = id << 5;
-    }
+    bracz_custom::frame_to_mcp(frame, pkt + CAN_START);
     pkt[0] = pkt[CAN_LEN] + 5 + 1;
     pkt[1] = CMD_CAN_PKT;
 }
