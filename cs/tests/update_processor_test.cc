@@ -1,5 +1,6 @@
 #include "utils/async_if_test_helper.hxx"
 
+#include "tests/mock_packet_handler.hxx"
 #include "dcc/Loco.hxx"
 #include "commandstation/UpdateProcessor.hxx"
 
@@ -31,11 +32,13 @@ class UpdateProcessorTest : public NMRAnet::AsyncCanTest {
 
   StrictMock<MockPacketQueue> trackSendQueue_;
   commandstation::UpdateProcessor updateProcessor_;
+  MockHostPacketQueue host_packet_queue_;
 };
 
 TEST_F(UpdateProcessorTest, CreateDestroy) {}
 
 TEST_F(UpdateProcessorTest, SendManyIdles) {
+  EXPECT_CALL(host_packet_queue_, TransmitPacket(_)).Times(AtLeast(0));
   EXPECT_CALL(trackSendQueue_, arrived(0x04, ElementsAre(0xFF, 0, 0xFF)))
       .Times(100);
   for (int i = 0; i < 100; ++i) send_empty_packet();
