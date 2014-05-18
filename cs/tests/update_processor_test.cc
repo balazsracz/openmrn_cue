@@ -70,7 +70,7 @@ TEST_F(UpdateProcessorTest, OneTrainManyRefresh) {
   send_empty_packet();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10100000, _)));
   send_empty_packet();
-
+  wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b01100000, _)));
   send_empty_packet();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10000000, _)));
