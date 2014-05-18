@@ -5,7 +5,7 @@
 
 class MostaSlaveTest : public NMRAnet::AsyncCanTest {
  protected:
-  MostaSlaveTest() 
+  MostaSlaveTest()
       : device_(&g_service, &can_hub0),
         slave_(&g_executor, &device_) {
     // Ignores all packets to the host packet queue.

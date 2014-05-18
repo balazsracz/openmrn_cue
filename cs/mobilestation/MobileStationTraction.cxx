@@ -52,7 +52,7 @@ class TractionImpl : public IncomingFrameFlow {
     service()->mosta_if()->frame_dispatcher()->register_handler(this, TRACTION_SET_ID, TRACTION_SET_MASK);
   }
   ~TractionImpl() {
-    service()->mosta_if()->frame_dispatcher()->unregister_handler(this, 0, 0);
+    service()->mosta_if()->frame_dispatcher()->unregister_handler(this, TRACTION_SET_ID, TRACTION_SET_MASK);
   }
 
   MobileStationTraction* service() {
@@ -125,7 +125,8 @@ class TractionImpl : public IncomingFrameFlow {
 
     if (frame().can_dlc == 3 && frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a set speed.
-      NMRAnet::Velocity v(frame().data[2] & 0x7F);
+      NMRAnet::Velocity v;
+      v.set_mph(frame().data[2] & 0x7F);
       if (frame().data[2] & 0x80) {
         v.reverse();
       }
