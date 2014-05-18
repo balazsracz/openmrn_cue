@@ -36,6 +36,40 @@
 
 namespace mobilestation {
 
+#define DCC_MAX_FN 22
+
+struct const_loco_db_t {
+  const uint8_t address;
+  // Maps the logical function numbers ot F bits. 0xff terminates the array.
+  const uint8_t function_mapping[DCC_MAX_FN];
+  // MoSta function definition, parallel to function_mapping.
+  const uint8_t function_labels[DCC_MAX_FN];
+  // Any zero character ends, but preferable to pad it with zeroes.
+  const char name[16];
+  const uint8_t mode;
+};
+
+extern const struct const_loco_db_t const_lokdb[];
+extern const size_t const_lokdb_size;
+
+enum Symbols {
+  LIGHT = 1,
+  BEAMER = 2,
+  TELEX = 6,
+  ABV = 8,
+  SMOKE = 10,
+  FNT11 = 11,
+  FNT12 = 12,
+  ENGINE = 13,
+  LIGHT1 = 14,
+  LIGHT2 = 15,
+  HONK = 132,
+  WHISTLE = 133,
+  FNP = 139,
+  SPEECH = 140,
+  SOUNDP = 141
+};
+
 class TrainDb {
  public:
   /** Returns true if a train of a specific identifier is known to the
@@ -70,6 +104,5 @@ class TrainDb {
    * @returns an enum FunctionLabel, as used by the marklin mobile station. */
   unsigned get_function_label(unsigned train_id, unsigned fn_id);
 };
-
 
 }  // namespace mobilestation
