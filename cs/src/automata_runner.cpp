@@ -721,6 +721,7 @@ AutomataRunner::~AutomataRunner() {
   // exist.
   while (!thread_exited_) {
     // Do nothing.
+    usleep(100);
   }
   if (automata_timer_) {
     os_timer_delete(automata_timer_);

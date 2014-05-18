@@ -118,7 +118,7 @@ TEST(RunnerTest, SingleEmptyAutomataBoard) {
   string output;
   brd.Render(&output);
   {
-    AutomataRunner r(NULL, AD(output));
+    AutomataRunner r(NULL, AD(output), false);
     const auto& all_automata = r.GetAllAutomatas();
     EXPECT_EQ(1U, all_automata.size());
     EXPECT_EQ(0, all_automata[0]->GetId());
