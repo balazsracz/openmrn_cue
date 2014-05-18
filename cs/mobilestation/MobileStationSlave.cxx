@@ -38,6 +38,7 @@
 #include "custom/MCPCanFrameFormat.hxx"
 #include "utils/PipeFlow.hxx"
 #include "utils/macros.h"
+#include "utils/constants.hxx"
 
 namespace mobilestation {
 
@@ -77,9 +78,10 @@ MobileStationSlave::MobileStationSlave(ExecutorBase* e, CanIf* device)
 
 MobileStationSlave::~MobileStationSlave() { delete state_; }
 
+// Send one keepalive message every this often.
+DECLARE_CONST(mosta_slave_keepalive_timeout_ms);
+
 enum {
-  // Send one keepalive message every this often.
-  MOSTA_SLAVE_KEEPALIVE_TIMEOUT_MS = 500,
   // Number of missed keepalive periods before we conclude the other side is
   // dead and force back to init state.
   MOSTA_SLAVE_REINIT_COUNT = 8,
@@ -114,7 +116,8 @@ SlaveInitFlow::~SlaveInitFlow() {
 }
 
 StateFlowBase::Action SlaveKeepaliveFlow::call_delay() {
-  return sleep_and_call(&timer_, MSEC_TO_NSEC(MOSTA_SLAVE_KEEPALIVE_TIMEOUT_MS),
+  return sleep_and_call(&timer_,
+                        MSEC_TO_NSEC(config_mosta_slave_keepalive_timeout_ms()),
                         STATE(maybe_send_keepalive));
 }
 
@@ -266,7 +269,8 @@ static const uint8_t* const SLAVE_INIT_SEQUENCE[] = {
 StateFlowBase::Action SlaveInitFlow::send_sequence() {
   auto* b = get_allocation_result(service()->device()->frame_write_flow());
   auto* f = b->data()->mutable_frame();
-  bracz_custom::mcp_to_frame(SLAVE_INIT_SEQUENCE[service()->state_->slave_login_offset++], f);
+  bracz_custom::mcp_to_frame(
+      SLAVE_INIT_SEQUENCE[service()->state_->slave_login_offset++], f);
   // Applies the slave address to the message response.
   uint32_t id = GET_CAN_FRAME_ID_EFF(*f);
   id |= service()->state_->slave_address << 8;
@@ -278,7 +282,7 @@ StateFlowBase::Action SlaveInitFlow::send_sequence() {
 }
 
 StateFlowBase::Action SlaveInitFlow::next_sequence() {
-  if (SLAVE_INIT_SEQUENCE[service()->state_->slave_login_offset]) {
+  if (!SLAVE_INIT_SEQUENCE[service()->state_->slave_login_offset]) {
     return exit();
   } else {
     return allocate_and_call(service()->device()->frame_write_flow(),
