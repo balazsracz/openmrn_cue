@@ -2,6 +2,7 @@ SUBDIRS ?= \
           src \
 	  custom \
 	  commandstation \
+	  mobilestation \
 
 
 ifeq ($(strip $(TARGET)),linux.x86)
