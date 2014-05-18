@@ -70,3 +70,9 @@ TEST_F(MostaSlaveTest, InitSequence) {
   //expect_any_packet();
   wait();
 }
+
+TEST_F(MostaSlaveTest, KeepAliveAfterInit) {
+  run_init();
+  wait();
+  //send_packet_and_expect_response();
+}
