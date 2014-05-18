@@ -98,7 +98,16 @@ TEST(RunnerTest, TrivialRunnerCreateDestroy) {
   string output;
   brd.Render(&output);
   {
-    AutomataRunner (NULL, AD(output));
+    AutomataRunner (NULL, AD(output), false);
+  }
+}
+
+TEST(RunnerTest, ThreadedRunnerCreateDestroy) {
+  automata::Board brd;
+  string output;
+  brd.Render(&output);
+  {
+    AutomataRunner (NULL, AD(output), true);
   }
 }
 
@@ -107,7 +116,7 @@ TEST(RunnerTest, TrivialRunnerRun) {
   string output;
   brd.Render(&output);
   {
-    AutomataRunner r(NULL, AD(output));
+    AutomataRunner r(NULL, AD(output), false);
     r.RunAllAutomata();
   }
 }
