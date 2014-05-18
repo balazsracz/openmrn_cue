@@ -71,11 +71,13 @@ class HostPacketBridge : private CanHubPortInterface {
 
   // Packet from the device to the host.
   void send(Buffer<CanHubData>*b, unsigned) OVERRIDE {
-    if (!IS_CAN_FRAME_EFF(b->data()->frame())) {
+    if (!IS_CAN_FRAME_EFF(b->data()->frame()) ||
+        (GET_CAN_FRAME_ID_EFF(b->data()->frame()) & ~1) == 0x0c000380) {
       // Rudimentary filter to remove noise from keepalive and dcc packets.
       b->unref();
       return;
     }
+
     uint8_t buf[15];
     frame_to_mcp(*b->data(), buf + CAN_START);
     b->unref();
