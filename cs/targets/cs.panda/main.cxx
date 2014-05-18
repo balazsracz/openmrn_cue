@@ -71,6 +71,7 @@
 #include "nmranet/TractionTrain.hxx"
 
 #include "custom/HostPacketCanPort.hxx"
+#include "mobilestation/MobileStationSlave.hxx"
 
 
 // DEFINE_PIPE(gc_can_pipe, 1);
@@ -173,6 +174,8 @@ NMRAnet::TrainService traction_service(&g_if_can);
 dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 NMRAnet::TrainNode train_Am843_node(&traction_service, &train_Am843);
 OVERRIDE_CONST(automata_init_backoff, 10000);
+
+mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 #endif
 
 /** Entry point to application.
