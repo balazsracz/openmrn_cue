@@ -91,6 +91,7 @@ enum {
   MOSTA_MASTER_PING_ID = 0x0c000380,
   MOSTA_MASTER_LOGIN_ID = 0x00000380,
   MOSTA_MASTER_SLAVE_QUERY_ID = 0x1c0000fe,
+  MOSTA_MASTER_SLAVE_ALIVE_ID = 0x1c0380fe,
   MOSTA_SLAVE_ADDRESS_MASK = 0b01111100 << 8,
 };
 
@@ -200,8 +201,14 @@ StateFlowBase::Action SlaveInitFlow::entry() {
   if ((id & ~MOSTA_SLAVE_ADDRESS_MASK) == MOSTA_MASTER_SLAVE_QUERY_ID) {
     service()->state_->slave_address = (id & MOSTA_SLAVE_ADDRESS_MASK) >> 8;
     service()->state_->slave_login_offset = 0;
+    release();
     return allocate_and_call(service()->device()->frame_write_flow(),
                              STATE(send_sequence));
+  }
+  if ((id & ~MOSTA_SLAVE_ADDRESS_MASK) == MOSTA_MASTER_SLAVE_ALIVE_ID) {
+    service()->state_->has_incoming_keepalive = 1;
+    service()->state_->state = STATE_KEEPALIVE;
+    return release_and_exit();
   }
   return release_and_exit();
 }
