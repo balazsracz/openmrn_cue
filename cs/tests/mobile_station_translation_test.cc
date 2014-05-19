@@ -66,16 +66,6 @@ class MostaTranslationTest : public NMRAnet::TractionTest {
   MobileStationTraction mosta_traction_;
 };
 
-enum DccMode {
-  MARKLIN_OLD = 0,
-  MARKLIN_NEW = 1,
-  MFX = 2,
-  DCC_14 = 4,
-  DCC_28 = 5,
-  DCC_128 = 6,
-  PUSHPULL = 8,
-  MARKLIN_TWOADDR = 16
-};
 
 const struct const_loco_db_t const_lokdb[] = {
   // 0
