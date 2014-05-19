@@ -70,6 +70,17 @@ enum Symbols {
   SOUNDP = 141
 };
 
+enum DccMode {
+  MARKLIN_OLD = 0,
+  MARKLIN_NEW = 1,
+  MFX = 2,
+  DCC_14 = 4,
+  DCC_28 = 5,
+  DCC_128 = 6,
+  PUSHPULL = 8,
+  MARKLIN_TWOADDR = 16
+};
+
 class TrainDb {
  public:
   /** Returns true if a train of a specific identifier is known to the
