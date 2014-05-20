@@ -30,6 +30,15 @@ class UpdateProcessorTest : public NMRAnet::AsyncCanTest {
     updateProcessor_.send(b);
   }
 
+  void wait() {
+    usleep(10000);
+    NMRAnet::AsyncCanTest::wait();
+  }
+
+  void qwait() {
+    NMRAnet::AsyncCanTest::wait();
+  }
+
   StrictMock<MockPacketQueue> trackSendQueue_;
   commandstation::UpdateProcessor updateProcessor_;
   MockHostPacketQueue host_packet_queue_;
@@ -63,24 +72,66 @@ TEST_F(UpdateProcessorTest, OneTrainManyRefresh) {
   send_empty_packet();wait();
 
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b01100000, _)));
-  send_empty_packet();
+  send_empty_packet();wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10000000, _)));
-  send_empty_packet();
+  send_empty_packet();wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10110000, _)));
-  send_empty_packet();
+  send_empty_packet();wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10100000, _)));
   send_empty_packet();
   wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b01100000, _)));
-  send_empty_packet();
+  send_empty_packet();wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10000000, _)));
-  send_empty_packet();
+  send_empty_packet();wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10110000, _)));
-  send_empty_packet();
+  send_empty_packet();wait();
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10100000, _)));
   send_empty_packet();
 
   wait();
+}
+
+TEST_F(UpdateProcessorTest, RefreshThrottle) {
+  // In this test there will be only one train, and we check that sending two
+  // packets at the same time will be blocked due to packet rate throttling.
+  dcc::Dcc28Train t(dcc::DccShortAddress(55));
+  EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b01100000, _)));
+  send_empty_packet();wait();
+  EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10000000, _)));
+  send_empty_packet();qwait();
+  // idle packet and the host log will show up.
+  EXPECT_CALL(trackSendQueue_, arrived(0x04, ElementsAre(0xFF, 0, 0xFF)));
+  EXPECT_CALL(host_packet_queue_, TransmitPacket(_));
+  // if we send too many packets quickly.
+  send_empty_packet(); wait();
+}
+
+TEST_F(UpdateProcessorTest, UpdateThrottle) {
+  // In this test there will be a recent refresh packet that will make the
+  // urgent update packet be delayed.
+  dcc::Dcc28Train t(dcc::DccShortAddress(55));
+  EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b01100000, _)));
+  send_empty_packet();qwait();
+  // A notify will cause a speed packet to be injected...
+  t.set_speed(-37.5);
+  // but due to throttling it will put in an idle packet first.
+  EXPECT_CALL(trackSendQueue_, arrived(0x04, ElementsAre(0xFF, 0, 0xFF)));
+  EXPECT_CALL(host_packet_queue_, TransmitPacket(_));
+  send_empty_packet(); wait();
+
+  // and after a bit of wait we will get the interesting packet.
+  EXPECT_CALL(trackSendQueue_, arrived(0x44, ElementsAre(55, 0b01001011, _)));
+  send_empty_packet(); qwait();
+
+  // And after that we'll back to refresh but we'll get another idle
+  EXPECT_CALL(trackSendQueue_, arrived(0x04, ElementsAre(0xFF, 0, 0xFF)));
+  EXPECT_CALL(host_packet_queue_, TransmitPacket(_));
+  send_empty_packet(); wait();
+
+  // until we wait a bit.
+  EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b10000000, _)));
+  send_empty_packet();qwait();
 }
 
 TEST_F(UpdateProcessorTest, TwoTrainRefresh) {

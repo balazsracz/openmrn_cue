@@ -36,6 +36,7 @@
 
 #include "commandstation/UpdateProcessor.hxx"
 
+#include "utils/constants.hxx"
 #include "dcc/PacketSource.hxx"
 #include "custom/HostLogging.hxx"  // for PacketFlowInterface
 
@@ -57,7 +58,8 @@ struct PriorityUpdate {
   unsigned code;
 };
 
-UpdateProcessor::UpdateProcessor(Service* service, PacketFlowInterface* track_send)
+UpdateProcessor::UpdateProcessor(Service* service,
+                                 PacketFlowInterface* track_send)
     : StateFlow<Buffer<dcc::Packet>, QList<1> >(service),
       trackSend_(track_send),
       nextRefreshIndex_(0),
@@ -80,6 +82,8 @@ void UpdateProcessor::notify_update(dcc::PacketSource* source, unsigned code) {
   priorityUpdates_.insert(b, 0);
 }
 
+DECLARE_CONST(dcc_packet_min_refresh_delay_ms);
+
 StateFlowBase::Action UpdateProcessor::entry() {
   // We have an empty packet to fill. It is accessible in message()->data().
   // First we check if there is an urgent update.
@@ -88,22 +92,50 @@ StateFlowBase::Action UpdateProcessor::entry() {
     AtomicHolder h(this);
     b = static_cast<Buffer<PriorityUpdate>*>(priorityUpdates_.next().item);
   }
+  long long now = os_get_time_monotonic();
+  dcc::PacketSource* s = nullptr;
+  unsigned code = 0;
   if (b) {
     // found a priority entry.
-    b->data()->source->get_next_packet(b->data()->code, message()->data());
-    b->unref();
-  } else if (hasRefreshSource_) {
-    // No new update. Find the next background source.
-    dcc::PacketSource* s;
-    {
-      AtomicHolder h(this);
-      if (nextRefreshIndex_ >= refreshSources_.size()) {
-        nextRefreshIndex_ = 0;
+    s = b->data()->source;
+    code = b->data()->code;
+    if (lastPacketTime_[s] >
+        now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms())) {
+      // Last update for this loco is too recent. Let's put it back to the
+      // queue.
+      {
+        AtomicHolder h(this);
+        priorityUpdates_.insert(b, 0);
       }
-      s = refreshSources_[nextRefreshIndex_++];
+      s = nullptr;
+    } else {
+      b->unref();
     }
-    // requests next background packet from that source.
-    s->get_next_packet(0, message()->data());
+  }
+  if (!s && hasRefreshSource_) {
+    // No new update. Find the next background source.
+    unsigned ntries = 0;
+    while (ntries++ < refreshSources_.size()) {
+      {
+        AtomicHolder h(this);
+        if (nextRefreshIndex_ >= refreshSources_.size()) {
+          nextRefreshIndex_ = 0;
+        }
+        s = refreshSources_[nextRefreshIndex_++];
+        code = 0;
+      }
+      if (lastPacketTime_[s] <
+          now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms())) {
+        break;
+      } else {
+        s = nullptr;
+      }
+    }
+  }
+  if (s) {
+    // requests next packet from that source.
+    s->get_next_packet(code, message()->data());
+    lastPacketTime_[s] = now;
   } else {
     // No update, no source. We are idle!
     bracz_custom::send_host_log_event(bracz_custom::HostLogEvent::TRACK_IDLE);

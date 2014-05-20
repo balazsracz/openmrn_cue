@@ -91,6 +91,10 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
   // Packet sources to ask about refreshing data periodically.
   vector<dcc::PacketSource*> refreshSources_;
 
+  // Stores the last time we sent a packet to a given loco. Suppresses refresh
+  // packet if this time is too recent to avoid confusing DCC decoders.
+  map<dcc::PacketSource*, long long> lastPacketTime_;
+
   // Which is the next guy on the refresh source list to add.
   unsigned nextRefreshIndex_ : 16;
   unsigned hasRefreshSource_ : 1;
