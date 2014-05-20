@@ -28,7 +28,7 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
     "RE 460 118-2", MFX | PUSHPULL },  // todo: there is F5 with beamer that can't be switched.
   // 8
   { 15, { 0, 1, 3, 4,  0xff, }, { LIGHT, BEAMER, FNT11, ABV,  0xff, },
-    "RE 4/4 II", DCC_14 }, // todo: snail mode
+    "RE 4/4 II", DCC_28 /* TODO: this should be dcc 14 */ }, // todo: snail mode
   // 9
   { 47, { 0,  0xff, }, { LIGHT,  0xff, },
     "RE 465", MARKLIN_OLD | PUSHPULL },
