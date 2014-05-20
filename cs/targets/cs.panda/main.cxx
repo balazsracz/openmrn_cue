@@ -67,13 +67,13 @@
 
 #include "custom/TrackInterface.hxx"
 #include "commandstation/UpdateProcessor.hxx"
-#include "dcc/Loco.hxx"
 #include "nmranet/TractionTrain.hxx"
 
 #include "custom/HostPacketCanPort.hxx"
 #include "mobilestation/MobileStationSlave.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
+#include "mobilestation/AllTrainNodes.hxx"
 
 
 // DEFINE_PIPE(gc_can_pipe, 1);
@@ -119,7 +119,7 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 6, 6, 6);
+NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 30, 40, 30);
 static NMRAnet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
 NMRAnet::GlobalEventService g_event_service(&g_if_can);
@@ -173,22 +173,26 @@ static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
 bracz_custom::TrackPowerOnOffBit on_off(ON_EVENT_ID, ON_EVENT_ID+1, &track_send);
 NMRAnet::BitEventConsumer powerbit(&on_off);
 NMRAnet::TrainService traction_service(&g_if_can);
-dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
+/*dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 NMRAnet::TrainNode train_Am843_node(&traction_service, &train_Am843);
 dcc::Dcc28Train train_ICN(dcc::DccShortAddress(50));
 NMRAnet::TrainNode train_ICN_node(&traction_service, &train_ICN);
 dcc::Dcc28Train train_M61(dcc::DccShortAddress(61));
 NMRAnet::TrainNode train_M61_node(&traction_service, &train_M61);
-dcc::Dcc28Train train_Re460TSR(dcc::DccLongAddress(22));
+//dcc::Dcc28Train train_Re460TSR(dcc::DccShortAddress(22));
+dcc::MMOldTrain train_Re460TSR(dcc::MMAddress(22));
 NMRAnet::TrainNode train_Re460TSR_node(&traction_service, &train_Re460TSR);
 dcc::Dcc28Train train_V60(dcc::DccShortAddress(51));
 NMRAnet::TrainNode train_V60_node(&traction_service, &train_V60);
+dcc::MMOldTrain train_Re465(dcc::MMAddress(47));
+NMRAnet::TrainNode train_Re465_node(&traction_service, &train_Re465);*/
 
 
 OVERRIDE_CONST(automata_init_backoff, 10000);
 
 mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 mobilestation::TrainDb train_db;
+mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 #endif
 
