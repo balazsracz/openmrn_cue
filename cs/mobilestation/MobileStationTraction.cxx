@@ -43,16 +43,17 @@
 
 #include "utils/CanIf.hxx"
 
-
 namespace mobilestation {
 
 class TractionImpl : public IncomingFrameFlow {
  public:
   TractionImpl(MobileStationTraction* s) : IncomingFrameFlow(s) {
-    service()->mosta_if()->frame_dispatcher()->register_handler(this, TRACTION_SET_ID, TRACTION_SET_MASK);
+    service()->mosta_if()->frame_dispatcher()->register_handler(
+        this, TRACTION_SET_ID, TRACTION_SET_MASK);
   }
   ~TractionImpl() {
-    service()->mosta_if()->frame_dispatcher()->unregister_handler(this, TRACTION_SET_ID, TRACTION_SET_MASK);
+    service()->mosta_if()->frame_dispatcher()->unregister_handler(
+        this, TRACTION_SET_ID, TRACTION_SET_MASK);
   }
 
   MobileStationTraction* service() {
@@ -64,7 +65,7 @@ class TractionImpl : public IncomingFrameFlow {
     TRACTION_CMD_SHIFT = 7,
     TRACTION_CMD_MASK = 7,  // apply after shift, 3 bits.
     TRACTION_CMD_SET = 0b010,
-    TRACTION_SET_ID =   0x08080100,
+    TRACTION_SET_ID = 0x08080100,
     TRACTION_SET_MASK = 0x0FF80380,
     TRACTION_SET_TRAIN_SHIFT = 10,
     TRACTION_SET_TRAIN_MASK = 0x3F,  // apply after shift.
@@ -87,9 +88,10 @@ class TractionImpl : public IncomingFrameFlow {
            frame().data[1] == 0) ||
           (frame().can_dlc == 2 &&  // get parameter
            frame().data[1] == 0 &&
-           (frame().data[0] >=
-                0xb ||           // parameter number too high for mobile station
-            train_id >= 10))) {  // train number too high for mobile station
+           // parameter number too high for mobile station
+           (frame().data[0] >= 0xb ||
+            // train number too high for mobile station
+            train_id >= 10))) {
         return allocate_and_call(
             service()->nmranet_if()->addressed_message_write_flow(),
             STATE(send_write_query));
@@ -137,7 +139,8 @@ class TractionImpl : public IncomingFrameFlow {
       // We are doing a set function.
       unsigned fn_address = service()->train_db()->get_function_address(
           train_id, frame().data[0]);
-      b->data()->payload = NMRAnet::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
+      b->data()->payload =
+          NMRAnet::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
       return release_and_exit();
     } else if (frame().can_dlc == 2 &&
@@ -157,6 +160,7 @@ class TractionImpl : public IncomingFrameFlow {
       DIE("not sure what to do with this request.");
     }
   }
+
 };
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
