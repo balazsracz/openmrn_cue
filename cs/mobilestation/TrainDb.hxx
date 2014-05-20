@@ -114,6 +114,13 @@ class TrainDb {
    * functions.
    * @returns an enum FunctionLabel, as used by the marklin mobile station. */
   unsigned get_function_label(unsigned train_id, unsigned fn_id);
+
+  /** Returns the dcc DriveMode for the given train id.
+   *
+   * @param train_id must be a valid train id.
+   * @returns a DccMode enum value -- low 3 bits are an enum, bit 3 and 4 are
+   * bitmasks. */
+  unsigned get_drive_mode(unsigned train_id);
 };
 
 }  // namespace mobilestation

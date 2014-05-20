@@ -58,4 +58,10 @@ unsigned TrainDb::get_function_label(unsigned train_id, unsigned fn_id) {
   return entry->function_labels[fn_id];
 }
 
+unsigned TrainDb::get_drive_mode(unsigned train_id) {
+  HASSERT(is_train_id_known(train_id));
+  const struct const_loco_db_t *entry = const_lokdb + train_id;
+  return entry->mode;
+}
+
 }  // namespace mobilestation
