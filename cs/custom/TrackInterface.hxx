@@ -41,7 +41,7 @@
 #include "utils/Hub.hxx"
 #include "utils/CanIf.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/NMRAnetAsyncDefaultNode.hxx"
+#include "nmranet/DefaultNode.hxx"
 
 /// @TODO(balazs.racz) this is not nice.
 extern nmranet::DefaultNode g_node;

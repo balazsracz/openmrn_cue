@@ -50,7 +50,7 @@
 #include "nmranet/GlobalEventHandler.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/NMRAnetAsyncEventHandler.hxx"
-#include "nmranet/NMRAnetAsyncDefaultNode.hxx"
+#include "nmranet/DefaultNode.hxx"
 
 #include "src/event_range_listener.hxx"
 #define EXT_SIGNAL_COUNT 4

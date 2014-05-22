@@ -47,7 +47,7 @@
 #include "nmranet/GlobalEventHandler.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/NMRAnetAsyncEventHandler.hxx"
-#include "nmranet/NMRAnetAsyncDefaultNode.hxx"
+#include "nmranet/DefaultNode.hxx"
 #include "utils/socket_listener.hxx"
 
 #include "src/automata_runner.h"
