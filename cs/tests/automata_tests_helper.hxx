@@ -26,8 +26,8 @@ using ::testing::Mock;
 
 class GMockBit : public ReadWriteBit {
  public:
-  MOCK_METHOD3(Read, bool(uint16_t arg, nmranet::AsyncNode* node, Automata* aut));
-  MOCK_METHOD4(Write, void(uint16_t arg, nmranet::AsyncNode* node, Automata* aut, bool value));
+  MOCK_METHOD3(Read, bool(uint16_t arg, nmranet::Node* node, Automata* aut));
+  MOCK_METHOD4(Write, void(uint16_t arg, nmranet::Node* node, Automata* aut, bool value));
   MOCK_METHOD1(GetState, uint8_t(uint16_t arg));
   MOCK_METHOD2(SetState, void(uint16_t arg, uint8_t state));
 };
@@ -40,10 +40,10 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     FakeBitPointer(bool* backend)
         : backend_(backend) {}
     virtual ~FakeBitPointer() {}
-    virtual bool Read(uint16_t, nmranet::AsyncNode* node, Automata* aut) {
+    virtual bool Read(uint16_t, nmranet::Node* node, Automata* aut) {
       return *backend_;
     }
-    virtual void Write(uint16_t, nmranet::AsyncNode* node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
       *backend_ = value;
     }
 
@@ -216,7 +216,7 @@ protected:
 
   class EventListener {
    public:
-    EventListener(nmranet::AsyncNode* node, const automata::GlobalVariable& var)
+    EventListener(nmranet::Node* node, const automata::GlobalVariable& var)
         : memoryBit_(node, var.event_on(), var.event_off(), &value_, 1), consumer_(&memoryBit_), value_(0) {
     }
 

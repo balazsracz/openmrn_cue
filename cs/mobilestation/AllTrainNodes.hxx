@@ -35,7 +35,7 @@
 #include <vector>
 
 namespace nmranet {
-class AsyncNode;
+class Node;
 class TrainService;
 class TrainImpl;
 }
@@ -52,7 +52,7 @@ class AllTrainNodes {
   // Both of these vectors are parallel to the traindb. We own the objects in
   // these vectors.
   std::vector<nmranet::TrainImpl*> trainImpl_;
-  std::vector<nmranet::AsyncNode*> trainNode_;
+  std::vector<nmranet::Node*> trainNode_;
 };
 
 

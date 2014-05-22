@@ -163,7 +163,7 @@ int __wrap___cxa_atexit(void) {
 }
 
 
-nmranet::AsyncNode* node;
+nmranet::Node* node;
 
 #ifdef HAVE_MBED
 

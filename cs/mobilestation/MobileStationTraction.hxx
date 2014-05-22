@@ -40,7 +40,7 @@ class Executable;
 
 namespace nmranet {
 class AsyncIf;
-class AsyncNode;
+class Node;
 }
 
 namespace mobilestation {
@@ -48,7 +48,7 @@ class TrainDb;
 
 class MobileStationTraction : public Service {
  public:
-  MobileStationTraction(CanIf* mosta_if, nmranet::AsyncIf* nmranet_if, TrainDb* train_db, nmranet::AsyncNode* query_node);
+  MobileStationTraction(CanIf* mosta_if, nmranet::AsyncIf* nmranet_if, TrainDb* train_db, nmranet::Node* query_node);
   ~MobileStationTraction();
 
   nmranet::AsyncIf* nmranet_if() {
@@ -63,7 +63,7 @@ class MobileStationTraction : public Service {
     return trainDb_;
   }
 
-  nmranet::AsyncNode* node() {
+  nmranet::Node* node() {
     return node_;
   }
 
@@ -72,7 +72,7 @@ class MobileStationTraction : public Service {
   nmranet::AsyncIf* nmranetIf_;
   CanIf* mostaIf_;
   TrainDb* trainDb_;
-  nmranet::AsyncNode* node_; //< will be used for traction query and set commands
+  nmranet::Node* node_; //< will be used for traction query and set commands
 };
 
 

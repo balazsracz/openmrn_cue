@@ -39,7 +39,7 @@ const size_t main_stack_size = 900;
 }
 
 nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 2);
-nmranet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
+nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::GlobalEventFlow g_event_flow(&g_executor, 5);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2400ULL;
@@ -81,7 +81,7 @@ public:
 #endif
     }
 
-    virtual nmranet::AsyncNode* node()
+    virtual nmranet::Node* node()
     {
         return &g_node;
     }
@@ -95,7 +95,7 @@ private:
 class BlinkerFlow : public ControlFlow
 {
 public:
-    BlinkerFlow(nmranet::AsyncNode* node)
+    BlinkerFlow(nmranet::Node* node)
         : ControlFlow(node->interface()->dispatcher()->executor(), nullptr),
           state_(1),
           bit_(node, EVENT_ID, EVENT_ID + 1, &state_, (uint8_t)1),

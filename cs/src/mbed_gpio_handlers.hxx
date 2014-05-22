@@ -10,12 +10,12 @@
 #include "mbed.h"
 
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/NMRAnetAsyncNode.hxx"
+#include "nmranet/Node.hxx"
 
 namespace nmranet {
-class AsyncNode;
+class Node;
 }
-extern nmranet::DefaultAsyncNode g_node;
+extern nmranet::DefaultNode g_node;
 
 class MbedGPIOListener : public nmranet::BitEventInterface, public nmranet::BitEventConsumer {
  public:
@@ -47,7 +47,7 @@ class MbedGPIOListener : public nmranet::BitEventInterface, public nmranet::BitE
     }
   }
 
-  virtual nmranet::AsyncNode* node() {
+  virtual nmranet::Node* node() {
     return &g_node;
   }
 

@@ -18,18 +18,18 @@ using std::vector;
 typedef uint16_t aut_offset_t;
 typedef uint8_t insn_t;
 
-namespace nmranet { class AsyncNode; }
+namespace nmranet { class Node; }
 
 class Automata;
 
 class ReadWriteBit {
 public:
   virtual ~ReadWriteBit() {}
-  virtual bool Read(uint16_t arg, nmranet::AsyncNode* node, Automata* aut) = 0;
-  virtual void Write(uint16_t arg, nmranet::AsyncNode* node, Automata* aut, bool value) = 0;
+  virtual bool Read(uint16_t arg, nmranet::Node* node, Automata* aut) = 0;
+  virtual void Write(uint16_t arg, nmranet::Node* node, Automata* aut, bool value) = 0;
   virtual uint8_t GetState(uint16_t arg) { HASSERT(0); return 0; }
   virtual void SetState(uint16_t arg, uint8_t state) { HASSERT(0); }
-  virtual void Initialize(nmranet::AsyncNode* node) {}
+  virtual void Initialize(nmranet::Node* node) {}
 };
 
 
@@ -83,10 +83,10 @@ private:
     public:
 	TimerBit(int id) : id_(id) {}
 	virtual ~TimerBit() {}
-        virtual bool Read(uint16_t, nmranet::AsyncNode*, Automata* aut) {
+        virtual bool Read(uint16_t, nmranet::Node*, Automata* aut) {
 	    return *GetStateByte(OFS_TIMER);
 	}
-	virtual void Write(uint16_t, nmranet::AsyncNode*, Automata* aut, bool value) {
+	virtual void Write(uint16_t, nmranet::Node*, Automata* aut, bool value) {
 	    diewith(CS_DIE_AUT_WRITETIMERBIT);
 	}
 	int GetId() {
@@ -106,7 +106,7 @@ private:
 
 class AutomataRunner {
 public:
-  AutomataRunner(nmranet::AsyncNode* node, const insn_t* base_pointer,
+  AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
                  bool with_thread = true);
     ~AutomataRunner();
 
@@ -213,7 +213,7 @@ private:
     //! Points to the current automata.
     Automata* current_automata_;
     //! The OpenMRN node used for generating sourced events.
-    nmranet::AsyncNode* openmrn_node_;
+    nmranet::Node* openmrn_node_;
 
     //! Counts how many ticks we need to apply in the next run of the automatas.
     int pending_ticks_;

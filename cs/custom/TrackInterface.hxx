@@ -44,7 +44,7 @@
 #include "nmranet/NMRAnetAsyncDefaultNode.hxx"
 
 /// @TODO(balazs.racz) this is not nice.
-extern nmranet::DefaultAsyncNode g_node;
+extern nmranet::DefaultNode g_node;
 
 namespace bracz_custom {
 
