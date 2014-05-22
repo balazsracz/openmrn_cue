@@ -16,7 +16,7 @@
 
 #include "utils/async_if_test_helper.hxx"
 
-#include "nmranet/GlobalEventHandler.hxx"
+#include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 
 using ::testing::_;

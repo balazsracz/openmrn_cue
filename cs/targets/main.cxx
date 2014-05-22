@@ -85,7 +85,7 @@
 #endif
 
 #ifdef ONLY_CPP_EVENT
-#include "nmranet/GlobalEventHandler.hxx"
+#include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "executor/executor.hxx"
 #endif
