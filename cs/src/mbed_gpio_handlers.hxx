@@ -12,12 +12,12 @@
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/NMRAnetAsyncNode.hxx"
 
-namespace NMRAnet {
+namespace nmranet {
 class AsyncNode;
 }
-extern NMRAnet::DefaultAsyncNode g_node;
+extern nmranet::DefaultAsyncNode g_node;
 
-class MbedGPIOListener : public NMRAnet::BitEventInterface, public NMRAnet::BitEventConsumer {
+class MbedGPIOListener : public nmranet::BitEventInterface, public nmranet::BitEventConsumer {
  public:
   MbedGPIOListener(uint64_t event_on, uint64_t event_off,
                    PinName pin)
@@ -47,7 +47,7 @@ class MbedGPIOListener : public NMRAnet::BitEventInterface, public NMRAnet::BitE
     }
   }
 
-  virtual NMRAnet::AsyncNode* node() {
+  virtual nmranet::AsyncNode* node() {
     return &g_node;
   }
 

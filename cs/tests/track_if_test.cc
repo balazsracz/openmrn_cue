@@ -25,7 +25,7 @@ class MockEmptyQueue : public PacketFlowInterface {
   }
 };
 
-class TrackIfTest : public NMRAnet::AsyncCanTest, public HostPacketTestHelper {
+class TrackIfTest : public nmranet::AsyncCanTest, public HostPacketTestHelper {
  protected:
   TrackIfTest()
       : can_if_(&g_service, &can_hub0),

@@ -4,7 +4,7 @@
 
 namespace {
 BarrierNotifiable write_helper_busy;
-NMRAnet::WriteHelper helper;
+nmranet::WriteHelper helper;
 }
 
 uint8_t ListenerToEventProxy::OnChanged(uint8_t offset, uint8_t previous_value,

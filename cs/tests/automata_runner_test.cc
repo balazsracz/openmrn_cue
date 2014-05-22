@@ -505,7 +505,7 @@ TEST_F(AutomataTests, SignalVar) {
   static FakeBit trigger_f3(this);
   uint8_t consumer_data[10] = {0,};
   static const uint64_t EVENTID = 0x0501010114FF6000;
-  NMRAnet::ByteRangeEventC consumer(node_, EVENTID, consumer_data, 10);
+  nmranet::ByteRangeEventC consumer(node_, EVENTID, consumer_data, 10);
   static SignalVariable signalvar(&brd, "signal_name", EVENTID + 4*256, 0x5a);
   wait_for_event_thread();
   DefAut(testaut1, brd, {

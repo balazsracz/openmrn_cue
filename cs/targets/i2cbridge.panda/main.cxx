@@ -65,7 +65,7 @@ Executor g_executor;
 DEFINE_PIPE(can_pipe0, &g_executor, sizeof(struct can_frame));
 //DEFINE_PIPE(can_pipe1, &g_executor, sizeof(struct can_frame));
 
-static const NMRAnet::NodeID NODE_ID = 0x050101011441ULL;
+static const nmranet::NodeID NODE_ID = 0x050101011441ULL;
 
 extern "C" {
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
@@ -90,9 +90,9 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1, 1);
-NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 6);
+nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1, 1);
+nmranet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
+nmranet::GlobalEventFlow g_event_flow(&g_executor, 6);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203CULL;
 const int main_priority = 0;
@@ -105,7 +105,7 @@ Executor* DefaultWriteFlowExecutor() {
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public NMRAnet::BitEventInterface
+class LoggingBit : public nmranet::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -128,7 +128,7 @@ public:
 #endif
     }
 
-    virtual NMRAnet::AsyncNode* node()
+    virtual nmranet::AsyncNode* node()
     {
         return &g_node;
     }
@@ -176,13 +176,13 @@ int appl_main(int argc, char* argv[])
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    NMRAnet::BitEventConsumer consumer(&logger);
+    nmranet::BitEventConsumer consumer(&logger);
     //BlinkerFlow blinker(&g_node);
     g_if_can.set_alias_allocator(
-        new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
-    NMRAnet::AliasInfo info;
+        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
+    nmranet::AliasInfo info;
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
-    NMRAnet::AddEventHandlerToIf(&g_if_can);
+    nmranet::AddEventHandlerToIf(&g_if_can);
     g_executor.ThreadBody();
     return 0;
 }

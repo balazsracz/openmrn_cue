@@ -3,7 +3,7 @@
 #include "mobilestation/MobileStationTraction.hxx"
 #include "mobilestation/TrainDb.hxx"
 
-namespace NMRAnet {
+namespace nmranet {
 ::std::ostream& operator<<(::std::ostream& os, const Velocity& v) {
   return os << "Velocity " << (v.direction() == Velocity::FORWARD ? 'F' : 'R')
             << " " << v.speed() << " m/s or " << v.mph() << " mph.";
@@ -13,16 +13,16 @@ namespace NMRAnet {
 
 namespace mobilestation {
 
-class MostaTranslationTest : public NMRAnet::TractionTest {
+class MostaTranslationTest : public nmranet::TractionTest {
  protected:
   static void SetUpTestCase() {
-    NMRAnet::AsyncNodeTest::SetUpTestCase();
+    nmranet::AsyncNodeTest::SetUpTestCase();
     g_gc_adapter1 =
         GCAdapterBase::CreateGridConnectAdapter(&gc_hub1, &can_hub1, false);
   }
 
   static void TearDownTestCase() {
-    NMRAnet::AsyncNodeTest::TearDownTestCase();
+    nmranet::AsyncNodeTest::TearDownTestCase();
     delete g_gc_adapter1;
   }
 
@@ -39,7 +39,7 @@ class MostaTranslationTest : public NMRAnet::TractionTest {
     expect_packet(":X1070133AN060100000056;");
     // initialized
     expect_packet(":X1910033AN060100000056;");
-    trainNode_.reset(new NMRAnet::TrainNode(&trainService_, &m1_));
+    trainNode_.reset(new nmranet::TrainNode(&trainService_, &m1_));
     wait();
   }
 
@@ -60,7 +60,7 @@ class MostaTranslationTest : public NMRAnet::TractionTest {
   NiceMock<MockSend> canBus1_;
   CanIf can_if1_;
 
-  std::unique_ptr<NMRAnet::TrainNode> trainNode_;
+  std::unique_ptr<nmranet::TrainNode> trainNode_;
 
   TrainDb train_db_;
   MobileStationTraction mosta_traction_;
@@ -84,7 +84,7 @@ MATCHER_P(VApprox, velocity, "") {
 }
 
 TEST_F(MostaTranslationTest, SpeedSetXlate) {
-  NMRAnet::Velocity v(0);
+  nmranet::Velocity v(0);
   v.reverse();
   EXPECT_CALL(m1_, set_speed(v));
   send_packet1(":X08080500N010080;");

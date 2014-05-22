@@ -37,7 +37,7 @@
 
 #include <memory>
 
-#include "utils/PipeFlow.hxx"
+#include "utils/Hub.hxx"
 #include "custom/MCPCanFrameFormat.hxx"
 #include "src/pic_can.h"
 #include "utils/singleton.hxx"

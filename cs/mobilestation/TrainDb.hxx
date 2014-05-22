@@ -93,7 +93,7 @@ class TrainDb {
    * particular train known to the database.
    *
    * Requires: is_train_id_known(train_id) == true. */
-  NMRAnet::NodeID get_traction_node(unsigned train_id);
+  nmranet::NodeID get_traction_node(unsigned train_id);
 
   enum {
     UNKNOWN_FUNCTION = 0xFFFFFFFF,

@@ -61,16 +61,16 @@ CanHubFlow can_hub0(&g_service);
 //DEFINE_PIPE(can_pipe, &g_executor, sizeof(struct can_frame));
 //DEFINE_PIPE(can_pipe0, &g_executor, sizeof(struct can_frame));
 
-static const NMRAnet::NodeID NODE_ID = 0x050101011440ULL;
+static const nmranet::NodeID NODE_ID = 0x050101011440ULL;
 
 extern "C" {
 extern insn_t automata_code[];
 }
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
-static NMRAnet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventService g_event_service(&g_if_can);
+nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
+nmranet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
+nmranet::GlobalEventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x050101011441FF00ULL;
 
@@ -78,7 +78,7 @@ static const uint64_t EVENT_ID = 0x050101011441FF00ULL;
 class BlinkerFlow : public StateFlowBase
 {
 public:
-    BlinkerFlow(NMRAnet::AsyncNode* node)
+    BlinkerFlow(nmranet::AsyncNode* node)
         : StateFlowBase(node->interface()),
           state_(1),
           bit_(node, EVENT_ID, EVENT_ID + 1, &state_, (uint8_t)1),
@@ -105,16 +105,16 @@ private:
     }
 
     uint8_t state_;
-    NMRAnet::MemoryBit<uint8_t> bit_;
-    NMRAnet::BitEventProducer producer_;
-    NMRAnet::WriteHelper helper_;
+    nmranet::MemoryBit<uint8_t> bit_;
+    nmranet::BitEventProducer producer_;
+    nmranet::WriteHelper helper_;
     StateFlowTimer sleepData_;
     BarrierNotifiable n_;
 };
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public NMRAnet::BitEventInterface
+class LoggingBit : public nmranet::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -137,7 +137,7 @@ public:
 #endif
     }
 
-    virtual NMRAnet::AsyncNode* node()
+    virtual nmranet::AsyncNode* node()
     {
         return &g_node;
     }
@@ -159,7 +159,7 @@ int appl_main(int argc, char* argv[])
     create_gc_port_for_can_hub(&can_hub0, conn_fd);
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    NMRAnet::BitEventConsumer consumer(&logger);
+    nmranet::BitEventConsumer consumer(&logger);
     BlinkerFlow blinker(&g_node);
 
     // Bootstraps the alias allocation process.

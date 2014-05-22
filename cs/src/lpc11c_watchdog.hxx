@@ -11,16 +11,16 @@ extern "C" {
 void WDT_IRQHandler(void) { NVIC_SystemReset(); }
 }
 
-class WatchDogEventHandler : public NMRAnet::SimpleEventHandler {
+class WatchDogEventHandler : public nmranet::SimpleEventHandler {
  public:
-  WatchDogEventHandler(NMRAnet::AsyncNode* node, uint64_t event)
+  WatchDogEventHandler(nmranet::AsyncNode* node, uint64_t event)
       : node_(node), event_(event) {
     init_watchdog();
     reset_watchdog();
-    NMRAnet::NMRAnetEventRegistry::instance()->RegisterHandler(this, 0, 0);
+    nmranet::NMRAnetEventRegistry::instance()->RegisterHandler(this, 0, 0);
   }
 
-  virtual void HandleEventReport(NMRAnet::EventReport* event,
+  virtual void HandleEventReport(nmranet::EventReport* event,
                                  Notifiable* done) {
     if (event->event == event_) {
       reset_watchdog();
@@ -28,13 +28,13 @@ class WatchDogEventHandler : public NMRAnet::SimpleEventHandler {
     done->Notify();
   }
 
-  virtual void HandleIdentifyGlobal(NMRAnet::EventReport* event,
+  virtual void HandleIdentifyGlobal(nmranet::EventReport* event,
                                     Notifiable* done) {
-    NMRAnet::event_write_helper1.WriteAsync(
-        node_, NMRAnet::If::MTI_CONSUMER_IDENTIFIED_UNKNOWN,
-        NMRAnet::WriteHelper::global(), NMRAnet::EventIdToBuffer(event_), done);
+    nmranet::event_write_helper1.WriteAsync(
+        node_, nmranet::Defs::MTI_CONSUMER_IDENTIFIED_UNKNOWN,
+        nmranet::WriteHelper::global(), nmranet::EventIdToBuffer(event_), done);
   }
-  virtual void HandleIdentifyConsumer(NMRAnet::EventReport* event,
+  virtual void HandleIdentifyConsumer(nmranet::EventReport* event,
                                       Notifiable* done) {
     if (event->event == event_) {
       HandleIdentifyGlobal(event, done);
@@ -71,7 +71,7 @@ class WatchDogEventHandler : public NMRAnet::SimpleEventHandler {
     LPC_WDT->FEED = 0x55;
   }
 
-  NMRAnet::AsyncNode* node_;
+  nmranet::AsyncNode* node_;
   uint64_t event_;
 };
 

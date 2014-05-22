@@ -6,13 +6,13 @@
 
 class ListenerToEventProxy : public UpdateListener {
  public:
-  ListenerToEventProxy(NMRAnet::BitRangeEventPC* proxy)
+  ListenerToEventProxy(nmranet::BitRangeEventPC* proxy)
       : proxy_(proxy) {}
 
   virtual uint8_t OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value);
 
  private:
-  NMRAnet::BitRangeEventPC* proxy_;
+  nmranet::BitRangeEventPC* proxy_;
 };
 
 

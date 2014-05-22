@@ -38,7 +38,7 @@
 #include "mbed.h"
 
 #include "os/os.h"
-#include "utils/PipeFlow.hxx"
+#include "utils/Hub.hxx"
 #include "utils/HubDevice.hxx"
 #include "executor/Executor.hxx"
 #include "nmranet_can.h"
@@ -69,7 +69,7 @@ Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 CanHubFlow can_hub1(&g_service);
 
-static const NMRAnet::NodeID NODE_ID = 0x050101011434ULL;
+static const nmranet::NodeID NODE_ID = 0x050101011434ULL;
 
 extern "C" {
 extern insn_t automata_code[];
@@ -95,17 +95,17 @@ void log_output(char* buf, int size) {
 }
 
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
-static NMRAnet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventService g_event_service(&g_if_can);
+nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
+nmranet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
+nmranet::GlobalEventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 0;
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public NMRAnet::BitEventInterface
+class LoggingBit : public nmranet::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -127,7 +127,7 @@ public:
 #endif
     }
 
-    virtual NMRAnet::AsyncNode* node()
+    virtual nmranet::AsyncNode* node()
     {
         return &g_node;
     }
@@ -158,10 +158,10 @@ int appl_main(int argc, char* argv[])
     dcc_can_init(fd);*/
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    NMRAnet::BitEventConsumer consumer(&logger);
+    nmranet::BitEventConsumer consumer(&logger);
     g_if_can.add_addressed_message_support();
     g_if_can.set_alias_allocator(
-        new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
+        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
     // Bootstraps the alias allocation process.
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
@@ -180,14 +180,14 @@ int appl_main(int argc, char* argv[])
     lpc11cxx::CreateCanDriver(&can_pipe);
 #endif
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    NMRAnet::BitEventConsumer consumer(&logger);
+    nmranet::BitEventConsumer consumer(&logger);
     BlinkerFlow blinker(&g_node);
     g_if_can.AddWriteFlows(1, 1);
     g_if_can.set_alias_allocator(
-        new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
-    NMRAnet::AliasInfo info;
+        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
+    nmranet::AliasInfo info;
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
-    NMRAnet::AddEventHandlerToIf(&g_if_can);
+    nmranet::AddEventHandlerToIf(&g_if_can);
     resetblink(0x80002A);
     while(startpin) {}
     resetblink(0);

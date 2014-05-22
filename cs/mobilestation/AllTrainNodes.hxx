@@ -34,7 +34,7 @@
 
 #include <vector>
 
-namespace NMRAnet {
+namespace nmranet {
 class AsyncNode;
 class TrainService;
 class TrainImpl;
@@ -45,14 +45,14 @@ class TrainDb;
 
 class AllTrainNodes {
  public:
-  AllTrainNodes(TrainDb* db, NMRAnet::TrainService* traction_service);
+  AllTrainNodes(TrainDb* db, nmranet::TrainService* traction_service);
   ~AllTrainNodes();
 
  private:
   // Both of these vectors are parallel to the traindb. We own the objects in
   // these vectors.
-  std::vector<NMRAnet::TrainImpl*> trainImpl_;
-  std::vector<NMRAnet::AsyncNode*> trainNode_;
+  std::vector<nmranet::TrainImpl*> trainImpl_;
+  std::vector<nmranet::AsyncNode*> trainNode_;
 };
 
 

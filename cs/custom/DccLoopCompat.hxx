@@ -35,6 +35,6 @@
 namespace bracz_custom {
 
 /** Specifies the list of trains that are available for the DCC Loop. */
-void set_train_database(NMRAnet::TrainImpl** trains);
+void set_train_database(nmranet::TrainImpl** trains);
 
 }  // namespace bracz_custom

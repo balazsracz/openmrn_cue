@@ -112,7 +112,7 @@ class TractionImpl : public IncomingFrameFlow {
     b->data()->src.alias = 0;
     b->data()->dst.id = service()->train_db()->get_traction_node(train_id);
     b->data()->dst.alias = 0;
-    b->data()->mti = NMRAnet::If::MTI_TRACTION_CONTROL_COMMAND;
+    b->data()->mti = nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND;
 
     unsigned fn_address = 0;
     if (frame().data[0] != TRACTION_SET_MOTOR_FN) {
@@ -127,12 +127,12 @@ class TractionImpl : public IncomingFrameFlow {
 
     if (frame().can_dlc == 3 && frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a set speed.
-      NMRAnet::Velocity v;
+      nmranet::Velocity v;
       v.set_mph(frame().data[2] & 0x7F);
       if (frame().data[2] & 0x80) {
         v.reverse();
       }
-      b->data()->payload = NMRAnet::TractionDefs::speed_set_payload(v);
+      b->data()->payload = nmranet::TractionDefs::speed_set_payload(v);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
       return release_and_exit();
     } else if (frame().can_dlc == 3) {
@@ -140,19 +140,19 @@ class TractionImpl : public IncomingFrameFlow {
       unsigned fn_address = service()->train_db()->get_function_address(
           train_id, frame().data[0]);
       b->data()->payload =
-          NMRAnet::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
+          nmranet::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
       return release_and_exit();
     } else if (frame().can_dlc == 2 &&
                frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a get speed.
-      b->data()->payload = NMRAnet::TractionDefs::speed_get_payload();
+      b->data()->payload = nmranet::TractionDefs::speed_get_payload();
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
       /// @TODO(balazs.racz) implement a handler that will wait for a response.
       return release_and_exit();
     } else if (frame().can_dlc == 2) {
       // We are doing a get fn.
-      b->data()->payload = NMRAnet::TractionDefs::fn_get_payload(fn_address);
+      b->data()->payload = nmranet::TractionDefs::fn_get_payload(fn_address);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
       /// @TODO(balazs.racz) implement a handler that will wait for a response.
       return release_and_exit();
@@ -164,9 +164,9 @@ class TractionImpl : public IncomingFrameFlow {
 };
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
-                                             NMRAnet::AsyncIf* nmranet_if,
+                                             nmranet::AsyncIf* nmranet_if,
                                              TrainDb* train_db,
-                                             NMRAnet::AsyncNode* query_node)
+                                             nmranet::AsyncNode* query_node)
     : Service(nmranet_if->dispatcher()->service()->executor()),
       nmranetIf_(nmranet_if),
       mostaIf_(mosta_if),

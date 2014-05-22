@@ -8,17 +8,17 @@ extern I2CDriver g_i2c_driver;
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-namespace NMRAnet {
+namespace nmranet {
 class AsyncNode;
 }
 
 static const int DATA_REPEAT_COUNT = 3;
-static NMRAnet::WriteHelper g_i2c_write_helper;
+static nmranet::WriteHelper g_i2c_write_helper;
 
 class I2cExtenderBoard : public ControlFlow {
 public:
   I2cExtenderBoard(I2CDriver* driver, uint8_t address, Executor *executor,
-                   NMRAnet::AsyncNode *node)
+                   nmranet::AsyncNode *node)
       : ControlFlow(executor, nullptr), driver_(driver), address_(address),
         bit_pc_(node, BRACZ_LAYOUT | (address << 8), &io_store_, 24),
         signal_c_(node, (BRACZ_LAYOUT & (~0xFFFFFF)) | (address << 16), signal_data_, sizeof(signal_data_)) {
@@ -115,8 +115,8 @@ private:
 
   uint8_t signal_data_[EXT_SIGNAL_COUNT * 2];
 
-  NMRAnet::BitRangeEventPC bit_pc_;
-  NMRAnet::ByteRangeEventC signal_c_;
+  nmranet::BitRangeEventPC bit_pc_;
+  nmranet::ByteRangeEventC signal_c_;
 };
 
 #endif // _BRACZ_TRAIN_I2C_EXTENDER_FLOW_HXX_

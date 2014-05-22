@@ -30,10 +30,10 @@ bool TrainDb::is_train_id_known(unsigned train_id) {
   return train_id < const_lokdb_size && (const_lokdb[train_id].address > 0);
 }
 
-NMRAnet::NodeID TrainDb::get_traction_node(unsigned train_id) {
+nmranet::NodeID TrainDb::get_traction_node(unsigned train_id) {
   HASSERT(is_train_id_known(train_id));
   const struct const_loco_db_t *entry = const_lokdb + train_id;
-  return NMRAnet::TractionDefs::NODE_ID_DCC | static_cast<NMRAnet::NodeID>(entry->address);
+  return nmranet::TractionDefs::NODE_ID_DCC | static_cast<nmranet::NodeID>(entry->address);
 }
 
 unsigned TrainDb::get_function_address(unsigned train_id, unsigned fn_id) {

@@ -26,24 +26,24 @@ using ::testing::Mock;
 
 class GMockBit : public ReadWriteBit {
  public:
-  MOCK_METHOD3(Read, bool(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut));
-  MOCK_METHOD4(Write, void(uint16_t arg, NMRAnet::AsyncNode* node, Automata* aut, bool value));
+  MOCK_METHOD3(Read, bool(uint16_t arg, nmranet::AsyncNode* node, Automata* aut));
+  MOCK_METHOD4(Write, void(uint16_t arg, nmranet::AsyncNode* node, Automata* aut, bool value));
   MOCK_METHOD1(GetState, uint8_t(uint16_t arg));
   MOCK_METHOD2(SetState, void(uint16_t arg, uint8_t state));
 };
 
 
-class AutomataTests : public NMRAnet::AsyncNodeTest {
+class AutomataTests : public nmranet::AsyncNodeTest {
  protected:
   class FakeBitPointer : public ReadWriteBit {
    public:
     FakeBitPointer(bool* backend)
         : backend_(backend) {}
     virtual ~FakeBitPointer() {}
-    virtual bool Read(uint16_t, NMRAnet::AsyncNode* node, Automata* aut) {
+    virtual bool Read(uint16_t, nmranet::AsyncNode* node, Automata* aut) {
       return *backend_;
     }
-    virtual void Write(uint16_t, NMRAnet::AsyncNode* node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, nmranet::AsyncNode* node, Automata* aut, bool value) {
       *backend_ = value;
     }
 
@@ -159,7 +159,7 @@ class AutomataTests : public NMRAnet::AsyncNodeTest {
 
   ~AutomataTests() {
     wait_for_event_thread();
-    NMRAnet::AsyncNodeTest::wait();
+    nmranet::AsyncNodeTest::wait();
     delete runner_;
   }
 
@@ -207,8 +207,8 @@ protected:
     uint64_t eventid = value ? var.event_on() : var.event_off();
     fprintf(stderr, "Producing event %016llx on node %p\n", eventid, node_);
     SyncNotifiable n;
-    writeHelper_.WriteAsync(node_, NMRAnet::If::MTI_EVENT_REPORT, NMRAnet::WriteHelper::global(),
-                            NMRAnet::EventIdToBuffer(eventid), &n);
+    writeHelper_.WriteAsync(node_, nmranet::Defs::MTI_EVENT_REPORT, nmranet::WriteHelper::global(),
+                            nmranet::EventIdToBuffer(eventid), &n);
     n.wait_for_notification();
   }
 
@@ -216,7 +216,7 @@ protected:
 
   class EventListener {
    public:
-    EventListener(NMRAnet::AsyncNode* node, const automata::GlobalVariable& var)
+    EventListener(nmranet::AsyncNode* node, const automata::GlobalVariable& var)
         : memoryBit_(node, var.event_on(), var.event_off(), &value_, 1), consumer_(&memoryBit_), value_(0) {
     }
 
@@ -225,8 +225,8 @@ protected:
     }
 
    private:
-    NMRAnet::MemoryBit<uint8_t> memoryBit_;
-    NMRAnet::BitEventConsumer consumer_;
+    nmranet::MemoryBit<uint8_t> memoryBit_;
+    nmranet::BitEventConsumer consumer_;
     uint8_t value_;
   };
 
@@ -277,26 +277,26 @@ protected:
     int tick_;
   };
 
-  class GlobalEventListener : private NMRAnet::SimpleEventHandler, public GlobalEventListenerBase {
+  class GlobalEventListener : private nmranet::SimpleEventHandler, public GlobalEventListenerBase {
    public:
     GlobalEventListener() {
-      NMRAnet::NMRAnetEventRegistry::instance()->register_handlerr(this, 0, 63);
+      nmranet::NMRAnetEventRegistry::instance()->register_handlerr(this, 0, 63);
     }
 
     ~GlobalEventListener() {
-      NMRAnet::NMRAnetEventRegistry::instance()->unregister_handlerr(this, 0, 63);
+      nmranet::NMRAnetEventRegistry::instance()->unregister_handlerr(this, 0, 63);
     }
    private:
-    virtual void HandleEventReport(NMRAnet::EventReport* event, BarrierNotifiable* done) {
+    virtual void HandleEventReport(nmranet::EventReport* event, BarrierNotifiable* done) {
       IncomingEvent(event->event);
       done->notify();
     }
 
-    virtual void HandleIdentifyGlobal(NMRAnet::EventReport* event, BarrierNotifiable* done) {
+    virtual void HandleIdentifyGlobal(nmranet::EventReport* event, BarrierNotifiable* done) {
       done->notify();
     }
   };
 
   GlobalEventListener all_listener_;
-  NMRAnet::WriteHelper writeHelper_;
+  nmranet::WriteHelper writeHelper_;
 };

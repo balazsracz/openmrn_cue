@@ -40,7 +40,7 @@
 #include "src/cs_config.h"
 
 #include "os/os.h"
-#include "utils/PipeFlow.hxx"
+#include "utils/Hub.hxx"
 #include "utils/HubDevice.hxx"
 #include "executor/Executor.hxx"
 #include "nmranet_can.h"
@@ -83,7 +83,7 @@ Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 CanHubFlow can_hub1(&g_service);
 
-static const NMRAnet::NodeID NODE_ID = 0x050101011431ULL;
+static const nmranet::NodeID NODE_ID = 0x050101011431ULL;
 
 extern "C" {
 extern insn_t automata_code[];
@@ -119,10 +119,10 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 30, 40, 30);
-static NMRAnet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventService g_event_service(&g_if_can);
+nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 30, 40, 30);
+static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
+nmranet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
+nmranet::GlobalEventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 2;
@@ -130,7 +130,7 @@ OVERRIDE_CONST(main_thread_priority, 2);
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public NMRAnet::BitEventInterface
+class LoggingBit : public nmranet::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -153,7 +153,7 @@ public:
 #endif
     }
 
-    virtual NMRAnet::AsyncNode* node()
+    virtual nmranet::AsyncNode* node()
     {
         return &g_node;
     }
@@ -171,21 +171,21 @@ commandstation::UpdateProcessor cs_loop(&g_service, &track_send);
 bracz_custom::TrackIfReceive track_recv(&can1_interface, &cs_loop);
 static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
 bracz_custom::TrackPowerOnOffBit on_off(ON_EVENT_ID, ON_EVENT_ID+1, &track_send);
-NMRAnet::BitEventConsumer powerbit(&on_off);
-NMRAnet::TrainService traction_service(&g_if_can);
+nmranet::BitEventConsumer powerbit(&on_off);
+nmranet::TrainService traction_service(&g_if_can);
 /*dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
-NMRAnet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
 dcc::Dcc28Train train_ICN(dcc::DccShortAddress(50));
-NMRAnet::TrainNode train_ICN_node(&traction_service, &train_ICN);
+nmranet::TrainNode train_ICN_node(&traction_service, &train_ICN);
 dcc::Dcc28Train train_M61(dcc::DccShortAddress(61));
-NMRAnet::TrainNode train_M61_node(&traction_service, &train_M61);
+nmranet::TrainNode train_M61_node(&traction_service, &train_M61);
 //dcc::Dcc28Train train_Re460TSR(dcc::DccShortAddress(22));
 dcc::MMOldTrain train_Re460TSR(dcc::MMAddress(22));
-NMRAnet::TrainNode train_Re460TSR_node(&traction_service, &train_Re460TSR);
+nmranet::TrainNode train_Re460TSR_node(&traction_service, &train_Re460TSR);
 dcc::Dcc28Train train_V60(dcc::DccShortAddress(51));
-NMRAnet::TrainNode train_V60_node(&traction_service, &train_V60);
+nmranet::TrainNode train_V60_node(&traction_service, &train_V60);
 dcc::MMOldTrain train_Re465(dcc::MMAddress(47));
-NMRAnet::TrainNode train_Re465_node(&traction_service, &train_Re465);*/
+nmranet::TrainNode train_Re465_node(&traction_service, &train_Re465);*/
 
 
 OVERRIDE_CONST(automata_init_backoff, 10000);
@@ -220,7 +220,7 @@ int appl_main(int argc, char* argv[])
 #endif
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    NMRAnet::BitEventConsumer consumer(&logger);
+    nmranet::BitEventConsumer consumer(&logger);
     //BlinkerFlow blinker(&g_node);
     g_if_can.add_addressed_message_support();
     // Bootstraps the alias allocation process.

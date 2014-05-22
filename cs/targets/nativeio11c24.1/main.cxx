@@ -29,7 +29,7 @@ Executor g_executor;
 
 DEFINE_PIPE(can_pipe, &g_executor, sizeof(struct can_frame));
 
-static const NMRAnet::NodeID NODE_ID = 0x050101011448ULL;
+static const nmranet::NodeID NODE_ID = 0x050101011448ULL;
 
 extern "C" {
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
@@ -40,9 +40,9 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-NMRAnet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 1);
-NMRAnet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
-NMRAnet::GlobalEventFlow g_event_flow(&g_executor, 4);
+nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 1);
+nmranet::DefaultAsyncNode g_node(&g_if_can, NODE_ID);
+nmranet::GlobalEventFlow g_event_flow(&g_executor, 4);
 WatchDogEventHandler g_watchdog(&g_node, WATCHDOG_EVENT_ID);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2820ULL;
@@ -61,7 +61,7 @@ Executor* DefaultWriteFlowExecutor() {
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public NMRAnet::BitEventInterface
+class LoggingBit : public nmranet::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -84,7 +84,7 @@ public:
 #endif
     }
 
-    virtual NMRAnet::AsyncNode* node()
+    virtual nmranet::AsyncNode* node()
     {
         return &g_node;
     }
@@ -130,7 +130,7 @@ class AllGPIOProducers : private Executable, private Notifiable {
   }
 
   virtual void Notify() {
-    LockHolder h(&g_executor);
+    AtomicHolder h(&g_executor);
     if (!g_executor.IsMaybePending(this)) {
       g_executor.Add(this);
     }
@@ -186,10 +186,10 @@ class AllGPIOProducers : private Executable, private Notifiable {
   // Fresh bits that we need to copy to the exported bits.
   uint32_t last_read_bits_;
 
-  NMRAnet::BitRangeEventPC producer_;
+  nmranet::BitRangeEventPC producer_;
   OSTimer timer_;
 
-  NMRAnet::WriteHelper helper_;
+  nmranet::WriteHelper helper_;
   ProxyNotifiable helper_busy_;
 };
 
@@ -208,12 +208,12 @@ int appl_main(int argc, char* argv[])
 #endif
   //BlinkerFlow blinker(&g_node);
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    NMRAnet::BitEventConsumer consumer(&logger);
+    nmranet::BitEventConsumer consumer(&logger);
     g_if_can.set_alias_allocator(
-        new NMRAnet::AsyncAliasAllocator(NODE_ID, &g_if_can));
-    NMRAnet::AliasInfo info;
+        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
+    nmranet::AliasInfo info;
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
-    NMRAnet::AddEventHandlerToIf(&g_if_can);
+    nmranet::AddEventHandlerToIf(&g_if_can);
     g_executor.ThreadBody();
     return 0;
 }

@@ -41,7 +41,7 @@
 namespace mobilestation {
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
-                             NMRAnet::TrainService* traction_service) {
+                             nmranet::TrainService* traction_service) {
   trainImpl_.resize(const_lokdb_size);
   trainNode_.resize(const_lokdb_size);
   for (unsigned train_id = 0; train_id < const_lokdb_size; ++train_id) {
@@ -66,7 +66,7 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
     }
     if (trainImpl_[train_id]) {
       trainNode_[train_id] =
-          new NMRAnet::TrainNode(traction_service, trainImpl_[train_id]);
+          new nmranet::TrainNode(traction_service, trainImpl_[train_id]);
     }
   }
 }

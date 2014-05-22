@@ -1,8 +1,8 @@
 #include "utils/test_main.hxx"
 #include "mobilestation/TrainDb.hxx"
 
-namespace NMRAnet {
-void PrintTo(const NMRAnet::NodeID& id, std::ostream& o) {
+namespace nmranet {
+void PrintTo(const nmranet::NodeID& id, std::ostream& o) {
   o << "Node ID 0x" << StringPrintf("%012x", id);
 }
 }

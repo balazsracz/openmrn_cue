@@ -38,13 +38,13 @@
 #include "dcc/Packet.hxx"
 #include "dcc/UpdateLoop.hxx"
 #include "utils/BufferQueue.hxx"
-#include "utils/PipeFlow.hxx"
+#include "utils/Hub.hxx"
 #include "utils/CanIf.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/NMRAnetAsyncDefaultNode.hxx"
 
 /// @TODO(balazs.racz) this is not nice.
-extern NMRAnet::DefaultAsyncNode g_node;
+extern nmranet::DefaultAsyncNode g_node;
 
 namespace bracz_custom {
 
@@ -67,7 +67,7 @@ enum {
   TRACKCMD_ENABLE = 21,
 };
 
-class TrackPowerOnOffBit : public NMRAnet::BitEventInterface {
+class TrackPowerOnOffBit : public nmranet::BitEventInterface {
  public:
   TrackPowerOnOffBit(uint64_t event_on, uint64_t event_off, PacketFlowInterface* track)
       : BitEventInterface(event_on, event_off), track_(track), state_(false) {}
@@ -81,7 +81,7 @@ class TrackPowerOnOffBit : public NMRAnet::BitEventInterface {
     state_ = new_value;
   }
 
-  virtual NMRAnet::AsyncNode* node()
+  virtual nmranet::AsyncNode* node()
   {
     return &g_node;
   }

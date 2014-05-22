@@ -9,7 +9,7 @@
 #include "os/os.h"
 
 #include "cs_config.h"
-#include "utils/PipeFlow.hxx"
+#include "utils/Hub.hxx"
 
 class GCAdapterBase;
 
