@@ -280,11 +280,11 @@ protected:
   class GlobalEventListener : private nmranet::SimpleEventHandler, public GlobalEventListenerBase {
    public:
     GlobalEventListener() {
-      nmranet::NMRAnetEventRegistry::instance()->register_handlerr(this, 0, 63);
+      nmranet::EventRegistry::instance()->register_handlerr(this, 0, 63);
     }
 
     ~GlobalEventListener() {
-      nmranet::NMRAnetEventRegistry::instance()->unregister_handlerr(this, 0, 63);
+      nmranet::EventRegistry::instance()->unregister_handlerr(this, 0, 63);
     }
    private:
     virtual void HandleEventReport(nmranet::EventReport* event, BarrierNotifiable* done) {

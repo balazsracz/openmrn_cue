@@ -41,7 +41,7 @@ const size_t main_stack_size = 900;
 
 nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 1);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::GlobalEventFlow g_event_flow(&g_executor, 9);
+nmranet::EventIteratorFlow g_event_flow(&g_executor, 9);
 WatchDogEventHandler g_watchdog(&g_node, WATCHDOG_EVENT_ID);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2400ULL;

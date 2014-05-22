@@ -92,7 +92,7 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1, 1);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::GlobalEventFlow g_event_flow(&g_executor, 6);
+nmranet::EventIteratorFlow g_event_flow(&g_executor, 6);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203CULL;
 const int main_priority = 0;

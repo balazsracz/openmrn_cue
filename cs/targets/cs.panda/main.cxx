@@ -122,7 +122,7 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 30, 40, 30);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::GlobalEventService g_event_service(&g_if_can);
+nmranet::EventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 2;

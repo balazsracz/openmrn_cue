@@ -70,7 +70,7 @@ extern insn_t automata_code[];
 nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::GlobalEventService g_event_service(&g_if_can);
+nmranet::EventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x050101011441FF00ULL;
 
