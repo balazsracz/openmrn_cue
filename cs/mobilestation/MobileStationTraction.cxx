@@ -36,10 +36,10 @@
 #include "mobilestation/MobileStationTraction.hxx"
 
 #include "mobilestation/TrainDb.hxx"
-#include "nmranet/AsyncIf.hxx"
-#include "nmranet/NMRAnetAsyncNode.hxx"
-#include "nmranet/NMRAnetVelocity.hxx"
-#include "nmranet/TractionDefs.hxx"
+AsyncIf.hxx"/AsyncIf.hxx"
+AsyncIf.hxx"/NMRAnetAsyncNode.hxx"
+AsyncIf.hxx"/NMRAnetVelocity.hxx"
+AsyncIf.hxx"/TractionDefs.hxx"
 
 #include "utils/CanIf.hxx"
 

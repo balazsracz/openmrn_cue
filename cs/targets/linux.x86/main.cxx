@@ -41,9 +41,9 @@
 #include "nmranet_can.h"
 #include "nmranet_config.h"
 
-#include "nmranet/AsyncIfCan.hxx"
+#include "nmranet/IfCan.hxx"
 #include "nmranet/NMRAnetIf.hxx"
-#include "nmranet/AsyncAliasAllocator.hxx"
+#include "nmranet/AliasAllocator.hxx"
 #include "nmranet/GlobalEventHandler.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/NMRAnetAsyncEventHandler.hxx"
