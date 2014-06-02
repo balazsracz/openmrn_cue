@@ -35,7 +35,7 @@
 #ifndef _MOBILESTATION_MOBILESTATIONSLAVE_HXX_
 #define _MOBILESTATION_MOBILESTATIONSLAVE_HXX_
 
-#include "executor/notifiable.hxx"
+#include "executor/Notifiable.hxx"
 #include "executor/Service.hxx"
 #include "executor/StateFlow.hxx"
 #include "utils/CanIf.hxx"
@@ -109,5 +109,3 @@ class MobileStationSlave : public Service {
 
 
 #endif // _MOBILESTATION_MOBILESTATIONSLAVE_HXX_
-
-

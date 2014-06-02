@@ -48,11 +48,10 @@
 #include "os/watchdog.h"
 
 #include "nmranet/IfCan.hxx"
-#include "nmranet/NMRAnetIf.hxx"
+#include "nmranet/If.hxx"
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/NMRAnetAsyncEventHandler.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
@@ -119,7 +118,7 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 30, 40, 30);
+nmranet::IfCan g_if_can(&g_executor, &can_hub0, 30, 40, 30);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);

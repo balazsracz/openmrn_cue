@@ -15,9 +15,9 @@
 
 #include "os/os.h"
 #include "utils/logging.h"
-#include "utils/gc_pipe.hxx"
+#include "utils/GridConnectHub.hxx"
 #include "executor/Service.hxx"
-#include "utils/PipeFlow.hxx"
+#include "utils/Hub.hxx"
 
 #include "usb_proto.h"
 #include "automata_control.h"

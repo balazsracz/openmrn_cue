@@ -12,13 +12,14 @@
 #endif
 
 #include <stdio.h>
+#include <unistd.h>
 
 #include <memory>
 
 #include "utils/macros.h"
 //#include "core/nmranet_event.h"
 
-#include "common_event_handlers.hxx"
+//#include "common_event_handlers.hxx"
 
 #include "automata_defs.h"
 #include "automata_runner.h"
@@ -26,12 +27,12 @@
 #include "dcc-master.h"
 
 #include "utils/logging.h"
-#include "nmranet/NMRAnetWriteFlow.hxx"
+#include "nmranet/WriteHelper.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/GlobalEventHandler.hxx"
+#include "nmranet/EventService.hxx"
 
 // This write helper will only ever be used synchronously.
-static NMRAnet::WriteHelper automata_write_helper;
+static nmranet::WriteHelper automata_write_helper;
 static SyncNotifiable g_notify_wait;
 static BarrierNotifiable g_barrier_notify;
 
@@ -195,7 +196,7 @@ void AutomataRunner::import_variable() {
 
 class EventBit : public ReadWriteBit {
 public:
-    EventBit(NMRAnet::AsyncNode* node,
+    EventBit(nmranet::Node* node,
              uint64_t event_on, uint64_t event_off,
              uint8_t mask, uint8_t* ptr)
         : bit_(node, event_on, event_off, ptr, mask),
@@ -204,18 +205,18 @@ public:
         if (0) fprintf(stderr,"event bit create on node %p\n", node);
     }
 
-    virtual void Initialize(NMRAnet::AsyncNode*) {
+    virtual void Initialize(nmranet::Node*) {
       pc_.SendQuery(&automata_write_helper, get_notifiable());
       wait_for_notification();
     }
 
-    virtual bool Read(uint16_t, NMRAnet::AsyncNode*, Automata* aut) {
+    virtual bool Read(uint16_t, nmranet::Node*, Automata* aut) {
       // TODO(balazs.racz): we should consider CHECK failing here if
       // !defined. That will force us to explicitly reset every bit in StInit.
       return bit_.GetCurrentState();
     }
 
-    virtual void Write(uint16_t, NMRAnet::AsyncNode* node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
         if (0) fprintf(stderr,"event bit write to node %p\n", node);
         bool last_value = bit_.GetCurrentState();
         if ((value == last_value) && defined_) return;
@@ -226,19 +227,19 @@ public:
     }
 
  private:
-  NMRAnet::MemoryBit<uint8_t> bit_;
-  NMRAnet::BitEventPC pc_;
+  nmranet::MemoryBit<uint8_t> bit_;
+  nmranet::BitEventPC pc_;
   // This bit is true if we've already seen an event that defines this bit.
   bool defined_;
 };
 
 class EventBlockBit : public ReadWriteBit {
  public:
-  EventBlockBit(NMRAnet::WriteHelper::node_type node,
+  EventBlockBit(nmranet::WriteHelper::node_type node,
                 uint64_t event_base,
                 size_t size)
       : storage_(new uint32_t[(size + 31) >> 5]),
-        handler_(new NMRAnet::BitRangeEventPC(node, event_base, storage_, size)) {
+        handler_(new nmranet::BitRangeEventPC(node, event_base, storage_, size)) {
     size_t sz = (size + 31) >> 5;
     memset(&storage_[0], 0, sz * sizeof(storage_[0]));
   }
@@ -247,27 +248,27 @@ class EventBlockBit : public ReadWriteBit {
     delete[] storage_;
   }
 
-  virtual bool Read(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut) {
+  virtual bool Read(uint16_t arg, nmranet::Node*, Automata* aut) {
     return handler_->Get(arg);
   }
 
-  virtual void Write(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut, bool value) {
+  virtual void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) {
     handler_->Set(arg, value, &automata_write_helper, get_notifiable());
     wait_for_notification();
   }
 
  private:
   uint32_t* storage_;
-  std::unique_ptr<NMRAnet::BitRangeEventPC> handler_;
+  std::unique_ptr<nmranet::BitRangeEventPC> handler_;
 };
 
 class EventByteBlock : public ReadWriteBit {
  public:
-  EventByteBlock(NMRAnet::WriteHelper::node_type node,
+  EventByteBlock(nmranet::WriteHelper::node_type node,
                  uint64_t event_base,
                  size_t size)
       : storage_(new uint8_t[size]),
-        handler_(new NMRAnet::ByteRangeEventP(node, event_base, storage_, size)) {
+        handler_(new nmranet::ByteRangeEventP(node, event_base, storage_, size)) {
       memset(&storage_[0], 0, size);
   }
 
@@ -275,11 +276,11 @@ class EventByteBlock : public ReadWriteBit {
     delete[] storage_;
   }
 
-  virtual bool Read(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut) {
+  virtual bool Read(uint16_t arg, nmranet::Node*, Automata* aut) {
       HASSERT(0);
   }
 
-  virtual void Write(uint16_t arg, NMRAnet::AsyncNode*, Automata* aut, bool value) {
+  virtual void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) {
       HASSERT(0);
   }
 
@@ -297,7 +298,7 @@ class EventByteBlock : public ReadWriteBit {
 
  private:
   uint8_t* storage_;
-  std::unique_ptr<NMRAnet::ByteRangeEventP> handler_;
+  std::unique_ptr<nmranet::ByteRangeEventP> handler_;
 };
 
 ReadWriteBit* AutomataRunner::create_variable() {
@@ -353,14 +354,14 @@ public:
     }
     virtual ~LockBit();
 
-    virtual bool Read(uint16_t, node_t node, Automata* aut) {
+    virtual bool Read(uint16_t, nmranet::Node* node, Automata* aut) {
 	int existing_id = locks[lock_id_];
 	if (!existing_id) return false;
 	if (existing_id == aut->GetId()) return false;
 	return true;
     }
 
-    virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
 	if (locks[lock_id_] == 0 && value) {
 	    locks[lock_id_] = aut->GetId();
 	} else if (locks[lock_id_] == aut->GetId() && !value) {
@@ -653,7 +654,7 @@ void AutomataRunner::InitializeState() {
     it.second->Initialize(openmrn_node_);
     do {
       usleep(config_automata_init_backoff());
-    } while (NMRAnet::GlobalEventService::instance->event_processing_pending());
+    } while (nmranet::EventService::instance->event_processing_pending());
   }
 }
 
@@ -687,7 +688,7 @@ void* automata_thread(void* arg) {
     return NULL;
 }
 
-AutomataRunner::AutomataRunner(NMRAnet::AsyncNode* node, const insn_t* base_pointer,
+AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
                                bool with_thread)
     : ip_(0),
       aut_srcplace_(254),

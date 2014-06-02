@@ -46,11 +46,10 @@
 #include "os/watchdog.h"
 
 #include "nmranet/IfCan.hxx"
-#include "nmranet/NMRAnetIf.hxx"
+#include "nmranet/If.hxx"
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/NMRAnetAsyncEventHandler.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
@@ -95,7 +94,7 @@ void log_output(char* buf, int size) {
 }
 
 
-nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
@@ -161,7 +160,7 @@ int appl_main(int argc, char* argv[])
     nmranet::BitEventConsumer consumer(&logger);
     g_if_can.add_addressed_message_support();
     g_if_can.set_alias_allocator(
-        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
+        new nmranet::AliasAllocator(NODE_ID, &g_if_can));
     // Bootstraps the alias allocation process.
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 

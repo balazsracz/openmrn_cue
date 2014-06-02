@@ -1,6 +1,6 @@
 #include "event_range_listener.hxx"
 
-#include "executor/notifiable.hxx"
+#include "executor/Notifiable.hxx"
 
 namespace {
 BarrierNotifiable write_helper_busy;

@@ -36,17 +36,16 @@
 #include <unistd.h>
 
 #include "os/os.h"
-#include "utils/gc_pipe.hxx"
+#include "utils/GridConnectHub.hxx"
 #include "executor/Executor.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
 
 #include "nmranet/IfCan.hxx"
-#include "nmranet/NMRAnetIf.hxx"
+#include "nmranet/If.hxx"
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/NMRAnetAsyncEventHandler.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "utils/socket_listener.hxx"
 
@@ -67,7 +66,7 @@ extern "C" {
 extern insn_t automata_code[];
 }
 
-nmranet::AsyncIfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);

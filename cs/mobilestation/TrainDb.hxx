@@ -32,7 +32,7 @@
  * @date 18 May 2014
  */
 
-#include "nmranet/NMRAnetIf.hxx"
+#include "nmranet/Defs.hxx"
 
 namespace mobilestation {
 

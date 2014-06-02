@@ -40,7 +40,7 @@
 #include "utils/Hub.hxx"
 #include "custom/MCPCanFrameFormat.hxx"
 #include "src/pic_can.h"
-#include "utils/singleton.hxx"
+#include "utils/Singleton.hxx"
 #include "src/host_packet.h"
 #include "src/usb_proto.h"
 

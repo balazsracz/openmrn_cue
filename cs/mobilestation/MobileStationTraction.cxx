@@ -36,10 +36,10 @@
 #include "mobilestation/MobileStationTraction.hxx"
 
 #include "mobilestation/TrainDb.hxx"
-AsyncIf.hxx"/AsyncIf.hxx"
-AsyncIf.hxx"/NMRAnetAsyncNode.hxx"
-AsyncIf.hxx"/NMRAnetVelocity.hxx"
-AsyncIf.hxx"/TractionDefs.hxx"
+#include "nmranet/If.hxx"
+#include "nmranet/Node.hxx"
+#include "nmranet/Velocity.hxx"
+#include "nmranet/TractionDefs.hxx"
 
 #include "utils/CanIf.hxx"
 
@@ -164,9 +164,9 @@ class TractionImpl : public IncomingFrameFlow {
 };
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
-                                             nmranet::AsyncIf* nmranet_if,
+                                             nmranet::If* nmranet_if,
                                              TrainDb* train_db,
-                                             nmranet::AsyncNode* query_node)
+                                             nmranet::Node* query_node)
     : Service(nmranet_if->dispatcher()->service()->executor()),
       nmranetIf_(nmranet_if),
       mostaIf_(mosta_if),

@@ -37,7 +37,7 @@
 
 #include "dcc/Packet.hxx"
 #include "dcc/UpdateLoop.hxx"
-#include "utils/BufferQueue.hxx"
+#include "executor/StateFlow.hxx"
 #include "utils/Hub.hxx"
 #include "utils/CanIf.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
@@ -81,7 +81,7 @@ class TrackPowerOnOffBit : public nmranet::BitEventInterface {
     state_ = new_value;
   }
 
-  virtual nmranet::AsyncNode* node()
+  virtual nmranet::Node* node()
   {
     return &g_node;
   }

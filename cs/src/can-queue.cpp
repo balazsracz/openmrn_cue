@@ -6,7 +6,7 @@
 
 #include "can-queue.h"
 //#include "can.h"
-#include "nmranet_can.h"
+#include "can_frame.h"
 #include "host_packet.h"
 #include "usb_proto.h"
 #include "mosta-master.h"

@@ -2,7 +2,7 @@
 #ifndef _BRACZ_TRAIN_I2C_DRIVER_HXX_
 #define _BRACZ_TRAIN_I2C_DRIVER_HXX_
 
-#include "executor/notifiable.hxx"
+#include "executor/Notifiable.hxx"
 #include "utils/AsyncMutex.hxx"
 
 class ExecutorBase;
