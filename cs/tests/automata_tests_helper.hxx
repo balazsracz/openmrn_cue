@@ -12,7 +12,7 @@
 #include "nmranet_config.h"
 
 #include "utils/gc_format.h"
-#include "nmranet_can.h"
+#include "can_frame.h"
 
 #include "utils/async_if_test_helper.hxx"
 

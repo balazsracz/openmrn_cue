@@ -5,7 +5,7 @@
 #include "os/os.h"
 #include "utils/pipe.hxx"
 #include "executor/executor.hxx"
-#include "nmranet_can.h"
+#include "can_frame.h"
 #include "nmranet_config.h"
 
 #include "nmranet/IfCan.hxx"

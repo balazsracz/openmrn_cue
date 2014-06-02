@@ -36,7 +36,7 @@
 #include "custom/MCPCanFrameFormat.hxx"
 
 #include <string.h>
-#include "nmranet_can.h"
+#include "can_frame.h"
 #include "src/pic_can.h"
 
 namespace bracz_custom {

@@ -38,7 +38,7 @@
 #include "os/os.h"
 #include "utils/gc_pipe.hxx"
 #include "executor/Executor.hxx"
-#include "nmranet_can.h"
+#include "can_frame.h"
 #include "nmranet_config.h"
 
 #include "nmranet/IfCan.hxx"
