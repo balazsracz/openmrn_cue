@@ -40,6 +40,7 @@
 #include "nmranet/Node.hxx"
 #include "nmranet/Velocity.hxx"
 #include "nmranet/TractionDefs.hxx"
+#include "nmranet/TractionClient.hxx"
 
 #include "utils/CanIf.hxx"
 
@@ -47,7 +48,10 @@ namespace mobilestation {
 
 class TractionImpl : public IncomingFrameFlow {
  public:
-  TractionImpl(MobileStationTraction* s) : IncomingFrameFlow(s) {
+  TractionImpl(MobileStationTraction* s)
+      : IncomingFrameFlow(s),
+        tractionClient_(service()->nmranet_if(), service()->node()),
+        timer_(this) {
     service()->mosta_if()->frame_dispatcher()->register_handler(
         this, TRACTION_SET_ID, TRACTION_SET_MASK);
   }
@@ -71,6 +75,7 @@ class TractionImpl : public IncomingFrameFlow {
     TRACTION_SET_TRAIN_MASK = 0x3F,  // apply after shift.
     TRACTION_SET_MOTOR_FN =
         1,  // used as data[0] for traction get/set commands.
+    TRACTION_TIMEOUT_MSEC = 500,
   };
 
   const struct can_frame& frame() { return message()->data()->frame(); }
@@ -96,6 +101,7 @@ class TractionImpl : public IncomingFrameFlow {
             service()->nmranet_if()->addressed_message_write_flow(),
             STATE(send_write_query));
       }
+      LOG(ERROR, "nothing to do.");
     }
     return release_and_exit();
   }
@@ -119,11 +125,13 @@ class TractionImpl : public IncomingFrameFlow {
       fn_address = service()->train_db()->get_function_address(train_id,
                                                                frame().data[0]);
       if (fn_address == TrainDb::UNKNOWN_FUNCTION) {
+        LOG(ERROR, "unknown fn");
         // we don't know, sorry.
         b->unref();
         return release_and_exit();
       }
     }
+    LOG(ERROR, "in send query");
 
     if (frame().can_dlc == 3 && frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a set speed.
@@ -147,20 +155,90 @@ class TractionImpl : public IncomingFrameFlow {
                frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a get speed.
       b->data()->payload = nmranet::TractionDefs::speed_get_payload();
+      Action a = sleep_and_call(&timer_, MSEC_TO_NSEC(TRACTION_TIMEOUT_MSEC),
+                                STATE(handle_get_speed_response));
+      tractionClient_.wait_for_response(b->data()->dst, b->data()->payload[0],
+                                        &timer_);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
-      /// @TODO(balazs.racz) implement a handler that will wait for a response.
-      return release_and_exit();
+      return a;
     } else if (frame().can_dlc == 2) {
       // We are doing a get fn.
+      LOG(ERROR, "sending fn get");
       b->data()->payload = nmranet::TractionDefs::fn_get_payload(fn_address);
+      Action a = sleep_and_call(&timer_, MSEC_TO_NSEC(TRACTION_TIMEOUT_MSEC),
+                                STATE(handle_get_fn_response));
+      tractionClient_.wait_for_response(b->data()->dst, b->data()->payload[0],
+                                        &timer_);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
-      /// @TODO(balazs.racz) implement a handler that will wait for a response.
-      return release_and_exit();
+      return a;
     } else {
       DIE("not sure what to do with this request.");
     }
   }
 
+  Action handle_get_speed_response() {
+    tractionClient_.wait_timeout();
+    auto* rb = tractionClient_.response();
+    if (!rb) {
+      return release_and_exit();
+    }
+    nmranet::Velocity v_sp;
+    if (!nmranet::TractionDefs::speed_get_parse_last(rb->data()->payload,
+                                                     &v_sp)) {
+      rb->unref();
+      return release_and_exit();
+    }
+    uint8_t speed = v_sp.mph();
+    if (speed > 127) speed = 127;
+    if (v_sp.direction() == nmranet::Velocity::REVERSE) {
+      speed |= 0x80;
+    }
+    responseByte_ = speed;
+    rb->unref();
+
+    return allocate_and_call(service()->mosta_if()->frame_write_flow(),
+                             STATE(send_response));
+  }
+
+  Action handle_get_fn_response() {
+    tractionClient_.wait_timeout();
+    auto* rb = tractionClient_.response();
+    if (!rb) {
+      return release_and_exit();
+    }
+    uint16_t fn_value;
+    if (!nmranet::TractionDefs::fn_get_parse(rb->data()->payload, &fn_value)) {
+      rb->unref();
+      return release_and_exit();
+    }
+    responseByte_ = fn_value ? 1 : 0;
+    rb->unref();
+    return allocate_and_call(service()->mosta_if()->frame_write_flow(),
+                             STATE(send_response));
+  }
+
+  Action send_response() {
+    auto* b = get_allocation_result(service()->mosta_if()->frame_write_flow());
+
+    auto* f = b->data()->mutable_frame();
+    uint32_t can_id = message()->data()->id();
+    unsigned train_id =
+        (can_id >> TRACTION_SET_TRAIN_SHIFT) & TRACTION_SET_TRAIN_MASK;
+    SET_CAN_FRAME_ID_EFF(
+        *f, TRACTION_SET_ID | (train_id << TRACTION_SET_TRAIN_SHIFT));
+    f->can_dlc = 3;
+    f->data[0] = message()->data()->frame().data[0];
+    f->data[1] = 0;
+    f->data[2] = responseByte_;
+
+    service()->mosta_if()->frame_write_flow()->send(b);
+    return release_and_exit();
+  }
+
+  nmranet::TractionResponseHandler tractionClient_;
+  StateFlowTimer timer_;
+  // The third byte of the Mosta response.
+  uint8_t responseByte_;
 };
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
