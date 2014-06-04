@@ -206,10 +206,10 @@ int appl_main(int argc, char* argv[])
     add_watchdog_reset_timer(500);
     PacketQueue::initialize("/dev/serUSB0");
 
-    int can_fd = open("/dev/can1", O_RDWR);
+    int can_fd = open("/dev/can0", O_RDWR);
     FdHubPort<CanHubFlow> can_hub_port(&can_hub0, can_fd, EmptyNotifiable::DefaultInstance());
 
-    int fd = open("/dev/can0", O_RDWR);
+    int fd = open("/dev/can1", O_RDWR);
     ASSERT(fd >= 0);
 #ifndef STATEFLOW_CS
     dcc_can_init(fd);
