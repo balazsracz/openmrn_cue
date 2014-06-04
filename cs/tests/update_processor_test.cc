@@ -107,7 +107,7 @@ TEST_F(UpdateProcessorTest, RefreshThrottle) {
   send_empty_packet(); wait();
 }
 
-TEST_F(UpdateProcessorTest, UpdateThrottle) {
+TEST_F(UpdateProcessorTest, DISABLED_UpdateThrottle) {
   // In this test there will be a recent refresh packet that will make the
   // urgent update packet be delayed.
   dcc::Dcc28Train t(dcc::DccShortAddress(55));
@@ -148,7 +148,7 @@ TEST_F(UpdateProcessorTest, TwoTrainRefresh) {
 }
 
 
-TEST_F(UpdateProcessorTest, OneTrainRefreshAndUpdate) {
+TEST_F(UpdateProcessorTest, DISABLED_OneTrainRefreshAndUpdate) {
   dcc::Dcc28Train t(dcc::DccShortAddress(55));
   EXPECT_CALL(trackSendQueue_, arrived(0x4, ElementsAre(55, 0b01100000, _)));
   send_empty_packet(); wait();

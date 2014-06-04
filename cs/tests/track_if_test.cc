@@ -1,6 +1,6 @@
 #include "utils/async_if_test_helper.hxx"
 
-#include "utils/BufferQueue.hxx"
+#include "utils/Buffer.hxx"
 #include "dcc/Packet.hxx"
 #include "custom/TrackInterface.hxx"
 #include "mock_packet_handler.hxx"
