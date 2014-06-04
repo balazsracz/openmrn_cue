@@ -69,10 +69,11 @@ class MostaTranslationTest : public nmranet::TractionTest {
 
 const struct const_loco_db_t const_lokdb[] = {
   // 0
-  { 50, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0xff} , { LIGHT, ENGINE, HONK, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HONK, SOUNDP, SOUNDP, SOUNDP, HONK, HONK, HONK, HONK, HONK, HONK, 0xff }, "ICN", DCC_28 | PUSHPULL },
-  // 1
-  { 0x56, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
+  { 0x57, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
     "BR 260417", DCC_28 },
+  // 1
+  { 0x56, {0, 1, 3, 4, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0xff} , { LIGHT, ENGINE, HONK, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HONK, SOUNDP, SOUNDP, SOUNDP, HONK, HONK, HONK, HONK, HONK, HONK, 0xff }, "ICN", DCC_28 | PUSHPULL },
+
 };
 
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
@@ -106,6 +107,22 @@ TEST_F(MostaTranslationTest, FnSetXlate) {
 
   EXPECT_CALL(m1_, set_fn(0, 0));
   send_packet1(":X08080500N020000;");
+  wait();
+}
+
+TEST_F(MostaTranslationTest, FnGetXlate) {
+  EXPECT_CALL(m1_, get_fn(11)).WillOnce(Return(0x13));
+  expect_packet1(":X08080500N0D0001;");
+  send_packet1(":X08080500N0D00;");
+  wait();
+}
+
+TEST_F(MostaTranslationTest, DISABLED_FnGetSpeed) {
+  nmranet::Velocity v(0);
+  v.set_mph(0x13);
+  EXPECT_CALL(m1_, get_speed()).WillOnce(Return(v));
+  expect_packet1(":X08080100N010013");
+  send_packet1(":X08080100N0100;");
   wait();
 }
 
