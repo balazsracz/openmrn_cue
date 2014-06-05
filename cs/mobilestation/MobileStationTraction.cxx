@@ -33,6 +33,8 @@
  * @date 18 May 2014
  */
 
+#define LOGLEVEL WARNING
+
 #include "mobilestation/MobileStationTraction.hxx"
 
 #include "mobilestation/TrainDb.hxx"
@@ -82,26 +84,21 @@ class TractionImpl : public IncomingFrameFlow {
 
   Action entry() OVERRIDE {
     uint32_t can_id = message()->data()->id();
+    LOG(ERROR, "traction set command arrived id %08"PRIx32", masked %08"PRIx32", expected %08x", can_id, can_id & TRACTION_SET_MASK, TRACTION_SET_ID);
     if ((can_id & TRACTION_SET_MASK) == TRACTION_SET_ID) {
-      unsigned train_id =
-          (can_id >> TRACTION_SET_TRAIN_SHIFT) & TRACTION_SET_TRAIN_MASK;
-      if (!service()->train_db()->is_train_id_known(train_id)) {
+      if (!service()->train_db()->is_train_id_known(train_id())) {
         return release_and_exit();
       }
       // check if we have something to do.
       if ((frame().can_dlc == 3 &&  // set any parameter
            frame().data[1] == 0) ||
-          (frame().can_dlc == 2 &&  // get parameter
-           frame().data[1] == 0 &&
-           // parameter number too high for mobile station
-           (frame().data[0] >= 0xb ||
-            // train number too high for mobile station
-            train_id >= 10))) {
+          need_response()) {
         return allocate_and_call(
             service()->nmranet_if()->addressed_message_write_flow(),
             STATE(send_write_query));
       }
-      LOG(ERROR, "nothing to do.");
+      LOG(ERROR, "nothing to do. dlc %u, data[0] %u, data[1] %u",
+          frame().can_dlc, frame().data[0], frame().data[1]);
     }
     return release_and_exit();
   }
@@ -110,9 +107,7 @@ class TractionImpl : public IncomingFrameFlow {
     auto* b = get_allocation_result(
         service()->nmranet_if()->addressed_message_write_flow());
 
-    uint32_t can_id = message()->data()->id();
-    unsigned train_id =
-        (can_id >> TRACTION_SET_TRAIN_SHIFT) & TRACTION_SET_TRAIN_MASK;
+    unsigned train_id = this->train_id();
 
     b->data()->src.id = service()->node()->node_id();
     b->data()->src.alias = 0;
@@ -142,7 +137,13 @@ class TractionImpl : public IncomingFrameFlow {
       }
       b->data()->payload = nmranet::TractionDefs::speed_set_payload(v);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
-      return release_and_exit();
+      if (need_response()) {
+        responseByte_ = frame().data[2];
+        return allocate_and_call(service()->mosta_if()->frame_write_flow(),
+                                 STATE(send_response));
+      } else {
+        return release_and_exit();
+      }
     } else if (frame().can_dlc == 3) {
       // We are doing a set function.
       unsigned fn_address = service()->train_db()->get_function_address(
@@ -150,7 +151,13 @@ class TractionImpl : public IncomingFrameFlow {
       b->data()->payload =
           nmranet::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
-      return release_and_exit();
+      if (need_response()) {
+        responseByte_ = frame().data[2];
+        return allocate_and_call(service()->mosta_if()->frame_write_flow(),
+                                 STATE(send_response));
+      } else {
+        return release_and_exit();
+      }
     } else if (frame().can_dlc == 2 &&
                frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a get speed.
@@ -221,11 +228,8 @@ class TractionImpl : public IncomingFrameFlow {
     auto* b = get_allocation_result(service()->mosta_if()->frame_write_flow());
 
     auto* f = b->data()->mutable_frame();
-    uint32_t can_id = message()->data()->id();
-    unsigned train_id =
-        (can_id >> TRACTION_SET_TRAIN_SHIFT) & TRACTION_SET_TRAIN_MASK;
     SET_CAN_FRAME_ID_EFF(
-        *f, TRACTION_SET_ID | (train_id << TRACTION_SET_TRAIN_SHIFT));
+        *f, TRACTION_SET_ID | (train_id() << TRACTION_SET_TRAIN_SHIFT));
     f->can_dlc = 3;
     f->data[0] = message()->data()->frame().data[0];
     f->data[1] = 0;
@@ -233,6 +237,21 @@ class TractionImpl : public IncomingFrameFlow {
 
     service()->mosta_if()->frame_write_flow()->send(b);
     return release_and_exit();
+  }
+
+  unsigned train_id() {
+    return (message()->data()->id() >> TRACTION_SET_TRAIN_SHIFT) &
+           TRACTION_SET_TRAIN_MASK;
+  }
+
+  /** Returns true if we must respond to this message. */
+  bool need_response() {
+    return ((frame().can_dlc == 2 || frame().can_dlc == 3) &&  // get or set
+            frame().data[1] == 0 &&
+            // parameter number too high for mobile station
+            (frame().data[0] >= 0xb ||
+             // train number too high for mobile station
+             train_id() >= 10));
   }
 
   nmranet::TractionResponseHandler tractionClient_;
