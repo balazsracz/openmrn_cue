@@ -41,6 +41,9 @@ unsigned TrainDb::get_function_address(unsigned train_id, unsigned fn_id) {
   const struct const_loco_db_t *entry = const_lokdb + train_id;
   if (fn_id < 2) return UNKNOWN_FUNCTION;
   fn_id -= 2;
+  // Pause and reverse should be just above the dcc function space.
+  if (fn_id == 30) return 29;
+  if (fn_id == 31) return 30;
   if (fn_id >= DCC_MAX_FN) return UNKNOWN_FUNCTION;
   if (fn_id >= g_num_fn_per_train[train_id]) return UNKNOWN_FUNCTION;
   if (entry->function_mapping[fn_id] == 0xff) return UNKNOWN_FUNCTION;
