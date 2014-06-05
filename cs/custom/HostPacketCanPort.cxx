@@ -71,8 +71,11 @@ class HostPacketBridge : private CanHubPortInterface {
 
   // Packet from the device to the host.
   void send(Buffer<CanHubData>*b, unsigned) OVERRIDE {
+    const struct can_frame& f = b->data()->frame();
+    uint32_t id_masked_eff = GET_CAN_FRAME_ID_EFF(f) & ~1;
     if (!IS_CAN_FRAME_EFF(b->data()->frame()) ||
-        (GET_CAN_FRAME_ID_EFF(b->data()->frame()) & ~1) == 0x0c000380) {
+        id_masked_eff == 0x0c000380 ||
+        (id_masked_eff == 0x08000900 && f.can_dlc == 3 && f.data[0] == 4)){
       // Rudimentary filter to remove noise from keepalive and dcc packets.
       b->unref();
       return;
