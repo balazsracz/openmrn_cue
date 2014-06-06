@@ -77,7 +77,7 @@
 
 // DEFINE_PIPE(gc_can_pipe, 1);
 NO_THREAD nt;
-Executor<1> g_executor(nt);
+Executor<5> g_executor(nt);
 Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 CanHubFlow can_hub1(&g_service);
@@ -225,8 +225,8 @@ int appl_main(int argc, char* argv[])
     // Bootstraps the alias allocation process.
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-    //AutomataRunner runner(&g_node, automata_code);
-    //resume_all_automata();
+    AutomataRunner runner(&g_node, automata_code);
+    resume_all_automata();
 
     g_executor.thread_body();
     return 0;
