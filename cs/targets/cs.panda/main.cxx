@@ -41,7 +41,7 @@
 
 #include "os/os.h"
 #include "utils/Hub.hxx"
-#include "utils/HubDevice.hxx"
+#include "utils/HubDeviceNonBlock.hxx"
 #include "executor/Executor.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
@@ -206,15 +206,12 @@ int appl_main(int argc, char* argv[])
     add_watchdog_reset_timer(500);
     PacketQueue::initialize("/dev/serUSB0");
 
-    int can_fd = open("/dev/can0", O_RDWR);
-    FdHubPort<CanHubFlow> can_hub_port(&can_hub0, can_fd, EmptyNotifiable::DefaultInstance());
+    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
 
-    int fd = open("/dev/can1", O_RDWR);
-    ASSERT(fd >= 0);
 #ifndef STATEFLOW_CS
     dcc_can_init(fd);
 #else
-    FdHubPort<CanHubFlow> can_hub1_port(&can_hub1, fd, EmptyNotifiable::DefaultInstance());
+    HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
 #endif
 
