@@ -22,7 +22,7 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
     "RTS RAILTR", MARKLIN_NEW },
   // 6
   { 61, { 0, 1, 2, 3, 4,  0xff, }, { LIGHT, ENGINE, LIGHT2, HONK, 7,  0xff, },
-    "MAV M61", DCC_28 }, // todo: check fn definition and type mapping
+    "MAV M61", MARKLIN_NEW /*DCC_28*/ }, // todo: check fn definition and type mapping
   // 7
   { 46, { 0, 1, 2, 3, 4, 5, 0xff, }, { LIGHT, HONK, ENGINE, FNT11, ABV, BEAMER,  0xff, },
     "RE 460 118-2", MFX | PUSHPULL },  // todo: there is F5 with beamer that can't be switched.
