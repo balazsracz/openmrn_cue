@@ -118,7 +118,7 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 30, 40, 30);
+nmranet::IfCan g_if_can(&g_executor, &can_hub0, 30, 10, 30);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
@@ -126,6 +126,7 @@ nmranet::EventService g_event_service(&g_if_can);
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 2;
 OVERRIDE_CONST(main_thread_priority, 2);
+OVERRIDE_CONST(main_stack_size, 1500);
 
 extern "C" { void resetblink(uint32_t pattern); }
 
@@ -202,8 +203,8 @@ mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, 
  */
 int appl_main(int argc, char* argv[])
 {
-    start_watchdog(5000);
-    add_watchdog_reset_timer(500);
+  //start_watchdog(5000);
+  // add_watchdog_reset_timer(500);
     PacketQueue::initialize("/dev/serUSB0");
 
     HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
