@@ -26,7 +26,7 @@ extern uint32_t blinker_pattern;
 
 // Memory size variables
 #define PACKET_TX_THREAD_STACK_SIZE 512
-#define PACKET_RX_THREAD_STACK_SIZE 1024
+#define PACKET_RX_THREAD_STACK_SIZE 1624
 //! How many entries of pending packets to send to the USB host we should
 //! maintain. Each entry costs 8 bytes.
 #define PACKET_TX_QUEUE_LENGTH 10
