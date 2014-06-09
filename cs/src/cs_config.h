@@ -34,7 +34,7 @@ extern uint32_t blinker_pattern;
 ///////////
 
 #define DCC_CAN_THREAD_CAN_STACK_SIZE 1000
-#define AUTOMATA_THREAD_STACK_SIZE 1000
+#define AUTOMATA_THREAD_STACK_SIZE 1300
 
 #define MAX_SIGNALS 64
 #define MAX_LOCK_ID 8
