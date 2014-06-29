@@ -150,15 +150,12 @@ class DefaultPacketQueue : public PacketQueue, public Service {
     //! Set to true if the first successful sync packets are received.
     bool synced_;
 
-    //! The queue of outgoing packets.
+    //! The queue of outgoing packets (to the host).
     QAsync outgoing_packet_queue_;
 
     //! Device to read/write packets from.
     int sync_fd_;
     int async_fd_;
-
-    //! Packets waiting for transmission to the host.
-    os_mq_t tx_queue_;
 
     //! Timer used to generate the sync packets towards the host.
     os_timer_t sync_packet_timer_;
