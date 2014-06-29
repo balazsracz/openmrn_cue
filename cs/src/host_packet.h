@@ -113,32 +113,49 @@ protected:
     static PacketQueue* instance_;
 };
 
-class DefaultPacketQueue : public PacketQueue {
+class DefaultPacketQueue : public PacketQueue, public Service {
+ public:
+  bool synced() {
+    return synced_;
+  }
+
+  int fd() {
+    return async_fd_;
+  }
+
+  QAsync* outgoing_packet_queue() {
+    return &outgoing_packet_queue_;
+  }
+
+  struct PacketQEntry : public PacketBase, public QMember {};
+
  private:
   friend class PacketQueue;
-    DefaultPacketQueue(int fd);
+  class TxFlow;
+    DefaultPacketQueue(const char* dev);
     ~DefaultPacketQueue();
 
     void TransmitPacket(PacketBase& packet) OVERRIDE;
 
     //! Received packet handler thread body.
     void RxThreadBody();
-    //! Transmit packet handler thread.
-    void TxThreadBody();
 
     //! Called on every incoming packet. Takes ownership of pkt.
     void ProcessPacket(PacketBase* pkt);
     //! Handles incoming CMD_UMISC packets.
     void HandleMiscPacket(const PacketBase& in_pkt);
 
-    friend void* tx_thread(void* p);
     friend void* rx_thread(void* p);
 
     //! Set to true if the first successful sync packets are received.
     bool synced_;
 
+    //! The queue of outgoing packets.
+    QAsync outgoing_packet_queue_;
+
     //! Device to read/write packets from.
-    int fd_;
+    int sync_fd_;
+    int async_fd_;
 
     //! Packets waiting for transmission to the host.
     os_mq_t tx_queue_;
@@ -151,6 +168,7 @@ class DefaultPacketQueue : public PacketQueue {
     GCAdapterBase* gc_adapter_;
 
     HubPortInterface* usb_vcom0_recv_;
+    TxFlow* tx_flow_;
 };
 
 namespace bracz_custom {

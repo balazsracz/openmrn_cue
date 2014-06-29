@@ -18,6 +18,7 @@
 #include "utils/GridConnectHub.hxx"
 #include "executor/Service.hxx"
 #include "utils/Hub.hxx"
+#include "freertos/can_ioctl.h"
 
 #include "usb_proto.h"
 #include "automata_control.h"
@@ -25,6 +26,7 @@
 #include "dcc-master.h"
 #include "pic_can.h"
 #include "can-queue.h"
+
 
 /*
 
@@ -91,14 +93,7 @@ extern "C" { void start(void); }
 PacketQueue* PacketQueue::instance_ = NULL;
 
 void PacketQueue::initialize(const char* serial_device) {
-    int fd = open(serial_device, O_RDWR);
-    ASSERT(fd >= 0);
-    instance_ = new DefaultPacketQueue(fd);
-}
-
-void* tx_thread(void* p) {
-    ((DefaultPacketQueue*)p)->TxThreadBody();
-    return NULL;
+    instance_ = new DefaultPacketQueue(serial_device);
 }
 
 void* rx_thread(void* p) {
@@ -118,10 +113,87 @@ static long long sync_packet_callback(void*, void*) {
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
-DefaultPacketQueue::DefaultPacketQueue(int fd) : synced_(false), fd_(fd) {
-    tx_queue_ = os_mq_create(PACKET_TX_QUEUE_LENGTH, sizeof(PacketBase));
-    os_thread_create(NULL, "host_pkt_tx", 0, PACKET_TX_THREAD_STACK_SIZE,
-		     tx_thread, this);
+class DefaultPacketQueue::TxFlow : public StateFlowBase {
+ public:
+  TxFlow(DefaultPacketQueue* s)
+      : StateFlowBase(s),
+        writeFinished_(wait()) {
+    start_flow(STATE(send_sync_packet));
+  }
+
+  DefaultPacketQueue* service() {
+    return static_cast<DefaultPacketQueue*>(StateFlowBase::service());
+  }
+
+  Action send_sync_packet() {
+    if (service()->synced()) {
+      return call_immediately(STATE(get_next_packet));
+    }
+    buf_ = syncpacket;
+    len_ = sizeof(syncpacket);
+    writeFinished_ = call_immediately(STATE(send_sync_packet));
+    return call_immediately(STATE(write_buf));
+  }
+
+  Action get_next_packet() {
+    return allocate_and_call(STATE(send_next_packet), service()->outgoing_packet_queue());
+  }
+
+  Action send_next_packet() {
+    cast_allocation_result(&currentPacket_);
+    sizeBuf_ = currentPacket_->size();
+    buf_ = &sizeBuf_;
+    len_ = 1;
+    writeFinished_ = call_immediately(STATE(send_packet_data));
+    return call_immediately(STATE(write_buf));
+  }
+
+  Action send_packet_data() {
+    buf_ = currentPacket_->buf();
+    len_ = currentPacket_->size();
+    writeFinished_ = call_immediately(STATE(send_finished));
+    return call_immediately(STATE(write_buf));
+  }
+
+  Action send_finished() {
+    delete currentPacket_;
+    return call_immediately(STATE(get_next_packet));
+  }
+
+  Action write_buf() {
+    ssize_t res = ::write(service()->fd(), buf_, len_);
+    if (res == 0) {
+      HASSERT(0 == ioctl(service()->fd(), CAN_IOC_WRITE_ACTIVE, this));
+      return wait();
+    }
+    else if (res > 0) {
+      len_ -= res;
+      buf_ += res;
+      if (!len_) {
+        return writeFinished_;
+      } else {
+        return again();
+      }
+    } else {
+      DIE("error writing");
+    }
+  }
+
+ private:
+  PacketQEntry* currentPacket_;
+  //! Buffer pointer for asynchronous write calls.
+  const uint8_t* buf_;
+  //! Length of asynchronous write left.
+  size_t len_;
+  //! We will continue at this state after the async write is complete.
+  Action writeFinished_;
+  //! 1-byte buffer for writing packet length.
+  uint8_t sizeBuf_;
+};
+
+DefaultPacketQueue::DefaultPacketQueue(const char* dev) : Service(g_service.executor()), synced_(false) {
+    async_fd_ = open(dev, O_RDWR | O_NONBLOCK);
+    sync_fd_ = open(dev, O_RDWR);
     os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
@@ -130,9 +202,11 @@ DefaultPacketQueue::DefaultPacketQueue(int fd) : synced_(false), fd_(fd) {
     usb_vcom0_recv_ = new VCOMPipeMember(&g_service, CMD_VCOM0);
     usb_vcom_pipe0.register_port(usb_vcom0_recv_);
     gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_hub0, false);
+    tx_flow_ = new TxFlow(this);
 }
 
 DefaultPacketQueue::~DefaultPacketQueue() {
+    delete tx_flow_;
     delete gc_adapter_;
     usb_vcom_pipe0.unregister_port(usb_vcom0_recv_);
     delete usb_vcom0_recv_;
@@ -145,13 +219,13 @@ DefaultPacketQueue::~DefaultPacketQueue() {
 void DefaultPacketQueue::RxThreadBody() {
     uint8_t size;
     while(1) {
-	ssize_t ret = read(fd_, &size, 1);
+	ssize_t ret = read(sync_fd_, &size, 1);
 	ASSERT(ret == 1);
         if (!synced_ && size != 15) continue;
 	PacketBase* pkt = new PacketBase(size);
 	uint8_t* buf = pkt->buf();
 	while (size) {
-	    ret = read(fd_, buf, size);
+	    ret = read(sync_fd_, buf, size);
 	    ASSERT(ret >= 0);
 	    buf += ret;
 	    size -= ret;
@@ -403,33 +477,6 @@ void DefaultPacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     PacketQueue::instance()->TransmitPacket(miscpacket);
 }
 
-void DefaultPacketQueue::TxThreadBody() {
-  while (!synced_) {
-    size_t size = sizeof(syncpacket);
-    const uint8_t* buf = syncpacket;
-    while (size) {
-      ssize_t res = write(fd_, buf, size);
-      ASSERT(res >= 0);
-      size -= res;
-      buf += res;
-    }
-  }
-    while(1) {
-	PacketBase pkt;
-	os_mq_receive(tx_queue_, &pkt);
-	uint8_t s = pkt.size();
-	ssize_t res = write(fd_, &s, 1);
-	ASSERT(res == 1);
-	uint8_t* buf = pkt.buf();
-	size_t size = pkt.size();
-	while (size) {
-	    res = write(fd_, buf, size);
-	    ASSERT(res >= 0);
-	    size -= res;
-	    buf += res;
-	}
-    }
-}
 
 void DefaultPacketQueue::TransmitPacket(PacketBase& packet) {
     os_mq_send(tx_queue_, &packet);
