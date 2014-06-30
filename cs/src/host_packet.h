@@ -127,8 +127,6 @@ class DefaultPacketQueue : public PacketQueue, public Service {
     return &outgoing_packet_queue_;
   }
 
-  struct PacketQEntry : public PacketBase, public QMember {};
-
  private:
   friend class PacketQueue;
   class TxFlow;

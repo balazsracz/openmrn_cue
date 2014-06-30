@@ -1,9 +1,6 @@
 #ifndef _ISOC99_SOURCE
 #define _ISOC99_SOURCE
 #endif
-#ifndef __STDC_VERSION__
-#define __STDC_VERSION__ 199901L
-#endif
 
 //#define LOGLEVEL VERBOSE
 // Workaroundfor bug in <memory> for gcc 2.6.2 lpcxpresso newlib

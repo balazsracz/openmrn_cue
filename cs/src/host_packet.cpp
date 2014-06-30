@@ -113,6 +113,8 @@ static long long sync_packet_callback(void*, void*) {
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
+typedef Buffer<PacketBase> PacketQEntry;
+
 class DefaultPacketQueue::TxFlow : public StateFlowBase {
  public:
   TxFlow(DefaultPacketQueue* s)
@@ -141,7 +143,7 @@ class DefaultPacketQueue::TxFlow : public StateFlowBase {
 
   Action send_next_packet() {
     cast_allocation_result(&currentPacket_);
-    sizeBuf_ = currentPacket_->size();
+    sizeBuf_ = currentPacket_->data()->size();
     buf_ = &sizeBuf_;
     len_ = 1;
     writeFinished_ = call_immediately(STATE(send_packet_data));
@@ -149,14 +151,14 @@ class DefaultPacketQueue::TxFlow : public StateFlowBase {
   }
 
   Action send_packet_data() {
-    buf_ = currentPacket_->buf();
-    len_ = currentPacket_->size();
+    buf_ = currentPacket_->data()->buf();
+    len_ = currentPacket_->data()->size();
     writeFinished_ = call_immediately(STATE(send_finished));
     return call_immediately(STATE(write_buf));
   }
 
   Action send_finished() {
-    delete currentPacket_;
+    currentPacket_->unref();
     return call_immediately(STATE(get_next_packet));
   }
 
@@ -241,9 +243,11 @@ const uint8_t packet_misc_invalidarg[] = { 4, CMD_UMISC, 0x00, 0xff, 0x01 };
 
 void DefaultPacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
-    if (in_pkt.size() == 15 && in_pkt[0] == 0xe) {
+    if (in_pkt.size() == syncpacket[0] && in_pkt[0] == syncpacket[1]) {
       // We do not do detailed logging for the sync packets.
-      synced_ = true;
+      if (0 == memcmp(in_pkt.buf(), &syncpacket[1], in_pkt.size())) {
+        synced_ = true;
+      }
     } else {
       if (!synced_) {
         delete pkt;
@@ -479,8 +483,11 @@ void DefaultPacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 
 
 void DefaultPacketQueue::TransmitPacket(PacketBase& packet) {
-    os_mq_send(tx_queue_, &packet);
-    packet.release(); // The memory is now owned by the queue.
+  Buffer<PacketBase>* b;
+  mainBufferPool->alloc(&b, nullptr);
+  *b->data() = packet;
+  packet.release(); // The memory is now owned by the buffer<pkt>.
+  outgoing_packet_queue_.insert(b);
 }
 
 void PacketQueue::TransmitConstPacket(const uint8_t* packet) {
