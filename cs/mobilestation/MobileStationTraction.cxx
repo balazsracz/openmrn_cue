@@ -86,7 +86,7 @@ class TractionImpl : public IncomingFrameFlow {
 
   Action entry() OVERRIDE {
     uint32_t can_id = message()->data()->id();
-    LOG(VERBOSE, "traction set command arrived id %08" PRIx32 ", masked %08" PRIx32 ", expected %08x", can_id, can_id & TRACTION_SET_MASK, TRACTION_SET_ID);
+
     if ((can_id & TRACTION_SET_MASK) == TRACTION_SET_ID) {
       if (!service()->train_db()->is_train_id_known(train_id())) {
         return release_and_exit();
