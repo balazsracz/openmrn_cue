@@ -62,6 +62,9 @@
 #include "src/automata_runner.h"
 #include "src/automata_control.h"
 
+// Used to talk to the booster.
+OVERRIDE_CONST(can2_bitrate, 250000);
+
 NO_THREAD nt;
 Executor<1> g_executor(nt);
 Service g_service(&g_executor);
