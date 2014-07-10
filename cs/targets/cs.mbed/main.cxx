@@ -40,6 +40,7 @@
 #include "os/os.h"
 #include "utils/Hub.hxx"
 #include "utils/HubDevice.hxx"
+#include "utils/HubDeviceNonBlock.hxx"
 #include "executor/Executor.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
@@ -61,6 +62,14 @@
 #include "src/mbed_i2c_update.hxx"
 #include "src/automata_runner.h"
 #include "src/automata_control.h"
+#include "custom/HostPacketCanPort.hxx"
+#include "custom/TrackInterface.hxx"
+#include "mobilestation/MobileStationSlave.hxx"
+#include "mobilestation/TrainDb.hxx"
+#include "mobilestation/MobileStationTraction.hxx"
+#include "commandstation/UpdateProcessor.hxx"
+#include "nmranet/TractionTrain.hxx"
+#include "dcc/Loco.hxx"
 
 // Used to talk to the booster.
 OVERRIDE_CONST(can2_bitrate, 250000);
@@ -141,6 +150,24 @@ private:
 
 DigitalIn startpin(p20);
 
+CanIf can1_interface(&g_service, &can_hub1);
+
+bracz_custom::TrackIfSend track_send(&can_hub1);
+commandstation::UpdateProcessor cs_loop(&g_service, &track_send);
+bracz_custom::TrackIfReceive track_recv(&can1_interface, &cs_loop);
+static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
+bracz_custom::TrackPowerOnOffBit on_off(ON_EVENT_ID, ON_EVENT_ID+1, &track_send);
+nmranet::BitEventConsumer powerbit(&on_off);
+nmranet::TrainService traction_service(&g_if_can);
+
+dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
+nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+
+mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
+mobilestation::TrainDb train_db;
+mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
+
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -151,9 +178,9 @@ int appl_main(int argc, char* argv[])
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
     PacketQueue::initialize("/dev/serUSB0");
-    int can_fd = open("/dev/can1", O_RDWR);
-    FdHubPort<CanHubFlow> can_hub_port(&can_hub0, can_fd, EmptyNotifiable::DefaultInstance());
-    //can_pipe1.AddPhysicalDeviceToPipe(, "can1_rx_thread", 512);
+    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+    HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
+    bracz_custom::init_host_packet_can_bridge(&can_hub1);
 
     /*int fd = open("/dev/can0", O_RDWR);
     ASSERT(fd >= 0);
