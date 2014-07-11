@@ -39,16 +39,21 @@
 
 #include <inttypes.h>
 
+#include "utils/constants.hxx"
 #include "mobilestation/TrainDb.hxx"
+#include "nmranet/Defs.hxx"
 #include "nmranet/If.hxx"
 #include "nmranet/Node.hxx"
 #include "nmranet/Velocity.hxx"
 #include "nmranet/TractionDefs.hxx"
 #include "nmranet/TractionClient.hxx"
+#include "nmranet/WriteHelper.hxx"
 
 #include "utils/CanIf.hxx"
 
 namespace mobilestation {
+
+DECLARE_CONST(mobile_station_train_count);
 
 class TractionImpl : public IncomingFrameFlow {
  public:
@@ -58,10 +63,14 @@ class TractionImpl : public IncomingFrameFlow {
         timer_(this) {
     service()->mosta_if()->frame_dispatcher()->register_handler(
         this, TRACTION_SET_ID, TRACTION_SET_MASK);
+    service()->mosta_if()->frame_dispatcher()->register_handler(
+        this, TRACTION_ESTOP_ID, TRACTION_ESTOP_MASK);
   }
   ~TractionImpl() {
     service()->mosta_if()->frame_dispatcher()->unregister_handler(
         this, TRACTION_SET_ID, TRACTION_SET_MASK);
+    service()->mosta_if()->frame_dispatcher()->unregister_handler(
+        this, TRACTION_ESTOP_ID, TRACTION_ESTOP_MASK);
   }
 
   MobileStationTraction* service() {
@@ -75,6 +84,8 @@ class TractionImpl : public IncomingFrameFlow {
     TRACTION_CMD_SET = 0b010,
     TRACTION_SET_ID = 0x08080100,
     TRACTION_SET_MASK = 0x0FF80380,
+    TRACTION_ESTOP_ID =   0x08000901,
+    TRACTION_ESTOP_MASK = 0x0FFFFF80,
     TRACTION_SET_TRAIN_SHIFT = 10,
     TRACTION_SET_TRAIN_MASK = 0x3F,  // apply after shift.
     TRACTION_SET_MOTOR_FN =
@@ -82,12 +93,23 @@ class TractionImpl : public IncomingFrameFlow {
     TRACTION_TIMEOUT_MSEC = 500,
   };
 
+  static const uint64_t EVENT_POWER_ON = 0x0501010114FF0004ULL;
+  static const uint64_t EVENT_POWER_OFF = 0x0501010114FF0005ULL;
+
   const struct can_frame& frame() { return message()->data()->frame(); }
 
   Action entry() OVERRIDE {
     uint32_t can_id = message()->data()->id();
 
-    if ((can_id & TRACTION_SET_MASK) == TRACTION_SET_ID) {
+    if ((can_id & TRACTION_ESTOP_MASK) == (TRACTION_ESTOP_ID & TRACTION_ESTOP_MASK)) {
+      LOG(ERROR, "estop command received %d", frame().data[2]);
+      if (frame().can_dlc == 3 && frame().data[0] == 1 &&
+          frame().data[1] == 0) {
+        return allocate_and_call(
+            service()->nmranet_if()->addressed_message_write_flow(),
+            STATE(send_estop_command));
+      }
+    } else if ((can_id & TRACTION_SET_MASK) == (TRACTION_SET_ID & TRACTION_SET_MASK)) {
       if (!service()->train_db()->is_train_id_known(train_id())) {
         return release_and_exit();
       }
@@ -96,12 +118,25 @@ class TractionImpl : public IncomingFrameFlow {
            frame().data[1] == 0) ||
           need_response()) {
         return allocate_and_call(
-            service()->nmranet_if()->addressed_message_write_flow(),
+            service()->nmranet_if()->global_message_write_flow(),
             STATE(send_write_query));
       }
       LOG(VERBOSE, "nothing to do. dlc %u, data[0] %u, data[1] %u",
           frame().can_dlc, frame().data[0], frame().data[1]);
+    } else {
+      LOG(ERROR, "unexpected command 0x%08" PRIx32 " masked 0x%08" PRIx32 " compare 0x%08x", can_id, (can_id & TRACTION_ESTOP_MASK), TRACTION_ESTOP_ID);
     }
+    return release_and_exit();
+  }
+
+  Action send_estop_command() {
+    auto* b = get_allocation_result(
+        service()->nmranet_if()->global_message_write_flow());
+    b->data()->reset(
+        nmranet::Defs::MTI_EVENT_REPORT, service()->node()->node_id(),
+        nmranet::EventIdToBuffer(frame().data[2] ? EVENT_POWER_OFF
+                                                 : EVENT_POWER_ON));
+    service()->nmranet_if()->global_message_write_flow()->send(b);
     return release_and_exit();
   }
 
@@ -253,7 +288,7 @@ class TractionImpl : public IncomingFrameFlow {
             // parameter number too high for mobile station
             (frame().data[0] >= 0xb ||
              // train number too high for mobile station
-             train_id() >= 10));
+             train_id() >= ((unsigned)config_mobile_station_train_count())));
   }
 
   nmranet::TractionResponseHandler tractionClient_;
