@@ -70,9 +70,33 @@
 #include "commandstation/UpdateProcessor.hxx"
 #include "nmranet/TractionTrain.hxx"
 #include "dcc/Loco.hxx"
+#include "mobilestation/TrainDb.hxx"
 
 // Used to talk to the booster.
 OVERRIDE_CONST(can2_bitrate, 250000);
+
+// Forces all trains to be our responsibility.
+OVERRIDE_CONST(mobile_station_train_count, 0);
+
+namespace mobilestation {
+extern const struct const_loco_db_t const_lokdb[];
+
+const struct const_loco_db_t const_lokdb[] = {
+  // 0
+  { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
+    "Am 843 093-6", DCC_28 },
+  // 1
+  { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+};
+extern const size_t const_lokdb_size;
+const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+}  // namespace mobilestation
 
 NO_THREAD nt;
 Executor<1> g_executor(nt);
@@ -163,7 +187,7 @@ nmranet::TrainService traction_service(&g_if_can);
 dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
 
-mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
+//mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 mobilestation::TrainDb train_db;
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 

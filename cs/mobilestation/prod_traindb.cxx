@@ -1,4 +1,5 @@
 #include "mobilestation/TrainDb.hxx"
+#include "utils/constants.hxx"
 
 namespace mobilestation {
 
@@ -76,5 +77,7 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
 };
 
 __attribute__((weak)) extern const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+
+DEFAULT_CONST(mobile_station_train_count, 10);
 
 }  // namespace mobilestation
