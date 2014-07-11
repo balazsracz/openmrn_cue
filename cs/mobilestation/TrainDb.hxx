@@ -32,6 +32,9 @@
  * @date 18 May 2014
  */
 
+#ifndef _MOBILESTATION_TRAINDB_HXX_
+#define _MOBILESTATION_TRAINDB_HXX_
+
 #include "nmranet/Defs.hxx"
 
 namespace mobilestation {
@@ -124,3 +127,5 @@ class TrainDb {
 };
 
 }  // namespace mobilestation
+
+#endif // _MOBILESTATION_TRAINDB_HXX_
