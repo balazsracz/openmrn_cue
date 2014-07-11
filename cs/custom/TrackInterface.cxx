@@ -100,21 +100,22 @@ StateFlowBase::Action TrackIfReceive::entry() {
 
 StateFlowBase::Action TrackIfReceive::handle_keepalive() {
   auto* f = &message()->data()->frame();
+  bool is_alive = true;
+  if (f->can_dlc > 2) {
+    is_alive = f->data[2];
+    if (is_alive) {
+      send_host_log_event(HostLogEvent::TRACK_ALIVE);
+    }
+  }
   if (f->can_dlc > 1) {
     int free_packet_count = f->data[1];
-    while (free_packet_count--) {
+    while (is_alive && free_packet_count--) {
       Buffer<dcc::Packet>* b;
       pool_.alloc(&b, nullptr);
       // If the pool is exhausted, do not send any more packets even if the
       // track processor says there are free buffers.
       if (!b) break;
       packetQueue_->send(b);
-    }
-  }
-  if (f->can_dlc > 2) {
-    bool is_alive = f->data[2];
-    if (is_alive) {
-      send_host_log_event(HostLogEvent::TRACK_ALIVE);
     }
   }
   release();
