@@ -51,6 +51,9 @@
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/EventBitProducer.hxx"
+#include "nmranet/RefreshLoop.hxx"
+#include "utils/Debouncer.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "driverlib/gpio.h"
 #include "inc/hw_memmap.h"
@@ -158,9 +161,48 @@ TivaGPIOConsumer out2(R_EVENT_ID + 32 + 4, R_EVENT_ID + 33 + 4, GPIO_PORTD_BASE,
 TivaGPIOConsumer out3(R_EVENT_ID + 32 + 6, R_EVENT_ID + 33 + 6, GPIO_PORTD_BASE, GPIO_PIN_1); // Out3
 TivaGPIOConsumer out4(R_EVENT_ID + 32 + 8, R_EVENT_ID + 33 + 8, GPIO_PORTD_BASE, GPIO_PIN_2); // Out4
 TivaGPIOConsumer out5(R_EVENT_ID + 32 + 10, R_EVENT_ID + 33 + 10, GPIO_PORTD_BASE, GPIO_PIN_3); // Out5
-TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12, GPIO_PORTE_BASE, GPIO_PIN_2); // Out6
-TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14, GPIO_PORTE_BASE, GPIO_PIN_3); // Out7
+TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12, GPIO_PORTE_BASE, GPIO_PIN_3); // Out6
+TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14, GPIO_PORTE_BASE, GPIO_PIN_2); // Out7
 
+
+class TivaGPIOProducerBit : public nmranet::BitEventInterface {
+ public:
+  TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base, uint8_t port_bit)
+      : BitEventInterface(event_on, event_off)
+      , ptr_(reinterpret_cast<const uint8_t*>(port_base + (((unsigned)port_bit) << 2))) {}
+
+  bool GetCurrentState() OVERRIDE
+  {
+    return *ptr_;
+  }
+  
+  void SetState(bool new_value) OVERRIDE
+  {
+    DIE("cannot set state of input producer");
+  }
+
+  nmranet::Node *node() OVERRIDE
+  {
+    return &g_node;
+  }
+  
+ private:
+  const uint8_t* ptr_;
+};
+
+typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit> TivaGPIOProducer;
+QuiesceDebouncer::Options opts(3);
+
+TivaGPIOProducer in0(opts, R_EVENT_ID + 48 + 0, R_EVENT_ID + 49 + 0, GPIO_PORTA_BASE, GPIO_PIN_0);
+TivaGPIOProducer in1(opts, R_EVENT_ID + 48 + 2, R_EVENT_ID + 49 + 2, GPIO_PORTA_BASE, GPIO_PIN_1);
+TivaGPIOProducer in2(opts, R_EVENT_ID + 48 + 4, R_EVENT_ID + 49 + 4, GPIO_PORTA_BASE, GPIO_PIN_2);
+TivaGPIOProducer in3(opts, R_EVENT_ID + 48 + 6, R_EVENT_ID + 49 + 6, GPIO_PORTA_BASE, GPIO_PIN_3);
+TivaGPIOProducer in4(opts, R_EVENT_ID + 48 + 8, R_EVENT_ID + 49 + 8, GPIO_PORTA_BASE, GPIO_PIN_4);
+TivaGPIOProducer in5(opts, R_EVENT_ID + 48 + 10, R_EVENT_ID + 49 + 10, GPIO_PORTA_BASE, GPIO_PIN_5);
+TivaGPIOProducer in6(opts, R_EVENT_ID + 48 + 12, R_EVENT_ID + 49 + 12, GPIO_PORTA_BASE, GPIO_PIN_6);
+TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14, GPIO_PORTA_BASE, GPIO_PIN_7);
+
+nmranet::RefreshLoop loop(&g_node, {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
 /** Entry point to application.
  * @param argc number of command line arguments
