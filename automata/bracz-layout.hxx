@@ -40,6 +40,29 @@ using namespace automata;
   2a, 2b: A3 dangerous to use
   the rest are unused
 
+
+  LAYOUT | 2[a...f]zz  tiva accessory boards
+  
+  zz = 00..0B: 5 leds
+    00 : red led
+    02 : yellow led
+    04 : green led
+    06 : blue led
+    08 : blue-switch-led
+    0a : gold-switch-led
+
+  zz = 10..17: 4 relays
+    10 : rel1
+    12 : rel2
+    14 : rel3
+    16 : rel4
+
+  zz = 20..2F: 8 outputs
+    20 : out0
+    22 : out1
+    ...
+    2e : out7
+
  */
 
 
@@ -57,93 +80,93 @@ struct I2CBoard {
             name_ + "LedRed",
             BRACZ_LAYOUT | (a<<8) | 0x00,
             BRACZ_LAYOUT | (a<<8) | 0x01,
-            a & 0xf, OFS_IOA, 0),
+            (a & 0xf), OFS_IOA, 0),
         LedGreen(
             &brd,
             name_ + "LedGreen",
             BRACZ_LAYOUT | (a<<8) | 0x02,
             BRACZ_LAYOUT | (a<<8) | 0x03,
-            a & 0xf, OFS_IOA, 1),
+            (a & 0xf), OFS_IOA, 1),
         ActOraRed(
             &brd,
             name_ + "ActOraRed",
             BRACZ_LAYOUT | (a<<8) | 0x10,
             BRACZ_LAYOUT | (a<<8) | 0x11,
-            a & 0xf, OFS_IOA + 1, 0),
+            (a & 0xf), OFS_IOA + 1, 0),
         ActOraGreen(
             &brd,
             name_ + "ActOraGreen",
             BRACZ_LAYOUT | (a<<8) | 0x12,
             BRACZ_LAYOUT | (a<<8) | 0x13,
-            a & 0xf, OFS_IOA + 1, 1),
+            (a & 0xf), OFS_IOA + 1, 1),
         ActGreenRed(
             &brd,
             name_ + "ActGreenRed",
             BRACZ_LAYOUT | (a<<8) | 0x16,
             BRACZ_LAYOUT | (a<<8) | 0x17,
-            a & 0xf, OFS_IOA + 1, 2),
+            (a & 0xf), OFS_IOA + 1, 2),
         ActGreenGreen(
             &brd,
             name_ + "ActGreenGreen",
             BRACZ_LAYOUT | (a<<8) | 0x14,
             BRACZ_LAYOUT | (a<<8) | 0x15,
-            a & 0xf, OFS_IOA + 1, 3),
+            (a & 0xf), OFS_IOA + 1, 3),
         ActBlueBrown(
             &brd,
             name_ + "ActBlueBrown",
             BRACZ_LAYOUT | (a<<8) | 0x18,
             BRACZ_LAYOUT | (a<<8) | 0x19,
-            a & 0xf, OFS_IOA + 1, 4),
+            (a & 0xf), OFS_IOA + 1, 4),
         ActBlueGrey(
             &brd,
             name_ + "ActBlueGrey",
             BRACZ_LAYOUT | (a<<8) | 0x1a,
             BRACZ_LAYOUT | (a<<8) | 0x1b,
-            a & 0xf, OFS_IOA + 1, 5),
+            (a & 0xf), OFS_IOA + 1, 5),
 
         RelGreen(
             &brd,
             name_ + "RelGreen",
             BRACZ_LAYOUT | (a<<8) | 0x1c,
             BRACZ_LAYOUT | (a<<8) | 0x1d,
-            a & 0xf, OFS_IOA + 1, 6),
+            (a & 0xf), OFS_IOA + 1, 6),
         RelBlue(
             &brd,
             name_ + "RelBlue",
             BRACZ_LAYOUT | (a<<8) | 0x1e,
             BRACZ_LAYOUT | (a<<8) | 0x1f,
-            a & 0xf, OFS_IOA + 1, 7),
+            (a & 0xf), OFS_IOA + 1, 7),
 
         InOraRed(
             &brd,
             name_ + "InOraRed",
             BRACZ_LAYOUT | (a<<8) | 0x22,
             BRACZ_LAYOUT | (a<<8) | 0x23,
-            a & 0xf, OFS_IOB, 0),
+            (a & 0xf), OFS_IOB, 0),
         InOraGreen(
             &brd,
             name_ + "InOraGreen",
             BRACZ_LAYOUT | (a<<8) | 0x20,
             BRACZ_LAYOUT | (a<<8) | 0x21,
-            a & 0xf, OFS_IOB, 1),
+            (a & 0xf), OFS_IOB, 1),
         InBrownGrey(
             &brd,
             name_ + "InBrownGrey",
             BRACZ_LAYOUT | (a<<8) | 0x26,
             BRACZ_LAYOUT | (a<<8) | 0x27,
-            a & 0xf, OFS_IOB, 2),
+            (a & 0xf), OFS_IOB, 2),
         InBrownBrown(
             &brd,
             name_ + "InBrownBrown",
             BRACZ_LAYOUT | (a<<8) | 0x24,
             BRACZ_LAYOUT | (a<<8) | 0x25,
-            a & 0xf, OFS_IOB, 3),
+            (a & 0xf), OFS_IOB, 3),
         InA3(
             &brd,
             name_ + "InA3",
             BRACZ_LAYOUT | (a<<8) | 0x2a,
             BRACZ_LAYOUT | (a<<8) | 0x2b,
-            a & 0xf, OFS_IOB, 4) {}
+            (a & 0xf), OFS_IOB, 4) {}
 
   // Allocates a new signal variable off this extender board. Returns the base
   // eventid.
@@ -243,61 +266,197 @@ struct NativeIO {
             name_ + "L0",
             BRACZ_LAYOUT | (a << 8) | 0x20,
             BRACZ_LAYOUT | (a << 8) | 0x21,
-            a & 0xf, OFS_IOA, 7),
+            (a & 0xf), OFS_IOA, 7),
         r0(
             &brd,
             name_ + "R0",
             BRACZ_LAYOUT | (a << 8) | 0,
             BRACZ_LAYOUT | (a << 8) | 1,
-            a & 0xf, OFS_IOA, 0),
+            (a & 0xf), OFS_IOA, 0),
         r1(
             &brd,
             name_ + "R1",
             BRACZ_LAYOUT | (a << 8) | 2,
             BRACZ_LAYOUT | (a << 8) | 3,
-            a & 0xf, OFS_IOA, 1),
+            (a & 0xf), OFS_IOA, 1),
         r2(
             &brd,
             name_ + "R2",
             BRACZ_LAYOUT | (a << 8) | 4,
             BRACZ_LAYOUT | (a << 8) | 5,
-            a & 0xf, OFS_IOA, 2),
+            (a & 0xf), OFS_IOA, 2),
         r3(
             &brd,
             name_ + "R3",
             BRACZ_LAYOUT | (a << 8) | 6,
             BRACZ_LAYOUT | (a << 8) | 7,
-            a & 0xf, OFS_IOA, 3),
+            (a & 0xf), OFS_IOA, 3),
         d0(
             &brd,
             name_ + "D0",
             BRACZ_LAYOUT | (a << 8) | 0x10,
             BRACZ_LAYOUT | (a << 8) | 0x11,
-            a & 0xf, OFS_IOB, 0),
+            (a & 0xf), OFS_IOB, 0),
         d1(
             &brd,
             name_ + "D1",
             BRACZ_LAYOUT | (a << 8) | 0x12,
             BRACZ_LAYOUT | (a << 8) | 0x13,
-            a & 0xf, OFS_IOB, 1),
+            (a & 0xf), OFS_IOB, 1),
         d2(
             &brd,
             name_ + "D2",
             BRACZ_LAYOUT | (a << 8) | 0x14,
             BRACZ_LAYOUT | (a << 8) | 0x15,
-            a & 0xf, OFS_IOB, 2),
+            (a & 0xf), OFS_IOB, 2),
         d3(
             &brd,
             name_ + "D3",
             BRACZ_LAYOUT | (a << 8) | 0x16,
             BRACZ_LAYOUT | (a << 8) | 0x17,
-            a & 0xf, OFS_IOB, 3)
+            (a & 0xf), OFS_IOB, 3)
   {}
 
   string name_;
   EventBasedVariable l0;
   EventBasedVariable r0, r1, r2, r3;
   EventBasedVariable d0, d1, d2, d3;
+};
+
+
+struct AccBoard {
+  AccBoard(int a)
+      : name_(StringPrintf("A%d", a-0x2a)),
+        address_(a),
+        signal_offset_(0),
+        LedRed(
+            &brd,
+            name_ + "LedRed",
+            BRACZ_LAYOUT | (a<<8) | 0x00,
+            BRACZ_LAYOUT | (a<<8) | 0x01,
+            (a & 0xf) - 0xa, OFS_IOA, 0),
+        LedYellow(
+            &brd,
+            name_ + "LedYellow",
+            BRACZ_LAYOUT | (a<<8) | 0x02,
+            BRACZ_LAYOUT | (a<<8) | 0x03,
+            (a & 0xf) - 0xa, OFS_IOA, 1),
+        LedGreen(
+            &brd,
+            name_ + "LedGreen",
+            BRACZ_LAYOUT | (a<<8) | 0x04,
+            BRACZ_LAYOUT | (a<<8) | 0x05,
+            (a & 0xf) - 0xa, OFS_IOA, 2),
+        LedBlue(
+            &brd,
+            name_ + "LedBlue",
+            BRACZ_LAYOUT | (a<<8) | 0x06,
+            BRACZ_LAYOUT | (a<<8) | 0x07,
+            (a & 0xf) - 0xa, OFS_IOA, 3),
+
+        LedBlueSw(
+            &brd,
+            name_ + "LedBlueSw",
+            BRACZ_LAYOUT | (a<<8) | 0x08,
+            BRACZ_LAYOUT | (a<<8) | 0x09,
+            (a & 0xf) - 0xa, OFS_IOA, 4),
+        LedGoldSw(
+            &brd,
+            name_ + "LedGoldSw",
+            BRACZ_LAYOUT | (a<<8) | 0x0a,
+            BRACZ_LAYOUT | (a<<8) | 0x0b,
+            (a & 0xf) - 0xa, OFS_IOA, 5),
+
+        Rel0(
+            &brd,
+            name_ + "R0",
+            BRACZ_LAYOUT | (a<<8) | 0x10,
+            BRACZ_LAYOUT | (a<<8) | 0x11,
+            (a & 0xf) - 0xa, OFS_IOA + 1, 0),
+        Rel1(
+            &brd,
+            name_ + "R1",
+            BRACZ_LAYOUT | (a<<8) | 0x12,
+            BRACZ_LAYOUT | (a<<8) | 0x13,
+            (a & 0xf) - 0xa, OFS_IOA + 1, 1),
+        Rel2(
+            &brd,
+            name_ + "R2",
+            BRACZ_LAYOUT | (a<<8) | 0x14,
+            BRACZ_LAYOUT | (a<<8) | 0x15,
+            (a & 0xf) - 0xa, OFS_IOA + 1, 2),
+        Rel3(
+            &brd,
+            name_ + "R3",
+            BRACZ_LAYOUT | (a<<8) | 0x16,
+            BRACZ_LAYOUT | (a<<8) | 0x17,
+            (a & 0xf) - 0xa, OFS_IOA + 1, 3),
+
+        Act0(
+            &brd,
+            name_ + "Act0",
+            BRACZ_LAYOUT | (a<<8) | 0x20,
+            BRACZ_LAYOUT | (a<<8) | 0x21,
+            (a & 0xf) - 0xa, OFS_IOB, 0),
+        Act1(
+            &brd,
+            name_ + "Act1",
+            BRACZ_LAYOUT | (a<<8) | 0x22,
+            BRACZ_LAYOUT | (a<<8) | 0x23,
+            (a & 0xf) - 0xa, OFS_IOB, 1),
+        Act2(
+            &brd,
+            name_ + "Act2",
+            BRACZ_LAYOUT | (a<<8) | 0x24,
+            BRACZ_LAYOUT | (a<<8) | 0x25,
+            (a & 0xf) - 0xa, OFS_IOB, 2),
+        Act3(
+            &brd,
+            name_ + "Act3",
+            BRACZ_LAYOUT | (a<<8) | 0x26,
+            BRACZ_LAYOUT | (a<<8) | 0x27,
+            (a & 0xf) - 0xa, OFS_IOB, 3),
+        Act4(
+            &brd,
+            name_ + "Act4",
+            BRACZ_LAYOUT | (a<<8) | 0x28,
+            BRACZ_LAYOUT | (a<<8) | 0x29,
+            (a & 0xf) - 0xa, OFS_IOB, 4),
+        Act5(
+            &brd,
+            name_ + "Act5",
+            BRACZ_LAYOUT | (a<<8) | 0x2a,
+            BRACZ_LAYOUT | (a<<8) | 0x2b,
+            (a & 0xf) - 0xa, OFS_IOB, 5),
+        Act6(
+            &brd,
+            name_ + "Act6",
+            BRACZ_LAYOUT | (a<<8) | 0x2c,
+            BRACZ_LAYOUT | (a<<8) | 0x2d,
+            (a & 0xf) - 0xa, OFS_IOB, 6),
+        Act7(
+            &brd,
+            name_ + "Act7",
+            BRACZ_LAYOUT | (a<<8) | 0x2e,
+            BRACZ_LAYOUT | (a<<8) | 0x2f,
+            (a & 0xf) - 0xa, OFS_IOB, 7) {}
+
+  // Allocates a new signal variable off this extender board. Returns the base
+  // eventid.
+  uint64_t NewSignalVariable() {
+    return ((BRACZ_LAYOUT & ~0xffffff) |
+            (address_ << 16) |
+            ((signal_offset_++ * 2) << 8));
+  }
+
+  string name_;
+  uint8_t address_;
+  // next free signal offset.
+  int signal_offset_;
+
+  EventBasedVariable LedRed, LedYellow, LedGreen, LedBlue, LedBlueSw, LedGoldSw;
+  EventBasedVariable Rel0, Rel1, Rel2, Rel3;
+  EventBasedVariable Act0, Act1, Act2, Act3, Act4, Act5, Act6, Act7;
 };
 
 

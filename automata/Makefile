@@ -39,6 +39,9 @@ test-aut: $(OBJS) test-aut.o
 bracz-layout3h-logic: $(OBJS) bracz-layout3h-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ bracz-layout3h-logic.o $(OBJS) 
 
+convention-logic: convention-logic.o $(OBJS)  # control-logic.hxx
+	$(CXX) $(CXXFLAGS) -o $@ $+
+
 clean:
 	rm -f *.o *.cout $(BINS) test-aut *.d *.bin
 
@@ -52,8 +55,12 @@ flash: bracz-layout3h-logic
 	aut-flash.sh *bin
 
 .PHONY: bin
-bin: bracz-layout3h-logic
-	./bracz-layout3h-logic
+#bin: bracz-layout3h-logic
+#	./bracz-layout3h-logic
+
+bin: convention-logic
+	./convention-logic
+
 
 $(OUTPUTS): %.cout : %
 	./$< > $@
