@@ -413,7 +413,7 @@ void DefaultPacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 #elif defined(TARGET_LPC11Cxx)
         // TODO(bracz): define how to reset a Cortex-M0.
         abort();
-#elif defined(TARGET_LPC1768)
+#elif defined(GCC_ARMCM3)
         // TODO(bracz): define how to reset a Cortex-M3.
         abort();
 #elif defined(TARGET_PIC32MX)

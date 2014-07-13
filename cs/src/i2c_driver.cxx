@@ -18,6 +18,8 @@
 #include "LPC17xx.h"
 #elif !defined(__FreeRTOS__)
 #define SKIP_DRIVER
+#elif defined(BOARD_BRACZ_ACC)
+#define SKIP_DRIVER
 #else
 #error don_t know about your CPU
 #endif
