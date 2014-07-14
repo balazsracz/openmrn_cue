@@ -130,7 +130,7 @@ void log_output(char* buf, int size) {
 }
 
 
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 3);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
@@ -186,6 +186,8 @@ nmranet::TrainService traction_service(&g_if_can);
 
 dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
+nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 mobilestation::TrainDb train_db;
