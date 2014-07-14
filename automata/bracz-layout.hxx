@@ -439,7 +439,57 @@ struct AccBoard {
             name_ + "Act7",
             BRACZ_LAYOUT | (a<<8) | 0x2e,
             BRACZ_LAYOUT | (a<<8) | 0x2f,
-            (a & 0xf) - 0xa, OFS_IOB, 7) {}
+            (a & 0xf) - 0xa, OFS_IOB, 7),
+
+        In0(
+            &brd,
+            name_ + "In0",
+            BRACZ_LAYOUT | (a<<8) | 0x30,
+            BRACZ_LAYOUT | (a<<8) | 0x31,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 0),
+        In1(
+            &brd,
+            name_ + "In1",
+            BRACZ_LAYOUT | (a<<8) | 0x32,
+            BRACZ_LAYOUT | (a<<8) | 0x33,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 1),
+        In2(
+            &brd,
+            name_ + "In2",
+            BRACZ_LAYOUT | (a<<8) | 0x34,
+            BRACZ_LAYOUT | (a<<8) | 0x35,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 2),
+        In3(
+            &brd,
+            name_ + "In3",
+            BRACZ_LAYOUT | (a<<8) | 0x36,
+            BRACZ_LAYOUT | (a<<8) | 0x37,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 3),
+        In4(
+            &brd,
+            name_ + "In4",
+            BRACZ_LAYOUT | (a<<8) | 0x38,
+            BRACZ_LAYOUT | (a<<8) | 0x39,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 4),
+        In5(
+            &brd,
+            name_ + "In5",
+            BRACZ_LAYOUT | (a<<8) | 0x3a,
+            BRACZ_LAYOUT | (a<<8) | 0x3b,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 5),
+        In6(
+            &brd,
+            name_ + "In6",
+            BRACZ_LAYOUT | (a<<8) | 0x3c,
+            BRACZ_LAYOUT | (a<<8) | 0x3d,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 6),
+        In7(
+            &brd,
+            name_ + "In7",
+            BRACZ_LAYOUT | (a<<8) | 0x3e,
+            BRACZ_LAYOUT | (a<<8) | 0x3f,
+            (a & 0xf) - 0xa, OFS_IOB + 1, 7) {}
+
 
   // Allocates a new signal variable off this extender board. Returns the base
   // eventid.
@@ -457,6 +507,7 @@ struct AccBoard {
   EventBasedVariable LedRed, LedYellow, LedGreen, LedBlue, LedBlueSw, LedGoldSw;
   EventBasedVariable Rel0, Rel1, Rel2, Rel3;
   EventBasedVariable Act0, Act1, Act2, Act3, Act4, Act5, Act6, Act7;
+  EventBasedVariable In0, In1, In2, In3, In4, In5, In6, In7;
 };
 
 
