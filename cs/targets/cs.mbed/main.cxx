@@ -78,6 +78,9 @@ OVERRIDE_CONST(can2_bitrate, 250000);
 // Forces all trains to be our responsibility.
 OVERRIDE_CONST(mobile_station_train_count, 0);
 
+OVERRIDE_CONST(automata_init_backoff, 20000);
+OVERRIDE_CONST(node_init_identify, 0);
+
 namespace mobilestation {
 extern const struct const_loco_db_t const_lokdb[];
 
@@ -88,8 +91,8 @@ const struct const_loco_db_t const_lokdb[] = {
   // 1
   { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
+  // 2 (jim's)
+  { 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
@@ -207,6 +210,11 @@ int appl_main(int argc, char* argv[])
     HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
+
+    nmranet::Velocity v;
+    v.set_mph(29);
+    //XXtrain_Re460.set_speed(v);
+    //XXtrain_Am843.set_speed(v);
 
     /*int fd = open("/dev/can0", O_RDWR);
     ASSERT(fd >= 0);
