@@ -64,7 +64,7 @@ Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 
 extern const nmranet::NodeID NODE_ID;
-const nmranet::NodeID NODE_ID = 0x05010101144aULL;
+//const nmranet::NodeID NODE_ID = 0x05010101144aULL;
 
 //OVERRIDE_CONST(can_tx_buffer_size, 2);
 //OVERRIDE_CONST(can_rx_buffer_size, 1);
@@ -149,10 +149,10 @@ TivaGPIOConsumer led_bluesw(R_EVENT_ID + 8, R_EVENT_ID + 9, GPIO_PORTB_BASE, GPI
 TivaGPIOConsumer led_goldsw(R_EVENT_ID + 10, R_EVENT_ID + 11, GPIO_PORTB_BASE, GPIO_PIN_7);
 
 
-TivaGPIOConsumer rel1(R_EVENT_ID + 16, R_EVENT_ID + 17, GPIO_PORTC_BASE, GPIO_PIN_4);
-TivaGPIOConsumer rel2(R_EVENT_ID + 18, R_EVENT_ID + 19, GPIO_PORTC_BASE, GPIO_PIN_5);
-TivaGPIOConsumer rel3(R_EVENT_ID + 20, R_EVENT_ID + 21, GPIO_PORTG_BASE, GPIO_PIN_5);
-TivaGPIOConsumer rel4(R_EVENT_ID + 22, R_EVENT_ID + 23, GPIO_PORTF_BASE, GPIO_PIN_3);
+TivaGPIOConsumer rel1(R_EVENT_ID + 17, R_EVENT_ID + 16, GPIO_PORTC_BASE, GPIO_PIN_4);
+TivaGPIOConsumer rel2(R_EVENT_ID + 19, R_EVENT_ID + 18, GPIO_PORTC_BASE, GPIO_PIN_5);
+TivaGPIOConsumer rel3(R_EVENT_ID + 21, R_EVENT_ID + 20, GPIO_PORTG_BASE, GPIO_PIN_5);
+TivaGPIOConsumer rel4(R_EVENT_ID + 23, R_EVENT_ID + 22, GPIO_PORTF_BASE, GPIO_PIN_3);
 
 
 TivaGPIOConsumer out0(R_EVENT_ID + 32 + 0, R_EVENT_ID + 33 + 0, GPIO_PORTE_BASE, GPIO_PIN_4); // Out0
