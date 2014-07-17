@@ -2,20 +2,25 @@ include hardware.mk
 
 ifeq ($(MISSING_DEPS),)
 
-.PHONY: rr-crossing.cout
+AUTOMATA=convention-logic
 
-rr-crossing.cout:
+.PHONY: $(AUTOMATA).cout
+
+$(AUTOMATA).cout:
 	$(MAKE) -C $(APP_PATH)/../automata $@
 	ln -sf $(APP_PATH)/../automata/$@ $@
 
-rr-crossing.o: %.o: %.cout
+$(AUTOMATA).o: %.o: %.cout
 	$(CC) $(CFLAGS) -x c $< -o $@
 	$(CC) -MM $(CFLAGS) -x c $< > $*.d
 
-OBJS += rr-crossing.o
+OBJS += $(AUTOMATA).o
 
-$(EXECUTABLE)$(EXTENTION): rr-crossing.o
+$(EXECUTABLE)$(EXTENTION): $(AUTOMATA).o
 
-all: rr-crossing.cout
+all: $(AUTOMATA).cout
+
+flash: $(EXECUTABLE).bin
+	mbed-flash.sh $<
 
 endif
