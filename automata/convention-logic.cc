@@ -49,7 +49,10 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
 
 
 AccBoard ba(0x2a);
+AccBoard bb(0x2b);
 I2CBoard b3(0x23);
+
+const GlobalVariable* ctc = &bb.In7;
 
 StateRef StUser1(10);
 StateRef StUser2(11);
@@ -61,6 +64,40 @@ I2CSignal signal_XXB2_adv(&b3, 9, "XX.B2.adv");
 
 I2CSignal signal_YYC23_main(&b3, 26, "YY.C23.main");
 I2CSignal signal_YYC23_adv(&b3, 27, "YY.C23.adv");
+
+EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
+
+struct ConventionBlock {
+ public:
+  ConventionBlock(const char* name, GlobalVariable* sensor, GlobalVariable* _relay,
+                  GlobalVariable* signal_red, GlobalVariable* signal_green,
+                  GlobalVariable* _button)
+      : sensor_raw(sensor)
+      , relay(_relay)
+      , red(signal_red)
+      , green(signal_green)
+      , button(_button)
+      , raw_block(sensor_raw, relay, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr)
+      , block(&brd, &raw_block, EventBlock::Allocator(logic.allocator(), name, 80)) {}
+
+  GlobalVariable* sensor_raw;
+  GlobalVariable* relay;
+  GlobalVariable* red;
+  GlobalVariable* green;
+  GlobalVariable* button;
+  PhysicalSignal raw_block;
+  StandardBlock block;
+};
+
+
+ConventionBlock St1("St1", &ba.In1, &ba.Rel2, &bb.Act4, &bb.Act3, &ba.In5);
+ConventionBlock St2("St2", &ba.In0, &ba.Rel3, &bb.Act1, &bb.Act2, &ba.In4);
+
+ConventionBlock Rd1("Rd1", &bb.In2, &bb.Rel0, &bb.Act0, &ba.Act3, &ba.In6);
+ConventionBlock Rd2("Rd2", &bb.In1, &bb.Rel1, &ba.Act7, &ba.Act6, &ba.In2);
+ConventionBlock Rd3("Rd3", &bb.In0, &bb.Rel2, &ba.Act4, &ba.Act5, &ba.In3);
+
+
 
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
@@ -128,7 +165,8 @@ DefAut(blinkaut, brd, {
       .ActState(StUser1)
       .ActReg1(rep);
 
-  DefCopy(*rep, ImportVariable(&ba.LedRed));
+  DefCopy(*rep, ImportVariable(&ba.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&bb.LedGoldSw));
   DefCopy(*rep, ImportVariable(&b3.LedRed));
   DefCopy(*rep, ImportVariable(&panda_bridge.l4));
 });
@@ -181,10 +219,28 @@ void SimpleFollowStrategy(
       .ActReg1(aut->ImportVariable(src->request_green()));*/
 }
 
-EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
-
 MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
+
+StandardFixedTurnout Turnout_In(&brd, EventBlock::Allocator(logic.allocator(),
+                                                            "WIn", 40),
+                                FixedTurnout::TURNOUT_CLOSED);
+StandardFixedTurnout Turnout_Out(&brd, EventBlock::Allocator(logic.allocator(),
+                                                             "WOut", 40),
+                                 FixedTurnout::TURNOUT_CLOSED);
+
+bool ign =
+    BindPairs({
+        {Rd1.block.side_b(), Rd2.block.side_a()},
+        {Rd2.block.side_b(), Rd3.block.side_a()},
+        {Rd3.block.side_b(), Turnout_In.b.side_points()},
+        {Turnout_In.b.side_closed(), St2.block.side_a()},
+        {Turnout_In.b.side_thrown(), St1.block.side_a()},
+        {Turnout_Out.b.side_closed(), St2.block.side_b()},
+        {Turnout_Out.b.side_thrown(), St1.block.side_b()},
+        {Turnout_Out.b.side_points(), Rd1.block.side_a()},
+            });
+
 
 /*DefAut(XXleft, brd, {
   StateRef StWaiting(4);
@@ -307,7 +363,42 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
   }
 }
 
+void TestPanel(Automata* aut, ConventionBlock* block, ConventionBlock* nextb) {
+  auto* det = aut->ImportVariable(block->sensor_raw);
+  auto* btn = aut->ImportVariable(block->button);
+  Def().IfState(StInit).ActReg1(det).ActReg0(det).ActReg1(btn);
+  
+  auto* red = aut->ImportVariable(block->red);
+  auto* green = aut->ImportVariable(block->green);
+  Def().IfState(StInit).ActReg1(red).ActReg0(red);
+  Def().IfState(StInit).ActReg1(green).ActReg0(green);
+  
+  auto& relay = aut->ImportVariable(*block->relay);
+  auto* reqgrn = aut->ImportVariable(block->block.request_green());
+  Def().IfReg0(aut->ImportVariable(*block->button)).ActReg1(reqgrn);
+  Def().IfReg0(relay).IfReg0(*reqgrn).ActReg1(red);
+  Def().IfReg0(relay).IfReg1(*reqgrn).ActReg0(red);
+  Def().IfReg1(relay).ActReg0(red);
+  aut->DefCopy(aut->ImportVariable(*block->relay),
+               green);
+
+  if (nextb) {
+    auto& in_ctc = aut->ImportVariable(*ctc);
+    Def()
+        .IfReg0(in_ctc)
+        .IfReg1(aut->ImportVariable(block->block.route_in()))
+        .IfReg0(aut->ImportVariable(block->block.route_out()))
+        .IfReg0(aut->ImportVariable(nextb->block.route_in()))
+        .ActReg1(reqgrn);
+  }
+}
+
 DefAut(signalaut, brd, {
+    TestPanel(this, &Rd1, &Rd2);
+    TestPanel(this, &Rd2, &Rd3);
+    TestPanel(this, &Rd3, &St2);
+
+    Def().IfState(StInit).ActState(StBase);
     /*    BlockSignal(this, &Block_XXB1);
     BlockSignal(this, &Block_XXB2);
     BlockSignal(this, &Block_XXB3);
@@ -317,6 +408,10 @@ DefAut(signalaut, brd, {
   });
 
 DefAut(signalaut1, brd, {
+    TestPanel(this, &St1, nullptr);
+    TestPanel(this, &St2, &Rd1);
+
+    Def().IfState(StInit).ActState(StBase);
     /*    BlockSignal(this, &Block_A360);
     BlockSignal(this, &Block_A347);
     BlockSignal(this, &Block_A321);
@@ -339,7 +434,8 @@ int main(int argc, char** argv) {
   fwrite(output.data(), 1, output.size(), f);
   fclose(f);
 
-  f = fopen("automata.cout", "wb");
+  //  f = fopen("convention-logic.cout", "wb");
+  f = stdout;
   fprintf(f, "const char automata_code[] = {\n  ");
   int c = 0;
   for (char t : output) {
@@ -371,6 +467,8 @@ int main(int argc, char** argv) {
   assert(f);
   PrintAllEventVariablesInBashFormat(f);
   fclose(f);
+
+
 
   return 0;
 };

@@ -2,8 +2,8 @@ CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32 -Wall
 
 OBJS=system.o control-logic.o registry.o
 
-AUTS = rr-crossing.cpp logic-demo.cpp
-OUTPUTS = $(AUTS:.cpp=.cout)
+AUTS = rr-crossing.cpp logic-demo.cpp 
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout
 BINS = $(AUTS:.cpp=)
 
 all: lib test-aut bracz-layout3h-logic bin
