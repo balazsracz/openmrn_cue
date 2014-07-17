@@ -42,7 +42,7 @@ namespace mobilestation {
 #define DCC_MAX_FN 22
 
 struct const_loco_db_t {
-  const uint8_t address;
+  const uint16_t address;
   // Maps the logical function numbers ot F bits. 0xff terminates the array.
   const uint8_t function_mapping[DCC_MAX_FN];
   // MoSta function definition, parallel to function_mapping.
@@ -81,7 +81,8 @@ enum DccMode {
   DCC_28 = 5,
   DCC_128 = 6,
   PUSHPULL = 8,
-  MARKLIN_TWOADDR = 16
+  MARKLIN_TWOADDR = 16,
+  OLCBUSER = 32
 };
 
 class TrainDb {
