@@ -86,7 +86,7 @@ class SignalPacketBase : public SignalPacketBaseInterface {
   }
 
   const uint8_t* payload() {
-    return static_cast<const uint8_t*>(message()->data()->data());
+    return reinterpret_cast<const uint8_t*>(message()->data()->data());
   }
 
   Action send_address_byte() {
