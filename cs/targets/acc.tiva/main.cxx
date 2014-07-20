@@ -58,6 +58,9 @@
 #include "driverlib/gpio.h"
 #include "inc/hw_memmap.h"
 
+#define ENABLE_TIVA_SIGNAL_DRIVER
+#include "custom/TivaSignalPacket.hxx"
+
 NO_THREAD nt;
 Executor<1> g_executor(nt);
 Service g_service(&g_executor);
@@ -75,6 +78,38 @@ nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
+
+bracz_custom::TivaSignalPacketSender signalbus(&g_service, 15625, UART1_BASE,
+                                               INT_RESOLVE(INT_UART1_, 0));
+
+class SignalBlinkerFlow : public StateFlowBase {
+ public:
+  SignalBlinkerFlow(nmranet::Node* node)
+      : StateFlowBase(node->interface()), sleepData_(this), state_(1) {
+    start_flow(STATE(blinker));
+  }
+
+ private:
+  Action blinker() {
+    state_ = !state_;
+    auto* b = signalbus.alloc();
+    auto& s = *b->data();
+    s.clear();
+    s.push_back(0);  // broadcast address
+    s.push_back(3);  // len
+    s.push_back(3 /*SCMD_ASPECT*/);
+    s.push_back(state_ ? 2 : 1);
+    signalbus.send(b);
+    return call_immediately(STATE(handle_sleep));
+  }
+
+  Action handle_sleep() {
+    return sleep_and_call(&sleepData_, MSEC_TO_NSEC(3000), STATE(blinker));
+  }
+
+  StateFlowTimer sleepData_;
+  uint8_t state_;
+};
 
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
@@ -218,6 +253,7 @@ int appl_main(int argc, char* argv[]) {
   HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
   // Bootstraps the alias allocation process.
   g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
+  SignalBlinkerFlow blf(&g_node);
 
   g_executor.thread_body();
   return 0;
