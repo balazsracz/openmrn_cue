@@ -82,6 +82,11 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
 
   Action start_refresh() {
     waiting_ = 0;
+    lastUpdateTime_ = os_get_time_monotonic();
+    // Skips signas for which we don't have an address.
+    while (nextSignal_ < numSignals_ && !backingStore_[nextSignal_ << 1]) {
+      ++nextSignal_;
+    }
     if (wakeup_ || (nextSignal_ >= numSignals_)) {
       wakeup_ = 0;
       return call_immediately(refresh);
@@ -91,16 +96,14 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
 
   Action fill_packet() {
     auto* b = get_allocation_result(bus_);
-    lastUpdateTime_ = os_get_time_monotonic();
     b->set_done(n_.reset(this));
     send_update(b, backingStore_[nextSignal_ << 1], backingStore_[(nextSignal_ << 1) + 1]);
-    nextSignal_++;
     return wait_and_call(STATE(start_refresh));
   }
 
   void notify_changed(unsigned offset) OVERRIDE {
-    auto* b = bus->alloc();
-    send_update(b, backingStore_[offset & ~1], backingStore_[offset_ | 1]);
+    auto* b = bus->alloc(); // sync alloc -- not very nice.
+    send_update(b, backingStore_[offset & ~1], backingStore_[offset | 1]);
     lastUpdateTime_ = os_get_time_monotonic();
     wakeup_ = 1;
   }
