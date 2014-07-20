@@ -64,10 +64,10 @@ Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 
 extern const nmranet::NodeID NODE_ID;
-//const nmranet::NodeID NODE_ID = 0x05010101144aULL;
+// const nmranet::NodeID NODE_ID = 0x05010101144aULL;
 
-//OVERRIDE_CONST(can_tx_buffer_size, 2);
-//OVERRIDE_CONST(can_rx_buffer_size, 1);
+// OVERRIDE_CONST(can_tx_buffer_size, 2);
+// OVERRIDE_CONST(can_rx_buffer_size, 1);
 
 OVERRIDE_CONST(main_thread_stack_size, 2048);
 
@@ -76,20 +76,19 @@ static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
 
-static const uint64_t R_EVENT_ID = 0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
+static const uint64_t R_EVENT_ID =
+    0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
 
-class TivaGPIOConsumer : public nmranet::BitEventInterface, public nmranet::BitEventConsumer {
+class TivaGPIOConsumer : public nmranet::BitEventInterface,
+                         public nmranet::BitEventConsumer {
  public:
-  TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port, uint8_t pin) 
+  TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port,
+                   uint8_t pin)
       : BitEventInterface(event_on, event_off),
         BitEventConsumer(this),
-        memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {
-    
-  }
+        memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
 
-  bool GetCurrentState() OVERRIDE {
-    return (*memory_) ? true : false;
-  }
+  bool GetCurrentState() OVERRIDE { return (*memory_) ? true : false; }
   void SetState(bool new_value) OVERRIDE {
     if (new_value) {
       *memory_ = 0xff;
@@ -98,123 +97,128 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface, public nmranet::BitE
     }
   }
 
-  nmranet::Node* node() OVERRIDE {
-    return &g_node;
-  }
+  nmranet::Node* node() OVERRIDE { return &g_node; }
 
  private:
   volatile uint8_t* memory_;
 };
 
+class LoggingBit : public nmranet::BitEventInterface {
+ public:
+  LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
+      : BitEventInterface(event_on, event_off), name_(name), state_(false) {}
 
-class LoggingBit : public nmranet::BitEventInterface
-{
-public:
-    LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
-        : BitEventInterface(event_on, event_off), name_(name), state_(false)
-    {
-    }
-
-    virtual bool GetCurrentState()
-    {
-        return state_;
-    }
-    virtual void SetState(bool new_value)
-    {
-        state_ = new_value;
-        //HASSERT(0);
+  virtual bool GetCurrentState() { return state_; }
+  virtual void SetState(bool new_value) {
+    state_ = new_value;
+// HASSERT(0);
 #ifdef __linux__
-        LOG(INFO, "bit %s set to %d", name_, state_);
+    LOG(INFO, "bit %s set to %d", name_, state_);
 #else
-        resetblink(state_ ? 1 : 0);
+    resetblink(state_ ? 1 : 0);
 #endif
-    }
+  }
 
-    virtual nmranet::Node* node()
-    {
-        return &g_node;
-    }
+  virtual nmranet::Node* node() { return &g_node; }
 
-private:
-    const char* name_;
-    bool state_;
+ private:
+  const char* name_;
+  bool state_;
 };
 
 LoggingBit led_red_bit(R_EVENT_ID + 0, R_EVENT_ID + 1, nullptr);
 nmranet::BitEventConsumer red_consumer(&led_red_bit);
-TivaGPIOConsumer led_yellow(R_EVENT_ID + 2, R_EVENT_ID + 3, GPIO_PORTB_BASE, GPIO_PIN_0);
-TivaGPIOConsumer led_green(R_EVENT_ID + 4, R_EVENT_ID + 5, GPIO_PORTD_BASE, GPIO_PIN_5);
-TivaGPIOConsumer led_blue(R_EVENT_ID + 6, R_EVENT_ID + 7, GPIO_PORTG_BASE, GPIO_PIN_1);
-TivaGPIOConsumer led_bluesw(R_EVENT_ID + 8, R_EVENT_ID + 9, GPIO_PORTB_BASE, GPIO_PIN_6);
-TivaGPIOConsumer led_goldsw(R_EVENT_ID + 10, R_EVENT_ID + 11, GPIO_PORTB_BASE, GPIO_PIN_7);
+TivaGPIOConsumer led_yellow(R_EVENT_ID + 2, R_EVENT_ID + 3, GPIO_PORTB_BASE,
+                            GPIO_PIN_0);
+TivaGPIOConsumer led_green(R_EVENT_ID + 4, R_EVENT_ID + 5, GPIO_PORTD_BASE,
+                           GPIO_PIN_5);
+TivaGPIOConsumer led_blue(R_EVENT_ID + 6, R_EVENT_ID + 7, GPIO_PORTG_BASE,
+                          GPIO_PIN_1);
+TivaGPIOConsumer led_bluesw(R_EVENT_ID + 8, R_EVENT_ID + 9, GPIO_PORTB_BASE,
+                            GPIO_PIN_6);
+TivaGPIOConsumer led_goldsw(R_EVENT_ID + 10, R_EVENT_ID + 11, GPIO_PORTB_BASE,
+                            GPIO_PIN_7);
 
+TivaGPIOConsumer rel1(R_EVENT_ID + 17, R_EVENT_ID + 16, GPIO_PORTC_BASE,
+                      GPIO_PIN_4);
+TivaGPIOConsumer rel2(R_EVENT_ID + 19, R_EVENT_ID + 18, GPIO_PORTC_BASE,
+                      GPIO_PIN_5);
+TivaGPIOConsumer rel3(R_EVENT_ID + 21, R_EVENT_ID + 20, GPIO_PORTG_BASE,
+                      GPIO_PIN_5);
+TivaGPIOConsumer rel4(R_EVENT_ID + 23, R_EVENT_ID + 22, GPIO_PORTF_BASE,
+                      GPIO_PIN_3);
 
-TivaGPIOConsumer rel1(R_EVENT_ID + 17, R_EVENT_ID + 16, GPIO_PORTC_BASE, GPIO_PIN_4);
-TivaGPIOConsumer rel2(R_EVENT_ID + 19, R_EVENT_ID + 18, GPIO_PORTC_BASE, GPIO_PIN_5);
-TivaGPIOConsumer rel3(R_EVENT_ID + 21, R_EVENT_ID + 20, GPIO_PORTG_BASE, GPIO_PIN_5);
-TivaGPIOConsumer rel4(R_EVENT_ID + 23, R_EVENT_ID + 22, GPIO_PORTF_BASE, GPIO_PIN_3);
-
-
-TivaGPIOConsumer out0(R_EVENT_ID + 32 + 0, R_EVENT_ID + 33 + 0, GPIO_PORTE_BASE, GPIO_PIN_4); // Out0
-TivaGPIOConsumer out1(R_EVENT_ID + 32 + 2, R_EVENT_ID + 33 + 2, GPIO_PORTE_BASE, GPIO_PIN_5); // Out1
-TivaGPIOConsumer out2(R_EVENT_ID + 32 + 4, R_EVENT_ID + 33 + 4, GPIO_PORTD_BASE, GPIO_PIN_0); // Out2
-TivaGPIOConsumer out3(R_EVENT_ID + 32 + 6, R_EVENT_ID + 33 + 6, GPIO_PORTD_BASE, GPIO_PIN_1); // Out3
-TivaGPIOConsumer out4(R_EVENT_ID + 32 + 8, R_EVENT_ID + 33 + 8, GPIO_PORTD_BASE, GPIO_PIN_2); // Out4
-TivaGPIOConsumer out5(R_EVENT_ID + 32 + 10, R_EVENT_ID + 33 + 10, GPIO_PORTD_BASE, GPIO_PIN_3); // Out5
-TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12, GPIO_PORTE_BASE, GPIO_PIN_3); // Out6
-TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14, GPIO_PORTE_BASE, GPIO_PIN_2); // Out7
-
+TivaGPIOConsumer out0(R_EVENT_ID + 32 + 0, R_EVENT_ID + 33 + 0, GPIO_PORTE_BASE,
+                      GPIO_PIN_4);  // Out0
+TivaGPIOConsumer out1(R_EVENT_ID + 32 + 2, R_EVENT_ID + 33 + 2, GPIO_PORTE_BASE,
+                      GPIO_PIN_5);  // Out1
+TivaGPIOConsumer out2(R_EVENT_ID + 32 + 4, R_EVENT_ID + 33 + 4, GPIO_PORTD_BASE,
+                      GPIO_PIN_0);  // Out2
+TivaGPIOConsumer out3(R_EVENT_ID + 32 + 6, R_EVENT_ID + 33 + 6, GPIO_PORTD_BASE,
+                      GPIO_PIN_1);  // Out3
+TivaGPIOConsumer out4(R_EVENT_ID + 32 + 8, R_EVENT_ID + 33 + 8, GPIO_PORTD_BASE,
+                      GPIO_PIN_2);  // Out4
+TivaGPIOConsumer out5(R_EVENT_ID + 32 + 10, R_EVENT_ID + 33 + 10,
+                      GPIO_PORTD_BASE, GPIO_PIN_3);  // Out5
+TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12,
+                      GPIO_PORTE_BASE, GPIO_PIN_3);  // Out6
+TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14,
+                      GPIO_PORTE_BASE, GPIO_PIN_2);  // Out7
 
 class TivaGPIOProducerBit : public nmranet::BitEventInterface {
  public:
-  TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base, uint8_t port_bit)
-      : BitEventInterface(event_on, event_off)
-      , ptr_(reinterpret_cast<const uint8_t*>(port_base + (((unsigned)port_bit) << 2))) {}
+  TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
+                      uint8_t port_bit)
+      : BitEventInterface(event_on, event_off),
+        ptr_(reinterpret_cast<const uint8_t*>(port_base +
+                                              (((unsigned)port_bit) << 2))) {}
 
-  bool GetCurrentState() OVERRIDE
-  {
-    return *ptr_;
-  }
-  
-  void SetState(bool new_value) OVERRIDE
-  {
+  bool GetCurrentState() OVERRIDE { return *ptr_; }
+
+  void SetState(bool new_value) OVERRIDE {
     DIE("cannot set state of input producer");
   }
 
-  nmranet::Node *node() OVERRIDE
-  {
-    return &g_node;
-  }
-  
+  nmranet::Node* node() OVERRIDE { return &g_node; }
+
  private:
   const uint8_t* ptr_;
 };
 
-typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit> TivaGPIOProducer;
+typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
+    TivaGPIOProducer;
 QuiesceDebouncer::Options opts(3);
 
-TivaGPIOProducer in0(opts, R_EVENT_ID + 48 + 0, R_EVENT_ID + 49 + 0, GPIO_PORTA_BASE, GPIO_PIN_0);
-TivaGPIOProducer in1(opts, R_EVENT_ID + 48 + 2, R_EVENT_ID + 49 + 2, GPIO_PORTA_BASE, GPIO_PIN_1);
-TivaGPIOProducer in2(opts, R_EVENT_ID + 48 + 4, R_EVENT_ID + 49 + 4, GPIO_PORTA_BASE, GPIO_PIN_2);
-TivaGPIOProducer in3(opts, R_EVENT_ID + 48 + 6, R_EVENT_ID + 49 + 6, GPIO_PORTA_BASE, GPIO_PIN_3);
-TivaGPIOProducer in4(opts, R_EVENT_ID + 48 + 8, R_EVENT_ID + 49 + 8, GPIO_PORTA_BASE, GPIO_PIN_4);
-TivaGPIOProducer in5(opts, R_EVENT_ID + 48 + 10, R_EVENT_ID + 49 + 10, GPIO_PORTA_BASE, GPIO_PIN_5);
-TivaGPIOProducer in6(opts, R_EVENT_ID + 48 + 12, R_EVENT_ID + 49 + 12, GPIO_PORTA_BASE, GPIO_PIN_6);
-TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14, GPIO_PORTA_BASE, GPIO_PIN_7);
+TivaGPIOProducer in0(opts, R_EVENT_ID + 48 + 0, R_EVENT_ID + 49 + 0,
+                     GPIO_PORTA_BASE, GPIO_PIN_0);
+TivaGPIOProducer in1(opts, R_EVENT_ID + 48 + 2, R_EVENT_ID + 49 + 2,
+                     GPIO_PORTA_BASE, GPIO_PIN_1);
+TivaGPIOProducer in2(opts, R_EVENT_ID + 48 + 4, R_EVENT_ID + 49 + 4,
+                     GPIO_PORTA_BASE, GPIO_PIN_2);
+TivaGPIOProducer in3(opts, R_EVENT_ID + 48 + 6, R_EVENT_ID + 49 + 6,
+                     GPIO_PORTA_BASE, GPIO_PIN_3);
+TivaGPIOProducer in4(opts, R_EVENT_ID + 48 + 8, R_EVENT_ID + 49 + 8,
+                     GPIO_PORTA_BASE, GPIO_PIN_4);
+TivaGPIOProducer in5(opts, R_EVENT_ID + 48 + 10, R_EVENT_ID + 49 + 10,
+                     GPIO_PORTA_BASE, GPIO_PIN_5);
+TivaGPIOProducer in6(opts, R_EVENT_ID + 48 + 12, R_EVENT_ID + 49 + 12,
+                     GPIO_PORTA_BASE, GPIO_PIN_6);
+TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14,
+                     GPIO_PORTA_BASE, GPIO_PIN_7);
 
-nmranet::RefreshLoop loop(&g_node, {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
+nmranet::RefreshLoop loop(&g_node,
+                          {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
  * @return 0, should never return
  */
-int appl_main(int argc, char* argv[])
-{
-    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
-    // Bootstraps the alias allocation process.
-    g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
+int appl_main(int argc, char* argv[]) {
+  HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+  // Bootstraps the alias allocation process.
+  g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-    g_executor.thread_body();
-    return 0;
+  g_executor.thread_body();
+  return 0;
 }
