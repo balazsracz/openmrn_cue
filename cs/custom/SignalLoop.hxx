@@ -36,19 +36,28 @@
 #ifndef _BRACZ_CUSTOM_SIGNALLOOP_HXX_
 #define _BRACZ_CUSTOM_SIGNALLOOP_HXX_
 
+#include "nmranet/EventHandlerTemplates.hxx"
+
 namespace bracz_custom {
 
-class SignalLoop : public StateFlowBase, private ByteRangeEventC {
+class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
  public:
-  SignalLoop(SignalPacketBaseInterface* bus, Node *node, uint64_t event_base, int num_signals)
+  /** We wait this long between two refresh cycles or an interactive update and
+   * a refresh cycle. */
+  static const int REFRESH_DELAY_MSEC = 700;
+
+  SignalLoop(SignalPacketBaseInterface* bus, nmranet::Node* node,
+             uint64_t event_base, int num_signals)
       : StateFlowBase(node->interface()),
-        ByteRangeEventC(node, event_base, backingStore_ = malloc(num_signals * 2), num_signals * 2),
+        ByteRangeEventC(node, event_base, backingStore_ = static_cast<uint8_t*>(
+                                              malloc(num_signals * 2)),
+                        num_signals * 2),
         bus_(bus),
         numSignals_(num_signals),
         nextSignal_(0),
         wakeup_(0),
         waiting_(0),
-        timer(this),
+        timer_(this)
   {
     reset_flow(STATE(refresh));
     // Sets all signals to ESTOP.
@@ -58,11 +67,9 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
     lastUpdateTime_ = os_get_time_monotonic();
   }
 
-  ~SignalLoop() {
-    free(backingStore_);
-  }
+  ~SignalLoop() { free(backingStore_); }
 
-  void send_update(Buffer<string> *b, uint8_t address, uint8_t aspect) {
+  void send_update(Buffer<string>* b, uint8_t address, uint8_t aspect) {
     auto& s = *b->data();
     s.clear();
     s.push_back(0);  // broadcast address
@@ -73,7 +80,7 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
   }
 
   Action refresh() {
-    lastUpdateTime_ += MSEC_TO_NSEC(700);
+    lastUpdateTime_ += MSEC_TO_NSEC(REFRESH_DELAY_MSEC);
     long long next_refresh_time = lastUpdateTime_ - os_get_time_monotonic();
     waiting_ = 1;
     nextSignal_ = 0;
@@ -89,7 +96,7 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
     }
     if (wakeup_ || (nextSignal_ >= numSignals_)) {
       wakeup_ = 0;
-      return call_immediately(refresh);
+      return call_immediately(STATE(refresh));
     }
     return allocate_and_call(bus_, STATE(fill_packet));
   }
@@ -97,12 +104,13 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
   Action fill_packet() {
     auto* b = get_allocation_result(bus_);
     b->set_done(n_.reset(this));
-    send_update(b, backingStore_[nextSignal_ << 1], backingStore_[(nextSignal_ << 1) + 1]);
+    send_update(b, backingStore_[nextSignal_ << 1],
+                backingStore_[(nextSignal_ << 1) + 1]);
     return wait_and_call(STATE(start_refresh));
   }
 
   void notify_changed(unsigned offset) OVERRIDE {
-    auto* b = bus->alloc(); // sync alloc -- not very nice.
+    auto* b = bus_->alloc();  // sync alloc -- not very nice.
     send_update(b, backingStore_[offset & ~1], backingStore_[offset | 1]);
     lastUpdateTime_ = os_get_time_monotonic();
     wakeup_ = 1;
@@ -115,8 +123,8 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
 
   unsigned numSignals_ : 8;
   unsigned nextSignal_ : 8;
-  unsigned wakeup_ : 1; // 1 if there was an update from the changed callback
-  unsigned waiting_ : 1;  // unused 
+  unsigned wakeup_ : 1;   // 1 if there was an update from the changed callback
+  unsigned waiting_ : 1;  // unused
 
   BarrierNotifiable n_;
   StateFlowTimer timer_;
@@ -124,4 +132,4 @@ class SignalLoop : public StateFlowBase, private ByteRangeEventC {
 
 }  // namespace bracz_custom
 
-#endif // _BRACZ_CUSTOM_SIGNALLOOP_HXX_
+#endif  // _BRACZ_CUSTOM_SIGNALLOOP_HXX_

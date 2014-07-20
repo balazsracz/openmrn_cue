@@ -60,6 +60,7 @@
 
 #define ENABLE_TIVA_SIGNAL_DRIVER
 #include "custom/TivaSignalPacket.hxx"
+#include "custom/SignalLoop.hxx"
 
 NO_THREAD nt;
 Executor<1> g_executor(nt);
@@ -79,37 +80,8 @@ static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
 
-bracz_custom::TivaSignalPacketSender signalbus(&g_service, 15625, UART1_BASE,
-                                               INT_RESOLVE(INT_UART1_, 0));
-
-class SignalBlinkerFlow : public StateFlowBase {
- public:
-  SignalBlinkerFlow(nmranet::Node* node)
-      : StateFlowBase(node->interface()), sleepData_(this), state_(1) {
-    start_flow(STATE(blinker));
-  }
-
- private:
-  Action blinker() {
-    state_ = !state_;
-    auto* b = signalbus.alloc();
-    auto& s = *b->data();
-    s.clear();
-    s.push_back(0);  // broadcast address
-    s.push_back(3);  // len
-    s.push_back(3 /*SCMD_ASPECT*/);
-    s.push_back(state_ ? 2 : 1);
-    signalbus.send(b);
-    return call_immediately(STATE(handle_sleep));
-  }
-
-  Action handle_sleep() {
-    return sleep_and_call(&sleepData_, MSEC_TO_NSEC(3000), STATE(blinker));
-  }
-
-  StateFlowTimer sleepData_;
-  uint8_t state_;
-};
+bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625, UART1_BASE,
+                                                 INT_RESOLVE(INT_UART1_, 0));
 
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
@@ -244,6 +216,8 @@ TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14,
 nmranet::RefreshLoop loop(&g_node,
                           {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
+bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node, NODE_ID << 16, 8 /* numsignals */);
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -253,7 +227,6 @@ int appl_main(int argc, char* argv[]) {
   HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
   // Bootstraps the alias allocation process.
   g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
-  SignalBlinkerFlow blf(&g_node);
 
   g_executor.thread_body();
   return 0;
