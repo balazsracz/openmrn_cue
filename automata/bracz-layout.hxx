@@ -488,7 +488,14 @@ struct AccBoard {
             name_ + "In7",
             BRACZ_LAYOUT | (a<<8) | 0x3e,
             BRACZ_LAYOUT | (a<<8) | 0x3f,
-            (a & 0xf) - 0xa, OFS_IOB + 1, 7) {}
+            (a & 0xf) - 0xa, OFS_IOB + 1, 7),
+        ActGreenGreen(Act0),
+        ActGreenRed(Act1),
+        ActOraRed(Act2),
+        ActOraGreen(Act3),
+        ActBlueBrown(Act4),
+        ActBlueGrey(Act5)
+  {}
 
 
   // Allocates a new signal variable off this extender board. Returns the base
@@ -508,6 +515,9 @@ struct AccBoard {
   EventBasedVariable Rel0, Rel1, Rel2, Rel3;
   EventBasedVariable Act0, Act1, Act2, Act3, Act4, Act5, Act6, Act7;
   EventBasedVariable In0, In1, In2, In3, In4, In5, In6, In7;
+
+  EventBasedVariable &ActGreenGreen, &ActGreenRed, &ActOraRed, &ActOraGreen,
+                         &ActBlueBrown, &ActBlueGrey;
 };
 
 

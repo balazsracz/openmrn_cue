@@ -55,11 +55,11 @@ flash: bracz-layout3h-logic
 	aut-flash.sh *bin
 
 .PHONY: bin
-#bin: bracz-layout3h-logic
-#	./bracz-layout3h-logic
+bin: bracz-layout3h-logic
+	./bracz-layout3h-logic
 
-bin: convention-logic
-	./convention-logic
+#bin: convention-logic
+#	./convention-logic
 
 
 $(OUTPUTS): %.cout : %
