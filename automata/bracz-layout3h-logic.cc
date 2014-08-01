@@ -47,8 +47,9 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
                             BRACZ_LAYOUT | 0x0012, BRACZ_LAYOUT | 0x0013, 7,
                             30, 4);
 
-I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22), b3(0x23);
+I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22);
 NativeIO n8(0x28);
+AccBoard ba(0x2a);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -61,8 +62,8 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-I2CSignal signal_XXB2_main(&b3, 8, "XX.B2.main");
-I2CSignal signal_XXB2_adv(&b3, 9, "XX.B2.adv");
+I2CSignal signal_XXB2_main(&b1, 8, "XX.B2.main");  // was: b3
+I2CSignal signal_XXB2_adv(&b1, 9, "XX.B2.adv");  // was: b3
 
 I2CSignal signal_A301_main(&b5, 72, "A301.main");
 I2CSignal signal_A301_adv(&b5, 73, "A301.adv");
@@ -102,8 +103,8 @@ I2CSignal signal_B475_adv(&b2, 7, "B475.adv");
 I2CSignal signal_XXB1_main(&b1, 25, "XX.B1.main");
 I2CSignal signal_XXB3_main(&b1, 24, "XX.B3.main");
 
-I2CSignal signal_YYC23_main(&b3, 26, "YY.C23.main");
-I2CSignal signal_YYC23_adv(&b3, 27, "YY.C23.adv");
+I2CSignal signal_YYC23_main(&b1, 26, "YY.C23.main"); // was: b3
+I2CSignal signal_YYC23_adv(&b1, 27, "YY.C23.adv");  // was: b3
 
 I2CSignal signal_YYB2_main(&b7, 4, "YY.B2.main");
 I2CSignal signal_YYB2_adv(&b7, 5, "YY.B2.adv");
@@ -141,14 +142,14 @@ PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen,
                     &signal_A460_main.signal, &signal_A460_adv.signal,
                     &signal_B460_adv.signal, &signal_A475_adv.signal);
 
-PhysicalSignal YYC23(&b3.InBrownBrown, &b3.RelGreen,
+PhysicalSignal YYC23(&ba.In0, &ba.Rel3,
                      &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
 PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen,
                     &signal_XXB1_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal XXB2(&b3.InBrownGrey, &b3.RelBlue,
+PhysicalSignal XXB2(&ba.In3, &ba.Rel2,
                     &signal_XXB2_main.signal, &signal_XXB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal XXB3(&b1.InOraRed, &b1.RelBlue,
@@ -227,7 +228,7 @@ DefAut(blinkaut, brd, {
 
   DefCopy(*rep, ImportVariable(&b1.LedRed));
   DefCopy(*rep, ImportVariable(&b2.LedRed));
-  DefCopy(*rep, ImportVariable(&b3.LedRed));
+  DefCopy(*rep, ImportVariable(&ba.LedGoldSw));
   DefCopy(*rep, ImportVariable(&b5.LedRed));
   DefCopy(*rep, ImportVariable(&b6.LedRed));
   DefCopy(*rep, ImportVariable(&b7.LedRed));
@@ -330,7 +331,7 @@ StandardBlock Block_YYB2(&brd, &YYB2,
                          EventBlock::Allocator(logic.allocator(), "YY.B2", 80));
 StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
                                                               "YY.C23", 80));
-StandardMiddleDetector Det_YYC22(&brd, &b3.InOraGreen,
+StandardMiddleDetector Det_YYC22(&brd, &ba.In1,
                                  EventBlock::Allocator(logic.allocator(),
                                                        "YY.C22", 24, 8));
 
@@ -344,12 +345,12 @@ StandardFixedTurnout Turnout_XXW1(&brd, EventBlock::Allocator(logic.allocator(),
 StandardFixedTurnout Turnout_XXW2(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "XX.W2", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey,
-                      &b3.ActBlueBrown);
+//MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey,
+//                      &b3.ActBlueBrown);
 StandardFixedTurnout Turnout_XXW7(
     &brd, EventBlock::Allocator(logic.allocator(), "XX.W7", 40),
     FixedTurnout::TURNOUT_CLOSED);  // we ignore the magnets here
-MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &b3.ActOraGreen, &b3.ActOraRed);
+MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActBlueGrey, &ba.ActBlueBrown);
 StandardMovableTurnout Turnout_XXW8(
     &brd, EventBlock::Allocator(logic.allocator(), "XX.W8", 40), &Magnet_XXW8);
 
