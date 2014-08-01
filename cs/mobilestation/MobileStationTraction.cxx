@@ -60,7 +60,8 @@ class TractionImpl : public IncomingFrameFlow {
   TractionImpl(MobileStationTraction* s)
       : IncomingFrameFlow(s),
         tractionClient_(service()->nmranet_if(), service()->node()),
-        timer_(this) {
+        timer_(this),
+        lastEstopState_(0xFF) {
     service()->mosta_if()->frame_dispatcher()->register_handler(
         this, TRACTION_SET_ID, TRACTION_SET_MASK);
     service()->mosta_if()->frame_dispatcher()->register_handler(
@@ -102,9 +103,9 @@ class TractionImpl : public IncomingFrameFlow {
     uint32_t can_id = message()->data()->id();
 
     if ((can_id & TRACTION_ESTOP_MASK) == (TRACTION_ESTOP_ID & TRACTION_ESTOP_MASK)) {
-      LOG(ERROR, "estop command received %d", frame().data[2]);
       if (frame().can_dlc == 3 && frame().data[0] == 1 &&
-          frame().data[1] == 0) {
+          frame().data[1] == 0 && lastEstopState_ != frame().data[2]) {
+        LOG(ERROR, "estop command %d", frame().data[2]);
         return allocate_and_call(
             service()->nmranet_if()->addressed_message_write_flow(),
             STATE(send_estop_command));
@@ -137,6 +138,7 @@ class TractionImpl : public IncomingFrameFlow {
         nmranet::EventIdToBuffer(frame().data[2] ? EVENT_POWER_OFF
                                                  : EVENT_POWER_ON));
     service()->nmranet_if()->global_message_write_flow()->send(b);
+    lastEstopState_ = frame().data[2];
     return release_and_exit();
   }
 
@@ -295,6 +297,7 @@ class TractionImpl : public IncomingFrameFlow {
   StateFlowTimer timer_;
   // The third byte of the Mosta response.
   uint8_t responseByte_;
+  uint8_t lastEstopState_;
 };
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
