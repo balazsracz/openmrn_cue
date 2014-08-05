@@ -208,7 +208,7 @@ protected:
     fprintf(stderr, "Producing event %016llx on node %p\n", eventid, node_);
     SyncNotifiable n;
     writeHelper_.WriteAsync(node_, nmranet::Defs::MTI_EVENT_REPORT, nmranet::WriteHelper::global(),
-                            nmranet::EventIdToBuffer(eventid), &n);
+                            nmranet::eventid_to_buffer(eventid), &n);
     n.wait_for_notification();
   }
 

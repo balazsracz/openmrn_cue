@@ -18,7 +18,7 @@ class MockPacketQueue : public PacketFlowInterface {
   }
 };
 
-class UpdateProcessorTest : public nmranet::AsyncCanTest {
+class UpdateProcessorTest : public AsyncCanTest {
  protected:
   UpdateProcessorTest() : updateProcessor_(&g_service, &trackSendQueue_) {}
 
@@ -32,11 +32,11 @@ class UpdateProcessorTest : public nmranet::AsyncCanTest {
 
   void wait() {
     usleep(10000);
-    nmranet::AsyncCanTest::wait();
+    AsyncCanTest::wait();
   }
 
   void qwait() {
-    nmranet::AsyncCanTest::wait();
+    AsyncCanTest::wait();
   }
 
   StrictMock<MockPacketQueue> trackSendQueue_;

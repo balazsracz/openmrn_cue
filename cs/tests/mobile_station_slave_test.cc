@@ -3,7 +3,7 @@
 #include "tests/mock_packet_handler.hxx"
 #include "mobilestation/MobileStationSlave.hxx"
 
-class MostaSlaveTest : public nmranet::AsyncCanTest {
+class MostaSlaveTest : public AsyncCanTest {
  protected:
   MostaSlaveTest()
       : device_(&g_service, &can_hub0),
