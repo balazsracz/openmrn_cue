@@ -1,3 +1,7 @@
+#ifdef TARGET_LPC2368
+#include "cmsis.h"
+#endif
+
 #include "src/cs_config.h"
 
 #define LOGLEVEL WARNING
@@ -6,9 +10,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#ifdef TARGET_LPC2368
-#include "cmsis.h"
-#endif
 
 #include "host_packet.h"
 
