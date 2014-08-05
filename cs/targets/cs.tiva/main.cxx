@@ -71,6 +71,17 @@
 #include "dcc/Loco.hxx"
 #include "mobilestation/TrainDb.hxx"
 
+#include "TivaDev.hxx"
+
+#include "inc/hw_types.h"
+#include "inc/hw_memmap.h"
+#include "inc/hw_ints.h"
+
+
+TivaDCC dcc_hw("/dev/mainline", TIMER1_BASE, TIMER0_BASE, INT_TIMER0A, 16,
+               (56 << 1) * (configCPU_CLOCK_HZ / 1000000),
+               (100 << 1) * (configCPU_CLOCK_HZ / 1000000), 2, 80);
+
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
 
@@ -184,15 +195,30 @@ static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
 //nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(&g_if_can);
 
+/*
 dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
 dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
 nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
+*/
+
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 mobilestation::TrainDb train_db;
 //mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 
+extern "C" {
+extern void enable_dcc();
+extern void disable_dcc();
+
+/** Timer interrupt for DCC packet handling.
+ */
+void timer0a_interrupt_handler(void)
+{
+    dcc_hw.interrupt_handler();
+}
+
+}
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -210,8 +236,8 @@ int appl_main(int argc, char* argv[])
 
     nmranet::Velocity v;
     v.set_mph(29);
-    train_Re460.set_speed(v);
-    train_Am843.set_speed(v);
+    //XXtrain_Re460.set_speed(v);
+    //XXtrain_Am843.set_speed(v);
 
     /*int fd = open("/dev/can0", O_RDWR);
     ASSERT(fd >= 0);
@@ -227,6 +253,9 @@ int appl_main(int argc, char* argv[])
 
     //AutomataRunner runner(&g_node, automata_code);
     //resume_all_automata();
+
+    // Starts dcc output.
+    enable_dcc();
 
     g_executor.thread_body();
     return 0;
