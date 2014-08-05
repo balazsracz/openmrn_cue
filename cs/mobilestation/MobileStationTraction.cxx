@@ -135,8 +135,8 @@ class TractionImpl : public IncomingFrameFlow {
         service()->nmranet_if()->global_message_write_flow());
     b->data()->reset(
         nmranet::Defs::MTI_EVENT_REPORT, service()->node()->node_id(),
-        nmranet::eventid_to_buffer(frame().data[2] ? EVENT_POWER_OFF
-                                                 : EVENT_POWER_ON));
+        nmranet::eventid_to_buffer(frame().data[2] ? nmranet::TractionDefs::EMERGENCY_STOP_EVENT
+                                                   : nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
     service()->nmranet_if()->global_message_write_flow()->send(b);
     lastEstopState_ = frame().data[2];
     return release_and_exit();
