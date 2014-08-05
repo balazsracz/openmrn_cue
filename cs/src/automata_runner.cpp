@@ -27,6 +27,7 @@
 #include "nmranet/WriteHelper.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/EventService.hxx"
+#include "nmranet/TractionDefs.hxx"
 
 // This write helper will only ever be used synchronously.
 static nmranet::WriteHelper automata_write_helper;
@@ -381,12 +382,24 @@ bool AutomataRunner::eval_condition(insn_t insn) {
   if ((insn & _IF_MISC_MASK) == _IF_MISC_BASE) {
     switch (insn) {
       case _IF_EMERGENCY_STOP: {
-        DccLoop_EmergencyStop();
+        auto* b =
+            openmrn_node_->interface()->global_message_write_flow()->alloc();
+        b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT,
+                         openmrn_node_->node_id(),
+                         nmranet::eventid_to_buffer(
+                             nmranet::TractionDefs::EMERGENCY_STOP_EVENT));
+        openmrn_node_->interface()->global_message_write_flow()->send(b);
         return true;
       }
       case _IF_EMERGENCY_START: {
-        diewith(CS_DIE_UNSUPPORTED);
-        return false;
+        auto* b =
+            openmrn_node_->interface()->global_message_write_flow()->alloc();
+        b->data()->reset(
+            nmranet::Defs::MTI_EVENT_REPORT, openmrn_node_->node_id(),
+            nmranet::eventid_to_buffer(
+                nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
+        openmrn_node_->interface()->global_message_write_flow()->send(b);
+        return true;
       }
       case _IF_CLEAR_TRAIN: {
         train_ids[aut_srcplace_] = 0;
