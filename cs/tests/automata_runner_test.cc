@@ -543,3 +543,25 @@ TEST_F(AutomataTests, SignalVar) {
 TEST_F(AutomataTests, EmptyTest) {
   wait_for_event_thread();
 }
+
+TEST_F(AutomataTests, EmergencyStop) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().IfSetEStop();
+    });
+  SetupRunner(&brd);
+  expect_packet(":X195B422AN010100000000FFFF;");
+  runner_->RunAllAutomata();
+  wait_for_event_thread();
+}
+
+TEST_F(AutomataTests, EmergencyStart) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().IfClearEStop();
+    });
+  SetupRunner(&brd);
+  expect_packet(":X195B422AN010100000000FFFE;");
+  runner_->RunAllAutomata();
+  wait_for_event_thread();
+}

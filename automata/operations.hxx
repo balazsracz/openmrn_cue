@@ -204,6 +204,16 @@ public:
     return *this;
   }
 
+  Op& IfSetEStop() {
+    ifs_.push_back(_IF_EMERGENCY_STOP);
+    return *this;
+  }
+
+  Op& IfClearEStop() {
+    ifs_.push_back(_IF_EMERGENCY_START);
+    return *this;
+  }
+
   Op& RunCallback(OpCallback* cb) {
     if (cb) cb->Run(this);
     return *this;
