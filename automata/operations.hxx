@@ -214,23 +214,38 @@ public:
     return *this;
   }
 
-  Op& IfTrainIsForward() {
-    ifs_.push_back(_IF_TRAIN_IS_FORWARD);
+  Op& IfGetSpeed() {
+    ifs_.push_back(_GET_TRAIN_SPEED);
     return *this;
   }
 
-  Op& IfTrainIsReverse() {
-    ifs_.push_back(_IF_TRAIN_IS_REVERSE);
+  Op& IfSetSpeed() {
+    ifs_.push_back(_SET_TRAIN_SPEED);
     return *this;
   }
 
-  Op& IfTrainSetForward() {
-    ifs_.push_back(_SET_TRAIN_FORWARD);
+  Op& IfSpeedIsForward() {
+    ifs_.push_back(_IF_FORWARD);
     return *this;
   }
 
-  Op& IfTrainSetReverse() {
-    ifs_.push_back(_SET_TRAIN_REVERSE);
+  Op& IfSpeedIsReverse() {
+    ifs_.push_back(_IF_REVERSE);
+    return *this;
+  }
+
+  Op& ActSpeedForward() {
+    acts_.push_back(_ACT_SPEED_FORWARD);
+    return *this;
+  }
+
+  Op& ActSpeedReverse() {
+    acts_.push_back(_ACT_SPEED_REVERSE);
+    return *this;
+  }
+
+  Op& ActDirectionFlip() {
+    acts_.push_back(_ACT_SPEED_FLIP);
     return *this;
   }
 

@@ -403,35 +403,18 @@ bool AutomataRunner::eval_condition(insn_t insn) {
         openmrn_node_->interface()->global_message_write_flow()->send(b);
         return true;
       }
-      case _IF_TRAIN_IS_FORWARD: {
-        nmranet::Velocity v = get_train_speed();
-        if (v.isnan()) {
-          return false;
-        }
-        return (v.direction() == nmranet::Velocity::FORWARD);
+      case _GET_TRAIN_SPEED: {
+        aut_speed_ = get_train_speed();
+        return !aut_speed_.isnan();
       }
-      case _IF_TRAIN_IS_REVERSE: {
-        nmranet::Velocity v = get_train_speed();
-        if (v.isnan()) {
-          return false;
-        }
-        return (v.direction() == nmranet::Velocity::REVERSE);
+      case _IF_FORWARD: {
+        return (aut_speed_.direction() == nmranet::Velocity::FORWARD);
       }
-      case _SET_TRAIN_FORWARD: {
-        nmranet::Velocity v = get_train_speed();
-        if (v.isnan()) {
-          return false;
-        }
-        v.forward();
-        return set_train_speed(v);
+      case _IF_REVERSE: {
+        return (aut_speed_.direction() == nmranet::Velocity::REVERSE);
       }
-      case _SET_TRAIN_REVERSE: {
-        nmranet::Velocity v = get_train_speed();
-        if (v.isnan()) {
-          return false;
-        }
-        v.reverse();
-        return set_train_speed(v);
+      case _SET_TRAIN_SPEED: {
+        return set_train_speed(aut_speed_);
       }
     }
   }
@@ -553,7 +536,20 @@ void AutomataRunner::eval_action(insn_t insn) {
         }
         break;
       }
-        // default: HALT;
+      case _ACT_SPEED_FORWARD: {
+        aut_speed_.forward();
+        break;
+      }
+      case _ACT_SPEED_REVERSE: {
+        aut_speed_.reverse();
+        break;
+      }
+      case _ACT_SPEED_FLIP: {
+        aut_speed_.set_direction(1-aut_speed_.direction());
+        break;
+      }
+      default:
+        diewith(CS_DIE_AUT_HALT);
     }
   } else {
     diewith(CS_DIE_AUT_HALT);
@@ -592,6 +588,31 @@ void AutomataRunner::eval_action2(insn_t insn, insn_t arg) {
       unsigned offset = arg >> 5;
       unsigned var = arg & 31;
       aut_signal_aspect_ = GetBit(var)->GetState(offset);
+      return;
+    }
+    case _ACT_GET_VAR_VALUE_SPEED: {
+      unsigned offset = arg >> 5;
+      unsigned var = arg & 31;
+      arg = GetBit(var)->GetState(offset);
+    } /* fall through */
+    case _ACT_IMM_SPEED: {
+      uint8_t value = arg;
+      aut_speed_ = 0;
+      aut_speed_.set_mph(value & 0x7f);
+      if (value & 0x80) {
+        aut_speed_.reverse();
+      } else {
+        aut_speed_.forward();
+      }
+      return;
+    }
+    case _ACT_SCALE_SPEED: {
+      if (arg & 0x80) {
+        aut_speed_.set_direction(1-aut_speed_.direction());
+      }
+      float scale = arg & 0x7f;
+      scale /= 32;
+      aut_speed_ *= scale;
       return;
     }
   }

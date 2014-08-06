@@ -205,6 +205,7 @@ private:
     uint8_t aut_srcplace_; //< "current" (or source) place of train.
     uint8_t aut_trainid_;  //< train id for absolute identification of trains.
     uint8_t aut_signal_aspect_; //< signal aspect for the next set-signal cmd.
+    nmranet::Velocity aut_speed_; //< speed for next set-speed cmd.
 
     uint64_t aut_eventids_[2];  //< Eventid accumulators for declaring bits.
 

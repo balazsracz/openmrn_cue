@@ -576,8 +576,8 @@ TEST_F(AutomataTrainTest, SpeedIsFwd) {
       auto mb1 = ImportVariable(&mbit1);
       auto mb2 = ImportVariable(&mbit2);
       Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
-      Def().IfTrainIsForward().ActReg1(mb1);
-      Def().IfTrainIsReverse().ActReg1(mb2);
+      Def().IfGetSpeed().IfSpeedIsForward().ActReg1(mb1);
+      Def().IfSpeedIsReverse().ActReg1(mb2);
     });
   SetupRunner(&brd);
   nmranet::Velocity v(13.5);
@@ -610,10 +610,12 @@ TEST_F(AutomataTrainTest, SpeedReverse) {
       auto mb2 = ImportVariable(&mbit2);
       Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
       Def().ActReg0(mb1).ActReg0(mb2);
-      Def().IfTrainIsForward().ActReg1(mb1);
-      Def().IfTrainIsReverse().ActReg1(mb2);
-      Def().IfReg1(*mb1).IfTrainSetReverse().ActReg0(mb1);
-      Def().IfReg1(*mb2).IfTrainSetForward().ActReg0(mb2);
+      Def().IfGetSpeed();
+      Def().IfSpeedIsForward().ActReg1(mb1);
+      Def().IfSpeedIsReverse().ActReg1(mb2);
+      Def().IfReg1(*mb1).ActSpeedReverse().ActReg0(mb1);
+      Def().IfReg1(*mb2).ActSpeedForward().ActReg0(mb2);
+      Def().IfSetSpeed();
     });
   SetupRunner(&brd);
   nmranet::Velocity v(13.5);
