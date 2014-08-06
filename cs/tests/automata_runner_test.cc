@@ -565,3 +565,70 @@ TEST_F(AutomataTests, EmergencyStart) {
   runner_->RunAllAutomata();
   wait_for_event_thread();
 }
+
+TEST_F(AutomataTrainTest, CreateDestroy) {}
+
+TEST_F(AutomataTrainTest, SpeedIsFwd) {
+  Board brd;
+  static FakeBit mbit1(this);
+  static FakeBit mbit2(this);
+  DefAut(testaut1, brd, {
+      auto mb1 = ImportVariable(&mbit1);
+      auto mb2 = ImportVariable(&mbit2);
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().IfTrainIsForward().ActReg1(mb1);
+      Def().IfTrainIsReverse().ActReg1(mb2);
+    });
+  SetupRunner(&brd);
+  nmranet::Velocity v(13.5);
+  v.forward();
+  trainImpl_.set_speed(v);
+  mbit1.Set(false);
+  mbit2.Set(false);
+  runner_->RunAllAutomata();
+
+  EXPECT_TRUE(mbit1.Get());
+  EXPECT_FALSE(mbit2.Get());
+
+  v.reverse();
+  trainImpl_.set_speed(v);
+  mbit1.Set(false);
+  mbit2.Set(false);
+  runner_->RunAllAutomata();
+
+  EXPECT_FALSE(mbit1.Get());
+  EXPECT_TRUE(mbit2.Get());
+  EXPECT_TRUE(mbit2.Get());
+}
+
+TEST_F(AutomataTrainTest, SpeedReverse) {
+  Board brd;
+  static FakeBit mbit1(this);
+  static FakeBit mbit2(this);
+  DefAut(testaut1, brd, {
+      auto mb1 = ImportVariable(&mbit1);
+      auto mb2 = ImportVariable(&mbit2);
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActReg0(mb1).ActReg0(mb2);
+      Def().IfTrainIsForward().ActReg1(mb1);
+      Def().IfTrainIsReverse().ActReg1(mb2);
+      Def().IfReg1(*mb1).IfTrainSetReverse().ActReg0(mb1);
+      Def().IfReg1(*mb2).IfTrainSetForward().ActReg0(mb2);
+    });
+  SetupRunner(&brd);
+  nmranet::Velocity v(13.5);
+  v.forward();
+  trainImpl_.set_speed(v);
+  runner_->RunAllAutomata(); wait();
+
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+}

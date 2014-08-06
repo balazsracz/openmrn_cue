@@ -204,6 +204,36 @@ public:
     return *this;
   }
 
+  Op& ActSetId(uint64_t id) {
+    acts_.push_back(_ACT_SET_EVENTID);
+    // Set event id 0 from 0 with literal bytes.
+    acts_.push_back(0b00000111);
+    for (int b = 56; b >= 0; b -= 8) {
+      acts_.push_back((id >> b) & 0xff);
+    }
+    return *this;
+  }
+
+  Op& IfTrainIsForward() {
+    ifs_.push_back(_IF_TRAIN_IS_FORWARD);
+    return *this;
+  }
+
+  Op& IfTrainIsReverse() {
+    ifs_.push_back(_IF_TRAIN_IS_REVERSE);
+    return *this;
+  }
+
+  Op& IfTrainSetForward() {
+    ifs_.push_back(_SET_TRAIN_FORWARD);
+    return *this;
+  }
+
+  Op& IfTrainSetReverse() {
+    ifs_.push_back(_SET_TRAIN_REVERSE);
+    return *this;
+  }
+
   Op& IfSetEStop() {
     ifs_.push_back(_IF_EMERGENCY_STOP);
     return *this;

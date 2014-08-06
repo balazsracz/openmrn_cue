@@ -18,6 +18,8 @@
 
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/TractionTrain.hxx"
+#include "nmranet/TractionTestTrain.hxx"
 
 using ::testing::_;
 using ::testing::Return;
@@ -299,4 +301,22 @@ protected:
 
   GlobalEventListener all_listener_;
   nmranet::WriteHelper writeHelper_;
+};
+
+class AutomataTrainTest : public AutomataNodeTests {
+ protected:
+  AutomataTrainTest() : trainService_(ifCan_.get()), trainImpl_(0x1384) {
+    expect_packet(":X1070133AN060100001384;");
+    expect_packet(":X1910033AN060100001384;");
+    create_allocated_alias();
+    expect_next_alias_allocation();
+    trainNode_.reset(new nmranet::TrainNode(&trainService_, &trainImpl_));
+    wait();
+  }
+
+  ~AutomataTrainTest() { wait(); }
+
+  nmranet::TrainService trainService_;
+  nmranet::LoggingTrain trainImpl_;
+  std::unique_ptr<nmranet::TrainNode> trainNode_;
 };
