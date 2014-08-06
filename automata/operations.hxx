@@ -2,6 +2,7 @@
 #define _bracz_train_automata_operations_hxx_
 
 #include <initializer_list>
+#include <math.h>
 
 #include "system.hxx"
 #include "../cs/src/automata_defs.h"
@@ -211,6 +212,32 @@ public:
     for (int b = 56; b >= 0; b -= 8) {
       acts_.push_back((id >> b) & 0xff);
     }
+    return *this;
+  }
+
+  /** Sets the speed accumulator. max value of v is 127. */
+  Op& ActLoadSpeed(bool is_forward, uint8_t mph) {
+    if (mph > 127) mph = 127;
+    uint8_t arg = mph;
+    if (!is_forward) {
+      arg |= 0x80;
+    }
+    acts_.push_back(_ACT_IMM_SPEED);
+    acts_.push_back(arg);
+    return *this;
+  }
+
+  /** Multiplies the speed accumulator with a value. Value will be
+   * downsampled. Gives an error if too small or too high value is
+   * requested. negative values will reverse the loco. */
+  Op& ActScaleSpeed(float scale) {
+    float preround = fabsf(scale) * 32;
+    int round = preround;
+    HASSERT(round <= 0x7F);
+    uint8_t arg = round & 0x7F;
+    if (scale < 0) arg |= 0x80;
+    acts_.push_back(_ACT_SCALE_SPEED);
+    acts_.push_back(arg);
     return *this;
   }
 

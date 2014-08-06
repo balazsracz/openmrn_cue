@@ -634,3 +634,74 @@ TEST_F(AutomataTrainTest, SpeedReverse) {
   v = trainImpl_.get_speed();
   EXPECT_EQ(v.REVERSE, v.direction());
 }
+
+TEST_F(AutomataTrainTest, SpeedReverseFlip) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().IfGetSpeed().ActDirectionFlip();
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  nmranet::Velocity v(13.5);
+  v.forward();
+  trainImpl_.set_speed(v);
+  runner_->RunAllAutomata(); wait();
+
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+  EXPECT_EQ(13.5, v.speed());
+}
+
+TEST_F(AutomataTrainTest, SpeedImmediateSet) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActLoadSpeed(true, 37);
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata(); wait();
+  nmranet::Velocity v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+  EXPECT_LT(36.5, v.mph());
+  EXPECT_GT(37.5, v.mph());
+}
+
+TEST_F(AutomataTrainTest, SpeedScale) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActLoadSpeed(true, 13).ActScaleSpeed(-2.0);
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata(); wait();
+  nmranet::Velocity v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+  EXPECT_LT(25.5, v.mph());
+  EXPECT_GT(26.5, v.mph());
+}
+
+TEST_F(AutomataTrainTest, SpeedScaleDown) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActLoadSpeed(true, 100).ActScaleSpeed(0.125);
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata(); wait();
+  nmranet::Velocity v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+  EXPECT_LT(12, v.mph());
+  EXPECT_GT(13, v.mph());
+}
