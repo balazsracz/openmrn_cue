@@ -24,6 +24,8 @@
 #include "dcc-master.h"
 
 #include "utils/logging.h"
+#include "nmranet/Defs.hxx"
+#include "nmranet/If.hxx"
 #include "nmranet/WriteHelper.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/EventService.hxx"
@@ -401,47 +403,35 @@ bool AutomataRunner::eval_condition(insn_t insn) {
         openmrn_node_->interface()->global_message_write_flow()->send(b);
         return true;
       }
-      case _IF_CLEAR_TRAIN: {
-        train_ids[aut_srcplace_] = 0;
-        return true;
-      }
       case _IF_TRAIN_IS_FORWARD: {
-        if (DccLoop_IsUnknownLoco(train_ids[aut_srcplace_])) return false;
-        if (DccLoop_IsLocoReversed(train_ids[aut_srcplace_])) {
+        nmranet::Velocity v = get_train_speed();
+        if (v.isnan()) {
           return false;
         }
-        return true;
+        return (v.direction() == nmranet::Velocity::FORWARD);
       }
       case _IF_TRAIN_IS_REVERSE: {
-        if (DccLoop_IsUnknownLoco(train_ids[aut_srcplace_])) return false;
-        if (!DccLoop_IsLocoReversed(train_ids[aut_srcplace_])) {
+        nmranet::Velocity v = get_train_speed();
+        if (v.isnan()) {
           return false;
         }
-        return true;
+        return (v.direction() == nmranet::Velocity::REVERSE);
       }
       case _SET_TRAIN_FORWARD: {
-        if (DccLoop_IsUnknownLoco(train_ids[aut_srcplace_])) return false;
-        DccLoop_SetLocoReversed(train_ids[aut_srcplace_], 0);
-        return true;
+        nmranet::Velocity v = get_train_speed();
+        if (v.isnan()) {
+          return false;
+        }
+        v.forward();
+        return set_train_speed(v);
       }
       case _SET_TRAIN_REVERSE: {
-        if (DccLoop_IsUnknownLoco(train_ids[aut_srcplace_])) return false;
-        DccLoop_SetLocoReversed(train_ids[aut_srcplace_], 1);
-        return true;
-      }
-      case _IF_TRAIN_IS_PUSHPULL: {
-        if (DccLoop_IsUnknownLoco(train_ids[aut_srcplace_])) return false;
-        if (DccLoop_IsLocoPushPull(train_ids[aut_srcplace_])) {
-          return true;
+        nmranet::Velocity v = get_train_speed();
+        if (v.isnan()) {
+          return false;
         }
-        return false;
-      }
-      case _IF_TRAIN_IS_NOT_PUSHPULL: {
-        if (DccLoop_IsUnknownLoco(train_ids[aut_srcplace_])) return false;
-        if (!DccLoop_IsLocoPushPull(train_ids[aut_srcplace_])) {
-          return true;
-        }
-        return false;
+        v.reverse();
+        return set_train_speed(v);
       }
     }
   }
@@ -608,6 +598,51 @@ void AutomataRunner::eval_action2(insn_t insn, insn_t arg) {
   diewith(CS_DIE_AUT_HALT);
 }
 
+bool AutomataRunner::set_train_speed(nmranet::Velocity v) {
+  auto* b = openmrn_node_->interface()->addressed_message_write_flow()->alloc();
+  b->data()->reset(nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND,
+                   openmrn_node_->node_id(),
+                   {aut_eventids_[0], 0},
+                   nmranet::TractionDefs::speed_set_payload(v));
+  openmrn_node_->interface()->addressed_message_write_flow()->send(b);
+  return true;
+}
+
+nmranet::Velocity AutomataRunner::get_train_speed() {
+  HASSERT(traction_.get());
+  auto* b = openmrn_node_->interface()->addressed_message_write_flow()->alloc();
+  b->data()->reset(nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND,
+                   openmrn_node_->node_id(),
+                   {aut_eventids_[0], 0},
+                   nmranet::TractionDefs::speed_get_payload());
+  /** @TODO(balazs.racz) This timeout is way too long -- we want to run
+   * automatas at 10 Hz. We really should not block the current thread for so
+   * long. Ideally of course this response would arrive much faster, like
+   * within a msec if local CS, or a few msecs if remote. */
+  traction_->timer_.start(MSEC_TO_NSEC(100));
+  traction_->resp_handler_.wait_for_response(b->data()->dst,
+                                             b->data()->payload[0],
+                                             &traction_->timer_);
+  openmrn_node_->interface()->addressed_message_write_flow()->send(b);
+  traction_->timer_.wait_for_notification();
+  traction_->resp_handler_.wait_timeout();
+  if (!traction_->resp_handler_.response()) {
+    LOG(VERBOSE,
+        "automata: Timeout waiting for traction response from 0x%016" PRIx64
+        ".", aut_eventids_[0]);
+    return nmranet::nan_to_speed();
+  } else {
+    nmranet::Velocity r;
+    if (!nmranet::TractionDefs::speed_get_parse_last(
+             traction_->resp_handler_.response()->data()->payload, &r)) {
+      LOG(WARNING, "automata: Invalid traction response from 0x%016" PRIx64 ".",
+          aut_eventids_[0]);
+      return nmranet::nan_to_speed();
+    }
+    return r;
+  }
+}
+
 void AutomataRunner::WaitForWakeup() { os_sem_wait(&automata_sem_); }
 
 void AutomataRunner::TriggerRun() { os_sem_post(&automata_sem_); }
@@ -677,6 +712,10 @@ void* automata_thread(void* arg) {
   return NULL;
 }
 
+AutomataRunner::Traction::Traction(nmranet::Node* node)
+    : resp_handler_(node->interface(), node),
+      timer_(node->interface()->executor()->active_timers()) {}
+
 AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
                                bool with_thread)
     : ip_(0),
@@ -686,6 +725,7 @@ AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
       base_pointer_(base_pointer),
       current_automata_(NULL),
       openmrn_node_(node),
+      traction_(node ? new Traction(node) : nullptr),
       pending_ticks_(0),
       request_thread_exit_(false),
       thread_exited_(false) {

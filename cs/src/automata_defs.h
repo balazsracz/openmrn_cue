@@ -53,14 +53,13 @@
 
 #define _IF_EMERGENCY_STOP (_IF_MISC_BASE | 0)
 #define _IF_EMERGENCY_START (_IF_MISC_BASE | 1)
-#define _IF_CLEAR_TRAIN (_IF_MISC_BASE | 2)
+// EMPTY (_IF_MISC_BASE | 2)
 #define _IF_TRAIN_IS_FORWARD (_IF_MISC_BASE | 3)
 #define _IF_TRAIN_IS_REVERSE (_IF_MISC_BASE | 4)
 #define _SET_TRAIN_FORWARD (_IF_MISC_BASE | 5)
 #define _SET_TRAIN_REVERSE (_IF_MISC_BASE | 6)
-#define _IF_TRAIN_IS_PUSHPULL (_IF_MISC_BASE | 7)
+// EMPTY (_IF_MISC_BASE | 7)
 #define _SYNC_ARG (_IF_MISC_BASE | 8)
-#define _IF_TRAIN_IS_NOT_PUSHPULL (_IF_MISC_BASE | 9)
 
 
 // one-argument misc operations.

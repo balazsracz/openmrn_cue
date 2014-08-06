@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <map>
+#include <memory>
 #include <vector>
 using std::map;
 using std::vector;
@@ -14,6 +15,10 @@ using std::vector;
 #include "base.h"
 #include "automata_control.h"
 #include "automata_defs.h"
+
+#include "nmranet/Velocity.hxx"
+#include "nmranet/TractionClient.hxx"
+#include "executor/Timer.hxx"
 
 typedef uint16_t aut_offset_t;
 typedef uint8_t insn_t;
@@ -186,6 +191,14 @@ private:
     //! Changes one of the eventid accumulators.
     void insn_load_event_id();
 
+    /** @returns the last commanded speed of the current loco, or NAN if there
+     * was an error getting the speed. */
+    nmranet::Velocity get_train_speed();
+
+    /** Sets the speed of the current loco.
+     * @returns true on success. */
+    bool set_train_speed(nmranet::Velocity speed);
+
     //! Instruction pointer.
     aut_offset_t ip_;
 
@@ -214,6 +227,13 @@ private:
     Automata* current_automata_;
     //! The OpenMRN node used for generating sourced events.
     nmranet::Node* openmrn_node_;
+    struct Traction {
+        Traction(nmranet::Node* node);
+        //! Helper flow for traction requests.
+        nmranet::TractionResponseHandler resp_handler_;
+        SyncTimeout timer_;
+    };
+    std::unique_ptr<Traction> traction_;
 
     //! Counts how many ticks we need to apply in the next run of the automatas.
     int pending_ticks_;
