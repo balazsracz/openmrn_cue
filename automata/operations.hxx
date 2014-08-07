@@ -13,10 +13,9 @@ namespace automata {
 #define GET_INVERSE_MASK(x) ( (~(x)) & ((x) - 1) ) 
 
 struct StateRef {
-    StateRef(int id) {
-        assert((id & GET_INVERSE_MASK(_IF_STATE_MASK)) == id);
-        state = id;
-    }
+    constexpr StateRef(int id)
+        : state(id) {}
+
     int state;
 };
 
@@ -115,9 +114,10 @@ public:
       return *this;
     }
 
-    Op& IfState(StateRef& state) {
-        ifs_.push_back(_IF_STATE | state.state);
-        return *this;
+    Op& IfState(const StateRef& state) {
+      HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
+      ifs_.push_back(_IF_STATE | state.state);
+      return *this;
     }
 
     Op& IfReg0(const Automata::LocalVariable& var) {
@@ -148,9 +148,10 @@ public:
         return *this;
     }
 
-    Op& ActState(StateRef& state) {
-        acts_.push_back(_ACT_STATE | state.state);
-        return *this;
+    Op& ActState(const StateRef& state) {
+      HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
+      acts_.push_back(_ACT_STATE | state.state);
+      return *this;
     }
 
     Op& IfTimerNotDone() {
