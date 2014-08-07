@@ -96,6 +96,10 @@ public:
         output->append((char*)acts.data(), acts.size());
     }
 
+    Op& ActImportVariable(const GlobalVariable& var, const LocalVariable& lv) {
+      return ActImportVariable(var, lv.id);
+    }
+
     Op& ActImportVariable(const GlobalVariable& var, int local_id) {
       acts_.push_back(_ACT_IMPORT_VAR);
       uint8_t b1 = 0;
