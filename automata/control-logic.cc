@@ -694,5 +694,6 @@ MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVaria
   aut->AddMagnet(this);
 }
 
+void TrainSchedule::HandleInit(Automata* aut) {}
 
 }  // namespace automata

@@ -1581,4 +1581,32 @@ TEST_F(LogicTest, Magnets) {
   EXPECT_FALSE(v1s1.Get());
 }
 
+//class LogicTrainTest : public LogicTest, 
+
+
+TEST_F(LogicTest, ScheduleStraight) {
+  TestDetectorBlock before(this, "before");
+  static StraightTrackLong mid(alloc());
+  DefAut(autmid, brd, { mid.RunAll(this); });
+  TestBlock first(this, "first");
+  TestBlock second(this, "second");
+  static StraightTrackLong after(alloc());
+
+  BindSequence({&before.b, &first.b, &mid, &second.b, &after});
+
+  ASSERT_EQ(first.b.signal_.side_b(), mid.side_a()->binding());
+
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(Board* b, EventBlock::Allocator* alloc)
+        : TrainSchedule("mytrain", b, nmranet::TractionDefs::NODE_ID_DCC | 0x1384, alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 8)) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      
+    }
+
+  } train_aut(&brd, block_.allocator());
+}
+
 }  // namespace automata

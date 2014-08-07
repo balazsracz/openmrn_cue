@@ -710,6 +710,44 @@ class StandardFixedTurnout {
   StandardPluginAutomata aut_;
 };
 
+class TrainSchedule : public virtual AutomataPlugin {
+ public:
+  TrainSchedule(const string &name, Board *brd, uint64_t train_node_id,
+                EventBlock::Allocator &&perm_alloc,
+                EventBlock::Allocator &&alloc)
+      : train_node_id_(train_node_id),
+        permanent_alloc_(std::forward<EventBlock::Allocator>(perm_alloc)),
+        alloc_(std::forward<EventBlock::Allocator>(alloc)),
+        aut_(name, brd, this) {
+    AddAutomataPlugin(9900, NewCallbackPtr(this, &TrainSchedule::HandleInit));
+    AddAutomataPlugin(500, NewCallbackPtr(this, &TrainSchedule::RunTransition));
+  }
+
+  // Performs the steps needed for the transition of train to the next location.
+  virtual void RunTransition(Automata *aut) = 0;
+
+  // ImportNextBlock -> sets localvariables based on the current state.
+  // ImportLastBlock -> sets localvariables based on the current state.
+  //
+
+ private:
+  // Handles state == StInit. Sets the train into a known state at startup,
+  // reading the externally provided bits for figuring out where the train is.
+  void HandleInit(Automata *aut);
+
+  // The train that we are driving.
+  uint64_t train_node_id_;
+
+  // These bits should be used for unreconstructible state.
+  EventBlock::Allocator permanent_alloc_;
+  // These bits should be used for temporary state.
+  EventBlock::Allocator alloc_;
+
+  StandardPluginAutomata aut_;
+
+  Automata::LocalVariable previous_block_;
+};
+
 }  // namespace automata
 
 #endif  // _AUTOMATA_CONTROL_LOGIC_HXX_
