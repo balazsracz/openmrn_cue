@@ -79,7 +79,7 @@ void Automata::RenderImportVariable(const GlobalVariable& var,
   Def().ActImportVariable(var, local_id);
 }
 
-Automata::LocalVariable&& Automata::ReserveVariable() {
+Automata::LocalVariable Automata::ReserveVariable() {
   const GlobalVariable* p = (const GlobalVariable*)(-1);
   while (used_variables_.find(p) != used_variables_.end()) {
     --p;

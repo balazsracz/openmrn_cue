@@ -149,6 +149,20 @@ class EventBlock : public EventVariableBase {
       end_ = next_entry_ + count;
     }
 
+    Allocator(Allocator&& o)
+        : name_(o.name_),
+          block_(o.block_),
+          next_entry_(o.next_entry_),
+          end_(o.end_)
+    {
+      // Prevents o from allocating any value that we own now.
+      o.next_entry_ = end_;
+    }
+
+    Allocator Allocate(const string& name, int count, int alignment = 1) {
+      return Allocator(this, name, count, alignment);
+    }
+
     // Reserves a number entries at the beginning of the block. Returns the
     // first entry that was reserved.
     int Reserve(int count) const {
