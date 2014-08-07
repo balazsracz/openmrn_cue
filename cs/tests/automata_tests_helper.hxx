@@ -303,20 +303,34 @@ protected:
   nmranet::WriteHelper writeHelper_;
 };
 
-class AutomataTrainTest : public AutomataNodeTests {
+class TrainTestHelper {
  protected:
-  AutomataTrainTest() : trainService_(ifCan_.get()), trainImpl_(0x1384) {
-    expect_packet(":X1070133AN060100001384;");
-    expect_packet(":X1910033AN060100001384;");
-    create_allocated_alias();
-    expect_next_alias_allocation();
+  TrainTestHelper(nmranet::AsyncIfTest* test_base)
+      : testBase_(test_base),
+        trainService_(test_base->ifCan_.get()), trainImpl_(0x1384) {
+    expect_packet_(":X1070133AN060100001384;");
+    expect_packet_(":X1910033AN060100001384;");
+    test_base->create_allocated_alias();
+    test_base->expect_next_alias_allocation();
     trainNode_.reset(new nmranet::TrainNode(&trainService_, &trainImpl_));
-    wait();
+    test_base->wait();
+  } 
+
+  void expect_packet_(const string& gc_packet) {
+    EXPECT_CALL(testBase_->canBus_, mwrite(StrCaseEq(gc_packet)));
   }
 
-  ~AutomataTrainTest() { wait(); }
+  ~TrainTestHelper() {
+    testBase_->wait();
+  }  
 
+  nmranet::AsyncIfTest* testBase_;
   nmranet::TrainService trainService_;
   nmranet::LoggingTrain trainImpl_;
   std::unique_ptr<nmranet::TrainNode> trainNode_;
+};
+
+class AutomataTrainTest : public AutomataNodeTests, protected TrainTestHelper {
+ protected:
+  AutomataTrainTest() : TrainTestHelper(this) {}
 };
