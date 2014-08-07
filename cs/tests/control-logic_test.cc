@@ -1581,20 +1581,25 @@ TEST_F(LogicTest, Magnets) {
   EXPECT_FALSE(v1s1.Get());
 }
 
-//class LogicTrainTest : public LogicTest, 
+class LogicTrainTest : public LogicTest, protected TrainTestHelper {
+ protected:
+  LogicTrainTest() : TrainTestHelper(this) {}
+};
 
 
-TEST_F(LogicTest, ScheduleStraight) {
+TEST_F(LogicTrainTest, ScheduleStraight) {
   TestDetectorBlock before(this, "before");
   static StraightTrackLong mid(alloc());
   DefAut(autmid, brd, { mid.RunAll(this); });
-  TestBlock first(this, "first");
-  TestBlock second(this, "second");
+  static TestBlock first(this, "first");
+  static TestBlock second(this, "second");
   static StraightTrackLong after(alloc());
 
   BindSequence({&before.b, &first.b, &mid, &second.b, &after});
 
   ASSERT_EQ(first.b.signal_.side_b(), mid.side_a()->binding());
+
+  static FakeBit mcont(this);
 
   class MyTrain : public TrainSchedule {
    public:
@@ -1603,10 +1608,59 @@ TEST_F(LogicTest, ScheduleStraight) {
                         alloc->Allocate("mytrain", 8)) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      
+      auto* cv = aut->ImportVariable(&mcont);
+      Def()
+          .IfState(StWaiting)
+          .IfReg1(*cv)
+          .ActState(StRequestGreen)
+          .ActReg0(cv);
+      Def()
+          .ActImportVariable(*first.b.request_green(),
+                             current_block_request_green_)
+          .ActImportVariable(first.b.route_out(),
+                             current_block_route_out_)
+          .ActImportVariable(second.b.detector(),
+                             next_block_detector_);
     }
 
   } train_aut(&brd, block_.allocator());
+
+  SetupRunner(&brd);
+  
+  // No trains initially.
+  first.inverted_detector.Set(true);
+  second.inverted_detector.Set(true);
+  Run(1);
+
+  // No trains initially.
+  first.inverted_detector.Set(true);
+  second.inverted_detector.Set(true);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*second.b.body_det_.simulated_occupancy_));
+
+  // Train is at first. No green yet.
+  mcont.Set(false);
+  first.inverted_detector.Set(false);
+  second.inverted_detector.Set(true);
+  Run(30);
+  LOG(INFO, "Sending off train.");
+
+  EXPECT_EQ(0, trainImpl_.get_speed().speed());
+  mcont.Set(true);
+  Run(20);
+  EXPECT_TRUE(first.signal_green.Get());
+  EXPECT_FALSE(mcont.Get());
+  wait();
+  EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
+
+  LOG(INFO, "Train arriving at destination.");
+  first.inverted_detector.Set(true);
+  second.inverted_detector.Set(false);
+  Run(20);
+
+  wait();
+  EXPECT_EQ(0, trainImpl_.get_speed().mph());
 }
 
 }  // namespace automata

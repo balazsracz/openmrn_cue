@@ -283,6 +283,7 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(LogicTest, DISABLED_100trainz);
   FRIEND_TEST(LogicTest, FixedTurnout);
   FRIEND_TEST(LogicTest, MovableTurnout);
+  FRIEND_TEST(LogicTrainTest, ScheduleStraight);
 
   friend class StandardBlock;
 
@@ -738,7 +739,7 @@ class TrainSchedule : public virtual AutomataPlugin {
                       NewCallbackPtr(this, &TrainSchedule::HandleBaseStates));
     AddAutomataPlugin(210,
                       NewCallbackPtr(this, &TrainSchedule::SendTrainCommands));
-    AddAutomataPlugin(500, NewCallbackPtr(this, &TrainSchedule::RunTransition));
+    AddAutomataPlugin(100, NewCallbackPtr(this, &TrainSchedule::RunTransition));
   }
 
   // Performs the steps needed for the transition of train to the next location.
@@ -756,6 +757,7 @@ class TrainSchedule : public virtual AutomataPlugin {
   void SendTrainCommands(Automata *aut);
   void HandleBaseStates(Automata *aut);
 
+ protected:
   // The train that we are driving.
   uint64_t train_node_id_;
 
