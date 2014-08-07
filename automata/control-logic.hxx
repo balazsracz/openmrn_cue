@@ -15,7 +15,8 @@
 
 namespace automata {
 
-extern StateRef StInit, StBase;
+static constexpr StateRef StInit(0);
+static constexpr StateRef StBase(1);
 
 extern GlobalVariable* reset_routes;
 

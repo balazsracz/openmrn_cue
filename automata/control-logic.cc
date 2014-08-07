@@ -4,9 +4,6 @@
 
 namespace automata {
 
-StateRef StInit(0);
-StateRef StBase(1);
-
 GlobalVariable* reset_routes = nullptr;
 
 void HandleInitState(Automata* aut) { Def().IfState(StInit).ActState(StBase); }
