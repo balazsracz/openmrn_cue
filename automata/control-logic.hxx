@@ -710,6 +710,13 @@ class StandardFixedTurnout {
   StandardPluginAutomata aut_;
 };
 
+static constexpr StateRef StWaiting(2);
+static constexpr StateRef StRequestGreen(3);
+static constexpr StateRef StGreenWait(4);
+static constexpr StateRef StStartTrain(5);
+static constexpr StateRef StMoving(6);
+static constexpr StateRef StStopTrain(7);
+
 class TrainSchedule : public virtual AutomataPlugin {
  public:
   TrainSchedule(const string &name, Board *brd, uint64_t train_node_id,
@@ -718,8 +725,18 @@ class TrainSchedule : public virtual AutomataPlugin {
       : train_node_id_(train_node_id),
         permanent_alloc_(std::forward<EventBlock::Allocator>(perm_alloc)),
         alloc_(std::forward<EventBlock::Allocator>(alloc)),
-        aut_(name, brd, this) {
+        aut_(name, brd, this),
+        is_reversed_(permanent_alloc_.Allocate("is_reversed")),
+        current_block_request_green_(aut_.ReserveVariable()),
+        current_block_route_out_(aut_.ReserveVariable()),
+        next_block_detector_(aut_.ReserveVariable())
+  {
     AddAutomataPlugin(9900, NewCallbackPtr(this, &TrainSchedule::HandleInit));
+    // 200 already needs the imported local variables
+    AddAutomataPlugin(200,
+                      NewCallbackPtr(this, &TrainSchedule::HandleBaseStates));
+    AddAutomataPlugin(210,
+                      NewCallbackPtr(this, &TrainSchedule::SendTrainCommands));
     AddAutomataPlugin(500, NewCallbackPtr(this, &TrainSchedule::RunTransition));
   }
 
@@ -735,17 +752,24 @@ class TrainSchedule : public virtual AutomataPlugin {
   // reading the externally provided bits for figuring out where the train is.
   void HandleInit(Automata *aut);
 
+  void SendTrainCommands(Automata *aut);
+  void HandleBaseStates(Automata *aut);
+
   // The train that we are driving.
   uint64_t train_node_id_;
 
-  // These bits should be used for unreconstructible state.
+  // These bits should be used for non-reconstructible state.
   EventBlock::Allocator permanent_alloc_;
-  // These bits should be used for temporary state.
+  // These bits should be used for transient state.
   EventBlock::Allocator alloc_;
 
   StandardPluginAutomata aut_;
 
-  Automata::LocalVariable previous_block_;
+  // 1 if the train is currently in reverse mode (loco at the end).
+  std::unique_ptr<GlobalVariable> is_reversed_;
+  Automata::LocalVariable current_block_request_green_;
+  Automata::LocalVariable current_block_route_out_;
+  Automata::LocalVariable next_block_detector_;
 };
 
 }  // namespace automata

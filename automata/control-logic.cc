@@ -694,6 +694,49 @@ MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVaria
   aut->AddMagnet(this);
 }
 
-void TrainSchedule::HandleInit(Automata* aut) {}
+void TrainSchedule::HandleInit(Automata* aut) {
+  Def().IfState(StBase)
+      .ActState(StWaiting);
+}
+
+void TrainSchedule::HandleBaseStates(Automata* aut) {
+  Def().IfState(StRequestGreen)
+      .IfReg0(current_block_request_green_)
+      .ActReg1(&current_block_request_green_);
+  Def().IfState(StRequestGreen)
+      .IfReg1(current_block_route_out_)
+      .ActTimer(2)
+      .ActState(StGreenWait);
+  Def().IfState(StGreenWait)
+      .IfTimerDone()
+      .ActState(StStartTrain);
+
+  Def().IfState(StMoving)
+      .IfReg1(next_block_detector_)
+      .ActState(StStopTrain);
+}
+
+void TrainSchedule::SendTrainCommands(Automata *aut) {
+  Def().ActSetId(train_node_id_);
+  Def().IfState(StStartTrain)
+      .ActLoadSpeed(true, 40);
+  Def().IfState(StStartTrain)
+      .IfReg1(aut->ImportVariable(*is_reversed_))
+      .ActSpeedReverse();
+  Def().IfState(StStartTrain)
+      .IfSetSpeed()
+      .ActState(StMoving);
+
+  Def().IfState(StStopTrain)
+      .ActLoadSpeed(true, 0);
+  Def().IfState(StStopTrain)
+      .IfReg1(aut->ImportVariable(*is_reversed_))
+      .ActSpeedReverse();
+  Def().IfState(StStopTrain)
+      .IfSetSpeed()
+      .ActState(StWaiting);
+}
+
+
 
 }  // namespace automata
