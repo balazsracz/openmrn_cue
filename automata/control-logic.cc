@@ -734,6 +734,4 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
       .ActState(StWaiting);
 }
 
-
-
 }  // namespace automata
