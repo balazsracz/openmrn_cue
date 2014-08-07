@@ -79,6 +79,16 @@ void Automata::RenderImportVariable(const GlobalVariable& var,
   Def().ActImportVariable(var, local_id);
 }
 
+Automata::LocalVariable&& Automata::ReserveVariable() {
+  const GlobalVariable* p = (const GlobalVariable*)(-1);
+  while (used_variables_.find(p) != used_variables_.end()) {
+    --p;
+  }
+  int id = used_variables_.size();
+  used_variables_[p].id = id;
+  return LocalVariable(id);
+}
+
 void Automata::ClearUsedVariables() {
   used_variables_.clear();
   // We add the timer variable to the map with a fake key in order to

@@ -566,6 +566,42 @@ TEST_F(AutomataTests, EmergencyStart) {
   wait_for_event_thread();
 }
 
+TEST_F(AutomataTests, VariableOverrideTest) {
+  Board brd;
+  static FakeBit mbit1(this);
+  static FakeBit mbitA(this);
+  static FakeBit mbitB(this);
+  DefAut(testaut1, brd, {
+      auto& mselect = ImportVariable(mbit1);
+      LocalVariable m = ReserveVariable();
+      // Conditionally imports a variable.
+      Def().IfReg0(mselect).ActImportVariable(mbitA, m.GetId());
+      Def().IfReg1(mselect).ActImportVariable(mbitB, m.GetId());
+      Def().ActReg1(&m);
+    });
+  SetupRunner(&brd);
+  mbit1.Set(false);
+  mbitA.Set(false);
+  mbitB.Set(false);
+  runner_->RunAllAutomata();
+  EXPECT_TRUE(mbitA.Get());
+  EXPECT_FALSE(mbitB.Get());
+
+  mbit1.Set(false);
+  mbitA.Set(false);
+  mbitB.Set(false);
+  runner_->RunAllAutomata();
+  EXPECT_TRUE(mbitA.Get());
+  EXPECT_FALSE(mbitB.Get());
+
+  mbit1.Set(true);
+  mbitA.Set(false);
+  mbitB.Set(false);
+  runner_->RunAllAutomata();
+  EXPECT_FALSE(mbitA.Get());
+  EXPECT_TRUE(mbitB.Get());
+}
+
 TEST_F(AutomataTrainTest, CreateDestroy) {}
 
 TEST_F(AutomataTrainTest, SpeedIsFwd) {

@@ -152,6 +152,9 @@ public:
     // multiple times (and will get the same ID).
     LocalVariable* ImportVariable(GlobalVariable* var);
     const LocalVariable& ImportVariable(const GlobalVariable& var);
+    // Reserves a local variable that will need to be overridden by
+    // ActImportvariable.
+    LocalVariable&& ReserveVariable();
 
     const LocalVariable& timer_bit() { return timer_bit_; }
 
