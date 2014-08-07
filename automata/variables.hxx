@@ -276,7 +276,7 @@ class SignalVariable : public EventVariableBase {
     // We use local id 30 to import the variable straight away. This will
     // override any other previous signal import, but that's fine, because we
     // are in the preamble and not in an automata.
-    Automata::RenderImportVariable(output, *this, 30);
+    Automata::Op(nullptr, output).ActImportVariable(*this, 30);
     Automata::LocalVariable fixed_var(30);
     // We fix the first byte of the newly created variable to the signal ID.
     Automata::Op(nullptr, output).ActSetValue(&fixed_var, 0, signal_id_);

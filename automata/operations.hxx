@@ -97,6 +97,24 @@ public:
         output->append((char*)acts.data(), acts.size());
     }
 
+    Op& ActImportVariable(const GlobalVariable& var, int local_id) {
+      acts_.push_back(_ACT_IMPORT_VAR);
+      uint8_t b1 = 0;
+      uint8_t b2 = 0;
+      uint16_t arg = output_ ? var.GetId().arg : 0;
+      HASSERT(arg < (8 << 8));
+      b1 = (arg >> 8) << 5;
+      HASSERT(local_id < 32);
+      b1 |= (local_id & 31);
+      b2 = arg & 0xff;
+      acts_.push_back(b1);
+      acts_.push_back(b2);  // argument, low bits
+      int gofs = output_ ? var.GetId().id : 0;
+      acts_.push_back(gofs & 0xff);
+      acts_.push_back((gofs >> 8) & 0xff);
+      return *this;
+    }
+
     Op& IfState(StateRef& state) {
         ifs_.push_back(_IF_STATE | state.state);
         return *this;

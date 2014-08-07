@@ -147,7 +147,7 @@ public:
     };
 
     // Adds a global variable reference to the used local variables, and
-    // returns the local variable reference. The local variable reference if
+    // returns the local variable reference. The local variable reference is
     // owned by the Automata object. The same global var can be imported
     // multiple times (and will get the same ID).
     LocalVariable* ImportVariable(GlobalVariable* var);
@@ -166,8 +166,7 @@ public:
 
     void ClearUsedVariables();
 
-    static void RenderImportVariable(string* output,
-                                     const GlobalVariable& var, int local_id);
+    void RenderImportVariable(const GlobalVariable& var, int local_id);
 
 protected:
     virtual void Body() = 0;

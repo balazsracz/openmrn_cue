@@ -62,35 +62,6 @@ Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {
     return &ret;
 }
 
-void Automata::RenderImportVariable(string* output,
-                                    const GlobalVariable& var,
-                                    int local_id) {
-  vector<uint8_t> op;
-  vector<uint8_t> empty;
-  op.push_back(_ACT_IMPORT_VAR);
-  uint8_t b1 = 0;
-  uint8_t b2 = 0;
-  uint16_t arg = output ? var.GetId().arg : 0;
-  HASSERT(arg < (8<<8));
-  b1 = (arg >> 8) << 5;
-  HASSERT(local_id < 32);
-  b1 |= (local_id & 31);
-  b2 = arg & 0xff;
-  op.push_back(b1);
-  op.push_back(b2); // argument, low bits
-  int gofs = output ? var.GetId().id : 0;
-  op.push_back(gofs & 0xff);
-  op.push_back((gofs >> 8) & 0xff);
-  Op::CreateOperation(output, empty, op);
-}
-
-void Automata::ClearUsedVariables() {
-  used_variables_.clear();
-  // We add the timer variable to the map with a fake key in order to
-  // reserve local bit 0.
-  used_variables_[NULL] = timer_bit_;
-}
-
 const Automata::LocalVariable& Automata::ImportVariable(
     const GlobalVariable& var) {
   int next_id = used_variables_.size();
@@ -98,9 +69,21 @@ const Automata::LocalVariable& Automata::ImportVariable(
   if (ret.id < 0) {
     ret.id = next_id;
     assert(ret.id < MAX_IMPORT_VAR);
-    RenderImportVariable(output_, var, ret.id);
+    RenderImportVariable(var, ret.id);
   }
   return ret;
+}
+
+void Automata::RenderImportVariable(const GlobalVariable& var,
+                                    int local_id) {
+  Def().ActImportVariable(var, local_id);
+}
+
+void Automata::ClearUsedVariables() {
+  used_variables_.clear();
+  // We add the timer variable to the map with a fake key in order to
+  // reserve local bit 0.
+  used_variables_[NULL] = timer_bit_;
 }
 
 void Automata::Render(string* output) {
