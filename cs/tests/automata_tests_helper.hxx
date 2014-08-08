@@ -53,6 +53,21 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     bool* backend_;
   };
 
+  class FakeBitReadOnlyPointer : public ReadWriteBit {
+   public:
+    FakeBitReadOnlyPointer(bool* backend)
+        : backend_(backend) {}
+    virtual bool Read(uint16_t, nmranet::Node* node, Automata* aut) {
+      return *backend_;
+    }
+    virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
+      // Ignored.
+    }
+
+   private:
+    bool* backend_;
+  };
+
   class InjectableVar : public automata::GlobalVariable {
    public:
     InjectableVar(AutomataTests* parent) {
@@ -128,6 +143,29 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     // accessed by Get and Set).
     virtual ReadWriteBit* CreateBit() {
       return new FakeBitPointer(&bit_);
+    }
+
+    bool Get() { return bit_; }
+    void Set(bool b) { bit_ = b; }
+
+    // These should never be called. This variable does not have eventids bound.
+    virtual uint64_t event_on() const { HASSERT(false); }
+    virtual uint64_t event_off() const { HASSERT(false); }
+
+  private:
+    bool bit_;
+  };
+
+  class FakeROBit : public InjectableVar {
+  public:
+    FakeROBit(AutomataTests* parent) : InjectableVar(parent), bit_(false) {}
+
+    // Creates a ReadWriteBit that accesses the mock bit stored in
+    // *this. Transfers ownership of the object to the caller. There can be an
+    // arbitrary number of pointers, they will all modify the same state (also
+    // accessed by Get and Set).
+    virtual ReadWriteBit* CreateBit() {
+      return new FakeBitReadOnlyPointer(&bit_);
     }
 
     bool Get() { return bit_; }
