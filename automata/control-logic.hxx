@@ -447,6 +447,7 @@ class StandardBlock : public StraightTrackInterface {
                   physical->sensor_raw),
         signal_(EventBlock::Allocator(&alloc, "signal", 24, 8),
                 request_green_.get(), physical->signal_raw),
+        name_(alloc.name()),
         physical_(physical),
         aut_body_(alloc.name() + ".body", brd, &body_),
         aut_body_det_(alloc.name() + ".body_det", brd, &body_det_),
@@ -458,11 +459,17 @@ class StandardBlock : public StraightTrackInterface {
   virtual CtrlTrackInterface *side_b() { return signal_.side_b(); }
 
   GlobalVariable *request_green() { return request_green_.get(); }
-  const GlobalVariable &route_in() { return *body_det_.route_set_ab_; }
-  const GlobalVariable &route_out() { return *signal_.route_set_ab_; }
-  const GlobalVariable &detector() { return *body_det_.simulated_occupancy_; }
+  const GlobalVariable &route_in() const { return *body_det_.route_set_ab_; }
+  const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
+  const GlobalVariable &detector() const { return *body_det_.simulated_occupancy_; }
 
   PhysicalSignal *p() { return physical_; }
+
+  const string& name() {
+    /// TODO(balazs.racz) revise how the allocator is used here, use the
+    /// allocator's basename instead of full name.
+    return name_;
+  }
 
  private:
   std::unique_ptr<GlobalVariable> request_green_;
@@ -473,6 +480,7 @@ class StandardBlock : public StraightTrackInterface {
   SignalPiece signal_;
 
  private:
+  string name_;
   PhysicalSignal *physical_;
 
   StandardPluginAutomata aut_body_;
@@ -728,9 +736,12 @@ class TrainSchedule : public virtual AutomataPlugin {
         permanent_alloc_(std::forward<EventBlock::Allocator>(perm_alloc)),
         alloc_(std::forward<EventBlock::Allocator>(alloc)),
         aut_(name, brd, this),
+        aut(&aut_),
         is_reversed_(permanent_alloc_.Allocate("is_reversed")),
         current_block_request_green_(aut_.ReserveVariable()),
         current_block_route_out_(aut_.ReserveVariable()),
+        current_block_permaloc_(aut_.ReserveVariable()),
+        next_block_route_in_(aut_.ReserveVariable()),
         next_block_detector_(aut_.ReserveVariable())
   {
     AddAutomataPlugin(9900, NewCallbackPtr(this, &TrainSchedule::HandleInit));
@@ -743,11 +754,17 @@ class TrainSchedule : public virtual AutomataPlugin {
   }
 
   // Performs the steps needed for the transition of train to the next location.
-  virtual void RunTransition(Automata *aut) = 0;
+  virtual void RunTransition(Automata* aut) = 0;
 
   // ImportNextBlock -> sets localvariables based on the current state.
   // ImportLastBlock -> sets localvariables based on the current state.
   //
+
+ protected:
+  // Makes an eager transfer from block source to block dest. This transfer
+  // will not be gated on anything; as soon as the train shows up in source and
+  // destination is free, the train will move into the destination block.
+  void AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest);
 
  private:
   // Handles state == StInit. Sets the train into a known state at startup,
@@ -758,6 +775,14 @@ class TrainSchedule : public virtual AutomataPlugin {
   void HandleBaseStates(Automata *aut);
 
  protected:
+  // Allocates the permaloc bit for the current block if it does not exist
+  // yet. Maps the current_block_permaloc_ bit onto it.
+  void MapCurrentBlockPermaloc(StandardBlock* source);
+
+  // Allocates the permaloc bit for a particular block if does not exist;
+  // returns the permaloc bit.
+  GlobalVariable* GetPermalocBit(StandardBlock* source);
+
   // The train that we are driving.
   uint64_t train_node_id_;
 
@@ -767,12 +792,22 @@ class TrainSchedule : public virtual AutomataPlugin {
   EventBlock::Allocator alloc_;
 
   StandardPluginAutomata aut_;
+  // Alias to the above object for using in Def().
+  Automata* aut;
 
   // 1 if the train is currently in reverse mode (loco at the end).
   std::unique_ptr<GlobalVariable> is_reversed_;
   Automata::LocalVariable current_block_request_green_;
   Automata::LocalVariable current_block_route_out_;
+  // The location bit for the current block will be mapped here.
+  Automata::LocalVariable current_block_permaloc_;
+  Automata::LocalVariable next_block_route_in_;
   Automata::LocalVariable next_block_detector_;
+
+  // This map goes from the detector bit of the current train location (aka
+  // state) to the bit that was allocated for that train state in the
+  // permanent_alloc.
+  std::map<const GlobalVariable*, std::unique_ptr<GlobalVariable> > detector_to_permaloc_bit_;
 };
 
 }  // namespace automata

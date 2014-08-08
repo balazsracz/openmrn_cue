@@ -101,6 +101,7 @@ public:
     }
 
     Op& ActImportVariable(const GlobalVariable& var, int local_id) {
+      HASSERT(local_id >= 0);
       acts_.push_back(_ACT_IMPORT_VAR);
       uint8_t b1 = 0;
       uint8_t b2 = 0;

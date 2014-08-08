@@ -734,4 +734,38 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
       .ActState(StWaiting);
 }
 
+void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
+  Def().ActImportVariable(*GetPermalocBit(source), current_block_permaloc_);
+}
+
+GlobalVariable* TrainSchedule::GetPermalocBit(StandardBlock* source) {
+  auto& blockptr = detector_to_permaloc_bit_[&source->detector()];
+  if (!blockptr) {
+    blockptr.reset(permanent_alloc_.Allocate("loc." + source->name())); 
+  }
+  return blockptr.get();
+}
+
+void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest) {
+  MapCurrentBlockPermaloc(source);
+  Def().IfState(StWaiting)
+      .IfReg1(current_block_permaloc_)
+      .ActImportVariable(*source->request_green(),
+                         current_block_request_green_)
+      .ActImportVariable(source->route_out(),
+                         current_block_route_out_)
+      .ActImportVariable(dest->detector(),
+                         next_block_detector_);
+  Def().IfState(StWaiting)
+      .IfReg1(current_block_permaloc_)
+      .ActImportVariable(dest->route_in(),
+                         next_block_route_in_);
+  Def().IfState(StWaiting)
+      .IfReg1(current_block_permaloc_)
+      .IfReg0(next_block_detector_)
+      .IfReg0(current_block_route_out_)
+      .IfReg0(next_block_route_in_)
+      .ActState(StRequestGreen);
+}
+
 }  // namespace automata
