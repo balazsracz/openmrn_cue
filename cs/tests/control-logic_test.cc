@@ -9,6 +9,8 @@
 
 using ::testing::HasSubstr;
 
+extern int debug_variables;
+
 namespace automata {
 
 class LogicTest : public AutomataNodeTests {
@@ -16,6 +18,7 @@ class LogicTest : public AutomataNodeTests {
   LogicTest()
       : block_(&brd, BRACZ_LAYOUT|0xC000, "blk"),
         magnet_aut_(&brd, *alloc()) {
+    debug_variables = 0;
     // We ignore all event messages on the CAN bus. THese are checked with more
     // high-level constructs.
     EXPECT_CALL(canBus_, mwrite(HasSubstr(":X195B422AN"))).Times(AtLeast(0));
@@ -36,7 +39,7 @@ class LogicTest : public AutomataNodeTests {
       inverted_detector.Set(true);
       signal_green.Set(false);
     }
-    FakeBit inverted_detector;
+    FakeROBit inverted_detector;
     FakeBit signal_green;
     PhysicalSignal physical_signal;
     StandardBlock b;
@@ -1678,18 +1681,69 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
 //
 
 class SampleLayoutLogicTrainTest : public LogicTrainTest {
- protected:
+ public:
   SampleLayoutLogicTrainTest()
       : RLeft(this, "RLeft"),
         TopA(this, "TopA"),
         TopB(this, "TopB"),
         RRight(this, "RRight"),
         BotA(this, "BotA"),
-        BotB(this, "BotB") {}
+        BotB(this, "BotB") {
+    BindSequence(
+        {&RLeft.b, &TopA.b, &TopB.b, &RRight.b, &BotA.b, &BotB.b, &RLeft.b});
+  }
 
   TestBlock RLeft, TopA, TopB, RRight, BotA, BotB;
 };
 
+TEST_F(SampleLayoutLogicTrainTest, Construct) {}
+
+TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
+  debug_variables = 1;
+
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
+            EventBlock::Allocator* alloc)
+        : TrainSchedule("mytrain", b,
+                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 8)),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      AddEagerBlockTransition(&t_->TopA.b, &t_->TopB.b);
+    }
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } my_train(this, &brd, alloc());
+  SetupRunner(&brd);
+
+  Run(20);
+  EXPECT_TRUE(TopA.inverted_detector.Get());
+  EXPECT_TRUE(TopB.inverted_detector.Get());
+  EXPECT_FALSE(QueryVar(*TopA.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*TopB.b.body_det_.simulated_occupancy_));
+  EXPECT_EQ(0, trainImpl_.get_speed().speed());
+  
+  LOG(INFO, "Flipping detector at source location.");
+  TopA.inverted_detector.Set(false);
+  Run(20);
+
+  LOG(INFO, "Setting train to the source location.");
+  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  wait();
+  Run(10);
+  wait();
+  EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
+  EXPECT_TRUE(TopA.signal_green.Get());
+  
+  Run(20);
+  TopB.inverted_detector.Set(false);
+  Run(20);
+  wait();
+  EXPECT_EQ(0, trainImpl_.get_speed().mph());
+}
 
 
 }  // namespace automata
