@@ -709,7 +709,7 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
       .ActState(StStartTrain);
 
   Def().IfState(StMoving)
-      .IfReg1(next_block_detector_)
+      .IfReg1(current_block_detector_)
       .ActState(StStopTrain);
 }
 
@@ -722,6 +722,8 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
       .ActSpeedReverse();
   Def().IfState(StStartTrain)
       .IfSetSpeed()
+      .ActReg0(&current_block_permaloc_)
+      .ActReg1(&next_block_permaloc_)
       .ActState(StMoving);
 
   Def().IfState(StStopTrain)
@@ -749,13 +751,17 @@ GlobalVariable* TrainSchedule::GetPermalocBit(StandardBlock* source) {
 void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest) {
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(*GetPermalocBit(dest), next_block_permaloc_);
+  Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(*source->request_green(),
                          current_block_request_green_)
       .ActImportVariable(source->route_out(),
                          current_block_route_out_)
-      .ActImportVariable(dest->detector(),
-                         next_block_detector_);
+      .ActImportVariable(source->detector(),
+                         current_block_detector_);
   Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(dest->detector(),
+                         next_block_detector_)
       .ActImportVariable(dest->route_in(),
                          next_block_route_in_);
   Def().IfState(StWaiting)

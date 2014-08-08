@@ -749,9 +749,11 @@ class TrainSchedule : public virtual AutomataPlugin {
         aut_(name, brd, this),
         aut(&aut_),
         is_reversed_(permanent_alloc_.Allocate("is_reversed")),
+        current_block_detector_(aut_.ReserveVariable()),
         current_block_request_green_(aut_.ReserveVariable()),
         current_block_route_out_(aut_.ReserveVariable()),
         current_block_permaloc_(aut_.ReserveVariable()),
+        next_block_permaloc_(aut_.ReserveVariable()),
         next_block_route_in_(aut_.ReserveVariable()),
         next_block_detector_(aut_.ReserveVariable())
   {
@@ -815,10 +817,13 @@ class TrainSchedule : public virtual AutomataPlugin {
 
   // 1 if the train is currently in reverse mode (loco at the end).
   std::unique_ptr<GlobalVariable> is_reversed_;
+  Automata::LocalVariable current_block_detector_;
   Automata::LocalVariable current_block_request_green_;
   Automata::LocalVariable current_block_route_out_;
   // The location bit for the current block will be mapped here.
   Automata::LocalVariable current_block_permaloc_;
+  // The location bit for the next block will be mapped here.
+  Automata::LocalVariable next_block_permaloc_;
   Automata::LocalVariable next_block_route_in_;
   Automata::LocalVariable next_block_detector_;
 

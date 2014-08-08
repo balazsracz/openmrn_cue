@@ -1627,6 +1627,11 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
                              current_block_route_out_)
           .ActImportVariable(second.b.detector(),
                              next_block_detector_);
+      MapCurrentBlockPermaloc(&first.b);
+      Def()
+          .ActImportVariable(second.b.detector(),
+                             current_block_detector_)
+          .ActImportVariable(*GetPermalocBit(&second.b), next_block_permaloc_);
     }
 
   } train_aut(&brd, block_.allocator());
@@ -1713,6 +1718,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
 
     void RunTransition(Automata* aut) OVERRIDE {
       AddEagerBlockTransition(&t_->TopA.b, &t_->TopB.b);
+      AddEagerBlockTransition(&t_->TopB.b, &t_->RRight.b);
     }
    private:
     SampleLayoutLogicTrainTest* t_;
