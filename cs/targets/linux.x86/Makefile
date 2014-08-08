@@ -24,13 +24,13 @@ logic-demo.dep:
 	+$(MAKE) -C $(APP_PATH)/../automata logic-demo.cout
 
 logic-demo.cout: $(APP_PATH)/../automata/logic-demo.cout logic-demo.dep
-	ln -sf $(APP_PATH)/../automata/logic-demo.cout $@
+	ln -sf $< $@
 
 #	
 #	+$(MAKE) -C $(APP_PATH)/../automata logic-demo.cout
 #	ln -sf $(APP_PATH)/../automata/logic-demo.cout $@
 
 cleangen:
-	rm -f logic-demo.c
+	rm -f logic-demo.cout
 
 veryclean: cleangen
