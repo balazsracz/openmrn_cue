@@ -291,22 +291,14 @@ MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 
-StandardBlock Block_WWB14(&brd, &WWB14, EventBlock::Allocator(logic.allocator(),
-                                                              "WW.B14", 80));
-StandardBlock Block_A301(&brd, &A301,
-                         EventBlock::Allocator(logic.allocator(), "A301", 80));
-StandardBlock Block_A321(&brd, &A321,
-                         EventBlock::Allocator(logic.allocator(), "A321", 80));
-StandardBlock Block_A347(&brd, &A347,
-                         EventBlock::Allocator(logic.allocator(), "A347", 80));
-StandardBlock Block_A360(&brd, &A360,
-                         EventBlock::Allocator(logic.allocator(), "A360", 80));
-StandardBlock Block_B421(&brd, &B421,
-                         EventBlock::Allocator(logic.allocator(), "B421", 80));
-StandardBlock Block_B447(&brd, &B447,
-                         EventBlock::Allocator(logic.allocator(), "B447", 80));
-StandardBlock Block_B475(&brd, &B475,
-                         EventBlock::Allocator(logic.allocator(), "B475", 80));
+StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
+StandardBlock Block_A301(&brd, &A301, logic.allocator(), "A301");
+StandardBlock Block_A321(&brd, &A321, logic.allocator(), "A321");
+StandardBlock Block_A347(&brd, &A347, logic.allocator(), "A347");
+StandardBlock Block_A360(&brd, &A360, logic.allocator(), "A360");
+StandardBlock Block_B421(&brd, &B421, logic.allocator(), "B421");
+StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
+StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
 
 StandardMiddleDetector Det_380(&brd, &b7.InOraRed,
                                EventBlock::Allocator(logic.allocator(),
@@ -327,10 +319,8 @@ MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b7.ActBlueGrey, &b7.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
 
-StandardBlock Block_YYB2(&brd, &YYB2,
-                         EventBlock::Allocator(logic.allocator(), "YY.B2", 80));
-StandardBlock Block_YYC23(&brd, &YYC23, EventBlock::Allocator(logic.allocator(),
-                                                              "YY.C23", 80));
+StandardBlock Block_YYB2(&brd, &YYB2, logic.allocator(), "YY.B2");
+StandardBlock Block_YYC23(&brd, &YYC23, logic.allocator(), "YY.C23");
 StandardMiddleDetector Det_YYC22(&brd, &ba.In1,
                                  EventBlock::Allocator(logic.allocator(),
                                                        "YY.C22", 24, 8));
@@ -354,12 +344,9 @@ MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActBlueGrey, &ba.ActBlueBrown)
 StandardMovableTurnout Turnout_XXW8(
     &brd, EventBlock::Allocator(logic.allocator(), "XX.W8", 40), &Magnet_XXW8);
 
-StandardBlock Block_XXB1(&brd, &XXB1,
-                         EventBlock::Allocator(logic.allocator(), "XX.B1", 80));
-StandardBlock Block_XXB2(&brd, &XXB2,
-                         EventBlock::Allocator(logic.allocator(), "XX.B2", 80));
-StandardBlock Block_XXB3(&brd, &XXB3,
-                         EventBlock::Allocator(logic.allocator(), "XX.B3", 80));
+StandardBlock Block_XXB1(&brd, &XXB1, logic.allocator(), "XX.B1");
+StandardBlock Block_XXB2(&brd, &XXB2, logic.allocator(), "XX.B2");
+StandardBlock Block_XXB3(&brd, &XXB3, logic.allocator(), "XX.B3");
 
 #define BLOCK_SEQUENCE &Block_A360, &Block_A347, &Block_A321, &Block_A301, &Block_WWB14, &Block_B421, &Block_B447, &Block_B475
 

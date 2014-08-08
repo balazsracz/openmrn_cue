@@ -440,21 +440,28 @@ class SignalPiece : public StraightTrackShort {
 class StandardBlock : public StraightTrackInterface {
  public:
   StandardBlock(Board *brd, PhysicalSignal *physical,
-                const EventBlock::Allocator &alloc)
-      : request_green_(alloc.Allocate("request_green")),
-        body_(EventBlock::Allocator(&alloc, "body", 24, 8)),
-        body_det_(EventBlock::Allocator(&alloc, "body_det", 24, 8),
+                EventBlock::Allocator *parent_alloc, const string &base_name,
+                int num_to_allocate = 80)
+      : alloc_(parent_alloc->Allocate(base_name, num_to_allocate, 8)),
+        base_name_(base_name),
+        request_green_(alloc_.Allocate("request_green")),
+        body_(alloc_.Allocate("body", 24, 8)),
+        body_det_(alloc_.Allocate("body_det", 24, 8),
                   physical->sensor_raw),
-        signal_(EventBlock::Allocator(&alloc, "signal", 24, 8),
+        signal_(alloc_.Allocate("signal", 24, 8),
                 request_green_.get(), physical->signal_raw),
-        name_(alloc.name()),
         physical_(physical),
-        aut_body_(alloc.name() + ".body", brd, &body_),
-        aut_body_det_(alloc.name() + ".body_det", brd, &body_det_),
-        aut_signal_(alloc.name() + ".signal", brd, &signal_) {
+        aut_body_(name() + ".body", brd, &body_),
+        aut_body_det_(name() + ".body_det", brd, &body_det_),
+        aut_signal_(name() + ".signal", brd, &signal_) {
     BindSequence({&body_, &body_det_, &signal_});
   }
 
+ protected:
+  EventBlock::Allocator alloc_;
+  string base_name_;
+
+ public:
   virtual CtrlTrackInterface *side_a() { return body_.side_a(); }
   virtual CtrlTrackInterface *side_b() { return signal_.side_b(); }
 
@@ -465,10 +472,14 @@ class StandardBlock : public StraightTrackInterface {
 
   PhysicalSignal *p() { return physical_; }
 
+  /** Returns the basename of the block (not including path). */
+  const string& base_name() {
+    return base_name_;
+  }
+
+  /** Returns the full name of the block (including path). */
   const string& name() {
-    /// TODO(balazs.racz) revise how the allocator is used here, use the
-    /// allocator's basename instead of full name.
-    return name_;
+    return alloc_.name();
   }
 
  private:
@@ -480,7 +491,6 @@ class StandardBlock : public StraightTrackInterface {
   SignalPiece signal_;
 
  private:
-  string name_;
   PhysicalSignal *physical_;
 
   StandardPluginAutomata aut_body_;

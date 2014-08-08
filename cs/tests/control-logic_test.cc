@@ -15,7 +15,7 @@ class LogicTest : public AutomataNodeTests {
  protected:
   LogicTest()
       : block_(&brd, BRACZ_LAYOUT|0xC000, "blk"),
-        magnet_aut_(&brd, alloc()) {
+        magnet_aut_(&brd, *alloc()) {
     // We ignore all event messages on the CAN bus. THese are checked with more
     // high-level constructs.
     EXPECT_CALL(canBus_, mwrite(HasSubstr(":X195B422AN"))).Times(AtLeast(0));
@@ -23,7 +23,7 @@ class LogicTest : public AutomataNodeTests {
     EXPECT_CALL(canBus_, mwrite(HasSubstr(":X1954522AN"))).Times(AtLeast(0));
   }
 
-  const EventBlock::Allocator& alloc() { return *block_.allocator(); }
+  EventBlock::Allocator* alloc() { return block_.allocator(); }
 
   friend struct TestBlock;
 
@@ -32,7 +32,7 @@ class LogicTest : public AutomataNodeTests {
         : inverted_detector(test),
           signal_green(test),
           physical_signal(&inverted_detector, &signal_green, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
-          b(&test->brd, &physical_signal, EventBlock::Allocator(&test->alloc(), name, 80)) {
+          b(&test->brd, &physical_signal, test->alloc(), name) {
       inverted_detector.Set(true);
       signal_green.Set(false);
     }
@@ -45,7 +45,7 @@ class LogicTest : public AutomataNodeTests {
   struct TestDetectorBlock {
     TestDetectorBlock(LogicTest* test, const string& name)
         : detector(test),
-          b(EventBlock::Allocator(&test->alloc(), name, 32), &detector) {}
+          b(EventBlock::Allocator(test->alloc(), name, 32), &detector) {}
     // TODO: do we need to add an automata for this?
     FakeBit detector;
     StraightTrackWithDetector b;
@@ -53,7 +53,7 @@ class LogicTest : public AutomataNodeTests {
 
   struct TestShortTrack {
     TestShortTrack(LogicTest* test, const string& name)
-        : b(EventBlock::Allocator(&test->alloc(), name, 24)),
+        : b(EventBlock::Allocator(test->alloc(), name, 24)),
           aut_body(name, &test->brd, &b) {}
     StraightTrackShort b;
     StandardPluginAutomata aut_body;
@@ -61,7 +61,7 @@ class LogicTest : public AutomataNodeTests {
 
   struct TestFixedTurnout {
     TestFixedTurnout(LogicTest* test, FixedTurnout::State state, const string& name)
-        : b(state, EventBlock::Allocator(&test->alloc(), name, 48, 32)),
+        : b(state, EventBlock::Allocator(test->alloc(), name, 48, 32)),
           aut_body(name, &test->brd, &b) {}
     FixedTurnout b;
     StandardPluginAutomata aut_body;
@@ -72,7 +72,7 @@ class LogicTest : public AutomataNodeTests {
         : set_0(test),
           set_1(test),
           magnet(&test->magnet_aut_, name + ".mgn", &set_0, &set_1),
-          b(EventBlock::Allocator(&test->alloc(), name, 48, 32), &magnet),
+          b(EventBlock::Allocator(test->alloc(), name, 48, 32), &magnet),
           aut_body(name, &test->brd, &b) {}
     FakeBit set_0;
     FakeBit set_1;
@@ -132,8 +132,8 @@ TEST_F(LogicTest, TestFramework2) {
 }
 
 TEST_F(LogicTest, TestFramework3) {
-  std::unique_ptr<GlobalVariable> h(alloc().Allocate("testbit"));
-  std::unique_ptr<GlobalVariable> hh(alloc().Allocate("testbit2"));
+  std::unique_ptr<GlobalVariable> h(alloc()->Allocate("testbit"));
+  std::unique_ptr<GlobalVariable> hh(alloc()->Allocate("testbit2"));
   static GlobalVariable* v = h.get();
   static GlobalVariable* w = hh.get();
   EventListener ldst(node_, *v);
@@ -162,13 +162,13 @@ TEST_F(LogicTest, TestFramework3) {
 }
 
 TEST_F(LogicTest, SimulatedOccupancy_SingleShortPiece) {
-  static StraightTrackShort piece(alloc());
+  static StraightTrackShort piece(*alloc());
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      alloc(), &previous_detector);
+      *alloc(), &previous_detector);
   StraightTrackWithDetector after(
-      alloc(), &next_detector);
+      *alloc(), &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(after.side_a());
 
@@ -205,14 +205,14 @@ TEST_F(LogicTest, SimulatedOccupancy_SingleShortPiece) {
 }
 
 TEST_F(LogicTest, SimulatedOccupancy_MultipleShortPiece) {
-  static StraightTrackShort piece(alloc());
-  static StraightTrackShort piece2(alloc());
+  static StraightTrackShort piece(*alloc());
+  static StraightTrackShort piece2(*alloc());
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      alloc(), &previous_detector);
+      *alloc(), &previous_detector);
   StraightTrackWithDetector after(
-      alloc(), &next_detector);
+      *alloc(), &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
   piece2.side_b()->Bind(after.side_a());
@@ -276,16 +276,16 @@ TEST_F(LogicTest, SimulatedOccupancy_MultipleShortPiece) {
 }
 
 TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
-  static StraightTrackShort piece(EventBlock::Allocator(&alloc(), "p1", 32, 32));
-  static StraightTrackShort piece2(EventBlock::Allocator(&alloc(), "p2", 32, 32));
-  static StraightTrackLong piece3(EventBlock::Allocator(&alloc(), "p3", 32, 32));
-  static StraightTrackShort piece4(EventBlock::Allocator(&alloc(), "p4", 32, 32));
+  static StraightTrackShort piece(EventBlock::Allocator(alloc(), "p1", 32, 32));
+  static StraightTrackShort piece2(EventBlock::Allocator(alloc(), "p2", 32, 32));
+  static StraightTrackLong piece3(EventBlock::Allocator(alloc(), "p3", 32, 32));
+  static StraightTrackShort piece4(EventBlock::Allocator(alloc(), "p4", 32, 32));
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      alloc(), &previous_detector);
+      *alloc(), &previous_detector);
   StraightTrackWithDetector after(
-      alloc(), &next_detector);
+      *alloc(), &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
   piece2.side_b()->Bind(piece3.side_a());
@@ -405,13 +405,13 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
 }
 
 TEST_F(LogicTest, SimulatedOccupancy_RouteSetting) {
-  static StraightTrackShort piece(EventBlock::Allocator(&alloc(), "p", 32, 32));
+  static StraightTrackShort piece(EventBlock::Allocator(alloc(), "p", 32, 32));
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      EventBlock::Allocator(&alloc(), "before", 32, 32), &previous_detector);
+      EventBlock::Allocator(alloc(), "before", 32, 32), &previous_detector);
   StraightTrackWithDetector after(
-      EventBlock::Allocator(&alloc(), "after", 32, 32), &next_detector);
+      EventBlock::Allocator(alloc(), "after", 32, 32), &next_detector);
 
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(after.side_a());
@@ -493,13 +493,13 @@ TEST_F(LogicTest, SimulatedOccupancy_RouteSetting) {
   EXPECT_TRUE(QueryVar(*after.side_a()->binding()->in_route_set_failure));
 }
 TEST_F(LogicTest, ReverseRoute) {
-  static StraightTrackShort piece(alloc());
+  static StraightTrackShort piece(*alloc());
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      alloc(), &previous_detector);
+      *alloc(), &previous_detector);
   StraightTrackWithDetector after(
-      alloc(), &next_detector);
+      *alloc(), &next_detector);
 
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(after.side_a());
@@ -546,13 +546,13 @@ TEST_F(LogicTest, ReverseRoute) {
 }
 
 TEST_F(LogicTest, SimulatedOccupancy_SimultSetting) {
-  static StraightTrackShort piece(alloc());
+  static StraightTrackShort piece(*alloc());
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   StraightTrackWithDetector before(
-      alloc(), &previous_detector);
+      *alloc(), &previous_detector);
   StraightTrackWithDetector after(
-      alloc(), &next_detector);
+      *alloc(), &next_detector);
 
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(after.side_a());
@@ -602,16 +602,16 @@ TEST_F(LogicTest, SimulatedOccupancy_SimultSetting) {
 }
 
 TEST_F(LogicTest, MultiRoute) {
-  static StraightTrackShort piece(alloc());
-  static StraightTrackShort piece2(alloc());
-  static StraightTrackLong piece3(alloc());
-  static StraightTrackShort piece4(alloc());
+  static StraightTrackShort piece(*alloc());
+  static StraightTrackShort piece2(*alloc());
+  static StraightTrackLong piece3(*alloc());
+  static StraightTrackShort piece4(*alloc());
   FakeBit previous_detector(this);
   FakeBit next_detector(this);
   static StraightTrackWithDetector before(
-      alloc(), &previous_detector);
+      *alloc(), &previous_detector);
   static StraightTrackWithDetector after(
-      alloc(), &next_detector);
+      *alloc(), &next_detector);
   piece.side_a()->Bind(before.side_b());
   piece.side_b()->Bind(piece2.side_a());
   piece2.side_b()->Bind(piece3.side_a());
@@ -683,18 +683,18 @@ TEST_F(LogicTest, Signal0) {
   FakeBit next_detector(this);
   FakeBit request_green2(this);
   FakeBit signal_green2(this);
-  static StraightTrackLong first_body(alloc());
+  static StraightTrackLong first_body(*alloc());
   static StraightTrackWithDetector first_det(
-      alloc(), &previous_detector);
+      *alloc(), &previous_detector);
   static SignalPiece signal(
-      alloc(), &request_green, &signal_green);
-  static StraightTrackLong mid(alloc());
-  static StraightTrackLong second_body(alloc());
+      *alloc(), &request_green, &signal_green);
+  static StraightTrackLong mid(*alloc());
+  static StraightTrackLong second_body(*alloc());
   static StraightTrackWithDetector second_det(
-      alloc(), &next_detector);
+      *alloc(), &next_detector);
   static SignalPiece second_signal(
-      alloc(), &request_green2, &signal_green2);
-  static StraightTrackLong after(alloc());
+      *alloc(), &request_green2, &signal_green2);
+  static StraightTrackLong after(*alloc());
 
   BindSequence({&first_body,    &first_det,   &signal,
           &mid,           &second_body, &second_det,
@@ -844,11 +844,11 @@ TEST_F(LogicTest, Signal0) {
 
 TEST_F(LogicTest, Signal) {
   TestDetectorBlock before(this, "before");
-  static StraightTrackLong mid(alloc());
+  static StraightTrackLong mid(*alloc());
   DefAut(autmid, brd, { mid.RunAll(this); });
   TestBlock first(this, "first");
   TestBlock second(this, "second");
-  static StraightTrackLong after(alloc());
+  static StraightTrackLong after(*alloc());
 
   BindSequence({&before.b, &first.b, &mid, &second.b, &after});
 
@@ -1380,11 +1380,11 @@ TEST_F(LogicTest, MovableTurnout) {
 
 TEST_F(LogicTest, DISABLED_100trainz) {
   TestDetectorBlock before(this, "before");
-  static StraightTrackLong mid(alloc());
+  static StraightTrackLong mid(*alloc());
   DefAut(autmid, brd, { mid.RunAll(this); });
   TestBlock first(this, "first");
   TestBlock second(this, "second");
-  static StraightTrackLong after(alloc());
+  static StraightTrackLong after(*alloc());
 
   BindSequence({&before.b, &first.b, &mid, &second.b, &after});
 
@@ -1499,7 +1499,7 @@ TEST_F(LogicTest, Magnets) {
   FakeBit v1s0(this);
   FakeBit v1s1(this);
 
-  MagnetCommandAutomata aut(&brd, alloc());
+  MagnetCommandAutomata aut(&brd, *alloc());
   MagnetDef def0(&aut, "v0", &v0s0, &v0s1);
   MagnetDef def1(&aut, "v1", &v1s0, &v1s1);
 
@@ -1592,11 +1592,11 @@ class LogicTrainTest : public LogicTest, protected TrainTestHelper {
 
 TEST_F(LogicTrainTest, ScheduleStraight) {
   TestDetectorBlock before(this, "before");
-  static StraightTrackLong mid(alloc());
+  static StraightTrackLong mid(*alloc());
   DefAut(autmid, brd, { mid.RunAll(this); });
   static TestBlock first(this, "first");
   static TestBlock second(this, "second");
-  static StraightTrackLong after(alloc());
+  static StraightTrackLong after(*alloc());
 
   BindSequence({&before.b, &first.b, &mid, &second.b, &after});
 
