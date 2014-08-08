@@ -284,6 +284,7 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(LogicTest, FixedTurnout);
   FRIEND_TEST(LogicTest, MovableTurnout);
   FRIEND_TEST(LogicTrainTest, ScheduleStraight);
+  FRIEND_TEST(SampleLayoutLogicTrainTest, ScheduleStraight);
 
   friend class StandardBlock;
 
@@ -770,6 +771,13 @@ class TrainSchedule : public virtual AutomataPlugin {
   // ImportLastBlock -> sets localvariables based on the current state.
   //
 
+  GlobalVariable* TEST_GetPermalocBit(StandardBlock* source) {
+    size_t s = detector_to_permaloc_bit_.size();
+    auto* r = GetPermalocBit(source);
+    HASSERT(s == detector_to_permaloc_bit_.size());
+    return r;
+  }
+
  protected:
   // Makes an eager transfer from block source to block dest. This transfer
   // will not be gated on anything; as soon as the train shows up in source and
@@ -790,7 +798,7 @@ class TrainSchedule : public virtual AutomataPlugin {
   void MapCurrentBlockPermaloc(StandardBlock* source);
 
   // Allocates the permaloc bit for a particular block if does not exist;
-  // returns the permaloc bit.
+  // returns the permaloc bit. Does NOT transfer ownership. Public for testing.
   GlobalVariable* GetPermalocBit(StandardBlock* source);
 
   // The train that we are driving.
