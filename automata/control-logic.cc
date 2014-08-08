@@ -748,16 +748,14 @@ GlobalVariable* TrainSchedule::GetPermalocBit(StandardBlock* source) {
 
 void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest) {
   MapCurrentBlockPermaloc(source);
-  Def().IfState(StWaiting)
-      .IfReg1(current_block_permaloc_)
+  Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(*source->request_green(),
                          current_block_request_green_)
       .ActImportVariable(source->route_out(),
                          current_block_route_out_)
       .ActImportVariable(dest->detector(),
                          next_block_detector_);
-  Def().IfState(StWaiting)
-      .IfReg1(current_block_permaloc_)
+  Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(dest->route_in(),
                          next_block_route_in_);
   Def().IfState(StWaiting)
