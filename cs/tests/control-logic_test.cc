@@ -32,7 +32,10 @@ class LogicTest : public AutomataNodeTests {
         : inverted_detector(test),
           signal_green(test),
           physical_signal(&inverted_detector, &signal_green, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
-          b(&test->brd, &physical_signal, EventBlock::Allocator(&test->alloc(), name, 80)) {}
+          b(&test->brd, &physical_signal, EventBlock::Allocator(&test->alloc(), name, 80)) {
+      inverted_detector.Set(true);
+      signal_green.Set(false);
+    }
     FakeBit inverted_detector;
     FakeBit signal_green;
     PhysicalSignal physical_signal;
@@ -1662,5 +1665,31 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
   wait();
   EXPECT_EQ(0, trainImpl_.get_speed().mph());
 }
+
+// This is the test layout. It's a dogbone (a loop) with 6 standard blocks.
+//
+//   >Rleft
+//  /--\  TopA>TopB  /---\   x  
+//  |   \-----------/    |   x
+//  |   /-----------\    |   x
+//  \--/  BotB<BotA  \---/   x
+//                   <RRight
+//
+//
+
+class SampleLayoutLogicTrainTest : public LogicTrainTest {
+ protected:
+  SampleLayoutLogicTrainTest()
+      : RLeft(this, "RLeft"),
+        TopA(this, "TopA"),
+        TopB(this, "TopB"),
+        RRight(this, "RRight"),
+        BotA(this, "BotA"),
+        BotB(this, "BotB") {}
+
+  TestBlock RLeft, TopA, TopB, RRight, BotA, BotB;
+};
+
+
 
 }  // namespace automata
