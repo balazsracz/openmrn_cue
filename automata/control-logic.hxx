@@ -738,6 +738,9 @@ static constexpr StateRef StStartTrain(5);
 static constexpr StateRef StMoving(6);
 static constexpr StateRef StStopTrain(7);
 
+static constexpr StateRef StRequestTransition(8);
+static constexpr StateRef StTransitionDone(9);
+
 class TrainSchedule : public virtual AutomataPlugin {
  public:
   TrainSchedule(const string &name, Board *brd, uint64_t train_node_id,
@@ -758,12 +761,12 @@ class TrainSchedule : public virtual AutomataPlugin {
         next_block_detector_(aut_.ReserveVariable())
   {
     AddAutomataPlugin(9900, NewCallbackPtr(this, &TrainSchedule::HandleInit));
+    AddAutomataPlugin(100, NewCallbackPtr(this, &TrainSchedule::RunTransition));
     // 200 already needs the imported local variables
     AddAutomataPlugin(200,
                       NewCallbackPtr(this, &TrainSchedule::HandleBaseStates));
     AddAutomataPlugin(210,
                       NewCallbackPtr(this, &TrainSchedule::SendTrainCommands));
-    AddAutomataPlugin(100, NewCallbackPtr(this, &TrainSchedule::RunTransition));
   }
 
   // Performs the steps needed for the transition of train to the next location.
@@ -783,8 +786,13 @@ class TrainSchedule : public virtual AutomataPlugin {
  protected:
   // Makes an eager transfer from block source to block dest. This transfer
   // will not be gated on anything; as soon as the train shows up in source and
-  // destination is free, the train will move into the destination block.
-  void AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest);
+  // destination is free, the train will move into the destination
+  // block. Condiiton, if specified, will have to evaluate to true in order to
+  // give a green to the train from the current block to the next.
+  void AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest, OpCallback* condition = nullptr);
+
+  // Stops the train at the destination block. This is a terminal state.
+  void StopTrainAt(StandardBlock* dest);
 
  private:
   // Handles state == StInit. Sets the train into a known state at startup,

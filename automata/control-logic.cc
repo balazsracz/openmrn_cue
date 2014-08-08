@@ -722,8 +722,9 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
       .ActSpeedReverse();
   Def().IfState(StStartTrain)
       .IfSetSpeed()
-      .ActReg0(&current_block_permaloc_)
-      .ActReg1(&next_block_permaloc_)
+      .ActState(StRequestTransition);
+
+  Def().IfState(StTransitionDone)
       .ActState(StMoving);
 
   Def().IfState(StStopTrain)
@@ -748,10 +749,8 @@ GlobalVariable* TrainSchedule::GetPermalocBit(StandardBlock* source) {
   return blockptr.get();
 }
 
-void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest) {
+void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest, OpCallback* condition) {
   MapCurrentBlockPermaloc(source);
-  Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(*GetPermalocBit(dest), next_block_permaloc_);
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(*source->request_green(),
                          current_block_request_green_)
@@ -760,16 +759,36 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock
       .ActImportVariable(source->detector(),
                          current_block_detector_);
   Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(*GetPermalocBit(dest), next_block_permaloc_)
       .ActImportVariable(dest->detector(),
                          next_block_detector_)
       .ActImportVariable(dest->route_in(),
                          next_block_route_in_);
+
   Def().IfState(StWaiting)
       .IfReg1(current_block_permaloc_)
       .IfReg0(next_block_detector_)
       .IfReg0(current_block_route_out_)
       .IfReg0(next_block_route_in_)
+      .RunCallback(condition)
       .ActState(StRequestGreen);
+
+  Def().IfState(StRequestTransition)
+      .IfReg1(current_block_permaloc_)
+      .ActReg0(&current_block_permaloc_)
+      .ActReg1(&next_block_permaloc_)
+      .ActState(StTransitionDone);
 }
+
+void TrainSchedule::StopTrainAt(StandardBlock* dest) {
+  MapCurrentBlockPermaloc(dest);
+  Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(dest->detector(),
+                         current_block_detector_);
+  // We never transition to RequestGreen, thus we don't need all the other
+  // import variables either.
+}
+
+
 
 }  // namespace automata
