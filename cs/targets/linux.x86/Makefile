@@ -7,15 +7,10 @@ include $(OPENMRNPATH)/etc/prog.mk
 
 #SYSLIBRARIES += -lautomata
 
-$(EXECUTABLE)$(EXTENTION): lib/libautomata.a logic-demo.o depmake
+$(EXECUTABLE)$(EXTENTION): lib/libautomata.a logic-demo.o
 #$(EXECUTABLE)$(EXTENTION): depmake
 
 #lib/libautomata.a:
-
-.PHONY: depmake
-
-#depmake:
-#	make -C $(OPENMRNPATH)/targets/$(TARGET) all
 
 OBJS += logic-demo.o
 
@@ -23,11 +18,17 @@ logic-demo.o: logic-demo.cout
 	$(CC) $(CFLAGS) -x c $< -o $@
 	$(CC) -MM $(CFLAGS) -x c $< > $*.d
 
-.PHONY: logic-demo.cout
+.PHONY: logic-demo.dep
 
-logic-demo.cout:
+logic-demo.dep:
 	+$(MAKE) -C $(APP_PATH)/../automata logic-demo.cout
+
+logic-demo.cout: $(APP_PATH)/../automata/logic-demo.cout logic-demo.dep
 	ln -sf $(APP_PATH)/../automata/logic-demo.cout $@
+
+#	
+#	+$(MAKE) -C $(APP_PATH)/../automata logic-demo.cout
+#	ln -sf $(APP_PATH)/../automata/logic-demo.cout $@
 
 cleangen:
 	rm -f logic-demo.c
