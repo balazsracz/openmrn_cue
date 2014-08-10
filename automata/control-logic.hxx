@@ -767,6 +767,9 @@ class TrainSchedule : public virtual AutomataPlugin {
         next_block_permaloc_(aut_.ReserveVariable()),
         next_block_route_in_(aut_.ReserveVariable()),
         next_block_detector_(aut_.ReserveVariable()),
+        magnet_command_(aut_.ReserveVariable()),
+        magnet_state_(aut_.ReserveVariable()),
+        magnet_locked_(aut_.ReserveVariable()),
         magnets_ready_(alloc_.Allocate("magnets_ready")),
         outgoing_route_conditions_(
             NewCallbackPtr(this, &TrainSchedule::AddCurrentOutgoingConditions)),

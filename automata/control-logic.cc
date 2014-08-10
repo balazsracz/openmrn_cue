@@ -681,8 +681,8 @@ void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
   def->aut_state.state = aut_.NewUserState();
   def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
   def->command.reset(alloc_.Allocate(def->name_ + ".command"));
-  // TODO(balazs.racz): We do not set locked yet because it is ignored.
-  //def->.reset(alloc_.Allocate(def->name_ + ".command"));
+  // TODO(balazs.racz): Locked is ignored at the moment.
+  def->locked.reset(alloc_.Allocate(def->name_ + ".locked"));
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
 }
 
@@ -821,7 +821,8 @@ void TrainSchedule::SwitchTurnout(MagnetDef* magnet, bool desired_state) {
   Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
       .ActImportVariable(*magnet->command, magnet_command_)
       .ActImportVariable(*magnet->current_state, magnet_state_)
-      /* TODO(balazs.racz) import locked when it gets used. .ActImportVariable(*magnet->locked, magnet_locked_)*/;
+      /* TODO(balazs.racz) locked is currently ignored by the magnet automata. */
+      .ActImportVariable(*magnet->locked, magnet_locked_);
   Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
       .IfReg(magnet_state_, !desired_state)
       .ActReg0(magnets_ready);
