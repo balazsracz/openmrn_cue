@@ -7,12 +7,14 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
 #include "../cs/src/automata_defs.h"
 
 using std::string;
 using std::vector;
 using std::map;
+using std::set;
 
 #ifndef HASSERT
 #define HASSERT(x) do { if (!(x)) {fprintf(stderr, "Assertion failed: " #x); abort();} } while(0)
@@ -119,13 +121,22 @@ extern int FIRST_USER_STATE_ID;
 /** Represents a concrete automata in the current board.
  */
 class Automata {
-public:
-    Automata(const string& name) : timer_bit_(0), output_(NULL), aut(this), name_(name), next_user_state_(FIRST_USER_STATE_ID) {
-        ClearUsedVariables();
-    }
-    Automata() : timer_bit_(0), output_(NULL), aut(this), next_user_state_(FIRST_USER_STATE_ID) {
-        ClearUsedVariables();
-    }
+ public:
+  Automata(const string& name)
+      : timer_bit_(0),
+        output_(NULL),
+        aut(this),
+        name_(name),
+        next_user_state_(FIRST_USER_STATE_ID) {
+    ClearUsedVariables();
+  }
+  Automata()
+      : timer_bit_(0),
+        output_(NULL),
+        aut(this),
+        next_user_state_(FIRST_USER_STATE_ID) {
+    ClearUsedVariables();
+  }
     ~Automata() {}
 
     void Render(string* output);
@@ -188,7 +199,12 @@ protected:
 private:
     friend class Op;
 
+    // Returns the next available variable ID, skipping any reserved ids.
+    int GetNextVariableId();
+
     map<const GlobalVariable*, LocalVariable> used_variables_;
+    set<int> reserved_variables_;
+    int next_variable_id_;
     string name_;
     int next_user_state_;
     DISALLOW_COPY_AND_ASSIGN(Automata);

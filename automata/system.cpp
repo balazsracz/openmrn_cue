@@ -64,11 +64,12 @@ Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {
 
 const Automata::LocalVariable& Automata::ImportVariable(
     const GlobalVariable& var) {
-  int next_id = used_variables_.size();
   LocalVariable& ret = used_variables_[&var];
   if (ret.id < 0) {
+    int next_id = GetNextVariableId();
     ret.id = next_id;
     assert(ret.id < MAX_IMPORT_VAR);
+    if (0) fprintf(stderr, "aut %s: imported variable %p for id %d\n", name_.c_str(), &var, ret.id);
     RenderImportVariable(var, ret.id);
   }
   return ret;
@@ -84,8 +85,9 @@ Automata::LocalVariable Automata::ReserveVariable() {
   while (used_variables_.find(p) != used_variables_.end()) {
     --p;
   }
-  int id = used_variables_.size();
-  used_variables_[p].id = id;
+  int id = GetNextVariableId();
+  reserved_variables_.insert(id);
+  if (0) fprintf(stderr, "aut %s: reserved variable id %d\n", name_.c_str(), id);
   return LocalVariable(id);
 }
 
@@ -94,6 +96,15 @@ void Automata::ClearUsedVariables() {
   // We add the timer variable to the map with a fake key in order to
   // reserve local bit 0.
   used_variables_[NULL] = timer_bit_;
+  next_variable_id_ = 1;
+}
+
+int Automata::GetNextVariableId() {
+  while (reserved_variables_.count(next_variable_id_)) {
+    ++next_variable_id_;
+  }
+  HASSERT(next_variable_id_ < MAX_IMPORT_VAR);
+  return next_variable_id_++;
 }
 
 void Automata::Render(string* output) {
