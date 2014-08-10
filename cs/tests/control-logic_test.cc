@@ -1740,7 +1740,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   LOG(INFO, "Setting train to the source location.");
   SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
   wait();
-  Run(10);
+  Run(20);
   wait();
   EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
   EXPECT_TRUE(TopA.signal_green.Get());
