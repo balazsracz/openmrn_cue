@@ -740,6 +740,7 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
 void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
   ScheduleLocation* loc = AllocateOrGetLocationByBlock(source);
   Def().ActImportVariable(*loc->permaloc(), current_block_permaloc_);
+  current_location_ = loc;
 }
 
 TrainSchedule::ScheduleLocation* TrainSchedule::AllocateOrGetLocation(

@@ -816,8 +816,11 @@ class TrainSchedule : public virtual AutomataPlugin {
   // destination is free, the train will move into the destination
   // block. Condiiton, if specified, will have to evaluate to true in order to
   // give a green to the train from the current block to the next.
-  void AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest, OpCallback* condition = nullptr);
+  void AddEagerBlockTransition(StandardBlock *source, StandardBlock *dest,
+                               OpCallback *condition = nullptr);
 
+  // Adds an eager block transition between each successive pair of blocks in
+  // this list.
   void AddEagerBlockSequence(
       const std::initializer_list<StandardBlock *> &blocks) {
     auto ia = blocks.begin();
@@ -830,7 +833,8 @@ class TrainSchedule : public virtual AutomataPlugin {
     }
   }
 
-  // Stops the train at the destination block. This is a terminal state.
+  // Stops the train at the destination block. This is a terminal state and
+  // probably should be used for testing only.
   void StopTrainAt(StandardBlock* dest);
 
  private:
@@ -884,7 +888,8 @@ class TrainSchedule : public virtual AutomataPlugin {
   Automata::LocalVariable next_block_detector_;
 
   // This will be set temporarily as the processing goes down the body of
-  // RunTransition.
+  // RunTransition. It always points to the location structure for the source
+  // of the current transition.
   ScheduleLocation* current_location_;
 
   // This map goes from the detector bit of the current train location (aka
