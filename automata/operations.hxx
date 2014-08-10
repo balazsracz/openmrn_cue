@@ -139,6 +139,14 @@ public:
         return *this;
     }
 
+    Op& IfReg(const Automata::LocalVariable& var, bool value) {
+        uint8_t v = _IF_REG;
+        if (value) v |= _REG_1;
+        if (output_) v |= var.GetId();
+        ifs_.push_back(v);
+        return *this;
+    }
+
     Op& ActReg0(Automata::LocalVariable* var) {
         uint8_t v = _ACT_REG;
         if (output_) v |= var->GetId();
@@ -148,6 +156,14 @@ public:
 
     Op& ActReg1(Automata::LocalVariable* var) {
         uint8_t v = _ACT_REG | _REG_1;
+        if (output_) v |= var->GetId();
+        acts_.push_back(v);
+        return *this;
+    }
+
+    Op& ActReg(Automata::LocalVariable* var, bool value) {
+        uint8_t v = _ACT_REG;
+        if (value) v |= _REG_1;
         if (output_) v |= var->GetId();
         acts_.push_back(v);
         return *this;
