@@ -1618,7 +1618,7 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
       Def()
           .IfState(StWaiting)
           .IfReg1(*cv)
-          .ActState(StRequestGreen)
+          .ActState(StReadyToGo)
           .ActReg0(cv);
       Def()
           .ActImportVariable(*first.b.request_green(),
@@ -1659,10 +1659,10 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
   second.inverted_detector.Set(true);
   Run(30);
   LOG(INFO, "Sending off train.");
-
   EXPECT_EQ(0, trainImpl_.get_speed().speed());
   mcont.Set(true);
-  Run(20);
+  Run(30);
+  EXPECT_EQ(StMoving.state, runner_->GetAllAutomatas().back()->GetState());
   EXPECT_TRUE(first.signal_green.Get());
   EXPECT_FALSE(mcont.Get());
   wait();
@@ -1763,8 +1763,6 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
 }
 
 TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
-  debug_variables = 1;
-
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
