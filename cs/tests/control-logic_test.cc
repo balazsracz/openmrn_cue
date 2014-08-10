@@ -1678,12 +1678,15 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
 }
 
 // This is the test layout. It's a dogbone (a loop) with 6 standard blocks.
+// There is a stub track in the turnaround loop. It has a moveableturnout as
+// entry, then a fixedturnout to exit.
 //
-//   >Rleft
-//  /--\  TopA>TopB  /---\   x  
-//  |   \-----------/    |   x
-//  |   /-----------\    |   x
-//  \--/  BotB<BotA  \---/   x
+//
+//   >Rleft           
+//  /--\  TopA>TopB  /---------\   x  
+//  |   \-----------/--/--x    |   x
+//  |   /-----------\-/  StubR |   x
+//  \--/  BotB<BotA  \---------/   x
 //                   <RRight
 //
 //
@@ -1696,12 +1699,33 @@ class SampleLayoutLogicTrainTest : public LogicTrainTest {
         TopB(this, "TopB"),
         RRight(this, "RRight"),
         BotA(this, "BotA"),
-        BotB(this, "BotB") {
-    BindSequence(
-        {&RLeft.b, &TopA.b, &TopB.b, &RRight.b, &BotA.b, &BotB.b, &RLeft.b});
+        BotB(this, "BotB"),
+        RStub(this, "RStub"),
+        RStubEntry(this, "RStubEntry"),
+        RStubInside(this, FixedTurnout::TURNOUT_CLOSED, "RStubInside"),
+        RStubExit(this, FixedTurnout::TURNOUT_THROWN, "RStubExit"),
+        RStubIntoMain(this, FixedTurnout::TURNOUT_THROWN, "RStubIntoMain")
+     {
+    BindSequence({&BotA.b, &BotB.b, &RLeft.b, &TopA.b, &TopB.b});
+    BindPairs({{TopB.b.side_b(), RStubEntry.b.side_points()},
+               {RStubEntry.b.side_thrown(), RRight.b.side_a()},
+               {RStubEntry.b.side_closed(), RStubExit.b.side_closed()},
+               {RStubExit.b.side_thrown(), RStubIntoMain.b.side_closed()},
+                   // for the moment we map the stub track into a fixed turnout
+                   // and a standardblock that is arranged as a loop from the
+                   // closed to the thrown side.
+               {RStubExit.b.side_points(), RStubInside.b.side_points()},
+               {RStubInside.b.side_closed(), RStub.b.side_a()},
+               {RStubInside.b.side_thrown(), RStub.b.side_b()},
+               {RStubIntoMain.b.side_points(), BotA.b.side_a()},
+               {RRight.b.side_b(), RStubIntoMain.b.side_thrown()}});
   }
 
-  TestBlock RLeft, TopA, TopB, RRight, BotA, BotB;
+  TestBlock RLeft, TopA, TopB, RRight, BotA, BotB, RStub;
+  TestMovableTurnout RStubEntry;
+  TestFixedTurnout RStubInside;
+  TestFixedTurnout RStubExit;
+  TestFixedTurnout RStubIntoMain;
 };
 
 TEST_F(SampleLayoutLogicTrainTest, Construct) {}
@@ -1774,6 +1798,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
+      Def().ActReg1(aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
       AddEagerBlockSequence({&t_->TopA.b, &t_->TopB.b, &t_->RRight.b,
                              &t_->BotA.b, &t_->BotB.b, &t_->RLeft.b,
                              &t_->TopA.b});
