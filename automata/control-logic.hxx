@@ -7,6 +7,8 @@
 #include <map>
 #include <memory>
 #include <algorithm>
+#include <cstddef>
+#include <stdint.h>
 
 #include "system.hxx"
 #include "operations.hxx"
@@ -732,14 +734,18 @@ class StandardFixedTurnout {
 };
 
 static constexpr StateRef StWaiting(2);
-static constexpr StateRef StRequestGreen(3);
-static constexpr StateRef StGreenWait(4);
-static constexpr StateRef StStartTrain(5);
-static constexpr StateRef StMoving(6);
-static constexpr StateRef StStopTrain(7);
+static constexpr StateRef StReadyToGo(3);
+static constexpr StateRef StRequestGreen(4);
+static constexpr StateRef StGreenWait(5);
+static constexpr StateRef StStartTrain(6);
+static constexpr StateRef StMoving(7);
+static constexpr StateRef StStopTrain(8);
 
-static constexpr StateRef StRequestTransition(8);
-static constexpr StateRef StTransitionDone(9);
+static constexpr StateRef StRequestTransition(9);
+static constexpr StateRef StTransitionDone(10);
+
+static constexpr StateRef StTurnout(11);
+
 
 class TrainSchedule : public virtual AutomataPlugin {
  public:
@@ -756,11 +762,18 @@ class TrainSchedule : public virtual AutomataPlugin {
         current_block_request_green_(aut_.ReserveVariable()),
         current_block_route_out_(aut_.ReserveVariable()),
         current_block_permaloc_(aut_.ReserveVariable()),
+        current_block_routingloc_(current_block_permaloc_),
+        current_direction_(aut_.ReserveVariable()),
         next_block_permaloc_(aut_.ReserveVariable()),
         next_block_route_in_(aut_.ReserveVariable()),
-        next_block_detector_(aut_.ReserveVariable())
-  {
+        next_block_detector_(aut_.ReserveVariable()),
+        magnets_ready_(alloc_.Allocate("magnets_ready")),
+        outgoing_route_conditions_(
+            NewCallbackPtr(this, &TrainSchedule::AddCurrentOutgoingConditions)),
+        current_location_(nullptr) {
     AddAutomataPlugin(9900, NewCallbackPtr(this, &TrainSchedule::HandleInit));
+    AddAutomataPlugin(
+        99, NewCallbackPtr(this, &TrainSchedule::ClearCurrentLocation));
     AddAutomataPlugin(100, NewCallbackPtr(this, &TrainSchedule::RunTransition));
     // 200 already needs the imported local variables
     AddAutomataPlugin(200,
@@ -837,13 +850,31 @@ class TrainSchedule : public virtual AutomataPlugin {
   // probably should be used for testing only.
   void StopTrainAt(StandardBlock* dest);
 
+  // Before requesting green outbounds from this location, sets the particular
+  // turnout to the desired state.
+  //
+  // @param magnet is the turnout to set.
+  // @param desired_state if true, the turnout will be thrown, if false, will
+  // be set to closed.
+  void SwitchTurnout(MagnetDef* magnet, bool desired_state);
+
  private:
   // Handles state == StInit. Sets the train into a known state at startup,
   // reading the externally provided bits for figuring out where the train is.
   void HandleInit(Automata *aut);
 
+  void ClearCurrentLocation(Automata* aut) {
+    current_location_ = nullptr;
+  }
+
+
   void SendTrainCommands(Automata *aut);
   void HandleBaseStates(Automata *aut);
+
+  // This helper function will add all IfXxx conditions to a command that are
+  // needed to restrict it to the currently set route. It will restrict on the
+  // permaloc or routingloc, and the outgoing route bit if necessary.
+  void AddCurrentOutgoingConditions(Automata::Op* op);
 
  protected:
   // Allocates the permaloc bit for the current block if it does not exist
@@ -863,6 +894,11 @@ class TrainSchedule : public virtual AutomataPlugin {
     return AllocateOrGetLocation(&block->detector(), block->name());
   }
 
+  // Allocates a new or returns an existing helper bit. id has to be different
+  // for each different helper bit to be requested. name will be used in the
+  // debugging name of the new bit.
+  GlobalVariable* GetHelperBit(ptrdiff_t id, const string& name);
+
   // The train that we are driving.
   uint64_t train_node_id_;
 
@@ -875,18 +911,39 @@ class TrainSchedule : public virtual AutomataPlugin {
   // Alias to the above object for using in Def().
   Automata* aut;
 
-  // 1 if the train is currently in reverse mode (loco at the end).
+  // 1 if the train is currently in reverse mode (loco pushing at the end).
   std::unique_ptr<GlobalVariable> is_reversed_;
   Automata::LocalVariable current_block_detector_;
   Automata::LocalVariable current_block_request_green_;
   Automata::LocalVariable current_block_route_out_;
   // The location bit for the current block will be mapped here.
   Automata::LocalVariable current_block_permaloc_;
+  // The routing location for the current state. This bit will be 1 if the head
+  // of the route set is at the current location. Currently maps to permaloc,
+  // because we do not support advance routing.
+  Automata::LocalVariable& current_block_routingloc_;
+  // If the current state transition is direction sensitive (that is,
+  // current_location_->respect_direction_ == true), then this bit will be 1 if
+  // we are at the chosen transition direction.
+  Automata::LocalVariable current_direction_;
+
   // The location bit for the next block will be mapped here.
   Automata::LocalVariable next_block_permaloc_;
   Automata::LocalVariable next_block_route_in_;
   Automata::LocalVariable next_block_detector_;
 
+  // These variables are used by magnet settings.
+  Automata::LocalVariable magnet_command_;
+  Automata::LocalVariable magnet_state_;
+  Automata::LocalVariable magnet_locked_;
+
+  // Used by the StTurnout state to know if all turnouts have already been set.
+  std::unique_ptr<GlobalVariable> magnets_ready_;
+
+  // Callback that will add all necessary checks for outgoing route setting.
+  std::unique_ptr<OpCallback> outgoing_route_conditions_;
+
+ private:
   // This will be set temporarily as the processing goes down the body of
   // RunTransition. It always points to the location structure for the source
   // of the current transition.
@@ -895,6 +952,9 @@ class TrainSchedule : public virtual AutomataPlugin {
   // This map goes from the detector bit of the current train location (aka
   // state) to the struct that holds the allocated train location bits.
   std::map<const void*, ScheduleLocation> location_map_;
+
+  // These helper bits are used by turnout setting commands.
+  std::map<long, std::unique_ptr<GlobalVariable> > helper_bits_;
 };
 
 }  // namespace automata

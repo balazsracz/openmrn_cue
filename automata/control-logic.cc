@@ -681,7 +681,7 @@ void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
   def->aut_state.state = aut_.NewUserState();
   def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
   def->command.reset(alloc_.Allocate(def->name_ + ".command"));
-  // We do not set locked yet because it is ignored.
+  // TODO(balazs.racz): We do not set locked yet because it is ignored.
   //def->.reset(alloc_.Allocate(def->name_ + ".command"));
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
 }
@@ -697,6 +697,7 @@ void TrainSchedule::HandleInit(Automata* aut) {
 }
 
 void TrainSchedule::HandleBaseStates(Automata* aut) {
+  auto* magnets_ready = aut->ImportVariable(magnets_ready_.get());
   Def().IfState(StRequestGreen)
       .IfReg0(current_block_request_green_)
       .ActReg1(&current_block_request_green_);
@@ -711,6 +712,19 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
   Def().IfState(StMoving)
       .IfReg1(current_block_detector_)
       .ActState(StStopTrain);
+
+  Def().IfState(StReadyToGo)
+      .ActState(StTurnout)
+      .ActReg0(magnets_ready);
+
+  Def().IfState(StTurnout)
+      .IfReg1(*magnets_ready)
+      .ActState(StRequestGreen);
+
+  // If we haven't transitioned out of StTurnout state previously, then we
+  // reset the "todo" bit and go for another round of magnet setting.
+  Def().IfState(StTurnout)
+      .ActReg1(magnets_ready);
 }
 
 void TrainSchedule::SendTrainCommands(Automata *aut) {
@@ -774,8 +788,10 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock
       .IfReg0(current_block_route_out_)
       .IfReg0(next_block_route_in_)
       .RunCallback(condition)
-      .ActState(StRequestGreen);
+      .ActState(StReadyToGo);
 
+  // TODO(balazs.racz): this needs to be revised when we move from permaloc to
+  // routingloc.
   Def().IfState(StRequestTransition)
       .IfReg1(current_block_permaloc_)
       .ActReg0(&current_block_permaloc_)
@@ -792,6 +808,29 @@ void TrainSchedule::StopTrainAt(StandardBlock* dest) {
   // import variables either.
 }
 
+void TrainSchedule::AddCurrentOutgoingConditions(Automata::Op* op) {
+  op->IfReg1(current_block_routingloc_);
+  HASSERT(current_location_);
+  if (current_location_->respect_direction_) {
+    op->IfReg1(current_direction_);
+  }
+}
 
+void TrainSchedule::SwitchTurnout(MagnetDef* magnet, bool desired_state) {
+  auto* magnets_ready = aut->ImportVariable(magnets_ready_.get());
+  Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
+      .ActImportVariable(*magnet->command, magnet_command_)
+      .ActImportVariable(*magnet->current_state, magnet_state_)
+      /* TODO(balazs.racz) import locked when it gets used. .ActImportVariable(*magnet->locked, magnet_locked_)*/;
+  Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
+      .IfReg(magnet_state_, !desired_state)
+      .ActReg0(magnets_ready);
+  Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
+      .IfReg(magnet_command_, !desired_state)
+      .ActReg0(magnets_ready);
+  Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
+      .IfReg0(magnet_locked_)
+      .ActReg(&magnet_command_, desired_state);
+}
 
 }  // namespace automata
