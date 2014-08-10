@@ -1629,9 +1629,10 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
                              next_block_detector_);
       MapCurrentBlockPermaloc(&first.b);
       Def()
-          .ActImportVariable(second.b.detector(),
-                             current_block_detector_)
-          .ActImportVariable(*GetPermalocBit(&second.b), next_block_permaloc_);
+          .ActImportVariable(second.b.detector(), current_block_detector_)
+          .ActImportVariable(
+               *AllocateOrGetLocationByBlock(&second.b)->permaloc(),
+               next_block_permaloc_);
 
       Def().IfState(StRequestTransition).ActState(StTransitionDone);
     }
@@ -1706,8 +1707,6 @@ class SampleLayoutLogicTrainTest : public LogicTrainTest {
 TEST_F(SampleLayoutLogicTrainTest, Construct) {}
 
 TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
-  debug_variables = 1;
-
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
@@ -1763,5 +1762,51 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   EXPECT_FALSE(TopB.signal_green.Get());
 }
 
+TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
+  debug_variables = 1;
+
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
+            EventBlock::Allocator* alloc)
+        : TrainSchedule("mytrain", b,
+                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 8)),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      AddEagerBlockSequence({&t_->TopA.b, &t_->TopB.b, &t_->RRight.b,
+                             &t_->BotA.b, &t_->BotB.b, &t_->RLeft.b,
+                             &t_->TopA.b});
+    }
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } my_train(this, &brd, alloc());
+  SetupRunner(&brd);
+  Run(20);
+  vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
+  TopA.inverted_detector.Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  
+  for (int i = 0; i < 37; ++i) {
+    TestBlock* cblock = blocks[i % blocks.size()];
+    TestBlock* nblock = blocks[(i + 1) % blocks.size()];
+    Run(20);
+    EXPECT_TRUE(QueryVar(cblock->b.route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    cblock->inverted_detector.Set(true);
+    Run(20);
+    EXPECT_FALSE(QueryVar(cblock->b.route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b.route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&cblock->b)));
+
+    nblock->inverted_detector.Set(false);
+    Run(20);
+  }
+}
 
 }  // namespace automata

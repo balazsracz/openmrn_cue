@@ -738,15 +738,17 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
 }
 
 void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
-  Def().ActImportVariable(*GetPermalocBit(source), current_block_permaloc_);
+  ScheduleLocation* loc = AllocateOrGetLocationByBlock(source);
+  Def().ActImportVariable(*loc->permaloc(), current_block_permaloc_);
 }
 
-GlobalVariable* TrainSchedule::GetPermalocBit(StandardBlock* source) {
-  auto& blockptr = detector_to_permaloc_bit_[&source->detector()];
-  if (!blockptr) {
-    blockptr.reset(permanent_alloc_.Allocate("loc." + source->name())); 
+TrainSchedule::ScheduleLocation* TrainSchedule::AllocateOrGetLocation(
+    const void* ptr, const string& name) {
+  auto& loc = location_map_[ptr];
+  if (!loc.permaloc_bit) {
+    loc.permaloc_bit.reset(permanent_alloc_.Allocate("loc." + name)); 
   }
-  return blockptr.get();
+  return &loc;
 }
 
 void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest, OpCallback* condition) {
@@ -758,12 +760,12 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock
                          current_block_route_out_)
       .ActImportVariable(source->detector(),
                          current_block_detector_);
-  Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(*GetPermalocBit(dest), next_block_permaloc_)
-      .ActImportVariable(dest->detector(),
-                         next_block_detector_)
-      .ActImportVariable(dest->route_in(),
-                         next_block_route_in_);
+  Def()
+      .IfReg1(current_block_permaloc_)
+      .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->permaloc(),
+                         next_block_permaloc_)
+      .ActImportVariable(dest->detector(), next_block_detector_)
+      .ActImportVariable(dest->route_in(), next_block_route_in_);
 
   Def().IfState(StWaiting)
       .IfReg1(current_block_permaloc_)

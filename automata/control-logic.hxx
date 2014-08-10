@@ -777,19 +777,58 @@ class TrainSchedule : public virtual AutomataPlugin {
   //
 
   GlobalVariable* TEST_GetPermalocBit(StandardBlock* source) {
-    size_t s = detector_to_permaloc_bit_.size();
-    auto* r = GetPermalocBit(source);
-    HASSERT(s == detector_to_permaloc_bit_.size());
+    size_t s = location_map_.size();
+    auto* r = AllocateOrGetLocationByBlock(source)->permaloc();
+    HASSERT(s == location_map_.size());
     return r;
   }
 
  protected:
+  struct ScheduleLocation {
+    ScheduleLocation()
+        : respect_direction_(false) {}
+
+    GlobalVariable* permaloc() {
+      return permaloc_bit.get();
+    }
+
+    GlobalVariable* routingloc() {
+      // TODO(balazs.racz): switch this to the other bit.
+      return permaloc_bit.get();
+    }
+
+    // This bit will be 1 if the train is right now physically in (or
+    // approaching) this signal.
+    std::unique_ptr<GlobalVariable> permaloc_bit;
+    // Currently unused. Eventually this will be 1 if the automata is currently
+    // setting the route from this block outwards.
+    std::unique_ptr<GlobalVariable> routingloc_bit;
+
+    // Specifies whether the direction bit should be taken into account as
+    // well. If this is true, there are multiple outgoing possibilities from
+    // this location, and each has its own direction bit. Automata transition
+    // states will also have to match the current direction bit. If this is
+    // false, the direction bit is not imported.
+    bool respect_direction_;
+  };
   // Makes an eager transfer from block source to block dest. This transfer
   // will not be gated on anything; as soon as the train shows up in source and
   // destination is free, the train will move into the destination
   // block. Condiiton, if specified, will have to evaluate to true in order to
   // give a green to the train from the current block to the next.
   void AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest, OpCallback* condition = nullptr);
+
+  void AddEagerBlockSequence(
+      const std::initializer_list<StandardBlock *> &blocks) {
+    auto ia = blocks.begin();
+    if (ia == blocks.end()) return;
+    auto ib = blocks.begin(); ++ib;
+    while (ib != blocks.end()) {
+      AddEagerBlockTransition(*ia, *ib);
+      ++ia;
+      ++ib;
+    }
+  }
 
   // Stops the train at the destination block. This is a terminal state.
   void StopTrainAt(StandardBlock* dest);
@@ -807,9 +846,18 @@ class TrainSchedule : public virtual AutomataPlugin {
   // yet. Maps the current_block_permaloc_ bit onto it.
   void MapCurrentBlockPermaloc(StandardBlock* source);
 
-  // Allocates the permaloc bit for a particular block if does not exist;
-  // returns the permaloc bit. Does NOT transfer ownership. Public for testing.
-  GlobalVariable* GetPermalocBit(StandardBlock* source);
+  // Allocates the location bits for a particular block if does not exist;
+  // returns the location structure. Does NOT transfer ownership.
+  //
+  // @param p arbitrary key that references the location.
+  // @param name will be used to mark the location bits for debugging.
+  ScheduleLocation* AllocateOrGetLocation(const void* p, const string& name);
+
+  // Allocates the location bits for a particular block if does not exist;
+  // returns the location structure. Does NOT transfer ownership.
+  ScheduleLocation* AllocateOrGetLocationByBlock(StandardBlock* block) {
+    return AllocateOrGetLocation(&block->detector(), block->name());
+  }
 
   // The train that we are driving.
   uint64_t train_node_id_;
@@ -835,10 +883,13 @@ class TrainSchedule : public virtual AutomataPlugin {
   Automata::LocalVariable next_block_route_in_;
   Automata::LocalVariable next_block_detector_;
 
+  // This will be set temporarily as the processing goes down the body of
+  // RunTransition.
+  ScheduleLocation* current_location_;
+
   // This map goes from the detector bit of the current train location (aka
-  // state) to the bit that was allocated for that train state in the
-  // permanent_alloc.
-  std::map<const GlobalVariable*, std::unique_ptr<GlobalVariable> > detector_to_permaloc_bit_;
+  // state) to the struct that holds the allocated train location bits.
+  std::map<const void*, ScheduleLocation> location_map_;
 };
 
 }  // namespace automata
