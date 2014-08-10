@@ -235,8 +235,12 @@ protected:
   void Run(int count = 1) {
     for (int i = 0; i < count; ++i) {
       wait_for_event_thread();
+      extern int debug_variables;
       if ((i % 3) == 2) {
+        if (debug_variables) fprintf(stderr, ",");
         runner_->AddPendingTick();
+      } else {
+        if (debug_variables) fprintf(stderr, ".");
       }
       runner_->RunAllAutomata();
     }
