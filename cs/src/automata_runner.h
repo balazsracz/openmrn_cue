@@ -54,7 +54,10 @@ public:
     }
 
     void SetState(uint8_t state) {
-        LOG(VERBOSE, "Automata %d state to %d", timer_bit_.GetId(), state);
+        extern int debug_variables;
+        if (debug_variables > 1) {
+            LOG(VERBOSE, "Automata %d state to %d", timer_bit_.GetId(), state);
+        }
 	*timer_bit_.GetStateByte(OFS_STATE) = state;
     }
 
