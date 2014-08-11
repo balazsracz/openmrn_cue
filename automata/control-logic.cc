@@ -766,7 +766,18 @@ TrainSchedule::ScheduleLocation* TrainSchedule::AllocateOrGetLocation(
   return &loc;
 }
 
-void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock* dest, OpCallback* condition) {
+GlobalVariable* TrainSchedule::GetHelperBit(
+    const void* ptr, const string& name) {
+  auto& loc = helper_bits_[ptr];
+  if (!loc.get()) {
+    loc.reset(alloc_.Allocate(name)); 
+  }
+  return loc.get();
+}
+
+void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
+                                            StandardBlock* dest,
+                                            OpCallback* condition) {
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(*source->request_green(),
@@ -796,6 +807,71 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source, StandardBlock
       .IfReg1(current_block_permaloc_)
       .ActReg0(&current_block_permaloc_)
       .ActReg1(&next_block_permaloc_)
+      .ActState(StTransitionDone);
+}
+
+void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
+                                               StandardBlock* dest,
+                                               OpCallback* condition,
+                                               RequestClientInterface* client) {
+  MapCurrentBlockPermaloc(source);
+  Def().ActImportVariable(
+      *GetHelperBit(client->request(),
+                    "transition_" + source->name() + "_" + dest->name()),
+      current_direction_);
+  current_location_->respect_direction_ = true;
+  Def().IfReg1(current_block_routingloc_)
+      .ActImportVariable(*source->request_green(),
+                         current_block_request_green_)
+      .ActImportVariable(source->route_out(),
+                         current_block_route_out_);
+  Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->permaloc(),
+                         next_block_permaloc_)
+      .ActImportVariable(source->detector(),
+                         current_block_detector_);
+  Def()
+      .IfReg1(current_block_routingloc_)
+      .ActImportVariable(dest->detector(), next_block_detector_)
+      .ActImportVariable(dest->route_in(), next_block_route_in_);
+
+  Def().IfState(StWaiting)
+      .IfReg1(current_block_routingloc_)
+      .ActState(StTestCondition)
+      .ActImportVariable(*client->request(), permit_request_)
+      .ActImportVariable(*client->granted(), permit_granted_)
+      .ActImportVariable(*client->taken(), permit_taken_);
+
+  Def().IfState(StTestCondition)
+      .IfReg1(current_block_routingloc_)
+      .IfReg0(next_block_detector_)
+      .IfReg0(current_block_route_out_)
+      .IfReg0(next_block_route_in_)
+      .RunCallback(condition)
+      .ActState(StWaiting)
+      .ActReg1(&permit_request_);
+
+  Def().IfState(StTestCondition)
+      .ActState(StWaiting)
+      .ActReg0(&permit_request_);
+
+  Def().IfState(StWaiting)
+      .IfReg1(current_block_routingloc_)
+      .IfReg1(permit_request_)
+      .IfReg1(permit_granted_)
+      .ActReg0(&permit_request_)
+      .ActReg1(&permit_taken_)
+      .ActReg1(&current_direction_)
+      .ActState(StReadyToGo);
+
+  // TODO(balazs.racz): this needs to be revised when we move from permaloc to
+  // routingloc.
+  Def().IfState(StRequestTransition)
+      .IfReg1(current_block_permaloc_)
+      .IfReg1(current_direction_)
+      .ActReg0(&current_block_permaloc_)
+      .ActReg1(&next_block_permaloc_)
+      .ActReg0(&current_direction_)
       .ActState(StTransitionDone);
 }
 

@@ -733,6 +733,48 @@ class StandardFixedTurnout {
   StandardPluginAutomata aut_;
 };
 
+// This is the interface between train automatas and flip-flop automatas that
+// grant permission to proceed to alternating trains.
+class RequestClientInterface {
+ public:
+  RequestClientInterface(const string &name,
+                         EventBlock::Allocator &parent_alloc)
+      : name_(name),
+        alloc_(parent_alloc.Allocate("client." + name, 3, 4)),
+        request_(alloc_.Allocate("request")),
+        granted_(alloc_.Allocate("granted")),
+        taken_(alloc_.Allocate("taken")) {}
+
+  // This bit will be set by the client (the train automata) if the train
+  // routing is at the present location, and all other necessary conditions are
+  // fulfilled for making the train progress. Other conditions include the
+  // destination track being free, the intermediate blocks leading to the
+  // destination track being all available, as well as any timer blocking the
+  // train from proceeding being also fulfilled, etc.
+  //
+  // This bit will be cleared by the client when either the conditions do not
+  // hold anymore, or when the granted permission is taken.
+  GlobalVariable* request() { return request_.get(); }
+
+  // This bit will be set by the flip-flop server automata. It will be cleared
+  // by the server automata if it revokes the grant, or when it acknowledges
+  // the taken bit.
+  GlobalVariable* granted() { return granted_.get(); }
+
+  // This bit will be set by the client when it sees that the permission is
+  // granted and it removes the request bit. It will be cleared by the flipflop
+  // automata together with the granted bit.
+  GlobalVariable* taken() { return taken_.get(); }
+
+ private:
+  string name_;
+  EventBlock::Allocator alloc_;
+  std::unique_ptr<GlobalVariable> request_;
+  std::unique_ptr<GlobalVariable> granted_;
+  std::unique_ptr<GlobalVariable> taken_;
+};
+
+
 static constexpr StateRef StWaiting(2);
 static constexpr StateRef StReadyToGo(3);
 static constexpr StateRef StRequestGreen(4);
@@ -745,6 +787,7 @@ static constexpr StateRef StRequestTransition(9);
 static constexpr StateRef StTransitionDone(10);
 
 static constexpr StateRef StTurnout(11);
+static constexpr StateRef StTestCondition(12);
 
 
 class TrainSchedule : public virtual AutomataPlugin {
@@ -770,6 +813,9 @@ class TrainSchedule : public virtual AutomataPlugin {
         magnet_command_(aut_.ReserveVariable()),
         magnet_state_(aut_.ReserveVariable()),
         magnet_locked_(aut_.ReserveVariable()),
+        permit_request_(aut_.ReserveVariable()),
+        permit_granted_(aut_.ReserveVariable()),
+        permit_taken_(aut_.ReserveVariable()),
         magnets_ready_(alloc_.Allocate("magnets_ready")),
         outgoing_route_conditions_(
             NewCallbackPtr(this, &TrainSchedule::AddCurrentOutgoingConditions)),
@@ -849,6 +895,14 @@ class TrainSchedule : public virtual AutomataPlugin {
     }
   }
 
+  // Adds a block transition that, when the evaluated condition is true, will
+  // communicate with a flipflop automata to request permission to
+  // proceed. Only when the permission si granted, will the train proceed with
+  // requesting green from the control point logic.
+  void AddBlockTransitionOnPermit(StandardBlock *source, StandardBlock *dest,
+                                  OpCallback *condition,
+                                  RequestClientInterface *client);
+
   // Stops the train at the destination block. This is a terminal state and
   // probably should be used for testing only.
   void StopTrainAt(StandardBlock* dest);
@@ -900,7 +954,7 @@ class TrainSchedule : public virtual AutomataPlugin {
   // Allocates a new or returns an existing helper bit. id has to be different
   // for each different helper bit to be requested. name will be used in the
   // debugging name of the new bit.
-  GlobalVariable* GetHelperBit(ptrdiff_t id, const string& name);
+  GlobalVariable* GetHelperBit(const void* id, const string& name);
 
   // The train that we are driving.
   uint64_t train_node_id_;
@@ -940,6 +994,11 @@ class TrainSchedule : public virtual AutomataPlugin {
   Automata::LocalVariable magnet_state_;
   Automata::LocalVariable magnet_locked_;
 
+  // These variables are used by request-granted protocol.
+  Automata::LocalVariable permit_request_;
+  Automata::LocalVariable permit_granted_;
+  Automata::LocalVariable permit_taken_;
+
   // Used by the StTurnout state to know if all turnouts have already been set.
   std::unique_ptr<GlobalVariable> magnets_ready_;
 
@@ -957,7 +1016,7 @@ class TrainSchedule : public virtual AutomataPlugin {
   std::map<const void*, ScheduleLocation> location_map_;
 
   // These helper bits are used by turnout setting commands.
-  std::map<long, std::unique_ptr<GlobalVariable> > helper_bits_;
+  std::map<const void*, std::unique_ptr<GlobalVariable> > helper_bits_;
 };
 
 }  // namespace automata
