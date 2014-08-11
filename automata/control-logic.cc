@@ -866,6 +866,9 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .ActReg1(&current_direction_)
       .ActState(StReadyToGo);
 
+  // TODO(balazs.racz): we need to take back the request if we left the current
+  // permaloc through a different destination.
+
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
   Def().IfState(StRequestTransition)

@@ -1798,7 +1798,9 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      Def().ActReg1(aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
+      // Switches the turnout (permanently) to the outer loop.
+      Def().ActReg1(
+          aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
       AddEagerBlockSequence({&t_->TopA.b, &t_->TopB.b, &t_->RRight.b,
                              &t_->BotA.b, &t_->BotB.b, &t_->RLeft.b,
                              &t_->TopA.b});
@@ -1910,6 +1912,86 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   EXPECT_FALSE(QueryVar(TopB.b.route_out()));
   EXPECT_TRUE(QueryVar(TopB.b.route_in()));
   EXPECT_FALSE(TopB.signal_green.Get());
+}
+
+TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
+            EventBlock::Allocator* alloc)
+        : TrainSchedule("mytrain", b,
+                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 16)),
+          gate_loop_("gate_loop", alloc_),
+          gate_stub_("gate_stub", alloc_),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      Def().ActReg1(aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
+      AddEagerBlockSequence({&t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b, &t_->TopB.b, &t_->RRight.b});
+      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RRight.b,
+                                 &gate_loop_);
+      SwitchTurnout(t_->RStubEntry.b.magnet(), true);
+      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RRight.b,
+                                 &gate_stub_);
+      SwitchTurnout(t_->RStubEntry.b.magnet(), false);
+      AddEagerBlockTransition(&t_->RRight.b, &t_->BotA.b);
+      AddEagerBlockTransition(&t_->RStub.b, &t_->BotA.b);
+    }
+
+    RequestClientInterface gate_loop_;
+    RequestClientInterface gate_stub_;
+
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } my_train(this, &brd, alloc());
+  SetupRunner(&brd);
+  Run(20);
+  vector<TestBlock*> blocks = {&BotA, &BotB, &RLeft, &TopA, &TopB};
+  TopA.inverted_detector.Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(&BotA.b), true);
+  int i = 0;
+  bool is_out = false;
+  for (int j = 0; j < 37; ++i, ++j) {
+    TestBlock* cblock;
+    TestBlock* nblock;
+    if (i + 1 == blocks.size()) {
+      is_out = !is_out;
+      cblock = blocks[i];
+      EXPECT_TRUE(QueryVar(my_train.gate_loop_.request()));
+      EXPECT_TRUE(QueryVar(my_train.gate_stub_.request()));
+      if (is_out) {
+        SetVar(*my_train.gate_loop_.granted(), true);
+        nblock = &RRight;
+      } else {
+        SetVar(*my_train.gate_stub_.granted(), true);
+        nblock = &RStub;
+      }
+    } else {
+      cblock = blocks[i];
+      nblock = blocks[i + 1];
+    }
+    Run(20);
+    EXPECT_TRUE(QueryVar(cblock->b.route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    cblock->inverted_detector.Set(true);
+    Run(20);
+    EXPECT_FALSE(QueryVar(cblock->b.route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b.route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&cblock->b)));
+    
+    nblock->inverted_detector.Set(false);
+    if (i + 1 == blocks.size()) {
+      i = 0;
+      // TODO we need to add another transition, from the stub/right into the
+      // BotA.
+    }
+    Run(20);
+  }
 }
 
 }  // namespace automata
