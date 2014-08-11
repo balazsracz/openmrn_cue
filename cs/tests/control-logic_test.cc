@@ -1832,7 +1832,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
   }
 }
 
-TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
+TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
@@ -1841,42 +1841,75 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 8)),
+          gate_("gate", alloc_),
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddEagerBlockSequence({&t_->TopA.b, &t_->TopB.b});
-      AddEagerBlockTransition(&t_->TopB.b, &t_->RRight.b);
-      SwitchTurnout(t_->RStubEntry.b.magnet(), true);
-      AddEagerBlockSequence(
-          {&t_->RRight.b, &t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b});
+      AddBlockTransitionOnPermit(&t_->TopA.b, &t_->TopB.b, &gate_);
+      StopTrainAt(&t_->TopB.b);
     }
+
+    RequestClientInterface gate_;
    private:
     SampleLayoutLogicTrainTest* t_;
   } my_train(this, &brd, alloc());
   SetupRunner(&brd);
+
   Run(20);
-  vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
-  TopA.inverted_detector.Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  EXPECT_TRUE(TopA.inverted_detector.Get());
+  EXPECT_TRUE(TopB.inverted_detector.Get());
+  EXPECT_FALSE(QueryVar(*TopA.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*TopB.b.body_det_.simulated_occupancy_));
+  EXPECT_EQ(0, trainImpl_.get_speed().speed());
   
-  for (int i = 0; i < 37; ++i) {
-    TestBlock* cblock = blocks[i % blocks.size()];
-    TestBlock* nblock = blocks[(i + 1) % blocks.size()];
-    Run(20);
-    EXPECT_TRUE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-    cblock->inverted_detector.Set(true);
-    Run(20);
-    EXPECT_FALSE(QueryVar(cblock->b.route_in()));
-    EXPECT_FALSE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+  LOG(INFO, "Flipping detector at source location.");
+  TopA.inverted_detector.Set(false);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*my_train.gate_.request()));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&cblock->b)));
+  LOG(INFO, "Setting train to the source location.");
+  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  wait();
+  Run(20);
+  wait();
+  EXPECT_TRUE(QueryVar(*my_train.gate_.request()));
+  EXPECT_EQ(0, trainImpl_.get_speed().speed());
+  
+  // We'll make the destination block occupied and see that the request will be
+  // taken back.
+  TopB.inverted_detector.Set(false);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*my_train.gate_.request()));
+  EXPECT_EQ(0, trainImpl_.get_speed().speed());
+  
+  TopB.inverted_detector.Set(true);
+  Run(20);
+  EXPECT_TRUE(QueryVar(*my_train.gate_.request()));
+  EXPECT_EQ(0, trainImpl_.get_speed().speed());
 
-    nblock->inverted_detector.Set(false);
-    Run(20);
-  }
+  // We grant the request.
+  SetVar(*my_train.gate_.granted(), true);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*my_train.gate_.request()));
+  EXPECT_TRUE(QueryVar(*my_train.gate_.taken()));
+  EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
+  EXPECT_TRUE(TopA.signal_green.Get());
+  
+  Run(20);
+  LOG(INFO, "Train arriving at dest location.");
+  TopB.inverted_detector.Set(false);
+  TopA.inverted_detector.Set(true);
+  Run(20);
+  wait();
+  EXPECT_EQ(0, trainImpl_.get_speed().mph());
+
+  // Some expectations on where the train actually is (block TopB).
+  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&TopA.b)));
+  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&TopB.b)));
+  EXPECT_FALSE(QueryVar(TopA.b.route_out()));
+  EXPECT_FALSE(QueryVar(TopB.b.route_out()));
+  EXPECT_TRUE(QueryVar(TopB.b.route_in()));
+  EXPECT_FALSE(TopB.signal_green.Get());
 }
 
 }  // namespace automata
