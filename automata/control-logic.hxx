@@ -287,6 +287,7 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(LogicTest, MovableTurnout);
   FRIEND_TEST(LogicTrainTest, ScheduleStraight);
   FRIEND_TEST(SampleLayoutLogicTrainTest, ScheduleStraight);
+  FRIEND_TEST(SampleLayoutLogicTrainTest, ScheduleConditional);
 
   friend class StandardBlock;
 
@@ -900,8 +901,8 @@ class TrainSchedule : public virtual AutomataPlugin {
   // proceed. Only when the permission si granted, will the train proceed with
   // requesting green from the control point logic.
   void AddBlockTransitionOnPermit(StandardBlock *source, StandardBlock *dest,
-                                  OpCallback *condition,
-                                  RequestClientInterface *client);
+                                  RequestClientInterface *client,
+                                  OpCallback *condition = nullptr);
 
   // Stops the train at the destination block. This is a terminal state and
   // probably should be used for testing only.

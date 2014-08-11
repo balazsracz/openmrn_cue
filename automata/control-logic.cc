@@ -812,8 +812,8 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
 
 void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
                                                StandardBlock* dest,
-                                               OpCallback* condition,
-                                               RequestClientInterface* client) {
+                                               RequestClientInterface* client,
+                                               OpCallback* condition) {
   MapCurrentBlockPermaloc(source);
   Def().ActImportVariable(
       *GetHelperBit(client->request(),
@@ -837,7 +837,9 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
 
   Def().IfState(StWaiting)
       .IfReg1(current_block_routingloc_)
-      .ActState(StTestCondition)
+      .ActState(StTestCondition);
+
+  Def()
       .ActImportVariable(*client->request(), permit_request_)
       .ActImportVariable(*client->granted(), permit_granted_)
       .ActImportVariable(*client->taken(), permit_taken_);
