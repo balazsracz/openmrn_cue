@@ -1643,6 +1643,76 @@ TEST_F(LogicTest, FlipFlopTriple) {
   }
 }
 
+TEST_F(LogicTest, FlipFlopRedacted) {
+  FlipFlopAutomata flaut(&brd, "flipflop", *alloc());
+  FlipFlopClient cla("a", &flaut);
+  FlipFlopClient clb("b", &flaut);
+
+  SetupRunner(&brd);
+  Run(10);
+  for (int i = 0; i < 13; ++i) {
+    FlipFlopClient* t = &cla;
+    FlipFlopClient* o = &clb;
+    if (i&1) {
+      swap(t, o);
+    }
+
+    LOG(INFO, "num %d t %p o %p", i, t, o);
+    SetVar(*t->request(), true);
+    SetVar(*o->request(), true);
+    Run(10);
+    EXPECT_TRUE(QueryVar(*t->granted()));
+    EXPECT_FALSE(QueryVar(*o->granted()));
+    SetVar(*t->request(), false);
+    Run(40);
+    EXPECT_FALSE(QueryVar(*t->granted()));
+    EXPECT_TRUE(QueryVar(*o->granted()));
+    SetVar(*o->granted(), false);
+    SetVar(*o->taken(), true);
+    SetVar(*t->request(), false);
+    Run(10);
+    // Now we also take t.
+    SetVar(*t->request(), true);
+    SetVar(*o->request(), true);
+    Run(10);
+    EXPECT_TRUE(QueryVar(*t->granted()));
+    EXPECT_FALSE(QueryVar(*o->granted()));
+    SetVar(*t->request(), false);
+    SetVar(*t->granted(), false);
+    SetVar(*t->taken(), true);
+    SetVar(*o->request(), false);
+    Run(10);
+  }
+}
+
+TEST_F(LogicTest, FlipFlopSteal) {
+  FlipFlopAutomata flaut(&brd, "flipflop", *alloc());
+  FlipFlopClient cla("a", &flaut);
+  FlipFlopClient clb("b", &flaut);
+
+  SetupRunner(&brd);
+  Run(10);
+  for (int i = 0; i < 13; ++i) {
+    FlipFlopClient* t = &cla;
+    FlipFlopClient* o = &clb;
+    // We purposefully take the same client twice in a row so that we will
+    // surely be stealing once in a while.
+    if (i&2) {
+      swap(t, o);
+    }
+    LOG(INFO, "num %d t %p o %p", i, t, o);
+    SetVar(*t->request(), true);
+    Run(10);
+    EXPECT_TRUE(QueryVar(*t->granted()));
+    EXPECT_FALSE(QueryVar(*o->granted()));
+    SetVar(*t->request(), false);
+    SetVar(*t->granted(), false);
+    SetVar(*t->taken(), true);
+    SetVar(*o->request(), false);
+    Run(10);
+  }
+}
+
 class LogicTrainTest : public LogicTest, protected TrainTestHelper {
  protected:
   LogicTrainTest() : TrainTestHelper(this) {}
