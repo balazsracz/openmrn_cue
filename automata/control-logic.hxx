@@ -768,6 +768,8 @@ class RequestClientInterface {
   GlobalVariable* taken() { return taken_.get(); }
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(RequestClientInterface);
+
   string name_;
   EventBlock::Allocator alloc_;
   std::unique_ptr<GlobalVariable> request_;
@@ -775,6 +777,49 @@ class RequestClientInterface {
   std::unique_ptr<GlobalVariable> taken_;
 };
 
+class FlipFlopClient;
+
+class FlipFlopAutomata : public AutomataPlugin {
+ public:
+  FlipFlopAutomata(Board *brd, const string &name,
+                   EventBlock::Allocator &parent_alloc)
+      : name_(name),
+        alloc_(parent_alloc.Allocate(name, 16, 8)),
+        aut_(name, brd, this),
+        aut(&aut_) {
+    AddAutomataPlugin(100,
+                      NewCallbackPtr(this, &FlipFlopAutomata::FlipFlopLogic));
+  }
+
+  EventBlock::Allocator& AddClient(FlipFlopClient* client);
+
+  StateRef GetNewClientState() {
+    return aut_.NewUserState();
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FlipFlopAutomata);
+
+  void FlipFlopLogic(Automata* aut);
+
+  string name_;
+  EventBlock::Allocator alloc_;
+  StandardPluginAutomata aut_;
+  Automata* aut;
+
+  // Members are externally owned.
+  vector<FlipFlopClient*> clients_;
+};
+
+struct FlipFlopClient : public RequestClientInterface {
+ public:
+  FlipFlopClient(const string& name, FlipFlopAutomata* parent)
+      : RequestClientInterface(name, parent->AddClient(this)),
+        client_state(parent->GetNewClientState()) {}
+  StateRef client_state;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FlipFlopClient);
+};
 
 static constexpr StateRef StWaiting(2);
 static constexpr StateRef StReadyToGo(3);

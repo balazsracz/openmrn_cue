@@ -919,4 +919,23 @@ void TrainSchedule::SwitchTurnout(MagnetDef* magnet, bool desired_state) {
       .ActReg(&magnet_command_, desired_state);
 }
 
+EventBlock::Allocator& FlipFlopAutomata::AddClient(FlipFlopClient* client) {
+  clients_.push_back(client);
+  return alloc_;
+}
+
+void FlipFlopAutomata::FlipFlopLogic(Automata* aut) {
+  HASSERT(clients_.size() >= 2);
+  Def().IfState(StInit).ActState(clients_[0]->client_state);
+  for (unsigned i = 0; i < clients_.size(); ++i) {
+    auto* c = clients_[i];
+    auto* request = aut->ImportVariable(c->request());
+    auto* granted = aut->ImportVariable(c->granted());
+    auto* taken = aut->ImportVariable(c->taken());
+    Def().IfState(c->client_state).IfReg1(*request).ActReg1(granted);
+    Def().IfReg1(*taken).ActReg0(taken).ActState(
+        clients_[(i + 1) % clients_.size()]->client_state);
+  }
+}
+
 }  // namespace automata

@@ -1587,6 +1587,62 @@ TEST_F(LogicTest, Magnets) {
   EXPECT_FALSE(v1s1.Get());
 }
 
+TEST_F(LogicTest, FlipFlopSimple) {
+  FlipFlopAutomata flaut(&brd, "flipflop", *alloc());
+  FlipFlopClient cla("a", &flaut);
+  FlipFlopClient clb("b", &flaut);
+
+  SetupRunner(&brd);
+  Run(10);
+  for (int i = 0; i < 13; ++i) {
+    FlipFlopClient* t = &cla;
+    FlipFlopClient* o = &clb;
+    if (i&1) {
+      swap(t, o);
+    }
+    LOG(INFO, "num %d t %p o %p", i, t, o);
+    SetVar(*t->request(), true);
+    SetVar(*o->request(), true);
+    Run(10);
+    EXPECT_TRUE(QueryVar(*t->granted()));
+    EXPECT_FALSE(QueryVar(*o->granted()));
+    SetVar(*t->request(), false);
+    SetVar(*t->granted(), false);
+    SetVar(*t->taken(), true);
+    SetVar(*o->request(), false);
+    Run(10);
+  }
+}
+
+TEST_F(LogicTest, FlipFlopTriple) {
+  FlipFlopAutomata flaut(&brd, "flipflop", *alloc());
+  FlipFlopClient cla("a", &flaut);
+  FlipFlopClient clb("b", &flaut);
+  FlipFlopClient clc("c", &flaut);
+
+  SetupRunner(&brd);
+  Run(10);
+  FlipFlopClient *t = &cla, *o1 = &clb, *o2 = &clc;
+  for (int i = 0; i < 13; ++i) {
+    LOG(INFO, "num %d", i);
+    SetVar(*t->request(), true);
+    SetVar(*o1->request(), true);
+    SetVar(*o2->request(), true);
+    Run(10);
+    EXPECT_TRUE(QueryVar(*t->granted()));
+    EXPECT_FALSE(QueryVar(*o1->granted()));
+    EXPECT_FALSE(QueryVar(*o2->granted()));
+    SetVar(*t->request(), false);
+    SetVar(*t->granted(), false);
+    SetVar(*t->taken(), true);
+    SetVar(*o1->request(), false);
+    SetVar(*o2->request(), false);
+    Run(10);
+    swap(t, o1);
+    swap(o1, o2);
+  }
+}
+
 class LogicTrainTest : public LogicTest, protected TrainTestHelper {
  protected:
   LogicTrainTest() : TrainTestHelper(this) {}
