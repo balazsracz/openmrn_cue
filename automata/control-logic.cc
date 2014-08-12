@@ -678,7 +678,6 @@ MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const EventBlock::Alloc
 }
 
 void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
-  def->aut_state.state = aut_.NewUserState();
   def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
   def->command.reset(alloc_.Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
@@ -687,7 +686,7 @@ void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
 }
 
 MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVariable* closed, GlobalVariable* thrown)
-    : set_0(closed), set_1(thrown), command(nullptr), aut_state(0), name_(name) {
+    : set_0(closed), set_1(thrown), command(nullptr), aut_state(aut->NewUserState()), name_(name) {
   aut->AddMagnet(this);
 }
 

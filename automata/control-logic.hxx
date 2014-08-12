@@ -134,6 +134,10 @@ class MagnetCommandAutomata : public virtual AutomataPlugin {
   // Adds a magnet to this automata.
   void AddMagnet(MagnetDef *def);
 
+  int NewUserState() {
+    return aut_.NewUserState();
+  }
+
  private:
   EventBlock::Allocator alloc_;
 

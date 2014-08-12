@@ -16,7 +16,10 @@ struct StateRef {
     constexpr StateRef(int id)
         : state(id) {}
 
-    int state;
+    constexpr StateRef(const StateRef& ref)
+        : state(ref.state) {}
+
+    const int state;
 };
 
 typedef Callback1<Automata::Op*> OpCallback;
@@ -119,7 +122,7 @@ public:
       return *this;
     }
 
-    Op& IfState(const StateRef& state) {
+    Op& IfState(const StateRef state) {
       HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
       ifs_.push_back(_IF_STATE | state.state);
       return *this;
@@ -169,7 +172,7 @@ public:
         return *this;
     }
 
-    Op& ActState(const StateRef& state) {
+    Op& ActState(const StateRef state) {
       HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
       acts_.push_back(_ACT_STATE | state.state);
       return *this;
