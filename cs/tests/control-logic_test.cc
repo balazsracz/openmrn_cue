@@ -2171,4 +2171,83 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   }
 }
 
+TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
+  debug_variables = 0;
+  static FlipFlopAutomata flaut(&brd, "flipflop", *alloc());
+  static FlipFlopClient flc_loop("loop", &flaut);
+  static FlipFlopClient flc_stub("stub", &flaut);
+  
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
+            EventBlock::Allocator* alloc)
+        : TrainSchedule("mytrain", b,
+                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 16)),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      AddEagerBlockSequence({&t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b, &t_->TopB.b});
+      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RRight.b,
+                                 &flc_loop);
+      SwitchTurnout(t_->RStubEntry.b.magnet(), true);
+      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RStub.b,
+                                 &flc_stub);
+      SwitchTurnout(t_->RStubEntry.b.magnet(), false);
+      AddEagerBlockTransition(&t_->RRight.b, &t_->BotA.b);
+      AddEagerBlockTransition(&t_->RStub.b, &t_->BotA.b);
+    }
+
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } my_train(this, &brd, alloc());
+  SetupRunner(&brd);
+  Run(20);
+  vector<TestBlock*> blocks = {&BotA, &BotB, &RLeft, &TopA, &TopB};
+  BotA.inverted_detector.Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(&BotA.b), true);
+  size_t i = 1;
+  bool is_out = false;
+  TestBlock* last_block = blocks[0];
+  for (int j = 0; j < 37; ++i, ++j) {
+    TestBlock* nblock;
+    if (i == blocks.size()) {
+      is_out = !is_out;
+      if (is_out) {
+        nblock = &RRight;
+      } else {
+        nblock = &RStub;
+      }
+    } else {
+      if (i > blocks.size()) {
+        i = 0;
+      }
+      nblock = blocks[i];
+    }
+    wait();
+    LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock %s", j, i,
+        last_block->b.name().c_str(), nblock->b.name().c_str());
+    Run(30);
+    EXPECT_TRUE(QueryVar(last_block->b.route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    last_block->inverted_detector.Set(true);
+    Run(30);
+    EXPECT_FALSE(QueryVar(last_block->b.route_in()));
+    EXPECT_FALSE(QueryVar(last_block->b.route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&last_block->b)));
+    
+    nblock->inverted_detector.Set(false);
+    Run(30);
+    if (i == blocks.size()) {
+      EXPECT_FALSE(QueryVar(*flc_loop.request()));
+      EXPECT_FALSE(QueryVar(*flc_stub.request()));
+    }
+    last_block = nblock;
+  }
+}
+
 }  // namespace automata
