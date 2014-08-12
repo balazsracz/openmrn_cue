@@ -862,6 +862,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .IfReg1(permit_request_)
       .IfReg1(permit_granted_)
       .ActReg0(&permit_request_)
+      .ActReg0(&permit_granted_)
       .ActReg1(&permit_taken_)
       .ActReg1(&current_direction_)
       .ActState(StReadyToGo);

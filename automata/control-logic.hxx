@@ -758,8 +758,8 @@ class RequestClientInterface {
   GlobalVariable* request() { return request_.get(); }
 
   // This bit will be set by the flip-flop server automata. It will be cleared
-  // by the server automata if it revokes the grant, or when it acknowledges
-  // the taken bit.
+  // by the server automata if it revokes the grant, or by the client automata
+  // when it sets the taken bit.
   GlobalVariable* granted() { return granted_.get(); }
 
   // This bit will be set by the client when it sees that the permission is

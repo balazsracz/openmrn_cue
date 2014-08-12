@@ -1962,6 +1962,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
 }
 
 TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
+  debug_variables = 0;
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
@@ -1975,12 +1976,11 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      Def().ActReg1(aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
-      AddEagerBlockSequence({&t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b, &t_->TopB.b, &t_->RRight.b});
+      AddEagerBlockSequence({&t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b, &t_->TopB.b});
       AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RRight.b,
                                  &gate_loop_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
-      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RRight.b,
+      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RStub.b,
                                  &gate_stub_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
       AddEagerBlockTransition(&t_->RRight.b, &t_->BotA.b);
@@ -1996,18 +1996,17 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   SetupRunner(&brd);
   Run(20);
   vector<TestBlock*> blocks = {&BotA, &BotB, &RLeft, &TopA, &TopB};
-  TopA.inverted_detector.Set(false);
+  BotA.inverted_detector.Set(false);
   SetVar(*my_train.TEST_GetPermalocBit(&BotA.b), true);
-  int i = 0;
+  size_t i = 1;
   bool is_out = false;
+  TestBlock* last_block = blocks[0];
   for (int j = 0; j < 37; ++i, ++j) {
-    TestBlock* cblock;
     TestBlock* nblock;
-    if (i + 1 == blocks.size()) {
+    if (i == blocks.size()) {
       is_out = !is_out;
-      cblock = blocks[i];
-      EXPECT_TRUE(QueryVar(my_train.gate_loop_.request()));
-      EXPECT_TRUE(QueryVar(my_train.gate_stub_.request()));
+      EXPECT_TRUE(QueryVar(*my_train.gate_loop_.request()));
+      EXPECT_TRUE(QueryVar(*my_train.gate_stub_.request()));
       if (is_out) {
         SetVar(*my_train.gate_loop_.granted(), true);
         nblock = &RRight;
@@ -2016,28 +2015,33 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
         nblock = &RStub;
       }
     } else {
-      cblock = blocks[i];
-      nblock = blocks[i + 1];
+      if (i > blocks.size()) {
+        i = 0;
+      }
+      nblock = blocks[i];
     }
-    Run(20);
-    EXPECT_TRUE(QueryVar(cblock->b.route_out()));
+    wait();
+    LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock %s", j, i,
+        last_block->b.name().c_str(), nblock->b.name().c_str());
+    Run(30);
+    EXPECT_TRUE(QueryVar(last_block->b.route_out()));
     EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-    cblock->inverted_detector.Set(true);
-    Run(20);
-    EXPECT_FALSE(QueryVar(cblock->b.route_in()));
-    EXPECT_FALSE(QueryVar(cblock->b.route_out()));
+    last_block->inverted_detector.Set(true);
+    Run(30);
+    EXPECT_FALSE(QueryVar(last_block->b.route_in()));
+    EXPECT_FALSE(QueryVar(last_block->b.route_out()));
     EXPECT_TRUE(QueryVar(nblock->b.route_in()));
     
     EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&cblock->b)));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&last_block->b)));
     
     nblock->inverted_detector.Set(false);
-    if (i + 1 == blocks.size()) {
-      i = 0;
-      // TODO we need to add another transition, from the stub/right into the
-      // BotA.
+    Run(30);
+    if (i == blocks.size()) {
+      EXPECT_FALSE(QueryVar(*my_train.gate_loop_.request()));
+      EXPECT_FALSE(QueryVar(*my_train.gate_stub_.request()));
     }
-    Run(20);
+    last_block = nblock;
   }
 }
 
