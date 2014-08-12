@@ -923,6 +923,7 @@ EventBlock::Allocator& FlipFlopAutomata::AddClient(FlipFlopClient* client) {
   return alloc_;
 }
 
+/*
 void FlipFlopAutomata::FlipFlopLogic(Automata* aut) {
   HASSERT(clients_.size() >= 2);
   Def().IfState(StInit).ActState(clients_[0]->client_state);
@@ -932,9 +933,114 @@ void FlipFlopAutomata::FlipFlopLogic(Automata* aut) {
     auto* granted = aut->ImportVariable(c->granted());
     auto* taken = aut->ImportVariable(c->taken());
     Def().IfState(c->client_state).IfReg1(*request).ActReg1(granted);
+    Def().IfReg1(*granted).IfReg0(*request).IfReg0(*taken)
+        .ActReg0(granted);
     Def().IfReg1(*taken).ActReg0(taken).ActState(
         clients_[(i + 1) % clients_.size()]->client_state);
   }
+  }*/
+
+void FlipFlopAutomata::FlipFlopLogic(Automata* aut) {
+  HASSERT(clients_.size() >= 2);
+  Def().IfState(StInit).ActState(StFree);
+  auto* steal_request = aut->ImportVariable(steal_request_.get());
+  auto* steal_granted = aut->ImportVariable(steal_granted_.get());
+  for (unsigned i = 0; i < clients_.size(); ++i) {
+    auto* c = clients_[i];
+    auto* request = aut->ImportVariable(c->request());
+    auto* granted = aut->ImportVariable(c->granted());
+    auto* taken = aut->ImportVariable(c->taken());
+    auto* next = aut->ImportVariable(c->next.get());
+    Def().IfState(StFree).ActState(StLocked).ActReg1(next);
+    Def()
+        .IfState(StLocked)
+        .IfReg1(*next)
+        .IfReg1(*request)
+        .ActState(StGranted)
+        .ActReg1(granted);
+    // Request redacted:
+    Def().IfState(StGranted).IfReg1(*next)
+        .IfReg1(*granted).IfReg0(*request)
+        .ActState(StLocked).ActReg0(granted);
+    // Permission taken -> wait.
+    Def()
+        .IfState(StGranted)
+        .IfReg1(*next)
+        .IfReg1(*taken)
+        .ActReg0(taken)
+        .ActState(StGrantWait)
+        .ActTimer(kWaitTimeout);
+    Def()
+        .IfState(StGrantWait)
+        .IfReg1(*next)
+        .IfTimerDone()
+        .ActReg0(next)
+        .ActState(StFree);
+
+    // Stealing support.
+    Def().IfState(StLocked)
+        .IfReg0(*next)
+        .IfReg1(*request)
+        .ActReg1(steal_request);
+    Def().IfState(StGrantWait)
+        .ActReg0(steal_request)
+        .ActReg0(steal_granted);
+    Def().IfState(StLocked)
+        .IfReg0(*next)
+        .IfReg1(*request)
+        .IfReg1(*steal_granted)
+        .ActReg0(steal_request)
+        .ActReg0(steal_granted)
+        .ActReg1(granted)
+        .ActState(StStolen);
+    // stolen but redacted.
+    Def().IfState(StStolen)
+        .IfReg1(*granted)
+        .IfReg0(*request)
+        .ActReg0(granted)
+        .ActState(StLocked);
+    // stolen and taken
+    Def().IfState(StStolen)
+        .IfReg1(*taken)
+        .ActReg0(taken)
+        .ActTimer(kWaitTimeout)
+        .ActState(StStolenWait);
+    // Stealing interface from the current user's perspective.
+    Def().IfState(StLocked)
+        .IfReg1(*next)
+        .IfReg0(*request)
+        .IfReg1(*steal_request)
+        .ActTimer(2)
+        .ActState(StStealOnHold);
+    Def().IfState(StStealOnHold)
+        .IfReg1(*next)
+        .IfReg0(*request)
+        .IfTimerDone()
+        .ActState(StLocked)
+        .ActReg1(steal_granted);
+    // not granting steal.
+    Def().IfState(StStealOnHold)
+        .IfReg1(*next)
+        .IfReg1(*request)
+        .ActTimer(0)
+        .ActState(StLocked);
+    // Taking back control after a successful steal.
+    Def().IfState(StStolenWait)
+        .IfReg1(*next)
+        .IfTimerDone()
+        .ActState(StLocked)
+        .ActReg0(steal_request)
+        .ActReg0(steal_granted);
+  }
 }
+
+constexpr StateRef FlipFlopAutomata::StFree;
+constexpr StateRef FlipFlopAutomata::StLocked;
+constexpr StateRef FlipFlopAutomata::StGranted;
+constexpr StateRef FlipFlopAutomata::StGrantWait;
+constexpr StateRef FlipFlopAutomata::StStolen;
+constexpr StateRef FlipFlopAutomata::StStolenWait;
+constexpr StateRef FlipFlopAutomata::StStealOnHold;
+
 
 }  // namespace automata

@@ -790,12 +790,17 @@ class FlipFlopAutomata : public AutomataPlugin {
       : name_(name),
         alloc_(parent_alloc.Allocate(name, 16, 8)),
         aut_(name, brd, this),
-        aut(&aut_) {
+        aut(&aut_),
+        steal_request_(alloc_.Allocate("steal_request")),
+        steal_granted_(alloc_.Allocate("steal_granted")) {
     AddAutomataPlugin(100,
                       NewCallbackPtr(this, &FlipFlopAutomata::FlipFlopLogic));
   }
 
   EventBlock::Allocator& AddClient(FlipFlopClient* client);
+  EventBlock::Allocator& alloc() {
+    return alloc_;
+  }
 
   StateRef GetNewClientState() {
     return aut_.NewUserState();
@@ -804,12 +809,23 @@ class FlipFlopAutomata : public AutomataPlugin {
  private:
   DISALLOW_COPY_AND_ASSIGN(FlipFlopAutomata);
 
+  static constexpr StateRef StFree = 2;
+  static constexpr StateRef StLocked = 3;
+  static constexpr StateRef StGranted = 4;
+  static constexpr StateRef StGrantWait = 5;
+  static constexpr StateRef StStolen = 6;
+  static constexpr StateRef StStolenWait = 7;
+  static constexpr StateRef StStealOnHold = 8;
+  static constexpr int kWaitTimeout = 3;
+
   void FlipFlopLogic(Automata* aut);
 
   string name_;
   EventBlock::Allocator alloc_;
   StandardPluginAutomata aut_;
   Automata* aut;
+  std::unique_ptr<GlobalVariable> steal_request_;
+  std::unique_ptr<GlobalVariable> steal_granted_;
 
   // Members are externally owned.
   vector<FlipFlopClient*> clients_;
@@ -817,11 +833,17 @@ class FlipFlopAutomata : public AutomataPlugin {
 
 struct FlipFlopClient : public RequestClientInterface {
  public:
-  FlipFlopClient(const string& name, FlipFlopAutomata* parent)
+  FlipFlopClient(const string &name, FlipFlopAutomata *parent)
       : RequestClientInterface(name, parent->AddClient(this)),
-        client_state(parent->GetNewClientState()) {}
-  StateRef client_state;
+        client_state(parent->GetNewClientState()),
+        next(parent->alloc().Allocate("next." + name)) {}
+
  private:
+  friend class FlipFlopAutomata;
+  StateRef client_state;
+  // Thjis variable will be set to 1 if the current client is the next-in-line
+  // to give out preferential permission.
+  std::unique_ptr<GlobalVariable> next;
   DISALLOW_COPY_AND_ASSIGN(FlipFlopClient);
 };
 
