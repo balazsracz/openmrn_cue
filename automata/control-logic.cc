@@ -857,6 +857,12 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .ActState(StWaiting)
       .ActReg0(&permit_request_);
 
+  // Removes the permit request in case another outgoing direction took place.
+  // TODO(balazs.racz): Check if this is a good condition to use.
+  Def().IfReg1(current_block_routingloc_)
+      .IfReg1(current_block_route_out_)
+      .ActReg0(&permit_request_);
+
   Def().IfState(StWaiting)
       .IfReg1(current_block_routingloc_)
       .IfReg1(permit_request_)
@@ -866,9 +872,6 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .ActReg1(&permit_taken_)
       .ActReg1(&current_direction_)
       .ActState(StReadyToGo);
-
-  // TODO(balazs.racz): we need to take back the request if we left the current
-  // permaloc through a different destination.
 
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
