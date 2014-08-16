@@ -720,6 +720,8 @@ class FixedTurnout : public TurnoutBase {
   State state_;
 };
 
+// for the moment we map the stub track into a fixed turnout and parts for a
+// standardblock that is arranged as a loop from the closed to the thrown side.
 class StubBlock {
  public:
   StubBlock(Board *brd, PhysicalSignal *physical,

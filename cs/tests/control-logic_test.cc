@@ -45,6 +45,23 @@ class LogicTest : public AutomataNodeTests {
     StandardBlock b;
   };
 
+  struct TestStubBlock {
+    TestStubBlock(LogicTest* test, const string& name)
+        : inverted_detector(test),
+          inverted_entry_detector(test),
+          signal_green(test),
+          physical_signal(&inverted_detector, &signal_green, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
+          b(&test->brd, &physical_signal, &inverted_entry_detector, test->alloc(), name) {
+      inverted_entry_detector.Set(true);
+      inverted_detector.Set(true);
+      signal_green.Set(false);
+    }
+    FakeROBit inverted_detector, inverted_entry_detector;
+    FakeBit signal_green;
+    PhysicalSignal physical_signal;
+    StubBlock b;
+  };
+
   struct TestDetectorBlock {
     TestDetectorBlock(LogicTest* test, const string& name)
         : detector(test),
@@ -1828,28 +1845,23 @@ class SampleLayoutLogicTrainTest : public LogicTrainTest {
         BotB(this, "BotB"),
         RStub(this, "RStub"),
         RStubEntry(this, "RStubEntry"),
-        RStubInside(this, FixedTurnout::TURNOUT_CLOSED, "RStubInside"),
         RStubExit(this, FixedTurnout::TURNOUT_THROWN, "RStubExit"),
         RStubIntoMain(this, FixedTurnout::TURNOUT_THROWN, "RStubIntoMain")
-     {
-    BindSequence({&BotA.b, &BotB.b, &RLeft.b, &TopA.b, &TopB.b});
-    BindPairs({{TopB.b.side_b(), RStubEntry.b.side_points()},
-               {RStubEntry.b.side_thrown(), RRight.b.side_a()},
-               {RStubEntry.b.side_closed(), RStubExit.b.side_closed()},
+  {
+    BindSequence(RStubIntoMain.b.side_points(),
+                 {&BotA.b, &BotB.b, &RLeft.b, &TopA.b, &TopB.b},
+                 RStubEntry.b.side_points());
+    BindSequence(RStubEntry.b.side_thrown(),
+                 {&RRight.b},
+                 RStubIntoMain.b.side_thrown());
+    BindPairs({{RStubEntry.b.side_closed(), RStubExit.b.side_closed()},
                {RStubExit.b.side_thrown(), RStubIntoMain.b.side_closed()},
-                   // for the moment we map the stub track into a fixed turnout
-                   // and a standardblock that is arranged as a loop from the
-                   // closed to the thrown side.
-               {RStubExit.b.side_points(), RStubInside.b.side_points()},
-               {RStubInside.b.side_closed(), RStub.b.side_a()},
-               {RStubInside.b.side_thrown(), RStub.b.side_b()},
-               {RStubIntoMain.b.side_points(), BotA.b.side_a()},
-               {RRight.b.side_b(), RStubIntoMain.b.side_thrown()}});
+               {RStubExit.b.side_points(), RStub.b.entry()}});
   }
 
-  TestBlock RLeft, TopA, TopB, RRight, BotA, BotB, RStub;
+  TestBlock RLeft, TopA, TopB, RRight, BotA, BotB;
+  TestStubBlock RStub;
   TestMovableTurnout RStubEntry;
-  TestFixedTurnout RStubInside;
   TestFixedTurnout RStubExit;
   TestFixedTurnout RStubIntoMain;
 };
@@ -2138,7 +2150,52 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
         nblock = &RRight;
       } else {
         SetVar(*my_train.gate_stub_.granted(), true);
-        nblock = &RStub;
+        {
+          auto* nblock = &RStub;
+          wait();
+          LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock TStub", j,
+              i, last_block->b.name().c_str());
+          Run(30);
+          EXPECT_TRUE(QueryVar(last_block->b.route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+          last_block->inverted_detector.Set(true);
+          Run(30);
+          EXPECT_FALSE(QueryVar(last_block->b.route_in()));
+          EXPECT_FALSE(QueryVar(last_block->b.route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+        
+          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
+          EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&last_block->b)));
+        
+          nblock->inverted_detector.Set(false);
+          Run(30);
+          if (i == blocks.size()) {
+            EXPECT_FALSE(QueryVar(*my_train.gate_loop_.request()));
+            EXPECT_FALSE(QueryVar(*my_train.gate_stub_.request()));
+          }
+        }
+        j++;
+        i = 0;
+        {
+          auto* last_block = &RStub;
+          nblock = blocks[i];
+          wait();
+          LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock TStub", j,
+              i, last_block->b.name().c_str());
+          Run(30);
+          EXPECT_TRUE(QueryVar(last_block->b.route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+          last_block->inverted_detector.Set(true);
+          Run(30);
+          EXPECT_FALSE(QueryVar(last_block->b.route_in()));
+          EXPECT_FALSE(QueryVar(last_block->b.route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+        
+          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
+          EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&last_block->b)));
+        
+          nblock->inverted_detector.Set(false);
+          Run(30);
       }
     } else {
       if (i > blocks.size()) {
