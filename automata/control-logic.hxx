@@ -156,9 +156,17 @@ class StraightTrackInterface {
 };
 
 // Bind together a sequence of straight tracks. The return value is always
-// true.
+// true. before and after can be interfaces of turnouts for example. If they
+// are NULL, the first straight track piece is taken.
 bool BindSequence(
-    const std::initializer_list<StraightTrackInterface *> &pieces);
+    CtrlTrackInterface* before,
+    const std::initializer_list<StraightTrackInterface *> &pieces,
+    CtrlTrackInterface* after = nullptr);
+
+inline bool BindSequence(
+    const std::initializer_list<StraightTrackInterface *> &pieces) {
+  return BindSequence(nullptr, pieces, nullptr);
+}
 
 // Binds together pairs of interfaces. The return value is always true.
 bool BindPairs(const std::initializer_list<

@@ -9,20 +9,23 @@ GlobalVariable* reset_routes = nullptr;
 void HandleInitState(Automata* aut) { Def().IfState(StInit).ActState(StBase); }
 
 bool BindSequence(
-    const std::initializer_list<StraightTrackInterface*>& pieces) {
-  StraightTrackInterface* before = nullptr;
+    CtrlTrackInterface* before,
+    const std::initializer_list<StraightTrackInterface*>& pieces,
+    CtrlTrackInterface* after) {
   for (StraightTrackInterface* entry : pieces) {
-    if (!before) {
-      before = entry;
-    } else {
-      before->side_b()->Bind(entry->side_a());
-      before = entry;
+    if (before) {
+      before->Bind(entry->side_a());
     }
+    before = entry->side_b();
+  }
+  if (after) {
+    before->Bind(after);
   }
   return true;
 }
 
-bool BindPairs(const std::initializer_list<std::initializer_list<CtrlTrackInterface*> > &pieces) {
+bool BindPairs(const std::initializer_list<
+    std::initializer_list<CtrlTrackInterface*> >& pieces) {
   for (const auto& p : pieces) {
     assert(p.size() == 2);
     CtrlTrackInterface*const *const entries = p.begin();
