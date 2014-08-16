@@ -302,6 +302,7 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(SampleLayoutLogicTrainTest, ScheduleConditional);
 
   friend class StandardBlock;
+  friend class StubBlock;
 
   std::unique_ptr<GlobalVariable> simulated_occupancy_;
   // route from A [in] to B [out]
@@ -717,6 +718,79 @@ class FixedTurnout : public TurnoutBase {
   void FixTurnoutState(Automata *aut);
 
   State state_;
+};
+
+class StubBlock {
+ public:
+  StubBlock(Board *brd, PhysicalSignal *physical,
+            GlobalVariable *entry_sensor_raw,
+            EventBlock::Allocator *parent_alloc, const string &base_name,
+            int num_to_allocate = 128)
+      : alloc_(parent_alloc->Allocate(base_name, num_to_allocate, 8)),
+        base_name_(base_name),
+        request_green_(alloc_.Allocate("request_green")),
+        fake_turnout_(FixedTurnout::TURNOUT_THROWN, alloc_.Allocate("fake_turnout", 40, 8)),
+        entry_det_(alloc_.Allocate("entry_det", 24, 8), entry_sensor_raw),
+        body_(alloc_.Allocate("body", 24, 8)),
+        body_det_(alloc_.Allocate("body_det", 24, 8), physical->sensor_raw),
+        signal_(alloc_.Allocate("signal", 24, 8), request_green_.get(),
+                physical->signal_raw),
+        physical_(physical),
+        aut_fake_turnout_(name() + ".fake_turnout", brd, &fake_turnout_),
+        aut_entry_det_(name() + ".entry_det", brd, &entry_det_),
+        aut_body_(name() + ".body", brd, &body_),
+        aut_body_det_(name() + ".body_det", brd, &body_det_),
+        aut_signal_(name() + ".signal", brd, &signal_) {
+    BindSequence(fake_turnout_.side_thrown(),
+                 {&entry_det_, &body_, &body_det_, &signal_},
+                 fake_turnout_.side_closed());
+  }
+
+ protected:
+  EventBlock::Allocator alloc_;
+  string base_name_;
+
+ public:
+  virtual CtrlTrackInterface *entry() { return fake_turnout_.side_points(); }
+
+  GlobalVariable *request_green() { return request_green_.get(); }
+  const GlobalVariable &route_in() const { return *body_det_.route_set_ab_; }
+  const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
+  const GlobalVariable &detector() const { return *body_det_.simulated_occupancy_; }
+  const GlobalVariable &entry_detector() const { return *entry_det_.simulated_occupancy_; }
+
+  PhysicalSignal *p() { return physical_; }
+
+  /** Returns the basename of the block (not including path). */
+  const string& base_name() {
+    return base_name_;
+  }
+
+  /** Returns the full name of the block (including path). */
+  const string& name() {
+    return alloc_.name();
+  }
+
+ private:
+  std::unique_ptr<GlobalVariable> request_green_;
+
+ public:
+  FixedTurnout fake_turnout_;
+  StraightTrackWithRawDetector entry_det_;
+  StraightTrackLong body_;
+  StraightTrackWithRawDetector body_det_;
+  SignalPiece signal_;
+
+ private:
+  PhysicalSignal *physical_;
+
+  StandardPluginAutomata aut_fake_turnout_;
+  StandardPluginAutomata aut_entry_det_;
+  StandardPluginAutomata aut_body_;
+  StandardPluginAutomata aut_body_det_;
+  StandardPluginAutomata aut_signal_;
+
+  DISALLOW_COPY_AND_ASSIGN(StubBlock);
 };
 
 class StandardMovableTurnout {
