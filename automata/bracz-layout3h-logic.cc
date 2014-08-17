@@ -14,7 +14,13 @@ using namespace std;
 #include "bracz-layout.hxx"
 #include "control-logic.hxx"
 
+static const uint64_t NODE_ID_DCC = 0x060100000000ULL;
+
 //#define OFS_GLOBAL_BITS 24
+
+#ifndef OVERRIDE
+#define OVERRIDE
+#endif
 
 using namespace automata;
 
@@ -248,6 +254,13 @@ void IfSourceTrackReady(StandardBlock* track, Automata::Op* op) {
       .IfReg0(op->parent()->ImportVariable(track->route_out()));
 }
 
+void IfNotPaused(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes));
+}
+
+auto g_not_paused_condition = NewCallback(&IfNotPaused);
+
 // Adds the necessary conditions that represent if there is a train at the
 // source track waiting to depart.
 void IfSourceTrackWithRoute(StandardBlock* track, Automata::Op* op) {
@@ -286,6 +299,8 @@ void SimpleFollowStrategy(
 }
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
+EventBlock::Allocator train_perm(logic.allocator()->Allocate("perm", 256));
+EventBlock::Allocator train_tmp(logic.allocator()->Allocate("train", 64));
 
 MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
@@ -801,6 +816,27 @@ DefAut(signalaut2, brd, {
     BlockSignal(this, &Block_B447);
     BlockSignal(this, &Block_B475);
   });
+
+
+class CircleTrain : public TrainSchedule {
+ public:
+  CircleTrain(const string& name, uint16_t train_id)
+      : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
+                      train_perm.Allocate(name, 16, 8),
+                      train_tmp.Allocate(name, 16, 8)) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    AddEagerBlockSequence({BLOCK_SEQUENCE}, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_B475, &Block_YYC23, &g_not_paused_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), false);
+    AddEagerBlockTransition(&Block_YYC23, &Block_XXB3, &g_not_paused_condition);
+    SwitchTurnout(Turnout_XXW8.b.magnet(), true);
+    AddEagerBlockTransition(&Block_XXB3, &Block_A360, &g_not_paused_condition);
+  }
+};
+
+CircleTrain train_icn("icn", 50);
+CircleTrain train_re66("re_6_6", 66);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
