@@ -2156,9 +2156,9 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   SetVar(*my_train.TEST_GetPermalocBit(BotA.b()), true);
   size_t i = 1;
   bool is_out = false;
-  TestBlock* last_block = blocks[0];
+  BlockInterface* last_block = blocks[0];
   for (int j = 0; j < 37; ++i, ++j) {
-    TestBlock* nblock;
+    BlockInterface* nblock;
     if (i == blocks.size()) {
       is_out = !is_out;
       EXPECT_TRUE(QueryVar(*my_train.gate_loop_.request()));
@@ -2168,54 +2168,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
         nblock = &RRight;
       } else {
         SetVar(*my_train.gate_stub_.granted(), true);
-        {
-          auto* nblock = &RStub;
-          wait();
-          LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock TStub", j,
-              i, last_block->b()->name().c_str());
-          Run(30);
-          EXPECT_TRUE(QueryVar(last_block->b()->route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
-          last_block->inverted_detector()->Set(true);
-          Run(30);
-          EXPECT_FALSE(QueryVar(last_block->b()->route_in()));
-          EXPECT_FALSE(QueryVar(last_block->b()->route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
-        
-          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-          EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(last_block->b())));
-        
-          nblock->inverted_detector()->Set(false);
-          Run(30);
-          if (i == blocks.size()) {
-            EXPECT_FALSE(QueryVar(*my_train.gate_loop_.request()));
-            EXPECT_FALSE(QueryVar(*my_train.gate_stub_.request()));
-          }
-        }
-        j++;
-        i = 0;
-        {
-          auto* last_block = &RStub;
-          nblock = blocks[i];
-          wait();
-          LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock TStub", j,
-              i, last_block->b()->name().c_str());
-          Run(30);
-          EXPECT_TRUE(QueryVar(last_block->b()->route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
-          last_block->inverted_detector()->Set(true);
-          Run(30);
-          EXPECT_FALSE(QueryVar(last_block->b()->route_in()));
-          EXPECT_FALSE(QueryVar(last_block->b()->route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
-        
-          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-          EXPECT_FALSE(
-              QueryVar(*my_train.TEST_GetPermalocBit(last_block->b())));
-
-          nblock->inverted_detector()->Set(false);
-          Run(30);
-        }
+        nblock = &RStub;
       } // we went through the stub.
     } else {
       if (i > blocks.size()) {
@@ -2230,6 +2183,9 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
     EXPECT_TRUE(QueryVar(last_block->b()->route_out()));
     EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
     last_block->inverted_detector()->Set(true);
+    if (nblock == &RStub) {
+      RStub.inverted_entry_detector()->Set(false);
+    }
     Run(30);
     EXPECT_FALSE(QueryVar(last_block->b()->route_in()));
     EXPECT_FALSE(QueryVar(last_block->b()->route_out()));
@@ -2237,7 +2193,9 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
     
     EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
     EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(last_block->b())));
-    
+    if (nblock == &RStub) {
+      RStub.inverted_entry_detector()->Set(true);
+    }
     nblock->inverted_detector()->Set(false);
     Run(30);
     if (i == blocks.size()) {
@@ -2281,18 +2239,21 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
   } my_train(this, &brd, alloc());
   SetupRunner(&brd);
   Run(20);
-  vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,
-                               &TopA, &TopB, nullptr, &BotA, &BotB, &RLeft};
+  vector<BlockInterface*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,
+                                    &TopA, &TopB, &RStub, &BotA, &BotB, &RLeft};
   TopA.inverted_detector()->Set(false);
   SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
   
   for (int i = 0; i < 37; ++i) {
-    TestBlock* cblock = blocks[i % blocks.size()];
-    TestBlock* nblock = blocks[(i + 1) % blocks.size()];
+    BlockInterface* cblock = blocks[i % blocks.size()];
+    BlockInterface* nblock = blocks[(i + 1) % blocks.size()];
     Run(20);
     EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
     EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
     cblock->inverted_detector()->Set(true);
+    if (nblock == &RStub) {
+      RStub.inverted_entry_detector()->Set(false);
+    }
     Run(20);
     EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
     EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
@@ -2300,7 +2261,9 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
 
     EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
     EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
-
+    if (nblock == &RStub) {
+      RStub.inverted_entry_detector()->Set(true);
+    }
     nblock->inverted_detector()->Set(false);
     Run(20);
   }
