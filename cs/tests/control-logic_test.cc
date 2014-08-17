@@ -1990,6 +1990,65 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
   }
 }
 
+TEST_F(SampleLayoutLogicTrainTest, SpeedSetting) {
+  uint64_t speed_event_base = BRACZ_SPEEDS | 0x8400;
+  static ByteImportVariable speed_var(&brd, "speed.mytrain", speed_event_base,
+                                      30);
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
+            EventBlock::Allocator* alloc)
+        : TrainSchedule("mytrain", b,
+                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 8),
+                        &speed_var),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      // Switches the turnout (permanently) to the outer loop.
+      Def().ActReg1(
+          aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
+      AddEagerBlockSequence({t_->TopA.b(), t_->TopB.b(), t_->RRight.b(),
+                             t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(),
+                             t_->TopA.b()});
+    }
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } my_train(this, &brd, alloc());
+  SetupRunner(&brd);
+  Run(20);
+  vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
+  TopA.inverted_detector()->Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
+
+  vector<uint8_t> speeds = {30, 50, 20};
+
+  for (int i = 0; i < 37; ++i) {
+    TestBlock* cblock = blocks[i % blocks.size()];
+    TestBlock* nblock = blocks[(i + 1) % blocks.size()];
+    uint8_t speed = speeds[i % speeds.size()];
+    Run(40);
+    EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+    cblock->inverted_detector()->Set(true);
+    Run(20);
+    EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+
+    EXPECT_EQ(speed, (int)(trainImpl_.get_speed().mph() + 0.5));
+
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
+
+    nblock->inverted_detector()->Set(false);
+    speed = speeds[(i+1) % speeds.size()];
+    ProduceEvent(speed_event_base | speed);
+    wait();
+  }
+}
+
 TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   class MyTrain : public TrainSchedule {
    public:
