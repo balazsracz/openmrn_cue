@@ -67,6 +67,7 @@ using namespace automata;
 
 
 #define BRACZ_LAYOUT 0x0501010114FF0000ULL
+#define BRACZ_SPEEDS (BRACZ_LAYOUT - 0x10000ULL)
 
 extern Board brd;
 

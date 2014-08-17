@@ -820,10 +820,12 @@ DefAut(signalaut2, brd, {
 
 class CircleTrain : public TrainSchedule {
  public:
-  CircleTrain(const string& name, uint16_t train_id)
+  CircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
                       train_perm.Allocate(name, 16, 8),
-                      train_tmp.Allocate(name, 16, 8)) {}
+                      train_tmp.Allocate(name, 16, 8)),
+        stored_speed_(&brd, "speed." + name,
+                      BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
     AddEagerBlockSequence({BLOCK_SEQUENCE}, &g_not_paused_condition);
@@ -833,10 +835,12 @@ class CircleTrain : public TrainSchedule {
     SwitchTurnout(Turnout_XXW8.b.magnet(), true);
     AddEagerBlockTransition(&Block_XXB3, &Block_A360, &g_not_paused_condition);
   }
+
+  ByteImportVariable stored_speed_;
 };
 
-CircleTrain train_icn("icn", 50);
-CircleTrain train_re66("re_6_6", 66);
+CircleTrain train_icn("icn", 50, 30);
+CircleTrain train_re66("re_6_6", 66, 40);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
