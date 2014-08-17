@@ -765,23 +765,18 @@ class StubBlock {
 
   /** Returns the basename of the block (not including path). */
   const string& base_name() {
-    return base_name_;
+    return b_.base_name_;
   }
 
   /** Returns the full name of the block (including path). */
   const string& name() {
-    return alloc_.name();
+    return b_.alloc_.name();
   }
-
- private:
-  std::unique_ptr<GlobalVariable> request_green_;
 
  public:
   FixedTurnout fake_turnout_;
+  StandardBlock b_;
   StraightTrackWithRawDetector entry_det_;
-  StraightTrackLong body_;
-  StraightTrackWithRawDetector body_det_;
-  SignalPiece signal_;
 
  private:
   PhysicalSignal *physical_;
