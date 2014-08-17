@@ -1016,12 +1016,13 @@ class TrainSchedule : public virtual AutomataPlugin {
   // Adds an eager block transition between each successive pair of blocks in
   // this list.
   void AddEagerBlockSequence(
-      const std::initializer_list<StandardBlock *> &blocks) {
+      const std::initializer_list<StandardBlock *> &blocks,
+      OpCallback *condition = nullptr) {
     auto ia = blocks.begin();
     if (ia == blocks.end()) return;
     auto ib = blocks.begin(); ++ib;
     while (ib != blocks.end()) {
-      AddEagerBlockTransition(*ia, *ib);
+      AddEagerBlockTransition(*ia, *ib, condition);
       ++ia;
       ++ib;
     }
