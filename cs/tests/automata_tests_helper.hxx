@@ -249,11 +249,7 @@ protected:
 
   void SetVar(const automata::GlobalVariable& var, bool value) {
     uint64_t eventid = value ? var.event_on() : var.event_off();
-    fprintf(stderr, "Producing event %016llx on node %p\n", eventid, node_);
-    SyncNotifiable n;
-    writeHelper_.WriteAsync(node_, nmranet::Defs::MTI_EVENT_REPORT, nmranet::WriteHelper::global(),
-                            nmranet::eventid_to_buffer(eventid), &n);
-    n.wait_for_notification();
+    ProduceEvent(eventid);
   }
 
   friend class EventListener;
@@ -285,6 +281,15 @@ protected:
   // Like QueryVar, but assert fails if the variable value is not defined yet.
   bool SQueryVar(const automata::GlobalVariable& var) {
     return all_listener_.StrictQuery(var);
+  }
+
+  void ProduceEvent(uint64_t event_id) {
+    fprintf(stderr, "Producing event %016llx on node %p\n", event_id, node_);
+    SyncNotifiable n;
+    writeHelper_.WriteAsync(
+        node_, nmranet::Defs::MTI_EVENT_REPORT, nmranet::WriteHelper::global(),
+        nmranet::eventid_to_buffer(event_id), &n);
+    n.wait_for_notification();
   }
 
  private:
