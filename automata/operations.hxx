@@ -248,6 +248,15 @@ public:
     return *this;
   }
 
+  Op& ActGetValueToSpeed(const Automata::LocalVariable& var, unsigned offset) {
+    acts_.push_back(_ACT_GET_VAR_VALUE_SPEED);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var.GetId() & 31);
+    acts_.push_back(v);
+    return *this;
+  }
+
   Op& ActSetId(uint64_t id) {
     acts_.push_back(_ACT_SET_EVENTID);
     // Set event id 0 from 0 with literal bytes.
