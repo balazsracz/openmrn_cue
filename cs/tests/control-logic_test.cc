@@ -30,36 +30,54 @@ class LogicTest : public AutomataNodeTests {
 
   friend struct TestBlock;
 
-  struct TestBlock {
-    TestBlock(LogicTest* test, const string& name)
-        : inverted_detector(test),
-          signal_green(test),
-          physical_signal(&inverted_detector, &signal_green, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
-          b(&test->brd, &physical_signal, test->alloc(), name) {
-      inverted_detector.Set(true);
-      signal_green.Set(false);
-    }
-    FakeROBit inverted_detector;
-    FakeBit signal_green;
-    PhysicalSignal physical_signal;
-    StandardBlock b;
+  class BlockInterface {
+   public:
+    virtual ~BlockInterface() {}
+    virtual StandardBlock* b() = 0;
+    virtual FakeROBit* inverted_detector() = 0;
+    virtual FakeBit* signal_green() = 0;
   };
 
-  struct TestStubBlock {
-    TestStubBlock(LogicTest* test, const string& name)
-        : inverted_detector(test),
-          inverted_entry_detector(test),
-          signal_green(test),
-          physical_signal(&inverted_detector, &signal_green, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
-          b(&test->brd, &physical_signal, &inverted_entry_detector, test->alloc(), name) {
-      inverted_entry_detector.Set(true);
-      inverted_detector.Set(true);
-      signal_green.Set(false);
+  struct TestBlock : public BlockInterface {
+    TestBlock(LogicTest* test, const string& name)
+        : inverted_detector_(test),
+          signal_green_(test),
+          physical_signal_(&inverted_detector_, &signal_green_, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
+          b_(&test->brd, &physical_signal_, test->alloc(), name) {
+      inverted_detector_.Set(true);
+      signal_green_.Set(false);
     }
-    FakeROBit inverted_detector, inverted_entry_detector;
-    FakeBit signal_green;
-    PhysicalSignal physical_signal;
-    StubBlock b;
+    virtual StandardBlock* b() { return &b_; }
+    virtual FakeROBit* inverted_detector() { return &inverted_detector_; }
+    virtual FakeBit* signal_green() { return &signal_green_; }
+
+    FakeROBit inverted_detector_;
+    FakeBit signal_green_;
+    PhysicalSignal physical_signal_;
+    StandardBlock b_;
+  };
+
+  struct TestStubBlock : public BlockInterface {
+    TestStubBlock(LogicTest* test, const string& name)
+        : inverted_detector_(test),
+          inverted_entry_detector_(test),
+          signal_green_(test),
+          physical_signal_(&inverted_detector_, &signal_green_, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
+          b_(&test->brd, &physical_signal_, &inverted_entry_detector_, test->alloc(), name) {
+      inverted_entry_detector_.Set(true);
+      inverted_detector_.Set(true);
+      signal_green_.Set(false);
+    }
+    virtual StandardBlock* b() { return &b_.b_; }
+    virtual FakeROBit* inverted_detector() { return &inverted_detector_; }
+    virtual FakeBit* signal_green() { return &signal_green_; }
+
+    FakeROBit* inverted_entry_detector() { return &inverted_entry_detector_; }
+
+    FakeROBit inverted_detector_, inverted_entry_detector_;
+    FakeBit signal_green_;
+    PhysicalSignal physical_signal_;
+    StubBlock b_;
   };
 
   struct TestDetectorBlock {
@@ -870,9 +888,9 @@ TEST_F(LogicTest, Signal) {
   TestBlock second(this, "second");
   static StraightTrackLong after(*alloc());
 
-  BindSequence({&before.b, &first.b, &mid, &second.b, &after});
+  BindSequence({&before.b, first.b(), &mid, second.b(), &after});
 
-  ASSERT_EQ(first.b.signal_.side_b(), mid.side_a()->binding());
+  ASSERT_EQ(first.b()->signal_.side_b(), mid.side_a()->binding());
 
 
   // This will immediately accept a route at the end stop.
@@ -888,16 +906,16 @@ TEST_F(LogicTest, Signal) {
   SetupRunner(&brd);
 
   // No trains initially.
-  first.inverted_detector.Set(true);
-  second.inverted_detector.Set(true);
+  first.inverted_detector()->Set(true);
+  second.inverted_detector()->Set(true);
   Run(1);
 
   // No trains initially.
-  first.inverted_detector.Set(true);
-  second.inverted_detector.Set(true);
+  first.inverted_detector()->Set(true);
+  second.inverted_detector()->Set(true);
   Run(20);
-  EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
-  EXPECT_FALSE(QueryVar(*second.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*first.b()->body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*second.b()->body_det_.simulated_occupancy_));
 
 
   // Sets the first train's route until the first signal.
@@ -906,77 +924,77 @@ TEST_F(LogicTest, Signal) {
   SetVar(*before.b.side_b()->out_try_set_route, true);
   Run(5);
   EXPECT_FALSE(QueryVar(*before.b.side_b()->out_try_set_route));
-  EXPECT_TRUE(QueryVar(*first.b.body_.side_a()->in_route_set_success));
-  EXPECT_FALSE(QueryVar(*first.b.body_.side_a()->in_route_set_failure));
+  EXPECT_TRUE(QueryVar(*first.b()->body_.side_a()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(*first.b()->body_.side_a()->in_route_set_failure));
 
-  EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*first.b()->body_det_.route_set_ab_));
   // the route is not yet beyond the signal
-  EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));
-  EXPECT_FALSE(first.signal_green.Get());
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(first.signal_green()->Get());
 
-  EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*first.b()->body_det_.simulated_occupancy_));
   // First train shows up at first signal.
   LOG(INFO, "First train shows up at first signal.");
   before.detector.Set(false);
   Run(1);
-  first.inverted_detector.Set(false);
+  first.inverted_detector()->Set(false);
   Run(12);
-  EXPECT_TRUE(QueryVar(*first.b.body_det_.simulated_occupancy_));
+  EXPECT_TRUE(QueryVar(*first.b()->body_det_.simulated_occupancy_));
 
-  EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
-  EXPECT_FALSE(first.signal_green.Get());
+  EXPECT_TRUE(QueryVar(*first.b()->body_det_.route_set_ab_));
+  EXPECT_FALSE(first.signal_green()->Get());
 
-  EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
   EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
 
   // and gets a green
   LOG(INFO, "First train gets a green at first signal.");
-  SetVar(*first.b.request_green(), true);
+  SetVar(*first.b()->request_green(), true);
   Run(1);
-  EXPECT_TRUE(QueryVar(*first.b.request_green()));
-  EXPECT_TRUE(QueryVar(*first.b.signal_.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*first.b()->request_green()));
+  EXPECT_TRUE(QueryVar(*first.b()->signal_.side_b()->out_try_set_route));
   Run(10);
-  EXPECT_FALSE(QueryVar(*first.b.signal_.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.side_b()->out_try_set_route));
 
-  EXPECT_FALSE(QueryVar(*first.b.request_green()));
+  EXPECT_FALSE(QueryVar(*first.b()->request_green()));
   EXPECT_TRUE(QueryVar(*mid.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*first.b.signal_.route_set_ab_));
-  EXPECT_TRUE(first.signal_green.Get());
+  EXPECT_TRUE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_TRUE(first.signal_green()->Get());
 
   // Checks that signal green gets reset.
-  first.signal_green.Set(false);
-  EXPECT_FALSE(first.signal_green.Get());
+  first.signal_green()->Set(false);
+  EXPECT_FALSE(first.signal_green()->Get());
   Run(5);
-  EXPECT_TRUE(QueryVar(*first.b.signal_.route_set_ab_));
-  EXPECT_TRUE(first.signal_green.Get());
+  EXPECT_TRUE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_TRUE(first.signal_green()->Get());
 
 
-  EXPECT_TRUE(QueryVar(*first.b.body_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*first.b.body_.simulated_occupancy_));
+  EXPECT_TRUE(QueryVar(*first.b()->body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*first.b()->body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*first.b()->body_.simulated_occupancy_));
 
 
-  EXPECT_TRUE(QueryVar(*first.b.body_det_.simulated_occupancy_));
+  EXPECT_TRUE(QueryVar(*first.b()->body_det_.simulated_occupancy_));
   // and leaves the block
   LOG(INFO, "train left first block.");
-  first.inverted_detector.Set(true);
+  first.inverted_detector()->Set(true);
   Run(15);
-  EXPECT_FALSE(QueryVar(*first.b.body_.simulated_occupancy_));
-  EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
-  EXPECT_FALSE(QueryVar(*first.b.signal_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*first.b()->body_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*first.b()->body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.simulated_occupancy_));
   EXPECT_TRUE(QueryVar(*mid.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*first.b.body_det_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*first.b.body_.route_set_ab_));
-  EXPECT_FALSE(first.signal_green.Get());
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*first.b()->body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*first.b()->body_.route_set_ab_));
+  EXPECT_FALSE(first.signal_green()->Get());
 
-  EXPECT_FALSE(QueryVar(*first.b.body_.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*first.b()->body_.side_b()->out_try_set_route));
 
   // We run a second route until the first signal
   LOG(INFO, "Second train: sets route to first signal.");
   before.detector.Set(true);
   Run(4);
-  SetVar(*first.b.body_.side_b()->out_try_set_route, true);
+  SetVar(*first.b()->body_.side_b()->out_try_set_route, true);
   Run(5);
   // let's dump all bits that are set
   for (int c = 0; c < 256; c++) {
@@ -994,55 +1012,55 @@ TEST_F(LogicTest, Signal) {
     }
   }
 
-  EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));
-  EXPECT_FALSE(first.signal_green.Get());
-  EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(first.signal_green()->Get());
+  EXPECT_TRUE(QueryVar(*first.b()->body_det_.route_set_ab_));
 
   // We try to set another green, but the previous train blocks this.
   LOG(INFO, "Second train: try get green (and fail).");
-  SetVar(*first.b.request_green(), true);
+  SetVar(*first.b()->request_green(), true);
   Run(1);
-  EXPECT_TRUE(QueryVar(*first.b.request_green()));
-  EXPECT_TRUE(QueryVar(*first.b.signal_.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*first.b()->request_green()));
+  EXPECT_TRUE(QueryVar(*first.b()->signal_.side_b()->out_try_set_route));
   Run(10);
 
-  EXPECT_FALSE(QueryVar(*first.b.request_green()));
-  EXPECT_FALSE(QueryVar(*first.b.signal_.side_b()->out_try_set_route));
-  EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));
-  EXPECT_FALSE(first.signal_green.Get());
+  EXPECT_FALSE(QueryVar(*first.b()->request_green()));
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(first.signal_green()->Get());
 
   // First train reaches second signal.
   LOG(INFO, "First train reaches second signal and first train tries to get green again(fail).");
-  second.inverted_detector.Set(false);
-  SetVar(*first.b.request_green(), true);
+  second.inverted_detector()->Set(false);
+  SetVar(*first.b()->request_green(), true);
   Run(14);
   EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*second.b.body_det_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
-  EXPECT_FALSE(second.signal_green.Get());
+  EXPECT_TRUE(QueryVar(*second.b()->body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*second.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(second.signal_green()->Get());
 
-  EXPECT_FALSE(QueryVar(*first.b.request_green()));
-  EXPECT_FALSE(first.signal_green.Get());
+  EXPECT_FALSE(QueryVar(*first.b()->request_green()));
+  EXPECT_FALSE(first.signal_green()->Get());
 
   LOG(INFO, "First train gets green at second signal.");
-  SetVar(*second.b.request_green(), true);
+  SetVar(*second.b()->request_green(), true);
   Run(5);
-  EXPECT_TRUE(second.signal_green.Get());
-  EXPECT_TRUE(QueryVar(*second.b.signal_.route_set_ab_));
+  EXPECT_TRUE(second.signal_green()->Get());
+  EXPECT_TRUE(QueryVar(*second.b()->signal_.route_set_ab_));
 
   LOG(INFO, "First train leaves from second signal.");
-  second.inverted_detector.Set(true);
+  second.inverted_detector()->Set(true);
   Run(10);
-  EXPECT_FALSE(second.signal_green.Get());
-  EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
+  EXPECT_FALSE(second.signal_green()->Get());
+  EXPECT_FALSE(QueryVar(*second.b()->signal_.route_set_ab_));
 
   // Now the second train can go.
   LOG(INFO, "Second train gets green to second signal.");
-  SetVar(*first.b.request_green(), true);
+  SetVar(*first.b()->request_green(), true);
   Run(10);
-  EXPECT_FALSE(QueryVar(*first.b.request_green()));
-  EXPECT_TRUE(first.signal_green.Get());
-  EXPECT_TRUE(QueryVar(*first.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*first.b()->request_green()));
+  EXPECT_TRUE(first.signal_green()->Get());
+  EXPECT_TRUE(QueryVar(*first.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*mid.route_set_ab_));
 }
 
@@ -1061,16 +1079,16 @@ TEST_F(LogicTest, FixedTurnout) {
   TestFixedTurnout turnout_l(this, FixedTurnout::TURNOUT_THROWN, "turnout_l");
   TestFixedTurnout turnout_r(this, FixedTurnout::TURNOUT_CLOSED, "turnout_r");
 
-  BindSequence({&end_left.b, &mid_left.b, &left.b});
-  BindSequence({&end_right.b, &mid_right.b, &right.b});
-  left.b.side_b()->Bind(turnout_l.b.side_points());
-  right.b.side_b()->Bind(turnout_r.b.side_points());
+  BindSequence({&end_left.b, &mid_left.b, left.b()});
+  BindSequence({&end_right.b, &mid_right.b, right.b()});
+  left.b()->side_b()->Bind(turnout_l.b.side_points());
+  right.b()->side_b()->Bind(turnout_r.b.side_points());
 
-  station_lr.b.side_a()->Bind(turnout_l.b.side_thrown());
-  station_lr.b.side_b()->Bind(turnout_r.b.side_thrown());
+  station_lr.b()->side_a()->Bind(turnout_l.b.side_thrown());
+  station_lr.b()->side_b()->Bind(turnout_r.b.side_thrown());
 
-  station_rl.b.side_b()->Bind(turnout_l.b.side_closed());
-  station_rl.b.side_a()->Bind(turnout_r.b.side_closed());
+  station_rl.b()->side_b()->Bind(turnout_l.b.side_closed());
+  station_rl.b()->side_a()->Bind(turnout_r.b.side_closed());
 
   // This will immediately accept a route at the end stop.
   DefAut(strategyaut, brd, {
@@ -1092,18 +1110,18 @@ TEST_F(LogicTest, FixedTurnout) {
   // No trains anywhere.
   end_left.detector.Set(false);
   end_right.detector.Set(false);
-  left.inverted_detector.Set(true);
-  right.inverted_detector.Set(true);
-  station_lr.inverted_detector.Set(true);
-  station_rl.inverted_detector.Set(true);
+  left.inverted_detector()->Set(true);
+  right.inverted_detector()->Set(true);
+  station_lr.inverted_detector()->Set(true);
+  station_rl.inverted_detector()->Set(true);
   Run(1);
-  left.inverted_detector.Set(true);
-  right.inverted_detector.Set(true);
-  station_lr.inverted_detector.Set(true);
-  station_rl.inverted_detector.Set(true);
+  left.inverted_detector()->Set(true);
+  right.inverted_detector()->Set(true);
+  station_lr.inverted_detector()->Set(true);
+  station_rl.inverted_detector()->Set(true);
   Run(15);
 
-  EXPECT_FALSE(QueryVar(*left.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*left.b()->body_det_.simulated_occupancy_));
 
   // Source a train from left and right.
   end_left.detector.Set(true);
@@ -1113,104 +1131,104 @@ TEST_F(LogicTest, FixedTurnout) {
   Run(12);
   EXPECT_FALSE(QueryVar(*end_left.b.side_b()->out_try_set_route));
   EXPECT_TRUE(QueryVar(*end_left.b.side_b()->binding()->in_route_set_success));
-  EXPECT_TRUE(QueryVar(*left.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*left.b()->body_det_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*mid_left.b.route_set_ab_));
   EXPECT_FALSE(QueryVar(*end_right.b.side_b()->out_try_set_route));
   EXPECT_TRUE(QueryVar(*end_right.b.side_b()->binding()->in_route_set_success));
   EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*right.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*right.b()->body_det_.route_set_ab_));
 
   // Both trains reach their stops on open track outside of the station.
   end_left.detector.Set(false);
   end_right.detector.Set(false);
-  left.inverted_detector.Set(false);
-  right.inverted_detector.Set(false);
+  left.inverted_detector()->Set(false);
+  right.inverted_detector()->Set(false);
   Run(12);
 
   EXPECT_FALSE(QueryVar(*mid_left.b.route_set_ab_));
   EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ab_));
 
-  EXPECT_FALSE(QueryVar(*left.b.signal_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*left.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
 
   // Give them green.
   LOG(INFO, "Giving green to left train");
   EXPECT_TRUE(QueryVar(*turnout_l.b.turnout_state_));
   EXPECT_FALSE(QueryVar(*turnout_r.b.turnout_state_));
-  SetVar(*left.b.request_green(), true);
+  SetVar(*left.b()->request_green(), true);
   Run(5);
-  EXPECT_TRUE(left.signal_green.Get());
-  EXPECT_TRUE(QueryVar(*left.b.signal_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_TRUE(left.signal_green()->Get());
+  EXPECT_TRUE(QueryVar(*left.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
 
-  EXPECT_TRUE(QueryVar(*left.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*left.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_l.b.route_set_PT_));
   EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
 
   EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
-  EXPECT_TRUE(QueryVar(*station_lr.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_lr.b()->body_det_.route_set_ab_));
 
-  left.inverted_detector.Set(true);
+  left.inverted_detector()->Set(true);
   Run(15);
 
-  EXPECT_FALSE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*left.b()->body_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
 
   // Arrives in the station.
-  station_lr.inverted_detector.Set(false);
+  station_lr.inverted_detector()->Set(false);
   Run(15);
 
-  EXPECT_FALSE(QueryVar(*left.b.signal_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*station_lr.b.body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*left.b()->signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_lr.b()->body_.route_set_ab_));
   EXPECT_FALSE(QueryVar(*turnout_l.b.any_route_set_));
 
   // But cannot go out to the right because there is a train there.
-  SetVar(*station_lr.b.request_green(), true);
+  SetVar(*station_lr.b()->request_green(), true);
   Run(10);
-  EXPECT_FALSE(QueryVar(*station_lr.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_lr.b()->signal_.route_set_ab_));
 
   // Right train comes in.
-  SetVar(*right.b.request_green(), true);
+  SetVar(*right.b()->request_green(), true);
   Run(5);
-  EXPECT_TRUE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*right.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.route_set_PC_));
-  EXPECT_TRUE(QueryVar(*station_rl.b.body_.route_set_ab_));
-  right.inverted_detector.Set(true);
-  station_rl.inverted_detector.Set(false);
+  EXPECT_TRUE(QueryVar(*station_rl.b()->body_.route_set_ab_));
+  right.inverted_detector()->Set(true);
+  station_rl.inverted_detector()->Set(false);
   Run(15);
   EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_FALSE(QueryVar(*turnout_r.b.route_set_PC_));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
 
   // Left->Right train goes out.
-  SetVar(*station_lr.b.request_green(), true);
+  SetVar(*station_lr.b()->request_green(), true);
   Run(10);
-  EXPECT_TRUE(QueryVar(*station_lr.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_lr.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
-  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*right.b()->body_.route_set_ba_));
 
-  right.inverted_detector.Set(false);
+  right.inverted_detector()->Set(false);
   Run(15);
   EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
 
-  right.inverted_detector.Set(true);
+  right.inverted_detector()->Set(true);
   Run(15);
   EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
-  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*right.b()->body_.route_set_ba_));
   end_right.detector.Set(true);
   Run(15);
   EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
-  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
-  right.inverted_detector.Set(false);
+  EXPECT_TRUE(QueryVar(*right.b()->body_.route_set_ba_));
+  right.inverted_detector()->Set(false);
   Run(15);
   EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
-  EXPECT_TRUE(QueryVar(*right.b.body_.route_set_ba_));
+  EXPECT_TRUE(QueryVar(*right.b()->body_.route_set_ba_));
   end_right.detector.Set(false);
   Run(15);
   EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ba_));
-  EXPECT_FALSE(QueryVar(*right.b.body_.route_set_ba_));
+  EXPECT_FALSE(QueryVar(*right.b()->body_.route_set_ba_));
 }
 
 //                  b         a
@@ -1227,42 +1245,42 @@ TEST_F(LogicTest, MovableTurnout) {
   TestMovableTurnout turnout_r(this, "turnout_r");
   TestFixedTurnout turnout_l(this, FixedTurnout::TURNOUT_CLOSED, "turnout_l");
 
-  BindSequence({&left.b, &end_left.b});
-  BindSequence({&end_right.b, &mid_right.b, &right.b});
-  station_1.b.side_b()->Bind(turnout_l.b.side_thrown());
-  station_1.b.side_a()->Bind(turnout_r.b.side_thrown());
-  station_2.b.side_b()->Bind(turnout_l.b.side_closed());
-  station_2.b.side_a()->Bind(turnout_r.b.side_closed());
+  BindSequence({left.b(), &end_left.b});
+  BindSequence({&end_right.b, &mid_right.b, right.b()});
+  station_1.b()->side_b()->Bind(turnout_l.b.side_thrown());
+  station_1.b()->side_a()->Bind(turnout_r.b.side_thrown());
+  station_2.b()->side_b()->Bind(turnout_l.b.side_closed());
+  station_2.b()->side_a()->Bind(turnout_r.b.side_closed());
 
-  left.b.side_a()->Bind(turnout_l.b.side_points());
-  right.b.side_b()->Bind(turnout_r.b.side_points());
+  left.b()->side_a()->Bind(turnout_l.b.side_points());
+  right.b()->side_b()->Bind(turnout_r.b.side_points());
 
   SetupRunner(&brd);
   // No trains anywhere.
   end_right.detector.Set(false);
   end_left.detector.Set(false);
-  left.inverted_detector.Set(true);
-  right.inverted_detector.Set(true);
-  station_1.inverted_detector.Set(true);
-  station_2.inverted_detector.Set(true);
+  left.inverted_detector()->Set(true);
+  right.inverted_detector()->Set(true);
+  station_1.inverted_detector()->Set(true);
+  station_2.inverted_detector()->Set(true);
   // Turnout closed.
   SetVar(*turnout_r.magnet.command, false);
   SetVar(*turnout_r.magnet.current_state, false);
   Run(1);
-  left.inverted_detector.Set(true);
-  right.inverted_detector.Set(true);
-  station_1.inverted_detector.Set(true);
-  station_2.inverted_detector.Set(true);
+  left.inverted_detector()->Set(true);
+  right.inverted_detector()->Set(true);
+  station_1.inverted_detector()->Set(true);
+  station_2.inverted_detector()->Set(true);
   Run(15);
 
   // Test turnout detector proxy.
   EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupNextDetector()));
   EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupFarDetector()));
-  station_2.inverted_detector.Set(false);
+  station_2.inverted_detector()->Set(false);
   Run(15);
   EXPECT_TRUE(QueryVar(*turnout_r.b.side_points()->LookupNextDetector()));
   EXPECT_TRUE(QueryVar(*turnout_r.b.side_points()->LookupFarDetector()));
-  station_2.inverted_detector.Set(true);
+  station_2.inverted_detector()->Set(true);
   Run(15);
   EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupNextDetector()));
   EXPECT_FALSE(QueryVar(*turnout_r.b.side_points()->LookupFarDetector()));
@@ -1276,34 +1294,34 @@ TEST_F(LogicTest, MovableTurnout) {
   EXPECT_FALSE(QueryVar(*end_right.b.side_b()->out_try_set_route));
   EXPECT_TRUE(QueryVar(*end_right.b.side_b()->binding()->in_route_set_success));
   EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*right.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*right.b()->body_det_.route_set_ab_));
 
   // Train reaches its stops on open track outside of the station.
   end_right.detector.Set(false);
-  right.inverted_detector.Set(false);
+  right.inverted_detector()->Set(false);
   Run(12);
 
   EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
 
   LOG(INFO, "Giving green to first train");
-  SetVar(*right.b.request_green(), true);
+  SetVar(*right.b()->request_green(), true);
   Run(5);
-  EXPECT_FALSE(QueryVar(*right.b.request_green()));
-  EXPECT_TRUE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->request_green()));
+  EXPECT_TRUE(QueryVar(*right.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.route_set_PC_));
-  EXPECT_TRUE(QueryVar(*station_2.b.body_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*station_2.b.body_det_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
-  right.inverted_detector.Set(true);
-  station_2.inverted_detector.Set(false);
+  EXPECT_TRUE(QueryVar(*station_2.b()->body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_2.b()->body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b()->signal_.route_set_ab_));
+  right.inverted_detector()->Set(true);
+  station_2.inverted_detector()->Set(false);
   Run(15);
   EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_FALSE(QueryVar(*turnout_r.b.route_set_PC_));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*station_2.b.body_det_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_2.b()->body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b()->signal_.route_set_ab_));
 
   // Source another train.
   end_right.detector.Set(true);
@@ -1312,24 +1330,24 @@ TEST_F(LogicTest, MovableTurnout) {
   EXPECT_FALSE(QueryVar(*end_right.b.side_b()->out_try_set_route));
   EXPECT_TRUE(QueryVar(*end_right.b.side_b()->binding()->in_route_set_success));
   EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*right.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*right.b()->body_det_.route_set_ab_));
 
   // Train 2 reaches its stop on open track outside of the station.
   end_right.detector.Set(false);
-  right.inverted_detector.Set(false);
+  right.inverted_detector()->Set(false);
   Run(12);
 
   EXPECT_FALSE(QueryVar(*mid_right.b.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
 
-  EXPECT_TRUE(QueryVar(*station_2.b.body_det_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_2.b()->body_det_.route_set_ab_));
 
   LOG(INFO, "Trying green to second train");
-  SetVar(*right.b.request_green(), true);
+  SetVar(*right.b()->request_green(), true);
   Run(5);
-  EXPECT_FALSE(QueryVar(*right.b.side_b()->out_try_set_route));
-  EXPECT_FALSE(QueryVar(*right.b.side_b()->binding()->in_route_set_success));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->side_b()->out_try_set_route));
+  EXPECT_FALSE(QueryVar(*right.b()->side_b()->binding()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
 
   // Switch the turnout.
   SetVar(*turnout_r.magnet.command, true);
@@ -1339,60 +1357,60 @@ TEST_F(LogicTest, MovableTurnout) {
   EXPECT_FALSE(turnout_r.set_1.Get());
 
   // Give green again, this time it works.
-  SetVar(*right.b.request_green(), true);
+  SetVar(*right.b()->request_green(), true);
   Run(5);
-  EXPECT_FALSE(QueryVar(*right.b.request_green()));
-  EXPECT_TRUE(QueryVar(*right.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->request_green()));
+  EXPECT_TRUE(QueryVar(*right.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.route_set_PT_));
-  EXPECT_TRUE(QueryVar(*station_1.b.body_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*station_1.b.body_det_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*station_1.b.signal_.route_set_ab_));
-  right.inverted_detector.Set(true);
-  station_1.inverted_detector.Set(false);
+  EXPECT_TRUE(QueryVar(*station_1.b()->body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_1.b()->body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_1.b()->signal_.route_set_ab_));
+  right.inverted_detector()->Set(true);
+  station_1.inverted_detector()->Set(false);
   Run(15);
   EXPECT_FALSE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_FALSE(QueryVar(*turnout_r.b.route_set_PT_));
-  EXPECT_FALSE(QueryVar(*right.b.signal_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*station_1.b.body_det_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*station_1.b.signal_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_1.b()->body_det_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_1.b()->signal_.route_set_ab_));
 
   // Get train 1 out.
-  SetVar(*station_1.b.request_green(), true);
+  SetVar(*station_1.b()->request_green(), true);
   Run(5);
-  EXPECT_TRUE(QueryVar(*station_1.b.signal_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_1.b()->signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*left.b()->body_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
-  left.inverted_detector.Set(false);
-  station_1.inverted_detector.Set(true);
+  left.inverted_detector()->Set(false);
+  station_1.inverted_detector()->Set(true);
   Run(15);
   EXPECT_FALSE(QueryVar(*turnout_l.b.any_route_set_));
 
-  SetVar(*station_2.b.request_green(), true);
+  SetVar(*station_2.b()->request_green(), true);
   Run(5);
-  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*left.b()->body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b()->signal_.route_set_ab_));
 
   // And we will make the train disappear from the left block.
-  left.inverted_detector.Set(true);
+  left.inverted_detector()->Set(true);
   Run(15);
-  EXPECT_FALSE(QueryVar(*left.b.body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*left.b()->body_.route_set_ab_));
 
   // So that train 2 can leave too
-  SetVar(*station_2.b.request_green(), true);
+  SetVar(*station_2.b()->request_green(), true);
   Run(5);
-  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*station_2.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*left.b()->body_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*station_2.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
-  left.inverted_detector.Set(false);
-  station_2.inverted_detector.Set(true);
+  left.inverted_detector()->Set(false);
+  station_2.inverted_detector()->Set(true);
   Run(15);
 
-  EXPECT_TRUE(QueryVar(*left.b.body_.route_set_ab_));
-  EXPECT_FALSE(QueryVar(*station_2.b.signal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*left.b()->body_.route_set_ab_));
+  EXPECT_FALSE(QueryVar(*station_2.b()->signal_.route_set_ab_));
 
   // Reset the turnout and make seocnd train disappear.
-  left.inverted_detector.Set(true);
+  left.inverted_detector()->Set(true);
   SetVar(*turnout_r.magnet.command, false);
   Run(15);
   }  // rinse repeat.
@@ -1406,7 +1424,7 @@ TEST_F(LogicTest, DISABLED_100trainz) {
   TestBlock second(this, "second");
   static StraightTrackLong after(*alloc());
 
-  BindSequence({&before.b, &first.b, &mid, &second.b, &after});
+  BindSequence({&before.b, first.b(), &mid, second.b(), &after});
 
 
   // This will immediately accept a route at the end stop.
@@ -1422,93 +1440,93 @@ TEST_F(LogicTest, DISABLED_100trainz) {
   SetupRunner(&brd);
   before.detector.Set(true);
   // The initial state is a train at both blocks.
-  first.inverted_detector.Set(false);
-  second.inverted_detector.Set(false);
+  first.inverted_detector()->Set(false);
+  second.inverted_detector()->Set(false);
   Run(1);
-  first.inverted_detector.Set(false);
-  second.inverted_detector.Set(false);
+  first.inverted_detector()->Set(false);
+  second.inverted_detector()->Set(false);
   Run(20);
-  EXPECT_TRUE(QueryVar(*first.b.body_det_.simulated_occupancy_));
-  EXPECT_TRUE(QueryVar(*second.b.body_det_.simulated_occupancy_));
+  EXPECT_TRUE(QueryVar(*first.b()->body_det_.simulated_occupancy_));
+  EXPECT_TRUE(QueryVar(*second.b()->body_det_.simulated_occupancy_));
 
   for (int i = 0; i < 100; ++i) {
     Run(10);
-    EXPECT_FALSE(first.signal_green.Get());
-    EXPECT_FALSE(second.signal_green.Get());
+    EXPECT_FALSE(first.signal_green()->Get());
+    EXPECT_FALSE(second.signal_green()->Get());
 
     // The rear train cannot move forward.
-    SetVar(*first.b.request_green(), true);
+    SetVar(*first.b()->request_green(), true);
     Run(10);
-    EXPECT_FALSE(QueryVar(*first.b.request_green()));
-    EXPECT_FALSE(first.signal_green.Get());
+    EXPECT_FALSE(QueryVar(*first.b()->request_green()));
+    EXPECT_FALSE(first.signal_green()->Get());
     EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
 
     // Makes the second train leave.
-    SetVar(*second.b.request_green(), true);
+    SetVar(*second.b()->request_green(), true);
     Run(10);
-    EXPECT_FALSE(QueryVar(*second.b.request_green()));
-    EXPECT_TRUE(second.signal_green.Get());
+    EXPECT_FALSE(QueryVar(*second.b()->request_green()));
+    EXPECT_TRUE(second.signal_green()->Get());
 
     // The rear train still cannot move forward.
-    SetVar(*first.b.request_green(), true);
+    SetVar(*first.b()->request_green(), true);
     Run(10);
-    EXPECT_FALSE(QueryVar(*first.b.request_green()));
-    EXPECT_FALSE(first.signal_green.Get());
+    EXPECT_FALSE(QueryVar(*first.b()->request_green()));
+    EXPECT_FALSE(first.signal_green()->Get());
     EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
 
     // Makes the front train leave.
-    second.inverted_detector.Set(true);
+    second.inverted_detector()->Set(true);
     Run(14);
-    EXPECT_FALSE(QueryVar(*second.b.request_green()));
-    EXPECT_FALSE(second.signal_green.Get());
-    EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
+    EXPECT_FALSE(QueryVar(*second.b()->request_green()));
+    EXPECT_FALSE(second.signal_green()->Get());
+    EXPECT_FALSE(QueryVar(*second.b()->signal_.route_set_ab_));
 
     // Now we can run the rear train.
-    SetVar(*first.b.request_green(), true);
+    SetVar(*first.b()->request_green(), true);
     Run(10);
-    EXPECT_FALSE(QueryVar(*first.b.request_green()));
-    EXPECT_TRUE(QueryVar(*first.b.signal_.route_set_ab_));
-    EXPECT_TRUE(first.signal_green.Get());
+    EXPECT_FALSE(QueryVar(*first.b()->request_green()));
+    EXPECT_TRUE(QueryVar(*first.b()->signal_.route_set_ab_));
+    EXPECT_TRUE(first.signal_green()->Get());
     EXPECT_TRUE(QueryVar(*mid.route_set_ab_));
-    EXPECT_TRUE(QueryVar(*second.b.body_det_.route_set_ab_));
-    EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
+    EXPECT_TRUE(QueryVar(*second.b()->body_det_.route_set_ab_));
+    EXPECT_FALSE(QueryVar(*second.b()->signal_.route_set_ab_));
 
     // But the third train cannot get in yet,
-    SetVar(*first.b.body_.side_b()->out_try_set_route, true);
+    SetVar(*first.b()->body_.side_b()->out_try_set_route, true);
     Run(5);
-    EXPECT_FALSE(QueryVar(*first.b.body_.side_b()->out_try_set_route));
-    EXPECT_TRUE(QueryVar(*first.b.body_.side_b()->binding()->in_route_set_failure));
+    EXPECT_FALSE(QueryVar(*first.b()->body_.side_b()->out_try_set_route));
+    EXPECT_TRUE(QueryVar(*first.b()->body_.side_b()->binding()->in_route_set_failure));
     if (i != 0) {
       EXPECT_TRUE(
-          QueryVar(*first.b.body_det_.route_set_ab_));  // because the route is still there.
+          QueryVar(*first.b()->body_det_.route_set_ab_));  // because the route is still there.
     }
 
     // Rear train leaves its block.
-    first.inverted_detector.Set(true);
+    first.inverted_detector()->Set(true);
     Run(15);
-    EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));  // route gone.
-    EXPECT_FALSE(QueryVar(*first.b.body_det_.route_set_ab_));
-    EXPECT_FALSE(QueryVar(*first.b.body_.route_set_ab_));
+    EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));  // route gone.
+    EXPECT_FALSE(QueryVar(*first.b()->body_det_.route_set_ab_));
+    EXPECT_FALSE(QueryVar(*first.b()->body_.route_set_ab_));
 
     // The third train can now come.
-    SetVar(*first.b.body_.side_b()->out_try_set_route, true);
+    SetVar(*first.b()->body_.side_b()->out_try_set_route, true);
     Run(5);
-    EXPECT_FALSE(QueryVar(*first.b.body_.side_b()->out_try_set_route));
+    EXPECT_FALSE(QueryVar(*first.b()->body_.side_b()->out_try_set_route));
     EXPECT_FALSE(
-        QueryVar(*first.b.body_.side_b()->binding()->in_route_set_failure));
-    EXPECT_TRUE(QueryVar(*first.b.body_.side_b()->binding()->in_route_set_success));
-    EXPECT_FALSE(QueryVar(*first.b.signal_.route_set_ab_));
-    EXPECT_TRUE(QueryVar(*first.b.body_det_.route_set_ab_));
+        QueryVar(*first.b()->body_.side_b()->binding()->in_route_set_failure));
+    EXPECT_TRUE(QueryVar(*first.b()->body_.side_b()->binding()->in_route_set_success));
+    EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
+    EXPECT_TRUE(QueryVar(*first.b()->body_det_.route_set_ab_));
 
     // Second train reaches rear block.
-    second.inverted_detector.Set(false);
+    second.inverted_detector()->Set(false);
     Run(15);
     EXPECT_FALSE(QueryVar(*mid.route_set_ab_));
-    EXPECT_TRUE(QueryVar(*second.b.body_det_.route_set_ab_));
-    EXPECT_FALSE(QueryVar(*second.b.signal_.route_set_ab_));
+    EXPECT_TRUE(QueryVar(*second.b()->body_det_.route_set_ab_));
+    EXPECT_FALSE(QueryVar(*second.b()->signal_.route_set_ab_));
 
     // Third train reaches second block.
-    first.inverted_detector.Set(false);
+    first.inverted_detector()->Set(false);
     Run(15);
   }
 }
@@ -1744,9 +1762,9 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
   static TestBlock second(this, "second");
   static StraightTrackLong after(*alloc());
 
-  BindSequence({&before.b, &first.b, &mid, &second.b, &after});
+  BindSequence({&before.b, first.b(), &mid, second.b(), &after});
 
-  ASSERT_EQ(first.b.signal_.side_b(), mid.side_a()->binding());
+  ASSERT_EQ(first.b()->signal_.side_b(), mid.side_a()->binding());
 
   static FakeBit mcont(this);
 
@@ -1764,17 +1782,17 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
           .ActState(StReadyToGo)
           .ActReg0(cv);
       Def()
-          .ActImportVariable(*first.b.request_green(),
+          .ActImportVariable(*first.b()->request_green(),
                              current_block_request_green_)
-          .ActImportVariable(first.b.route_out(),
+          .ActImportVariable(first.b()->route_out(),
                              current_block_route_out_)
-          .ActImportVariable(second.b.detector(),
+          .ActImportVariable(second.b()->detector(),
                              next_block_detector_);
-      MapCurrentBlockPermaloc(&first.b);
+      MapCurrentBlockPermaloc(first.b());
       Def()
-          .ActImportVariable(second.b.detector(), current_block_detector_)
+          .ActImportVariable(second.b()->detector(), current_block_detector_)
           .ActImportVariable(
-               *AllocateOrGetLocationByBlock(&second.b)->permaloc(),
+              *AllocateOrGetLocationByBlock(second.b())->permaloc(),
                next_block_permaloc_);
 
       Def().IfState(StRequestTransition).ActState(StTransitionDone);
@@ -1785,35 +1803,35 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
   SetupRunner(&brd);
   
   // No trains initially.
-  first.inverted_detector.Set(true);
-  second.inverted_detector.Set(true);
+  first.inverted_detector()->Set(true);
+  second.inverted_detector()->Set(true);
   Run(1);
 
   // No trains initially.
-  first.inverted_detector.Set(true);
-  second.inverted_detector.Set(true);
+  first.inverted_detector()->Set(true);
+  second.inverted_detector()->Set(true);
   Run(20);
-  EXPECT_FALSE(QueryVar(*first.b.body_det_.simulated_occupancy_));
-  EXPECT_FALSE(QueryVar(*second.b.body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*first.b()->body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*second.b()->body_det_.simulated_occupancy_));
 
   // Train is at first. No green yet.
   mcont.Set(false);
-  first.inverted_detector.Set(false);
-  second.inverted_detector.Set(true);
+  first.inverted_detector()->Set(false);
+  second.inverted_detector()->Set(true);
   Run(30);
   LOG(INFO, "Sending off train.");
   EXPECT_EQ(0, trainImpl_.get_speed().speed());
   mcont.Set(true);
   Run(30);
   EXPECT_EQ(StMoving.state, runner_->GetAllAutomatas().back()->GetState());
-  EXPECT_TRUE(first.signal_green.Get());
+  EXPECT_TRUE(first.signal_green()->Get());
   EXPECT_FALSE(mcont.Get());
   wait();
   EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
 
   LOG(INFO, "Train arriving at destination.");
-  first.inverted_detector.Set(true);
-  second.inverted_detector.Set(false);
+  first.inverted_detector()->Set(true);
+  second.inverted_detector()->Set(false);
   Run(20);
 
   wait();
@@ -1849,14 +1867,14 @@ class SampleLayoutLogicTrainTest : public LogicTrainTest {
         RStubIntoMain(this, FixedTurnout::TURNOUT_THROWN, "RStubIntoMain")
   {
     BindSequence(RStubIntoMain.b.side_points(),
-                 {&BotA.b, &BotB.b, &RLeft.b, &TopA.b, &TopB.b},
+                 {BotA.b(), BotB.b(), RLeft.b(), TopA.b(), TopB.b()},
                  RStubEntry.b.side_points());
     BindSequence(RStubEntry.b.side_thrown(),
-                 {&RRight.b},
+                 {RRight.b()},
                  RStubIntoMain.b.side_thrown());
     BindPairs({{RStubEntry.b.side_closed(), RStubExit.b.side_closed()},
                {RStubExit.b.side_thrown(), RStubIntoMain.b.side_closed()},
-               {RStubExit.b.side_points(), RStub.b.entry()}});
+               {RStubExit.b.side_points(), RStub.b_.entry()}});
   }
 
   TestBlock RLeft, TopA, TopB, RRight, BotA, BotB;
@@ -1880,8 +1898,8 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddEagerBlockTransition(&t_->TopA.b, &t_->TopB.b);
-      StopTrainAt(&t_->TopB.b);
+      AddEagerBlockTransition(t_->TopA.b(), t_->TopB.b());
+      StopTrainAt(t_->TopB.b());
     }
    private:
     SampleLayoutLogicTrainTest* t_;
@@ -1889,39 +1907,39 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   SetupRunner(&brd);
 
   Run(20);
-  EXPECT_TRUE(TopA.inverted_detector.Get());
-  EXPECT_TRUE(TopB.inverted_detector.Get());
-  EXPECT_FALSE(QueryVar(*TopA.b.body_det_.simulated_occupancy_));
-  EXPECT_FALSE(QueryVar(*TopB.b.body_det_.simulated_occupancy_));
+  EXPECT_TRUE(TopA.inverted_detector()->Get());
+  EXPECT_TRUE(TopB.inverted_detector()->Get());
+  EXPECT_FALSE(QueryVar(*TopA.b()->body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*TopB.b()->body_det_.simulated_occupancy_));
   EXPECT_EQ(0, trainImpl_.get_speed().speed());
   
   LOG(INFO, "Flipping detector at source location.");
-  TopA.inverted_detector.Set(false);
+  TopA.inverted_detector()->Set(false);
   Run(20);
 
   LOG(INFO, "Setting train to the source location.");
-  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
   wait();
   Run(20);
   wait();
   EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
-  EXPECT_TRUE(TopA.signal_green.Get());
+  EXPECT_TRUE(TopA.signal_green()->Get());
   
   Run(20);
   LOG(INFO, "Train arriving at dest location.");
-  TopB.inverted_detector.Set(false);
-  TopA.inverted_detector.Set(true);
+  TopB.inverted_detector()->Set(false);
+  TopA.inverted_detector()->Set(true);
   Run(20);
   wait();
   EXPECT_EQ(0, trainImpl_.get_speed().mph());
 
   // Some expectations on where the train actually is (block TopB).
-  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&TopA.b)));
-  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&TopB.b)));
-  EXPECT_FALSE(QueryVar(TopA.b.route_out()));
-  EXPECT_FALSE(QueryVar(TopB.b.route_out()));
-  EXPECT_TRUE(QueryVar(TopB.b.route_in()));
-  EXPECT_FALSE(TopB.signal_green.Get());
+  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(TopA.b())));
+  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(TopB.b())));
+  EXPECT_FALSE(QueryVar(TopA.b()->route_out()));
+  EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
+  EXPECT_TRUE(QueryVar(TopB.b()->route_in()));
+  EXPECT_FALSE(TopB.signal_green()->Get());
 }
 
 TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
@@ -1939,9 +1957,9 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
       // Switches the turnout (permanently) to the outer loop.
       Def().ActReg1(
           aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
-      AddEagerBlockSequence({&t_->TopA.b, &t_->TopB.b, &t_->RRight.b,
-                             &t_->BotA.b, &t_->BotB.b, &t_->RLeft.b,
-                             &t_->TopA.b});
+      AddEagerBlockSequence({t_->TopA.b(), t_->TopB.b(), t_->RRight.b(),
+                             t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(),
+                             t_->TopA.b()});
     }
    private:
     SampleLayoutLogicTrainTest* t_;
@@ -1949,25 +1967,25 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
   SetupRunner(&brd);
   Run(20);
   vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
-  TopA.inverted_detector.Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  TopA.inverted_detector()->Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
   
   for (int i = 0; i < 37; ++i) {
     TestBlock* cblock = blocks[i % blocks.size()];
     TestBlock* nblock = blocks[(i + 1) % blocks.size()];
     Run(20);
-    EXPECT_TRUE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-    cblock->inverted_detector.Set(true);
+    EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+    cblock->inverted_detector()->Set(true);
     Run(20);
-    EXPECT_FALSE(QueryVar(cblock->b.route_in()));
-    EXPECT_FALSE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&cblock->b)));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
 
-    nblock->inverted_detector.Set(false);
+    nblock->inverted_detector()->Set(false);
     Run(20);
   }
 }
@@ -1985,8 +2003,8 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddBlockTransitionOnPermit(&t_->TopA.b, &t_->TopB.b, &gate_);
-      StopTrainAt(&t_->TopB.b);
+      AddBlockTransitionOnPermit(t_->TopA.b(), t_->TopB.b(), &gate_);
+      StopTrainAt(t_->TopB.b());
     }
 
     RequestClientInterface gate_;
@@ -1996,19 +2014,19 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   SetupRunner(&brd);
 
   Run(20);
-  EXPECT_TRUE(TopA.inverted_detector.Get());
-  EXPECT_TRUE(TopB.inverted_detector.Get());
-  EXPECT_FALSE(QueryVar(*TopA.b.body_det_.simulated_occupancy_));
-  EXPECT_FALSE(QueryVar(*TopB.b.body_det_.simulated_occupancy_));
+  EXPECT_TRUE(TopA.inverted_detector()->Get());
+  EXPECT_TRUE(TopB.inverted_detector()->Get());
+  EXPECT_FALSE(QueryVar(*TopA.b()->body_det_.simulated_occupancy_));
+  EXPECT_FALSE(QueryVar(*TopB.b()->body_det_.simulated_occupancy_));
   EXPECT_EQ(0, trainImpl_.get_speed().speed());
   
   LOG(INFO, "Flipping detector at source location.");
-  TopA.inverted_detector.Set(false);
+  TopA.inverted_detector()->Set(false);
   Run(20);
   EXPECT_FALSE(QueryVar(*my_train.gate_.request()));
 
   LOG(INFO, "Setting train to the source location.");
-  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
   wait();
   Run(20);
   wait();
@@ -2017,12 +2035,12 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   
   // We'll make the destination block occupied and see that the request will be
   // taken back.
-  TopB.inverted_detector.Set(false);
+  TopB.inverted_detector()->Set(false);
   Run(20);
   EXPECT_FALSE(QueryVar(*my_train.gate_.request()));
   EXPECT_EQ(0, trainImpl_.get_speed().speed());
   
-  TopB.inverted_detector.Set(true);
+  TopB.inverted_detector()->Set(true);
   Run(20);
   EXPECT_TRUE(QueryVar(*my_train.gate_.request()));
   EXPECT_EQ(0, trainImpl_.get_speed().speed());
@@ -2033,23 +2051,23 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   EXPECT_FALSE(QueryVar(*my_train.gate_.request()));
   EXPECT_TRUE(QueryVar(*my_train.gate_.taken()));
   EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
-  EXPECT_TRUE(TopA.signal_green.Get());
+  EXPECT_TRUE(TopA.signal_green()->Get());
   
   Run(20);
   LOG(INFO, "Train arriving at dest location.");
-  TopB.inverted_detector.Set(false);
-  TopA.inverted_detector.Set(true);
+  TopB.inverted_detector()->Set(false);
+  TopA.inverted_detector()->Set(true);
   Run(20);
   wait();
   EXPECT_EQ(0, trainImpl_.get_speed().mph());
 
   // Some expectations on where the train actually is (block TopB).
-  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&TopA.b)));
-  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&TopB.b)));
-  EXPECT_FALSE(QueryVar(TopA.b.route_out()));
-  EXPECT_FALSE(QueryVar(TopB.b.route_out()));
-  EXPECT_TRUE(QueryVar(TopB.b.route_in()));
-  EXPECT_FALSE(TopB.signal_green.Get());
+  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(TopA.b())));
+  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(TopB.b())));
+  EXPECT_FALSE(QueryVar(TopA.b()->route_out()));
+  EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
+  EXPECT_TRUE(QueryVar(TopB.b()->route_in()));
+  EXPECT_FALSE(TopB.signal_green()->Get());
 }
 
 TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
@@ -2064,11 +2082,11 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddEagerBlockSequence({&t_->TopA.b, &t_->TopB.b});
-      AddEagerBlockTransition(&t_->TopB.b, &t_->RRight.b);
+      AddEagerBlockSequence({t_->TopA.b(), t_->TopB.b()});
+      AddEagerBlockTransition(t_->TopB.b(), t_->RRight.b());
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
       AddEagerBlockSequence(
-          {&t_->RRight.b, &t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b});
+          {t_->RRight.b(), t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b()});
     }
    private:
     SampleLayoutLogicTrainTest* t_;
@@ -2076,25 +2094,25 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
   SetupRunner(&brd);
   Run(20);
   vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
-  TopA.inverted_detector.Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+  TopA.inverted_detector()->Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
   
   for (int i = 0; i < 37; ++i) {
     TestBlock* cblock = blocks[i % blocks.size()];
     TestBlock* nblock = blocks[(i + 1) % blocks.size()];
     Run(20);
-    EXPECT_TRUE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-    cblock->inverted_detector.Set(true);
+    EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+    cblock->inverted_detector()->Set(true);
     Run(20);
-    EXPECT_FALSE(QueryVar(cblock->b.route_in()));
-    EXPECT_FALSE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&cblock->b)));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
 
-    nblock->inverted_detector.Set(false);
+    nblock->inverted_detector()->Set(false);
     Run(20);
   }
 }
@@ -2114,15 +2132,15 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddEagerBlockSequence({&t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b, &t_->TopB.b});
-      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RRight.b,
+      AddEagerBlockSequence({t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b(), t_->TopB.b()});
+      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RRight.b(),
                                  &gate_loop_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
-      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RStub.b,
+      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RStub.b(),
                                  &gate_stub_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
-      AddEagerBlockTransition(&t_->RRight.b, &t_->BotA.b);
-      AddEagerBlockTransition(&t_->RStub.b, &t_->BotA.b);
+      AddEagerBlockTransition(t_->RRight.b(), t_->BotA.b());
+      AddEagerBlockTransition(t_->RStub.b(), t_->BotA.b());
     }
 
     RequestClientInterface gate_loop_;
@@ -2134,8 +2152,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   SetupRunner(&brd);
   Run(20);
   vector<TestBlock*> blocks = {&BotA, &BotB, &RLeft, &TopA, &TopB};
-  BotA.inverted_detector.Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(&BotA.b), true);
+  BotA.inverted_detector()->Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(BotA.b()), true);
   size_t i = 1;
   bool is_out = false;
   TestBlock* last_block = blocks[0];
@@ -2154,20 +2172,20 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
           auto* nblock = &RStub;
           wait();
           LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock TStub", j,
-              i, last_block->b.name().c_str());
+              i, last_block->b()->name().c_str());
           Run(30);
-          EXPECT_TRUE(QueryVar(last_block->b.route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-          last_block->inverted_detector.Set(true);
+          EXPECT_TRUE(QueryVar(last_block->b()->route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+          last_block->inverted_detector()->Set(true);
           Run(30);
-          EXPECT_FALSE(QueryVar(last_block->b.route_in()));
-          EXPECT_FALSE(QueryVar(last_block->b.route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+          EXPECT_FALSE(QueryVar(last_block->b()->route_in()));
+          EXPECT_FALSE(QueryVar(last_block->b()->route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
         
-          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-          EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&last_block->b)));
+          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+          EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(last_block->b())));
         
-          nblock->inverted_detector.Set(false);
+          nblock->inverted_detector()->Set(false);
           Run(30);
           if (i == blocks.size()) {
             EXPECT_FALSE(QueryVar(*my_train.gate_loop_.request()));
@@ -2181,22 +2199,24 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
           nblock = blocks[i];
           wait();
           LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock TStub", j,
-              i, last_block->b.name().c_str());
+              i, last_block->b()->name().c_str());
           Run(30);
-          EXPECT_TRUE(QueryVar(last_block->b.route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-          last_block->inverted_detector.Set(true);
+          EXPECT_TRUE(QueryVar(last_block->b()->route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+          last_block->inverted_detector()->Set(true);
           Run(30);
-          EXPECT_FALSE(QueryVar(last_block->b.route_in()));
-          EXPECT_FALSE(QueryVar(last_block->b.route_out()));
-          EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+          EXPECT_FALSE(QueryVar(last_block->b()->route_in()));
+          EXPECT_FALSE(QueryVar(last_block->b()->route_out()));
+          EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
         
-          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-          EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&last_block->b)));
-        
-          nblock->inverted_detector.Set(false);
+          EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+          EXPECT_FALSE(
+              QueryVar(*my_train.TEST_GetPermalocBit(last_block->b())));
+
+          nblock->inverted_detector()->Set(false);
           Run(30);
-      }
+        }
+      } // we went through the stub.
     } else {
       if (i > blocks.size()) {
         i = 0;
@@ -2205,20 +2225,20 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
     }
     wait();
     LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock %s", j, i,
-        last_block->b.name().c_str(), nblock->b.name().c_str());
+        last_block->b()->name().c_str(), nblock->b()->name().c_str());
     Run(30);
-    EXPECT_TRUE(QueryVar(last_block->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-    last_block->inverted_detector.Set(true);
+    EXPECT_TRUE(QueryVar(last_block->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+    last_block->inverted_detector()->Set(true);
     Run(30);
-    EXPECT_FALSE(QueryVar(last_block->b.route_in()));
-    EXPECT_FALSE(QueryVar(last_block->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    EXPECT_FALSE(QueryVar(last_block->b()->route_in()));
+    EXPECT_FALSE(QueryVar(last_block->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
     
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&last_block->b)));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(last_block->b())));
     
-    nblock->inverted_detector.Set(false);
+    nblock->inverted_detector()->Set(false);
     Run(30);
     if (i == blocks.size()) {
       EXPECT_FALSE(QueryVar(*my_train.gate_loop_.request()));
@@ -2245,15 +2265,15 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddEagerBlockSequence({&t_->BotA.b, &t_->BotB.b, &t_->RLeft.b, &t_->TopA.b, &t_->TopB.b});
-      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RRight.b,
+      AddEagerBlockSequence({t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b(), t_->TopB.b()});
+      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RRight.b(),
                                  &flc_loop);
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
-      AddBlockTransitionOnPermit(&t_->TopB.b, &t_->RStub.b,
+      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RStub.b(),
                                  &flc_stub);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
-      AddEagerBlockTransition(&t_->RRight.b, &t_->BotA.b);
-      AddEagerBlockTransition(&t_->RStub.b, &t_->BotA.b);
+      AddEagerBlockTransition(t_->RRight.b(), t_->BotA.b());
+      AddEagerBlockTransition(t_->RStub.b(), t_->BotA.b());
     }
 
    private:
@@ -2262,26 +2282,26 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
   SetupRunner(&brd);
   Run(20);
   vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,
-                               &TopA, &TopB, &RStub, &BotA, &BotB, &RLeft};
-  TopA.inverted_detector.Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(&TopA.b), true);
+                               &TopA, &TopB, nullptr, &BotA, &BotB, &RLeft};
+  TopA.inverted_detector()->Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
   
   for (int i = 0; i < 37; ++i) {
     TestBlock* cblock = blocks[i % blocks.size()];
     TestBlock* nblock = blocks[(i + 1) % blocks.size()];
     Run(20);
-    EXPECT_TRUE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
-    cblock->inverted_detector.Set(true);
+    EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+    cblock->inverted_detector()->Set(true);
     Run(20);
-    EXPECT_FALSE(QueryVar(cblock->b.route_in()));
-    EXPECT_FALSE(QueryVar(cblock->b.route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b.route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(&nblock->b)));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(&cblock->b)));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
 
-    nblock->inverted_detector.Set(false);
+    nblock->inverted_detector()->Set(false);
     Run(20);
   }
 }
