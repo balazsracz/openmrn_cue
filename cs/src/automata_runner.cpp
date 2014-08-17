@@ -287,6 +287,35 @@ class EventByteBlock : public ReadWriteBit {
   std::unique_ptr<nmranet::ByteRangeEventP> handler_;
 };
 
+class EventByteBlockConsumer : public ReadWriteBit {
+ public:
+  EventByteBlockConsumer(nmranet::WriteHelper::node_type node,
+                         uint64_t event_base, size_t size)
+      : storage_(new uint8_t[size]),
+        handler_(
+            new nmranet::ByteRangeEventC(node, event_base, storage_, size)) {
+    memset(&storage_[0], 0, size);
+  }
+
+  ~EventByteBlockConsumer() { delete[] storage_; }
+
+  virtual bool Read(uint16_t arg, nmranet::Node*, Automata* aut) { HASSERT(0); }
+
+  virtual void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) {
+    HASSERT(0);
+  }
+
+  virtual uint8_t GetState(uint16_t arg) { return storage_[arg]; }
+
+  virtual void SetState(uint16_t arg, uint8_t state) {
+    storage_[arg] = state;
+  }
+
+ private:
+  uint8_t* storage_;
+  std::unique_ptr<nmranet::ByteRangeEventC> handler_;
+};
+
 ReadWriteBit* AutomataRunner::create_variable() {
   uint8_t arg1 = load_insn();
   uint8_t arg2 = load_insn();
@@ -305,6 +334,9 @@ ReadWriteBit* AutomataRunner::create_variable() {
     }
     case 2: {
       return new EventByteBlock(openmrn_node_, aut_eventids_[0], arg2);
+    }
+    case 3: {
+      return new EventByteBlockConsumer(openmrn_node_, aut_eventids_[0], arg2);
     }
     default:
       diewith(CS_DIE_UNSUPPORTED);
