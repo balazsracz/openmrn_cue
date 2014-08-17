@@ -383,95 +383,14 @@ bool ign =
                {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
                {Block_B475.side_b(), Turnout_W481.b.side_points()}, });
 
-DefAut(control_logic, brd, {
+/*DefAut(control_logic, brd, {
   StateRef StWaiting(4);
   Def().IfState(StInit).ActState(StWaiting).ActTimer(4).ActReg1(
       ImportVariable(&is_paused));
   for (size_t i = 0; i < block_sequence.size() - 1; ++i) {
     SimpleFollowStrategy(block_sequence[i], block_sequence[i + 1], {}, this);
   }
-  /*SimpleFollowStrategy(&Block_XXB2, &Block_YYB2, {Turnout_XXW8.b.any_route()},
-                       this);
-  SimpleFollowStrategy(&Block_YYB2, &Block_A301, {Turnout_W382.b.any_route()},
-  this);*/
-});
-
-/*DefAut(XXleft, brd, {
-  StateRef StWaiting(4);
-  StateRef StTry1(NewUserState());
-  StateRef StTry2(NewUserState());
-  Def().IfState(StInit).ActState(StWaiting).ActTimer(4);
-  Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
-
-  StandardBlock* next = &Block_A301;
-
-  Def()
-      .IfReg0(ImportVariable(is_paused))
-      .IfReg0(ImportVariable(next->route_in()))
-      .IfReg0(ImportVariable(next->detector()))
-      .IfState(StTry1)
-      .IfReg0(ImportVariable(Block_XXB1.detector()))
-      .IfReg1(ImportVariable(Block_XXB3.detector()))
-      .ActState(StTry2);
-  Def()
-      .IfReg0(ImportVariable(is_paused))
-      .IfReg0(ImportVariable(next->route_in()))
-      .IfReg0(ImportVariable(next->detector()))
-      .IfState(StTry2)
-      .IfReg1(ImportVariable(Block_XXB1.detector()))
-      .IfReg0(ImportVariable(Block_XXB3.detector()))
-      .ActState(StTry1);
-
-  Def()
-      .IfReg0(ImportVariable(is_paused))
-      .IfReg0(ImportVariable(next->route_in()))
-      .IfReg0(ImportVariable(next->detector()))
-      .IfState(StTry1)
-      .IfReg1(ImportVariable(Block_XXB1.detector()))
-      .ActReg1(ImportVariable(Block_XXB1.request_green()));
-
-  Def()
-      .IfReg0(ImportVariable(is_paused))
-      .IfReg0(ImportVariable(next->route_in()))
-      .IfReg0(ImportVariable(next->detector()))
-      .IfState(StTry2)
-      .IfReg1(ImportVariable(Block_XXB3.detector()))
-      .ActReg1(ImportVariable(Block_XXB3.request_green()));
-
-  // This flips the state 1<->2 when an outgoing route is set.
-  Def().IfState(StTry1).IfReg1(ImportVariable(Block_XXB1.route_out())).ActState(
-      StTry2);
-  Def().IfState(StTry2).IfReg1(ImportVariable(Block_XXB3.route_out())).ActState(
-      StTry1);
-      });*/
-
-/*DefAut(XXin, brd, {
-  StateRef StWaiting(4);
-  StateRef StTry1(NewUserState());
-  StateRef StTry2(NewUserState());
-  Def().IfState(StInit).ActState(StWaiting).ActTimer(4);
-  Def().IfState(StWaiting).IfTimerDone().ActState(StTry1);
-
-  StandardBlock* current = &Block_YYC23;
-  StandardBlock* next;
-  next = &Block_XXB1;
-  Def()
-      .IfReg0(ImportVariable(is_paused))
-      .IfReg1(ImportVariable(current->detector()))
-      .IfReg0(ImportVariable(Turnout_XXW8.state()))
-      .IfReg0(ImportVariable(next->route_in()))
-      .IfReg0(ImportVariable(next->detector()))
-      .ActReg1(ImportVariable(current->request_green()));
-
-  next = &Block_XXB3;
-  Def()
-      .IfReg0(ImportVariable(is_paused))
-      .IfReg1(ImportVariable(current->detector()))
-      .IfReg1(ImportVariable(Turnout_XXW8.state()))
-      .IfReg0(ImportVariable(next->route_in()))
-      .IfReg0(ImportVariable(next->detector()))
-      .ActReg1(ImportVariable(current->request_green()));
-      });*/
+  });*/
 
 DefAut(display, brd, {
   DefCopy(ImportVariable(Block_XXB1.detector()),
@@ -484,138 +403,7 @@ DefAut(display, brd, {
           ImportVariable(&panda_bridge.l3));
 });
 
-/*
-DefAut(returnloop, brd, {
-  static GlobalVariable* request_pending = NewTempVariable(&brd);
-  LocalVariable* pending = ImportVariable(request_pending);
-
-  static StateRef StFront1(NewUserState());  // YYC23 -> XXB1
-  static StateRef StFront3(NewUserState());  // YYC23 -> XXB3
-  static StateRef StBack1(NewUserState());   // XXB2 -> YYB2
-  static StateRef StBack2(NewUserState());   // alias for the above to guarantee
-                                      // fairness
-
-  static StateRef SettingFront1(NewUserState());
-  static StateRef SettingFront3(NewUserState());
-  static StateRef SettingBack1(NewUserState());
-  static StateRef SettingBack2(NewUserState());
-
-  Def().IfState(StInit).ActReg0(pending).ActState(StFront1);
-
-  Def()
-      .IfReg0(busy)
-      .IfState(StFront1)
-      .RunCallback(&yyc23_depart)
-      .RunCallback(&xxb1_arrive)
-      .ActState(SettingFront1);
-  Def()
-      .IfReg0(busy)
-      .IfState(StFront1)
-      // We failed to set stfront1, source train is missing or dst is busy.
-      // Let's try to send a train to the other front track.
-      .RunCallback(&yyc23_depart)
-      .RunCallback(&xxb3_arrive)
-      // Now we can run a train to the other track. Let's do that.
-      .ActState(SettingFront3);
-
-  Def()
-      .IfReg0(busy)
-      .IfState(StFront1)
-      // We failed to run a train to the front. Let's try to run one to the
-      // back.
-      .RunCallback(&xxb2_depart)
-      .RunCallback(&yyb2_arrive)
-      .ActState(StBack2);
-
-  Def()
-      .IfReg0(busy)
-      .IfState(StFront3)
-      .RunCallback(&yyc23_depart)
-      .RunCallback(&xxb3_arrive)
-      .ActState(SettingFront3);
-  Def()
-      .IfReg0(busy)
-      .IfState(StFront3)
-      // We failed to set stfront3, source train is missing or dst is busy.
-      // Let's try to send a train to the other front track.
-      .RunCallback(&yyc23_depart)
-      .RunCallback(&xxb1_arrive)
-      // Now we can run a train to the other track. Let's do that.
-      .ActState(SettingFront1);
-
-  Def()
-      .IfReg0(busy)
-      .IfState(StFront3)
-      // We failed to run a train to the front. Let's try to run one to the
-      // back.
-      .RunCallback(&xxb2_depart)
-      .RunCallback(&yyb2_arrive)
-      .ActState(StBack1);
-
-  Def()
-      .IfReg0(busy)
-      .IfReg0(*pending)
-      .IfState(StBack1)
-      .RunCallback(&xxb2_depart)
-      .RunCallback(&yyb2_arrive)
-      .ActReg1(xxb2_reqgreen)
-      .ActReg1(pending);
-
-  Def()
-      .IfState(StBack1)
-      .IfReg1(*pending)
-      .IfReg0(*xxb2_reqgreen)
-      .ActReg0(pending)
-      .ActState(StFront3);
-
-  Def()
-      .IfReg0(busy)
-      .IfReg0(*pending)
-      .IfState(StBack2)
-      .RunCallback(&xxb2_depart)
-      .RunCallback(&yyb2_arrive)
-      .ActReg1(xxb2_reqgreen)
-      .ActReg1(pending);
-
-  Def()
-      .IfState(StBack2)
-      .IfReg1(*pending)
-      .IfReg0(*xxb2_reqgreen)
-      .ActReg0(pending)
-      .ActState(StFront1);
-
-  Def().IfReg0(busy).IfReg0(*pending).IfState(SettingFront1).ActReg0(xxw8_cmd);
-  Def()
-      .IfReg0(busy)
-      .IfReg0(*pending)
-      .IfState(SettingFront1)
-      .IfReg0(xxw8_state)
-      .ActReg1(yyc23_reqgreen)
-      .ActReg1(pending);
-  Def().IfState(SettingFront1)
-      .IfReg1(*pending)
-      .IfReg0(*yyc23_reqgreen)
-      .ActReg0(pending)
-      .ActState(StBack1);
-
-  Def().IfReg0(busy).IfReg0(*pending).IfState(SettingFront3).ActReg1(xxw8_cmd);
-  Def()
-      .IfReg0(busy)
-      .IfReg0(*pending)
-      .IfState(SettingFront3)
-      .IfReg1(xxw8_state)
-      .ActReg1(yyc23_reqgreen)
-      .ActReg1(pending);
-  Def().IfState(SettingFront3)
-      .IfReg1(*pending)
-      .IfReg0(*yyc23_reqgreen)
-      .ActReg0(pending)
-      .ActState(StBack2);
-
-
-      });*/
-
-DefAut(returnloop1, brd, {
+/*DefAut(returnloop1, brd, {
   static EventBlock::Allocator a(logic.allocator(), "interlocking.loop", 4);
   // 1 if the last train went from back->front.
   static GlobalVariable* v_last_to_front = a.Allocate("last_to_front");
@@ -804,11 +592,6 @@ DefAut(front_exclusion, brd, {
   static StateRef StPendingYYB2(NewUserState());
   static StateRef StPendingXXB1(NewUserState());
   static StateRef StPendingXXB3(NewUserState());
-  /*static StateRef (NewUserState());
-  static StateRef (NewUserState());
-  static StateRef (NewUserState());
-  static StateRef (NewUserState());*/
-
 
   Def().IfState(StInit).ActState(StBase);
   Def().IfReg1(ImportVariable(reset_all_routes)).ActState(StBase);
@@ -962,64 +745,7 @@ DefAut(front_exclusion, brd, {
       .ActReg0(last_front_t1)
       .ActState(StBase);
 
-});
-
-/*DefAut(auto_green, brd, {
-    DefNCopy(ImportVariable(*S201.sensor_raw),
-            ImportVariable(S201.signal_raw));
-    DefNCopy(ImportVariable(*S382.sensor_raw),
-            ImportVariable(S382.signal_raw));
-    DefNCopy(ImportVariable(*S501.sensor_raw),
-            ImportVariable(S501.signal_raw));
-            });*/
-
-/*DefCustomAut(magictest, brd, StrategyAutomata, {
-    SensorDebounce(ImportVariable(*S501.sensor_raw),
-                   ImportVariable(&b1.InA3));
-    // Strategy(ImportVariable(&b1.InA3),
-    //          ImportVariable(&b1.InOraRed),
-    //          ImportVariable(&b1.RelBlue));
-    });*/
-
-/*Defaut(blinker, brd, {
-        LocalVariable& repvar(ImportVariable(&led));
-        LocalVariable& l1(ImportVariable(&b5.LedRed));
-        LocalVariable& l2(ImportVariable(&b6.LedGreen));
-        Def().IfState(StInit).ActState(StUser1);
-        Def().IfState(StUser1).IfTimerDone().ActTimer(1).ActState(StUser2);
-        Def().IfState(StUser2).IfTimerDone().ActTimer(1).ActState(StUser1);
-        Def().IfState(StUser1).ActReg1(repvar);
-        Def().IfState(StUser2).ActReg0(repvar);
-
-        Def().IfState(StUser1).ActReg1(l1);
-        Def().IfState(StUser2).ActReg0(l1);
-
-        Def().IfState(StUser2).ActReg1(l2);
-        Def().IfState(StUser1).ActReg0(l2);
-        });*/
-
-/*DefAut(copier, brd, {
-        LocalVariable& ledvar(ImportVariable(&led));
-        LocalVariable& intvar(ImportVariable(&intev));
-        Def().IfReg1(ledvar).ActReg1(intvar);
-        Def().IfReg0(ledvar).ActReg0(intvar);
-    });
-*/
-/*DefAut(xcopier, brd, {
-        LocalVariable& ledvar(ImportVariable(&vled4));
-        LocalVariable& btnvar(ImportVariable(&inpb1));
-        DefCopy(ImportVariable(&b5.InBrownBrown), ImportVariable(&b5.LedRed));
-        //DefCopy(btnvar, ledvar);
-    });
-
-DefAut(xcopier2, brd, {
-        LocalVariable& ledvar(ImportVariable(&vled2));
-        LocalVariable& btnvar(ImportVariable(&inpb2));
-        //DefNCopy(btnvar, ledvar);
-    });
-
-*/
-
+      }); */
 
 void RgSignal(Automata* aut, const Automata::LocalVariable& route_set, Automata::LocalVariable* signal) {
   Def().IfReg0(route_set).ActSetValue(signal, 1, A_STOP);
@@ -1075,41 +801,6 @@ DefAut(signalaut2, brd, {
     BlockSignal(this, &Block_B447);
     BlockSignal(this, &Block_B475);
   });
-    /*    RgSignal(this, ImportVariable(Block_XXB2.route_out()),
-             ImportVariable(&signal_XXB2_main.signal));
-    RgSignal(this, ImportVariable(Block_XXB2.route_out()),
-             ImportVariable(&signal_XXB2_adv.signal));
-
-    RgSignal(this, ImportVariable(Block_A360.route_out()),
-             ImportVariable(&signal_A360_main.signal));
-    RgSignal(this, ImportVariable(Block_A360.route_out()),
-             ImportVariable(&signal_A375_adv.signal));
-
-    RgSignal(this, ImportVariable(Block_A347.route_in()),
-             ImportVariable(&signal_A360_adv.signal));
-
-    RgSignal(this, ImportVariable(Block_A347.route_out()),
-             ImportVariable(&signal_A347_main.signal));
-    RgSignal(this, ImportVariable(Block_A321.route_in()),
-             ImportVariable(&signal_A347_adv.signal));
-
-    RgSignal(this, ImportVariable(Block_A321.route_out()),
-             ImportVariable(&signal_A321_main.signal));
-    RgSignal(this, ImportVariable(Block_A301.route_in()),
-             ImportVariable(&signal_A321_adv.signal));
-
-    RgSignal(this, ImportVariable(Block_B475.route_out()),
-             ImportVariable(&signal_B475_main.signal));
-    RgSignal(this, ImportVariable(*Turnout_W481.b.any_route()),
-             ImportVariable(&signal_B475_adv.signal));
-
-    RgSignal(this, ImportVariable(Block_XXB1.route_out()),
-             ImportVariable(&signal_XXB1_main.signal));
-    RgSignal(this, ImportVariable(Block_XXB3.route_out()),
-             ImportVariable(&signal_XXB3_main.signal));
-
-    RedSignal(this, ImportVariable(&signal_B375_main.signal));
-    RedSignal(this, ImportVariable(&signal_B375_adv.signal));*/
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
