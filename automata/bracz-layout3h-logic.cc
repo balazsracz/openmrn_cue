@@ -823,7 +823,8 @@ class CircleTrain : public TrainSchedule {
   CircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
                       train_perm.Allocate(name, 16, 8),
-                      train_tmp.Allocate(name, 16, 8)),
+                      train_tmp.Allocate(name, 16, 8),
+                      &stored_speed_),
         stored_speed_(&brd, "speed." + name,
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
 
