@@ -846,9 +846,10 @@ class FlipFlopClient;
 class FlipFlopAutomata : public AutomataPlugin {
  public:
   FlipFlopAutomata(Board *brd, const string &name,
-                   EventBlock::Allocator &parent_alloc)
+                   EventBlock::Allocator &parent_alloc,
+                   int num_to_allocate = 16)
       : name_(name),
-        alloc_(parent_alloc.Allocate(name, 16, 8)),
+        alloc_(parent_alloc.Allocate(name, num_to_allocate, 8)),
         aut_(name, brd, this),
         aut(&aut_),
         steal_request_(alloc_.Allocate("steal_request")),

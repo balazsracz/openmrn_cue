@@ -817,6 +817,52 @@ DefAut(signalaut2, brd, {
     BlockSignal(this, &Block_B475);
   });
 
+FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", *logic.allocator(), 32);
+FlipFlopClient lpc_tofront1("to_front_1", &loop_flipflop);
+FlipFlopClient lpc_toback1("to_back_1", &loop_flipflop);
+FlipFlopClient lpc_tofront3("to_front_3", &loop_flipflop);
+FlipFlopClient lpc_toback1x("to_back_1x", &loop_flipflop);
+
+FlipFlopAutomata front_flipflop(&brd, "front_flipflop", *logic.allocator(), 32);
+FlipFlopClient frc_tofront("to_front", &front_flipflop);
+FlipFlopClient frc_fromfront1("from_front1", &front_flipflop);
+FlipFlopClient frc_toback("to_back", &front_flipflop);
+FlipFlopClient frc_fromback("from_back", &front_flipflop);
+FlipFlopClient frc_fromfront3("from_front3", &front_flipflop);
+
+void IfLoopOkay(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_XXW8.b.any_route()));
+}
+
+// B475->XXB2
+void IfFrontFrontInOkay(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
+}
+
+// XXB1/XXB3 -> A360
+void IfFrontFrontOutOkay(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
+}
+
+// YYC2 -> A360
+void IfFrontBackOutOkay(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()));
+}
+
+auto g_loop_condition = NewCallback(&IfLoopOkay);
+auto g_front_front_in_condition = NewCallback(&IfFrontFrontInOkay);
+auto g_front_front_out_condition = NewCallback(&IfFrontFrontOutOkay);
+auto g_front_back_out_condition = NewCallback(&IfFrontBackOutOkay);
 
 class CircleTrain : public TrainSchedule {
  public:
@@ -830,18 +876,41 @@ class CircleTrain : public TrainSchedule {
 
   void RunTransition(Automata* aut) OVERRIDE {
     AddEagerBlockSequence({BLOCK_SEQUENCE}, &g_not_paused_condition);
-    AddEagerBlockTransition(&Block_B475, &Block_YYC23, &g_not_paused_condition);
+
+    // in
+    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
-    AddEagerBlockTransition(&Block_YYC23, &Block_XXB3, &g_not_paused_condition);
+    AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), true);
+
+
+    // back->front
+    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
+                               &g_loop_condition);
     SwitchTurnout(Turnout_XXW8.b.magnet(), true);
-    AddEagerBlockTransition(&Block_XXB3, &Block_A360, &g_not_paused_condition);
+    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
+                               &g_loop_condition);
+    SwitchTurnout(Turnout_XXW8.b.magnet(), false);
+
+    // front->back
+    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1,
+                               &g_loop_condition);
+    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1x,
+                               &g_loop_condition);
+
+    // out
+    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
+    AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
+    AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
   }
 
   ByteImportVariable stored_speed_;
 };
 
-CircleTrain train_icn("icn", 50, 30);
-CircleTrain train_re66("re_6_6", 66, 40);
+CircleTrain train_icn("icn", 50, 16);
+CircleTrain train_re66("re_6_6", 66, 32);
+CircleTrain train_rts("rts_railtraction", 32, 20);
+CircleTrain train_re460hag("Re460_HAG", 26, 32);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
