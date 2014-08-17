@@ -50,7 +50,7 @@ public:
     }
 
     uint8_t GetState() {
-	return *timer_bit_.GetStateByte(OFS_STATE);
+	return timer_bit_.state_;
     }
 
     void SetState(uint8_t state) {
@@ -58,25 +58,24 @@ public:
         if (debug_variables > 1) {
             LOG(VERBOSE, "Automata %d state to %d", timer_bit_.GetId(), state);
         }
-	*timer_bit_.GetStateByte(OFS_STATE) = state;
+	timer_bit_.state_ = state;
     }
 
     uint8_t GetTimer() {
-	return *timer_bit_.GetStateByte(OFS_TIMER);
+	return timer_bit_.timer_;
     }
 
     void SetTimer(uint8_t value) {
       if (value == (0xff & (~_ACT_TIMER_MASK))) {
-	    *timer_bit_.GetStateByte(OFS_TIMER) = GetId() >> 3;
+	    timer_bit_.timer_ = GetId() >> 3;
       } else {
-	*timer_bit_.GetStateByte(OFS_TIMER) = value;
+	timer_bit_.timer_ = value;
       }
     }
 
     // Decreases any pending timer by one.
     void Tick() {
-	uint8_t* timer = timer_bit_.GetStateByte(OFS_TIMER);
-	if (*timer) --*timer;
+	if (timer_bit_.timer_) --timer_bit_.timer_;
     }
 
     int GetId() {
@@ -90,10 +89,12 @@ public:
 private:
     class TimerBit : public ReadWriteBit {
     public:
-	TimerBit(int id) : id_(id) {}
+      TimerBit(int id) : id_(id), state_(0), timer_(0) {
+          HASSERT(0 <= id && id <= 255);
+        }
 	virtual ~TimerBit() {}
         virtual bool Read(uint16_t, nmranet::Node*, Automata* aut) {
-	    return *GetStateByte(OFS_TIMER);
+            return timer_;
 	}
 	virtual void Write(uint16_t, nmranet::Node*, Automata* aut, bool value) {
 	    diewith(CS_DIE_AUT_WRITETIMERBIT);
@@ -101,11 +102,14 @@ private:
 	int GetId() {
 	    return id_;
 	}
-	uint8_t* GetStateByte(int offset) {
+      /*uint8_t* GetStateByte(int offset) {
 	    return get_state_byte(id_ >> 3, (id_ & 7) * LEN_AUTOMATA + offset);
-	}
+            }*/
     private:
-	int id_;
+        friend class Automata;
+        uint8_t id_;
+        uint8_t state_;
+        uint8_t timer_;
     };
 
     TimerBit timer_bit_;
