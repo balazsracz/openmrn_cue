@@ -731,8 +731,15 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
 
 void TrainSchedule::SendTrainCommands(Automata *aut) {
   Def().ActSetId(train_node_id_);
-  Def().IfState(StStartTrain)
-      .ActLoadSpeed(true, 40);
+  if (speed_var_) {
+    // Variable speed.
+    Def().IfState(StStartTrain)
+        .ActGetValueToSpeed(aut->ImportVariable(*speed_var_), 0);
+  } else {
+    // Fixed speed.
+    Def().IfState(StStartTrain)
+        .ActLoadSpeed(true, 40);
+  }
   Def().IfState(StStartTrain)
       .IfReg1(aut->ImportVariable(*is_reversed_))
       .ActSpeedReverse();

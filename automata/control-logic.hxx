@@ -926,7 +926,8 @@ class TrainSchedule : public virtual AutomataPlugin {
  public:
   TrainSchedule(const string &name, Board *brd, uint64_t train_node_id,
                 EventBlock::Allocator &&perm_alloc,
-                EventBlock::Allocator &&alloc)
+                EventBlock::Allocator &&alloc,
+                GlobalVariable* speed_var = nullptr)
       : train_node_id_(train_node_id),
         permanent_alloc_(std::forward<EventBlock::Allocator>(perm_alloc)),
         alloc_(std::forward<EventBlock::Allocator>(alloc)),
@@ -951,6 +952,7 @@ class TrainSchedule : public virtual AutomataPlugin {
         magnets_ready_(alloc_.Allocate("magnets_ready")),
         outgoing_route_conditions_(
             NewCallbackPtr(this, &TrainSchedule::AddCurrentOutgoingConditions)),
+        speed_var_(speed_var),
         current_location_(nullptr) {
     AddAutomataPlugin(9900, NewCallbackPtr(this, &TrainSchedule::HandleInit));
     AddAutomataPlugin(
@@ -1137,6 +1139,9 @@ class TrainSchedule : public virtual AutomataPlugin {
 
   // Callback that will add all necessary checks for outgoing route setting.
   std::unique_ptr<OpCallback> outgoing_route_conditions_;
+
+  // If non-null, specifies a variable where to load the speed data from.
+  GlobalVariable* speed_var_;
 
  private:
   // This will be set temporarily as the processing goes down the body of
