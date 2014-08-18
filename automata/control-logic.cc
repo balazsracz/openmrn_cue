@@ -225,7 +225,8 @@ void SignalPiece::SignalOccupancy(Automata* aut) {
       .ActReg0(occ);
 }
 
-void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
+void StraightTrackWithRawDetector::RawDetectorOccupancy(int min_occupied_time,
+                                                        Automata* aut) {
   static const int kTimeTakenToGoBusy = 2;
   static const int kTimeTakenToGoFree = 3;
 
@@ -248,11 +249,35 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(Automata* aut) {
       .ActReg0(aut->ImportVariable(const_cast<GlobalVariable*>(raw_detector_)))
       .ActReg1(last);
 
-  // If there is a flip, we start a timer. The timer length depends on the
-  // edge.
-  Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy);
-  Def().IfReg1(raw).IfReg0(*last).ActTimer(kTimeTakenToGoFree);
-  aut->DefCopy(raw, last);
+
+  if (min_occupied_time) {
+    // If there is a route set, then we do not delay setting the occupancy to
+    // busy.
+    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route1)
+        .ActTimer(min_occupied_time).ActReg0(last).ActReg1(occ);
+    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route2)
+        .ActTimer(min_occupied_time).ActReg0(last).ActReg1(occ);
+
+    // If there is a flip, we start a timer. The timer length depends on the
+    // edge.
+    Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy).ActReg0(last);
+    Def().IfReg1(raw).IfReg0(*last)
+        .IfTimerDone()
+        .ActTimer(kTimeTakenToGoFree).ActReg1(last);
+
+    Def().IfTimerDone().IfReg0(*last).IfReg0(*occ).ActReg1(occ).ActTimer(
+        min_occupied_time);
+  } else {
+    // If there is a route set, then we do not delay setting the occupancy to
+    // busy.
+    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route1).ActTimer(0).ActReg0(last);
+    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route2).ActTimer(0).ActReg0(last);
+
+    // If there is a flip, we start a timer. The timer length depends on the
+    // edge.
+    Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy).ActReg0(last);
+    Def().IfReg1(raw).IfReg0(*last).ActTimer(kTimeTakenToGoFree).ActReg1(last);
+  }
 
   // If no flip happened for the timer length, we put the value into the
   // occupancy bit.

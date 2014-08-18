@@ -356,19 +356,21 @@ class StraightTrackWithDetector : public StraightTrack {
 class StraightTrackWithRawDetector : public StraightTrackWithDetector {
  public:
   StraightTrackWithRawDetector(const EventBlock::Allocator &allocator,
-                               const GlobalVariable *raw_detector)
+                               const GlobalVariable *raw_detector,
+                               int min_occupied_time = 0)
       : StraightTrackWithDetector(allocator, nullptr),
         raw_detector_(raw_detector),
         debounce_temp_var_(allocator.Allocate("tmp_debounce")) {
     detector_ = simulated_occupancy_.get();
     RemoveAutomataPlugins(20);
     AddAutomataPlugin(
-        20, NewCallbackPtr(
-                this, &StraightTrackWithRawDetector::RawDetectorOccupancy));
+        20, NewCallbackPtr(this,
+                           &StraightTrackWithRawDetector::RawDetectorOccupancy,
+                           min_occupied_time));
   }
 
  protected:
-  void RawDetectorOccupancy(Automata *aut);
+  void RawDetectorOccupancy(int min_occupied_time, Automata *aut);
 
   const GlobalVariable *raw_detector_;
   std::unique_ptr<GlobalVariable> debounce_temp_var_;
@@ -523,7 +525,8 @@ class StandardMiddleDetector : public StraightTrackWithRawDetector {
   StandardMiddleDetector(Board *brd, const GlobalVariable *sensor_raw,
                          const EventBlock::Allocator &alloc)
       : StraightTrackWithRawDetector(
-            EventBlock::Allocator(&alloc, "body_det", 24, 8), sensor_raw),
+            EventBlock::Allocator(&alloc, "body_det", 24, 8), sensor_raw,
+            8 /*min_occupied_time*/),
         aut_(alloc.name() + ".det", brd, this) {}
 
  private:
