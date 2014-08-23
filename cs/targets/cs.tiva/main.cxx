@@ -80,7 +80,7 @@
 
 TivaDCC dcc_hw("/dev/mainline", TIMER1_BASE, TIMER0_BASE, INT_TIMER0A, 16,
                (56 << 1) * (configCPU_CLOCK_HZ / 1000000),
-               (100 << 1) * (configCPU_CLOCK_HZ / 1000000), 2, 80);
+               (100 << 1) * (configCPU_CLOCK_HZ / 1000000), 50, 60);
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);

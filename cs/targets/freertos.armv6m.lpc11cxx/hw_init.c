@@ -442,6 +442,10 @@ void diewith(uint32_t pattern)
 }
 
 extern void modules_init(void);
+
+void modules_init(void) __attribute__((weak));
+void modules_init(void) {}
+
 extern uint32_t *heap_end;  // Used from sbrk_r implementation.
 
 void hw_idle_hook(void)
