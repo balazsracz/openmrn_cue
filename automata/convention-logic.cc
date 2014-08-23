@@ -78,7 +78,7 @@ struct ConventionBlock {
       , green(signal_green)
       , button(_button)
       , raw_block(sensor_raw, relay, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr)
-      , block(&brd, &raw_block, EventBlock::Allocator(logic.allocator(), name, 80)) {}
+      , block(&brd, &raw_block, logic.allocator(), name) {}
 
   GlobalVariable* sensor_raw;
   GlobalVariable* relay;
