@@ -26,7 +26,7 @@ extern uint32_t blinker_pattern;
 
 // Memory size variables
 #define PACKET_TX_THREAD_STACK_SIZE 512
-#define PACKET_RX_THREAD_STACK_SIZE 1024
+#define PACKET_RX_THREAD_STACK_SIZE 1624
 //! How many entries of pending packets to send to the USB host we should
 //! maintain. Each entry costs 8 bytes.
 #define PACKET_TX_QUEUE_LENGTH 10
@@ -34,7 +34,7 @@ extern uint32_t blinker_pattern;
 ///////////
 
 #define DCC_CAN_THREAD_CAN_STACK_SIZE 1000
-#define AUTOMATA_THREAD_STACK_SIZE 1000
+#define AUTOMATA_THREAD_STACK_SIZE 1700
 
 #define MAX_SIGNALS 64
 #define MAX_LOCK_ID 8
@@ -51,6 +51,7 @@ extern uint32_t blinker_pattern;
 #define BRACZ_NODESPACE 0x050101011400ULL
 #define BRACZ_EVENTSPACE 0x0501010114000000ULL
 #define BRACZ_LAYOUT 0x0501010114FF0000ULL
+#define BRACZ_SPEEDS 0x0501010114FE0000ULL
 
 #ifdef TARGET_LPC1768
 #define SNIFFER
@@ -64,5 +65,8 @@ extern uint32_t blinker_pattern;
 #ifdef TARGET_LPC2368
 //#define SECOND
 #endif
+
+#define STATEFLOW_CS
+
 
 #endif // _CS_CONFIG_H_

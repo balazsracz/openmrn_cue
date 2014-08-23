@@ -149,6 +149,20 @@ class EventBlock : public EventVariableBase {
       end_ = next_entry_ + count;
     }
 
+    Allocator(Allocator&& o)
+        : name_(o.name_),
+          block_(o.block_),
+          next_entry_(o.next_entry_),
+          end_(o.end_)
+    {
+      // Prevents o from allocating any value that we own now.
+      o.next_entry_ = end_;
+    }
+
+    Allocator Allocate(const string& name, int count, int alignment = 1) {
+      return Allocator(this, name, count, alignment);
+    }
+
     // Reserves a number entries at the beginning of the block. Returns the
     // first entry that was reserved.
     int Reserve(int count) const {
@@ -246,6 +260,90 @@ class BlockVariable : public GlobalVariable {
  private:
   DISALLOW_COPY_AND_ASSIGN(BlockVariable);
   EventBlock* parent_;
+  string name_;
+};
+
+/**
+   A global variable implementation that sets a signal variable to a given
+value.  */
+class SignalVariable : public EventVariableBase {
+ public:
+  SignalVariable(Board* brd, const string& name, uint64_t event_base,
+                 uint8_t signal_id)
+      : EventVariableBase(brd),
+        event_base_(event_base),
+        signal_id_(signal_id),
+        name_(name) {
+  }
+
+  virtual ~SignalVariable() {}
+
+  virtual uint64_t event_on() const { HASSERT(0); return 0; }
+  virtual uint64_t event_off() const { HASSERT(0); return 0; }
+
+  virtual void Render(string* output) {
+    CreateEventId(0, event_base_, output);
+    // @TODO(bracz) is 2 a free variable definition type?
+    arg1_ = (2 << 5);  // We have some unused bits here.
+    arg2_ = 2;  // size -- number of bytes to export.
+    RenderHelper(output);
+    // We use local id 30 to import the variable straight away. This will
+    // override any other previous signal import, but that's fine, because we
+    // are in the preamble and not in an automata.
+    Automata::Op(nullptr, output).ActImportVariable(*this, 30);
+    Automata::LocalVariable fixed_var(30);
+    // We fix the first byte of the newly created variable to the signal ID.
+    Automata::Op(nullptr, output).ActSetValue(&fixed_var, 0, signal_id_);
+  }
+
+  const string& name() const { return name_; }
+
+ private:
+  void SetArgs(int client, int offset, int bit) {
+    arg1_ = (0 << 5) | (client & 0b11111);
+    arg2_ = (offset << 3) | (bit & 7);
+  }
+
+  uint64_t event_base_;
+  uint8_t signal_id_;
+  string name_;
+};
+
+/**
+   A global variable implementation that represents a single 8-bit value via
+   256 consecutive events.  */
+class ByteImportVariable : public EventVariableBase {
+ public:
+  ByteImportVariable(Board* brd, const string& name, uint64_t event_base,
+                     uint8_t default_value)
+      : EventVariableBase(brd),
+        event_base_(event_base),
+        default_value_(default_value),
+        name_(name) {}
+
+  virtual uint64_t event_on() const { HASSERT(0); return 0; }
+  virtual uint64_t event_off() const { HASSERT(0); return 0; }
+
+  virtual void Render(string* output) {
+    CreateEventId(0, event_base_, output);
+    arg1_ = (3 << 5);  // Event byte block consumer
+    arg2_ = 1;  // size -- number of bytes to import.
+    RenderHelper(output);
+    // We use local id 30 to import the variable straight away. This will
+    // override any other previous signal import, but that's fine, because we
+    // are in the preamble and not in an automata.
+    Automata::Op(nullptr, output).ActImportVariable(*this, 30);
+    Automata::LocalVariable fixed_var(30);
+    // We fix the first byte of the newly created variable to the default.
+    Automata::Op(nullptr, output).ActSetValue(&fixed_var, 0, default_value_);
+  }
+
+  const string& name() const { return name_; }
+
+ private:
+  uint64_t event_base_;
+  uint8_t signal_id_;
+  uint8_t default_value_;
   string name_;
 };
 

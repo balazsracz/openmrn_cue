@@ -1,6 +1,3 @@
-#include "gtest/gtest.h"
-#include "gmock/gmock.h"
-
 #include "utils/macros.h"
 
 #include "../automata/system.hxx"
@@ -13,48 +10,58 @@
 #include "src/automata_runner.h"
 
 #include "nmranet_config.h"
-#include "core/nmranet_event.h"
-#include "core/nmranet_datagram.h"
-#include "if/nmranet_can_if.h"
 
-#include "pipe/pipe.hxx"
-#include "pipe/gc_format.h"
-#include "nmranet_can.h"
-#ifdef CPP_EVENT_HANDLER
-#include "nmranet/GlobalEventHandler.hxx"
+#include "utils/gc_format.h"
+#include "can_frame.h"
+
+#include "utils/async_if_test_helper.hxx"
+
+#include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#endif
+#include "nmranet/TractionTrain.hxx"
+#include "nmranet/TractionTestTrain.hxx"
 
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::Mock;
 
-DECLARE_PIPE(can_pipe0);
-
 class GMockBit : public ReadWriteBit {
  public:
-  MOCK_METHOD3(Read, bool(uint16_t arg, node_t node, Automata* aut));
-  MOCK_METHOD4(Write, void(uint16_t arg, node_t node, Automata* aut, bool value));
+  MOCK_METHOD3(Read, bool(uint16_t arg, nmranet::Node* node, Automata* aut));
+  MOCK_METHOD4(Write, void(uint16_t arg, nmranet::Node* node, Automata* aut, bool value));
+  MOCK_METHOD1(GetState, uint8_t(uint16_t arg));
+  MOCK_METHOD2(SetState, void(uint16_t arg, uint8_t state));
 };
 
 
-class AutomataTests : public testing::Test {
- public:
-  static void SetUpTestCase();
-
-
+class AutomataTests : public nmranet::AsyncNodeTest {
  protected:
   class FakeBitPointer : public ReadWriteBit {
    public:
     FakeBitPointer(bool* backend)
         : backend_(backend) {}
     virtual ~FakeBitPointer() {}
-    virtual bool Read(uint16_t, node_t node, Automata* aut) {
+    virtual bool Read(uint16_t, nmranet::Node* node, Automata* aut) {
       return *backend_;
     }
-    virtual void Write(uint16_t, node_t node, Automata* aut, bool value) {
+    virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
       *backend_ = value;
+    }
+
+   private:
+    bool* backend_;
+  };
+
+  class FakeBitReadOnlyPointer : public ReadWriteBit {
+   public:
+    FakeBitReadOnlyPointer(bool* backend)
+        : backend_(backend) {}
+    virtual bool Read(uint16_t, nmranet::Node* node, Automata* aut) {
+      return *backend_;
+    }
+    virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
+      // Ignored.
     }
 
    private:
@@ -149,8 +156,28 @@ class AutomataTests : public testing::Test {
     bool bit_;
   };
 
-  virtual void SetUp() {
-  }
+  class FakeROBit : public InjectableVar {
+  public:
+    FakeROBit(AutomataTests* parent) : InjectableVar(parent), bit_(false) {}
+
+    // Creates a ReadWriteBit that accesses the mock bit stored in
+    // *this. Transfers ownership of the object to the caller. There can be an
+    // arbitrary number of pointers, they will all modify the same state (also
+    // accessed by Get and Set).
+    virtual ReadWriteBit* CreateBit() {
+      return new FakeBitReadOnlyPointer(&bit_);
+    }
+
+    bool Get() { return bit_; }
+    void Set(bool b) { bit_ = b; }
+
+    // These should never be called. This variable does not have eventids bound.
+    virtual uint64_t event_on() const { HASSERT(false); }
+    virtual uint64_t event_off() const { HASSERT(false); }
+
+  private:
+    bool bit_;
+  };
 
   void SetupRunner(automata::Board* brd) {
     reset_all_state();
@@ -168,11 +195,11 @@ class AutomataTests : public testing::Test {
     automata::ClearOffsetMap();
     next_bit_offset_ = 4242;
     runner_ = NULL;
-    node_ = NULL;
   }
 
   ~AutomataTests() {
-    WaitForEventThread();
+    wait_for_event_thread();
+    nmranet::AsyncNodeTest::wait();
     delete runner_;
   }
 
@@ -184,55 +211,9 @@ class AutomataTests : public testing::Test {
   }
 
 protected:
-  /* FakeBit* CreateFakeBit() {
-    FakeBit* bit = new FakeBit(next_bit_offset_++);
-    mock_bits_.push_back(bit);
-    return bit;
-    }*/
-
-  static void* DispatchThread(void* arg);
-  static bool dispatch_thread_waiting_;
-  static node_t static_node_;
-
-  static void WaitForEventThread() {
-#ifdef CPP_EVENT_HANDLER
-    while (GlobalEventFlow::instance->EventProcessingPending()) {}
-#endif
-    if (!static_node_) return;
-    while (nmranet_event_pending(static_node_) || !dispatch_thread_waiting_) {}
-  }
-
-  // A loopback interace that reads/writes to can_pipe0.
-  static NMRAnetIF* nmranet_if_;
-  static EventRegistry registry_;
-  // This node will be given to the AutomataRunner in SetupRunner.
-  node_t node_;
   AutomataRunner* runner_;
   insn_t program_area_[10000];
   string current_program_;
-
-  void SetupStaticNode() {
-    static node_t static_node = CreateNewNode();
-    static_node_ = static_node;
-    node_ = static_node;
-  }
-
-  node_t CreateNewNode() {
-    node_t node = nmranet_node_create(0x02010d000003ULL, nmranet_if_,
-                                      "Test Node2", NULL);
-    fprintf(stderr,"node_=%p\n", node);
-    nmranet_node_user_description(node, "Test Node2");
-#ifdef CPP_EVENT_HANDLER
-    extern void EnsureCompatEventHandlerExists();
-    EnsureCompatEventHandlerExists();
-#endif
-    nmranet_node_initialized(node);
-    os_thread_t thread;
-    os_thread_create(&thread, "event_process_thread",
-                     0, 2048, &AutomataTests::DispatchThread,
-                     node);
-    return node;
-  }
 
 private:
   // Stores the global variable offset for the next mockbit.
@@ -241,124 +222,52 @@ private:
   vector<InjectableVar*> mock_bits_;
 };
 
-
-NMRAnetIF* AutomataTests::nmranet_if_ = NULL;
-EventRegistry AutomataTests::registry_;
-bool AutomataTests::dispatch_thread_waiting_ = false;
-node_t AutomataTests::static_node_ = 0;
-
-static ssize_t mock_read(int, void*, size_t) {
-  // Never returns.
-  while(1) {
-    sleep(1);
-  }
-  return 0;
-}
-static ssize_t mock_write(int fd, const void* buf, size_t n) {
-  can_pipe0.WriteToAll(NULL, buf, n);
-  return n;
-}
-
-void* AutomataTests::DispatchThread(void* arg) {
-  dispatch_thread_waiting_ = false;
-  node_t node = (node_t)arg;
-  while(1) {
-    dispatch_thread_waiting_ = true;
-    int result = nmranet_node_wait(node, MSEC_TO_NSEC(300));
-    dispatch_thread_waiting_ = false;
-    if (result) {
-      for (size_t i = nmranet_event_pending(node); i > 0; i--) {
-        node_handle_t node_handle;
-        uint64_t event = nmranet_event_consume(node, &node_handle);
-        registry_.HandleEvent(event);
-      }
-      for (size_t i = nmranet_datagram_pending(node); i > 0; i--) {
-        datagram_t datagram = nmranet_datagram_consume(node);
-        // We release unknown datagrams iwthout processing them.
-        nmranet_datagram_release(datagram);
-      }
-    }
-  }
-  return NULL;
-}
-
-void AutomataTests::SetUpTestCase() {
-  int fd[2] = {0, 0};
-  // can_pipe0.AddVirtualDeviceToPipe("can_pipe", 2048, fd);
-
-  nmranet_if_ = nmranet_can_if_fd_init(0x02010d000000ULL, fd[0], fd[1],
-                                      "can_mock_if", mock_read, mock_write);
-#ifdef CPP_EVENT_HANDLER
-  extern void EnsureCompatEventHandlerExists();
-  EnsureCompatEventHandlerExists();
-#endif
-}
-
-
 class AutomataNodeTests : public AutomataTests {
 protected:
   AutomataNodeTests() {
-    SetupStaticNode();
   }
 
   ~AutomataNodeTests() {
-    WaitForEventThread();
+    wait_for_event_thread();
+    AutomataTests::wait();
   }
 
   void Run(int count = 1) {
     for (int i = 0; i < count; ++i) {
-      WaitForEventThread();
+      wait_for_event_thread();
+      extern int debug_variables;
+      if ((i % 3) == 2) {
+        if (debug_variables) fprintf(stderr, ",");
+        runner_->AddPendingTick();
+      } else {
+        if (debug_variables) fprintf(stderr, ".");
+      }
       runner_->RunAllAutomata();
     }
-    WaitForEventThread();
+    wait_for_event_thread();
   }
 
   void SetVar(const automata::GlobalVariable& var, bool value) {
     uint64_t eventid = value ? var.event_on() : var.event_off();
-    fprintf(stderr, "Producing event %016llx on node %p\n", eventid, node_);
-    nmranet_event_producer(node_, eventid, EVENT_STATE_INVALID);
-    nmranet_event_produce(node_, eventid, EVENT_STATE_VALID);
+    ProduceEvent(eventid);
   }
 
   friend class EventListener;
 
-  static EventRegistry* registry() {
-    return &registry_;
-  }
-
-  class EventListener : public EventHandler {
+  class EventListener {
    public:
-    EventListener(const automata::GlobalVariable& var) 
-        : var_(var), bit_(false) {
-      AutomataNodeTests::registry()->RegisterHandler(this, var_.event_on());
-      AutomataNodeTests::registry()->RegisterHandler(this, var_.event_off());
-      nmranet_event_consumer(static_node_, var_.event_on(), EVENT_STATE_UNKNOWN);
-      nmranet_event_consumer(static_node_, var_.event_off(), EVENT_STATE_UNKNOWN);
-    }
-
-    virtual ~EventListener() {
-      AutomataNodeTests::registry()->UnregisterHandler(this, var_.event_on());
-      AutomataNodeTests::registry()->UnregisterHandler(this, var_.event_off());
-    }
-
-    virtual void HandleEvent(uint64_t event) {
-      if (event == var_.event_on()) {
-        bit_ = true;
-      } else if (event == var_.event_off()) {
-        bit_ = false;
-      } else {
-        extern bool unknown_event_arrived();
-        HASSERT(false && unknown_event_arrived());
-      }
+    EventListener(nmranet::Node* node, const automata::GlobalVariable& var)
+        : memoryBit_(node, var.event_on(), var.event_off(), &value_, 1), consumer_(&memoryBit_), value_(0) {
     }
 
     bool value() {
-      return bit_;
+      return value_ & 1;
     }
 
    private:
-    const automata::GlobalVariable& var_;
-    bool bit_;
+    nmranet::MemoryBit<uint8_t> memoryBit_;
+    nmranet::BitEventConsumer consumer_;
+    uint8_t value_;
   };
 
   // Returns the current value of the event based variable var. This is
@@ -367,12 +276,21 @@ protected:
   // be false (default state of internal bit).
   bool QueryVar(const automata::GlobalVariable& var) {
     return all_listener_.Query(var);
-  } 
+  }
 
   // Like QueryVar, but assert fails if the variable value is not defined yet.
   bool SQueryVar(const automata::GlobalVariable& var) {
     return all_listener_.StrictQuery(var);
-  } 
+  }
+
+  void ProduceEvent(uint64_t event_id) {
+    fprintf(stderr, "Producing event %016llx on node %p\n", event_id, node_);
+    SyncNotifiable n;
+    writeHelper_.WriteAsync(
+        node_, nmranet::Defs::MTI_EVENT_REPORT, nmranet::WriteHelper::global(),
+        nmranet::eventid_to_buffer(event_id), &n);
+    n.wait_for_notification();
+  }
 
  private:
   friend class GlobalEventListener;
@@ -408,43 +326,58 @@ protected:
     int tick_;
   };
 
-#ifdef CPP_EVENT_HANDLER
-  class GlobalEventListener : private SimpleEventHandler, public GlobalEventListenerBase {
+  class GlobalEventListener : private nmranet::SimpleEventHandler, public GlobalEventListenerBase {
    public:
     GlobalEventListener() {
-      NMRAnetEventRegistry::instance()->RegisterHandler(this, 0, 0);
+      nmranet::EventRegistry::instance()->register_handlerr(this, 0, 63);
     }
 
     ~GlobalEventListener() {
-      NMRAnetEventRegistry::instance()->UnregisterHandler(this, 0, 0);
+      nmranet::EventRegistry::instance()->unregister_handlerr(this, 0, 63);
     }
    private:
-    virtual void HandleEventReport(EventReport* event, Notifiable* done) {
+    virtual void HandleEventReport(nmranet::EventReport* event, BarrierNotifiable* done) {
       IncomingEvent(event->event);
-      done->Notify();
+      done->notify();
     }
 
-    virtual void HandleIdentifyGlobal(EventReport* event, Notifiable* done) {
-      done->Notify();
+    virtual void HandleIdentifyGlobal(nmranet::EventReport* event, BarrierNotifiable* done) {
+      done->notify();
     }
   };
-#else
-  class GlobalEventListener : private EventHandler, public GlobalEventListenerBase {
-   public:
-    GlobalEventListener() :  {
-      AutomataNodeTests::registry()->RegisterGlobalHandler(this);
-    }
-
-    virtual ~GlobalEventListener() {
-      AutomataNodeTests::registry()->UnregisterGlobalHandler(this);
-    }
-   private:
-    virtual void HandleEvent(uint64_t event) {
-      IncomingEvent(event);
-    }
-  };
-#endif
-
 
   GlobalEventListener all_listener_;
+  nmranet::WriteHelper writeHelper_;
+};
+
+class TrainTestHelper {
+ protected:
+  TrainTestHelper(nmranet::AsyncIfTest* test_base)
+      : testBase_(test_base),
+        trainService_(test_base->ifCan_.get()), trainImpl_(0x1384) {
+    expect_packet_(":X1070133AN060100001384;");
+    expect_packet_(":X1910033AN060100001384;");
+    test_base->create_allocated_alias();
+    test_base->expect_next_alias_allocation();
+    trainNode_.reset(new nmranet::TrainNode(&trainService_, &trainImpl_));
+    test_base->wait();
+  } 
+
+  void expect_packet_(const string& gc_packet) {
+    EXPECT_CALL(testBase_->canBus_, mwrite(StrCaseEq(gc_packet)));
+  }
+
+  ~TrainTestHelper() {
+    testBase_->wait();
+  }  
+
+  nmranet::AsyncIfTest* testBase_;
+  nmranet::TrainService trainService_;
+  nmranet::LoggingTrain trainImpl_;
+  std::unique_ptr<nmranet::TrainNode> trainNode_;
+};
+
+class AutomataTrainTest : public AutomataNodeTests, protected TrainTestHelper {
+ protected:
+  AutomataTrainTest() : TrainTestHelper(this) {}
 };

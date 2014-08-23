@@ -2,6 +2,7 @@
 #define _bracz_train_automata_operations_hxx_
 
 #include <initializer_list>
+#include <math.h>
 
 #include "system.hxx"
 #include "../cs/src/automata_defs.h"
@@ -12,11 +13,13 @@ namespace automata {
 #define GET_INVERSE_MASK(x) ( (~(x)) & ((x) - 1) ) 
 
 struct StateRef {
-    StateRef(int id) {
-        assert((id & GET_INVERSE_MASK(_IF_STATE_MASK)) == id);
-        state = id;
-    }
-    int state;
+    constexpr StateRef(int id)
+        : state(id) {}
+
+    constexpr StateRef(const StateRef& ref)
+        : state(ref.state) {}
+
+    const int state;
 };
 
 typedef Callback1<Automata::Op*> OpCallback;
@@ -96,9 +99,33 @@ public:
         output->append((char*)acts.data(), acts.size());
     }
 
-    Op& IfState(StateRef& state) {
-        ifs_.push_back(_IF_STATE | state.state);
-        return *this;
+    Op& ActImportVariable(const GlobalVariable& var, const LocalVariable& lv) {
+      return ActImportVariable(var, lv.id);
+    }
+
+    Op& ActImportVariable(const GlobalVariable& var, int local_id) {
+      HASSERT(local_id >= 0);
+      acts_.push_back(_ACT_IMPORT_VAR);
+      uint8_t b1 = 0;
+      uint8_t b2 = 0;
+      uint16_t arg = output_ ? var.GetId().arg : 0;
+      HASSERT(arg < (8 << 8));
+      b1 = (arg >> 8) << 5;
+      HASSERT(local_id < 32);
+      b1 |= (local_id & 31);
+      b2 = arg & 0xff;
+      acts_.push_back(b1);
+      acts_.push_back(b2);  // argument, low bits
+      int gofs = output_ ? var.GetId().id : 0;
+      acts_.push_back(gofs & 0xff);
+      acts_.push_back((gofs >> 8) & 0xff);
+      return *this;
+    }
+
+    Op& IfState(const StateRef state) {
+      HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
+      ifs_.push_back(_IF_STATE | state.state);
+      return *this;
     }
 
     Op& IfReg0(const Automata::LocalVariable& var) {
@@ -110,6 +137,14 @@ public:
 
     Op& IfReg1(const Automata::LocalVariable& var) {
         uint8_t v = _IF_REG | _REG_1;
+        if (output_) v |= var.GetId();
+        ifs_.push_back(v);
+        return *this;
+    }
+
+    Op& IfReg(const Automata::LocalVariable& var, bool value) {
+        uint8_t v = _IF_REG;
+        if (value) v |= _REG_1;
         if (output_) v |= var.GetId();
         ifs_.push_back(v);
         return *this;
@@ -129,9 +164,18 @@ public:
         return *this;
     }
 
-    Op& ActState(StateRef& state) {
-        acts_.push_back(_ACT_STATE | state.state);
+    Op& ActReg(Automata::LocalVariable* var, bool value) {
+        uint8_t v = _ACT_REG;
+        if (value) v |= _REG_1;
+        if (output_) v |= var->GetId();
+        acts_.push_back(v);
         return *this;
+    }
+
+    Op& ActState(const StateRef state) {
+      HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
+      acts_.push_back(_ACT_STATE | state.state);
+      return *this;
     }
 
     Op& IfTimerNotDone() {
@@ -158,6 +202,141 @@ public:
         acts_.push_back(byte);
         return *this;
     }
+
+  Op& ActSetAspect(uint8_t value) {
+    acts_.push_back(_ACT_SET_ASPECT);
+    acts_.push_back(value);
+    return *this;
+  }
+
+  Op& ActUpAspect() {
+    acts_.push_back(_ACT_UP_ASPECT);
+    return *this;
+  }
+
+  Op& IfAspect(uint8_t value) {
+    ifs_.push_back(_IF_ASPECT);
+    ifs_.push_back(value);
+    return *this;
+  }
+
+  Op& ActSetValue(Automata::LocalVariable* var, unsigned offset, uint8_t value) {
+    acts_.push_back(_ACT_SET_VAR_VALUE);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var->GetId() & 31);
+    acts_.push_back(v);
+    acts_.push_back(value);
+    return *this;
+  }
+
+  Op& ActSetValueFromAspect(Automata::LocalVariable* var, unsigned offset) {
+    acts_.push_back(_ACT_SET_VAR_VALUE_ASPECT);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var->GetId() & 31);
+    acts_.push_back(v);
+    return *this;
+  }
+
+  Op& ActGetValueToAspect(const Automata::LocalVariable& var, unsigned offset) {
+    acts_.push_back(_ACT_GET_VAR_VALUE_ASPECT);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var.GetId() & 31);
+    acts_.push_back(v);
+    return *this;
+  }
+
+  Op& ActGetValueToSpeed(const Automata::LocalVariable& var, unsigned offset) {
+    acts_.push_back(_ACT_GET_VAR_VALUE_SPEED);
+    HASSERT(offset < 8);
+    uint8_t v = offset << 5;
+    if (output_) v |= (var.GetId() & 31);
+    acts_.push_back(v);
+    return *this;
+  }
+
+  Op& ActSetId(uint64_t id) {
+    acts_.push_back(_ACT_SET_EVENTID);
+    // Set event id 0 from 0 with literal bytes.
+    acts_.push_back(0b00000111);
+    for (int b = 56; b >= 0; b -= 8) {
+      acts_.push_back((id >> b) & 0xff);
+    }
+    return *this;
+  }
+
+  /** Sets the speed accumulator. max value of v is 127. */
+  Op& ActLoadSpeed(bool is_forward, uint8_t mph) {
+    if (mph > 127) mph = 127;
+    uint8_t arg = mph;
+    if (!is_forward) {
+      arg |= 0x80;
+    }
+    acts_.push_back(_ACT_IMM_SPEED);
+    acts_.push_back(arg);
+    return *this;
+  }
+
+  /** Multiplies the speed accumulator with a value. Value will be
+   * downsampled. Gives an error if too small or too high value is
+   * requested. negative values will reverse the loco. */
+  Op& ActScaleSpeed(float scale) {
+    float preround = fabsf(scale) * 32;
+    int round = preround;
+    HASSERT(round <= 0x7F);
+    uint8_t arg = round & 0x7F;
+    if (scale < 0) arg |= 0x80;
+    acts_.push_back(_ACT_SCALE_SPEED);
+    acts_.push_back(arg);
+    return *this;
+  }
+
+  Op& IfGetSpeed() {
+    ifs_.push_back(_GET_TRAIN_SPEED);
+    return *this;
+  }
+
+  Op& IfSetSpeed() {
+    ifs_.push_back(_SET_TRAIN_SPEED);
+    return *this;
+  }
+
+  Op& IfSpeedIsForward() {
+    ifs_.push_back(_IF_FORWARD);
+    return *this;
+  }
+
+  Op& IfSpeedIsReverse() {
+    ifs_.push_back(_IF_REVERSE);
+    return *this;
+  }
+
+  Op& ActSpeedForward() {
+    acts_.push_back(_ACT_SPEED_FORWARD);
+    return *this;
+  }
+
+  Op& ActSpeedReverse() {
+    acts_.push_back(_ACT_SPEED_REVERSE);
+    return *this;
+  }
+
+  Op& ActDirectionFlip() {
+    acts_.push_back(_ACT_SPEED_FLIP);
+    return *this;
+  }
+
+  Op& IfSetEStop() {
+    ifs_.push_back(_IF_EMERGENCY_STOP);
+    return *this;
+  }
+
+  Op& IfClearEStop() {
+    ifs_.push_back(_IF_EMERGENCY_START);
+    return *this;
+  }
 
   Op& RunCallback(OpCallback* cb) {
     if (cb) cb->Run(this);

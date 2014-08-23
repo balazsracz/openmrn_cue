@@ -43,13 +43,15 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
+PhysicalSignal S201(&b5.InBrownBrown, &b5.RelGreen, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal S382(&b6.InBrownGrey, &b6.RelGreen, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
-PhysicalSignal S201(&b5.InBrownBrown, &b5.RelGreen);
-PhysicalSignal S382(&b6.InBrownGrey, &b6.RelGreen);
-
-PhysicalSignal S401(&b3.InBrownBrown, &b3.RelGreen);
-PhysicalSignal S501(&b1.InBrownGrey, &b1.RelGreen);
-
+PhysicalSignal S401(&b3.InBrownBrown, &b3.RelGreen, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal S501(&b1.InBrownGrey, &b1.RelGreen, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
 int next_temp_bit = 0;
 GlobalVariable* NewTempVariable(Board* board) {

@@ -1,0 +1,1 @@
+/home/bracz/train/openlcb/openmrn/boards/nxp-lpc2368-panda2/target.ld

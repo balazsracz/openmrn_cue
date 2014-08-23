@@ -22,3 +22,21 @@ doc/latex/*
 doc/warnings
 # generated C files
 *.cout
+.project
+.cproject
+cs.bin
+cs.lst
+cs.map
+cg.dot
+cg.svg
+cg.debug.txt
+openmrnpath.mk
+timestamp
+arpreproc
+ldpreproc
+*.launch
+*.jtag
+*.map
+*.output
+gmon.out
+

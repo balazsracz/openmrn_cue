@@ -53,14 +53,19 @@
 
 #define _IF_EMERGENCY_STOP (_IF_MISC_BASE | 0)
 #define _IF_EMERGENCY_START (_IF_MISC_BASE | 1)
-#define _IF_CLEAR_TRAIN (_IF_MISC_BASE | 2)
-#define _IF_TRAIN_IS_FORWARD (_IF_MISC_BASE | 3)
-#define _IF_TRAIN_IS_REVERSE (_IF_MISC_BASE | 4)
-#define _SET_TRAIN_FORWARD (_IF_MISC_BASE | 5)
-#define _SET_TRAIN_REVERSE (_IF_MISC_BASE | 6)
-#define _IF_TRAIN_IS_PUSHPULL (_IF_MISC_BASE | 7)
+// Queries the train's current speed and puts it into the speed accumulator.
+#define _GET_TRAIN_SPEED (_IF_MISC_BASE | 2)
+// Sets the train's current speed from the speed accumulator.
+#define _SET_TRAIN_SPEED (_IF_MISC_BASE | 5)
+// Checks the speed accumulator's direction bit.
+#define _IF_FORWARD (_IF_MISC_BASE | 3)
+#define _IF_REVERSE (_IF_MISC_BASE | 4)
+// EMPTY 6,7
 #define _SYNC_ARG (_IF_MISC_BASE | 8)
-#define _IF_TRAIN_IS_NOT_PUSHPULL (_IF_MISC_BASE | 9)
+
+//#define _SET_TRAIN_FORWARD (_IF_MISC_BASE | 5)
+//#define _SET_TRAIN_REVERSE (_IF_MISC_BASE | 6)
+
 
 
 // one-argument misc operations.
@@ -111,6 +116,7 @@
 // 0b0010.....
 #define _ACT_MISC_BASE 0x20
 #define _ACT_MISC_MASK 0xF0
+// Next free value: 4
 
 #define _ACT_UP_ASPECT (_ACT_MISC_BASE | 0)
 // args: localvar_id, global_ofs_lsb, global_ofs_msb.
@@ -124,10 +130,39 @@
 // event Y, replacing the last bbb+1 bytes. Then bbb+1 bytes will follow for the
 // new content in big-endian form.
 #define _ACT_SET_EVENTID (_ACT_MISCA_BASE | 5)
+// Sets a byte-valued variable.
+// Arguments: 0bfffvvvvv <value>, where vvvvv is the local variable ID
+// (imported variable), fff is the offset which to set to, and value is the
+// value to set it to.
+#define _ACT_SET_VAR_VALUE (_ACT_MISC_BASE | 3)
+// Sets a byte-valued variable to the signal aspect value.  Argument:
+// 0bfffvvvvv, where vvvvv is the local variable ID (imported variable), fff is
+// the offset which to set to.
+#define _ACT_SET_VAR_VALUE_ASPECT (_ACT_MISCA_BASE | 6)
+// Reads a byte-valued variable into the signal aspect accumulator.  Argument:
+// 0bfffvvvvv, where vvvvv is the local variable ID (imported variable), fff is
+// the offset which to read from.
+#define _ACT_GET_VAR_VALUE_ASPECT (_ACT_MISCA_BASE | 7)
+// Reads a byte-valued variable into the speed accumulator.  Argument:
+// 0bfffvvvvv, where vvvvv is the local variable ID (imported variable), fff is
+// the offset which to read from. The value is interpreted as signed mph, from
+// -127 to +127.
+#define _ACT_GET_VAR_VALUE_SPEED (_ACT_MISCA_BASE | 8)
+// Sets the speed accumulator.  Argument: a signed mph, from -127 to +127.
+#define _ACT_IMM_SPEED (_ACT_MISCA_BASE | 9)
+// Scales the speed accumulator.  Argument: 0bDMMFFFFF. if D==1, then value is
+// reversed; then value is multiplied by MM.FFFFF (in binary). The largest
+// multiplicator is 3.9, the smallest is 1/32.
+#define _ACT_SCALE_SPEED (_ACT_MISCA_BASE | 0xA)
+// Changes the speed in the accumulator
+#define _ACT_SPEED_FORWARD (_ACT_MISC_BASE | 4)
+#define _ACT_SPEED_REVERSE (_ACT_MISC_BASE | 5)
+#define _ACT_SPEED_FLIP (_ACT_MISC_BASE | 6)
 
 // 0b0011.....
 #define _ACT_MISCA_BASE 0x30
 #define _ACT_MISCA_MASK 0xF0
+// Next free value: 0xB
 
 
 #define _ACT_SET_SRCPLACE (_ACT_MISCA_BASE | 0)

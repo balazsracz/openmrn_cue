@@ -7,17 +7,22 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
+
+#include "../cs/src/automata_defs.h"
+
 using std::string;
 using std::vector;
 using std::map;
+using std::set;
 
 #ifndef HASSERT
 #define HASSERT(x) do { if (!(x)) {fprintf(stderr, "Assertion failed: " #x); abort();} } while(0)
 #endif
 
-string StringPrintf(const char* format, ...);
-
 namespace automata {
+
+string StringPrintf(const char* format, ...);
 
 #ifndef DISALLOW_COPY_AND_ASSIGN
 //! Put this into the private section of a class to prevent the default copy
@@ -111,21 +116,27 @@ protected:
     DISALLOW_COPY_AND_ASSIGN(GlobalVariable);
 };
 
+extern int FIRST_USER_STATE_ID;
 
 /** Represents a concrete automata in the current board.
  */
 class Automata {
-public:
-  Automata(const string& name) : timer_bit_(0), output_(NULL), aut(this), name_(name) {
-        // We add the timer variable to the map with a fake key in order to
-        // reserve local bit 0.
-        used_variables_[NULL] = timer_bit_;
-    }
-    Automata() : timer_bit_(0), output_(NULL), aut(this) {
-        // We add the timer variable to the map with a fake key in order to
-        // reserve local bit 0.
-        used_variables_[NULL] = timer_bit_;
-    }
+ public:
+  Automata(const string& name)
+      : timer_bit_(0),
+        output_(NULL),
+        aut(this),
+        name_(name),
+        next_user_state_(FIRST_USER_STATE_ID) {
+    ClearUsedVariables();
+  }
+  Automata()
+      : timer_bit_(0),
+        output_(NULL),
+        aut(this),
+        next_user_state_(FIRST_USER_STATE_ID) {
+    ClearUsedVariables();
+  }
     ~Automata() {}
 
     void Render(string* output);
@@ -147,16 +158,30 @@ public:
     };
 
     // Adds a global variable reference to the used local variables, and
-    // returns the local variable reference. The local variable reference if
+    // returns the local variable reference. The local variable reference is
     // owned by the Automata object. The same global var can be imported
     // multiple times (and will get the same ID).
     LocalVariable* ImportVariable(GlobalVariable* var);
     const LocalVariable& ImportVariable(const GlobalVariable& var);
+    // Reserves a local variable that will need to be overridden by
+    // ActImportvariable. The return is an rvalue to prevent it being assigned
+    // to a reference.
+    LocalVariable ReserveVariable();
 
     const LocalVariable& timer_bit() { return timer_bit_; }
 
+    int NewUserState() {
+      int id = next_user_state_++;
+      HASSERT(!(id & _IF_STATE_MASK));
+      return id;
+    }
+
     void DefCopy(const LocalVariable& src, LocalVariable* dst);
     void DefNCopy(const LocalVariable& src, LocalVariable* dst);
+
+    void ClearUsedVariables();
+
+    void RenderImportVariable(const GlobalVariable& var, int local_id);
 
 protected:
     virtual void Body() = 0;
@@ -174,8 +199,14 @@ protected:
 private:
     friend class Op;
 
+    // Returns the next available variable ID, skipping any reserved ids.
+    int GetNextVariableId();
+
     map<const GlobalVariable*, LocalVariable> used_variables_;
+    set<int> reserved_variables_;
+    int next_variable_id_;
     string name_;
+    int next_user_state_;
     DISALLOW_COPY_AND_ASSIGN(Automata);
 };
 

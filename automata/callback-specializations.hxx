@@ -1,3 +1,6 @@
+// Generated file. Do not edit.
+#include <type_traits>
+
 
 class Callback {
  public:

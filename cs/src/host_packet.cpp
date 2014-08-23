@@ -1,19 +1,25 @@
+#ifdef TARGET_LPC2368
+#include "cmsis.h"
+#endif
+
+#include "src/cs_config.h"
+
+#define LOGLEVEL WARNING
 #include "utils/logging.h"
 
 #include <fcntl.h>
 #include <unistd.h>
 
-#ifdef TARGET_LPC2368
-#include "cmsis.h"
-#endif
 
 #include "host_packet.h"
 
 
 #include "os/os.h"
 #include "utils/logging.h"
-#include "utils/pipe.hxx"
-#include "utils/gc_pipe.hxx"
+#include "utils/GridConnectHub.hxx"
+#include "executor/Service.hxx"
+#include "utils/Hub.hxx"
+#include "freertos/can_ioctl.h"
 
 #include "usb_proto.h"
 #include "automata_control.h"
@@ -21,6 +27,7 @@
 #include "dcc-master.h"
 #include "pic_can.h"
 #include "can-queue.h"
+
 
 /*
 
@@ -55,20 +62,25 @@
 
  */
 
-DEFINE_PIPE(usb_vcom_pipe0, 1);
-DECLARE_PIPE(can_pipe0);
+extern Service g_service;
+//Executor<1> vcom_executor("vcom_thread", 0, 900);
+//Service vcom_service(&vcom_executor);
+HubFlow usb_vcom_pipe0(&g_service);
+extern CanHubFlow can_hub0;
 
 //! Class to handle data that comes from the virtual COM pipe and is to be sent
 //! on to the USB handler.
-class VCOMPipeMember : public PipeMember {
+class VCOMPipeMember : public HubPort {
 public:
-    VCOMPipeMember(int packet_id) : packet_id_(packet_id) {}
+  VCOMPipeMember(Service* service, int packet_id) : HubPort(service), packet_id_(packet_id) {}
 
-    virtual void write(const void* buf, size_t count) {
-	PacketBase out_pkt(count + 1);
-	out_pkt[0] = packet_id_;
-	memcpy(out_pkt.buf() + 1, buf, count);
-	PacketQueue::instance()->TransmitPacket(out_pkt);
+    virtual Action entry() {
+      int count = message()->data()->size();
+      PacketBase out_pkt(count + 1);
+      out_pkt[0] = packet_id_;
+      memcpy(out_pkt.buf() + 1, message()->data()->data(), count);
+      PacketQueue::instance()->TransmitPacket(out_pkt);
+      return release_and_exit();
     }
 
 private:
@@ -82,18 +94,11 @@ extern "C" { void start(void); }
 PacketQueue* PacketQueue::instance_ = NULL;
 
 void PacketQueue::initialize(const char* serial_device) {
-    int fd = open(serial_device, O_RDWR);
-    ASSERT(fd >= 0);
-    instance_ = new PacketQueue(fd);
-}
-
-void* tx_thread(void* p) {
-    ((PacketQueue*)p)->TxThreadBody();
-    return NULL;
+    instance_ = new DefaultPacketQueue(serial_device);
 }
 
 void* rx_thread(void* p) {
-    ((PacketQueue*)p)->RxThreadBody();
+    ((DefaultPacketQueue*)p)->RxThreadBody();
     return NULL;
 }
 
@@ -102,26 +107,111 @@ const uint8_t syncpacket[] = {
 
 static long long sync_packet_callback(void*, void*) {
     PacketQueue::instance()->TransmitConstPacket(syncpacket);
+#ifdef __FreeRTOS__
+    extern char *heap_end;
+    LOG(ERROR, "sbrk %p totalsize %lu", heap_end, (unsigned long)mainBufferPool->total_size());
+#endif
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
 }
 
-PacketQueue::PacketQueue(int fd) : synced_(false), fd_(fd) {
-    tx_queue_ = os_mq_create(PACKET_TX_QUEUE_LENGTH, sizeof(PacketBase));
-    os_thread_create(NULL, "host_pkt_tx", 0, PACKET_TX_THREAD_STACK_SIZE,
-		     tx_thread, this);
+typedef Buffer<PacketBase> PacketQEntry;
+
+class DefaultPacketQueue::TxFlow : public StateFlowBase {
+ public:
+  TxFlow(DefaultPacketQueue* s)
+      : StateFlowBase(s),
+        writeFinished_(wait()) {
+    start_flow(STATE(send_sync_packet));
+  }
+
+  DefaultPacketQueue* service() {
+    return static_cast<DefaultPacketQueue*>(StateFlowBase::service());
+  }
+
+  Action send_sync_packet() {
+    if (service()->synced()) {
+      return call_immediately(STATE(get_next_packet));
+    }
+    buf_ = syncpacket;
+    len_ = sizeof(syncpacket);
+    writeFinished_ = call_immediately(STATE(send_sync_packet));
+    return call_immediately(STATE(write_buf));
+  }
+
+  Action get_next_packet() {
+    return allocate_and_call(STATE(send_next_packet), service()->outgoing_packet_queue());
+  }
+
+  Action send_next_packet() {
+    cast_allocation_result(&currentPacket_);
+    sizeBuf_ = currentPacket_->data()->size();
+    buf_ = &sizeBuf_;
+    len_ = 1;
+    writeFinished_ = call_immediately(STATE(send_packet_data));
+    return call_immediately(STATE(write_buf));
+  }
+
+  Action send_packet_data() {
+    buf_ = currentPacket_->data()->buf();
+    len_ = currentPacket_->data()->size();
+    writeFinished_ = call_immediately(STATE(send_finished));
+    return call_immediately(STATE(write_buf));
+  }
+
+  Action send_finished() {
+    currentPacket_->unref();
+    return call_immediately(STATE(get_next_packet));
+  }
+
+  Action write_buf() {
+    ssize_t res = ::write(service()->fd(), buf_, len_);
+    if (res == 0) {
+      HASSERT(0 == ioctl(service()->fd(), CAN_IOC_WRITE_ACTIVE, this));
+      return wait();
+    }
+    else if (res > 0) {
+      len_ -= res;
+      buf_ += res;
+      if (!len_) {
+        return writeFinished_;
+      } else {
+        return again();
+      }
+    } else {
+      DIE("error writing");
+    }
+  }
+
+ private:
+  PacketQEntry* currentPacket_;
+  //! Buffer pointer for asynchronous write calls.
+  const uint8_t* buf_;
+  //! Length of asynchronous write left.
+  size_t len_;
+  //! We will continue at this state after the async write is complete.
+  Action writeFinished_;
+  //! 1-byte buffer for writing packet length.
+  uint8_t sizeBuf_;
+};
+
+DefaultPacketQueue::DefaultPacketQueue(const char* dev) : Service(g_service.executor()), synced_(false) {
+    async_fd_ = open(dev, O_RDWR | O_NONBLOCK);
+    sync_fd_ = open(dev, O_RDWR);
     os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
-    os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(250));
+    os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(1000));
     // Wires up packet receive from vcom0 to the USB host.
-    usb_vcom0_recv_ = new VCOMPipeMember(CMD_VCOM0);
-    usb_vcom_pipe0.RegisterMember(usb_vcom0_recv_);
-    gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_pipe0, false);
+    usb_vcom0_recv_ = new VCOMPipeMember(&g_service, CMD_VCOM0);
+    usb_vcom_pipe0.register_port(usb_vcom0_recv_);
+    gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_hub0, false);
+    tx_flow_ = new TxFlow(this);
 }
 
-PacketQueue::~PacketQueue() {
+DefaultPacketQueue::~DefaultPacketQueue() {
+    delete tx_flow_;
     delete gc_adapter_;
-    usb_vcom_pipe0.UnregisterMember(usb_vcom0_recv_);
+    usb_vcom_pipe0.unregister_port(usb_vcom0_recv_);
     delete usb_vcom0_recv_;
     os_timer_delete(sync_packet_timer_);
     // There is no way to destroy an os_mq_t.
@@ -129,16 +219,16 @@ PacketQueue::~PacketQueue() {
     abort();
 }
 
-void PacketQueue::RxThreadBody() {
+void DefaultPacketQueue::RxThreadBody() {
     uint8_t size;
     while(1) {
-	ssize_t ret = read(fd_, &size, 1);
+	ssize_t ret = read(sync_fd_, &size, 1);
 	ASSERT(ret == 1);
         if (!synced_ && size != 15) continue;
 	PacketBase* pkt = new PacketBase(size);
 	uint8_t* buf = pkt->buf();
 	while (size) {
-	    ret = read(fd_, buf, size);
+	    ret = read(sync_fd_, buf, size);
 	    ASSERT(ret >= 0);
 	    buf += ret;
 	    size -= ret;
@@ -152,11 +242,13 @@ const uint8_t log_illegal_argument[] = { 2, CMD_SYSLOG, LOG_ILLEGAL_ARGUMENT };
 const uint8_t mod_state_success[] = {1, CMD_MOD_STATE};
 const uint8_t packet_misc_invalidarg[] = { 4, CMD_UMISC, 0x00, 0xff, 0x01 };
 
-void PacketQueue::ProcessPacket(PacketBase* pkt) {
+void DefaultPacketQueue::ProcessPacket(PacketBase* pkt) {
     const PacketBase& in_pkt(*pkt);
-    if (in_pkt.size() == 15 && in_pkt[0] == 0xe) {
+    if (in_pkt.size() == syncpacket[0] && in_pkt[0] == syncpacket[1]) {
       // We do not do detailed logging for the sync packets.
-      synced_ = true;
+      if (0 == memcmp(in_pkt.buf(), &syncpacket[1], in_pkt.size())) {
+        synced_ = true;
+      }
     } else {
       if (!synced_) {
         delete pkt;
@@ -260,6 +352,9 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	break;
     }
     case CMD_CAN_PKT: {
+#ifdef STATEFLOW_CS
+        bracz_custom::handle_can_packet_from_host(in_pkt.buf() + 1, in_pkt.size() - 1);
+#else
 	// TODO(bracz): This memory copy could be avoided by rescaling
 	// CAN_START, CAN_D0, CAN_EIDH etc. to be at offset 1 instead.
 	PacketBase can_buf(in_pkt.size() + 1);
@@ -270,13 +365,16 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 	DccLoop_ProcessIO();
 	DccLoop_ProcessIO();
 	os_mutex_unlock(&dcc_mutex);
+#endif
 	// Strange that mosta-master does not need this packet.
 	break;
     }
     case CMD_VCOM0: {
-	usb_vcom_pipe0.WriteToAll(usb_vcom0_recv_,
-				  in_pkt.buf() + 1, in_pkt.size() - 1);
-	break;
+      auto* b = usb_vcom_pipe0.alloc();
+      b->data()->assign((const char*)(in_pkt.buf() + 1), in_pkt.size() - 1);
+      b->data()->skipMember_ = usb_vcom0_recv_;
+      usb_vcom_pipe0.send(b);
+      break;
     }
     } // switch
 
@@ -284,7 +382,7 @@ void PacketQueue::ProcessPacket(PacketBase* pkt) {
 }
 
 
-void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
+void DefaultPacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     PacketBase miscpacket(5);
     miscpacket[0] = CMD_UMISC;
     miscpacket[1] = in_pkt[1];
@@ -316,7 +414,7 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 #elif defined(TARGET_LPC11Cxx)
         // TODO(bracz): define how to reset a Cortex-M0.
         abort();
-#elif defined(TARGET_LPC1768)
+#elif defined(GCC_ARMCM3)
         // TODO(bracz): define how to reset a Cortex-M3.
         abort();
 #elif defined(TARGET_PIC32MX)
@@ -384,37 +482,13 @@ void PacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
     PacketQueue::instance()->TransmitPacket(miscpacket);
 }
 
-void PacketQueue::TxThreadBody() {
-  while (!synced_) {
-    size_t size = sizeof(syncpacket);
-    const uint8_t* buf = syncpacket;
-    while (size) {
-      ssize_t res = write(fd_, buf, size);
-      ASSERT(res >= 0);
-      size -= res;
-      buf += res;
-    }
-  }
-    while(1) {
-	PacketBase pkt;
-	os_mq_receive(tx_queue_, &pkt);
-	uint8_t s = pkt.size();
-	ssize_t res = write(fd_, &s, 1);
-	ASSERT(res == 1);
-	uint8_t* buf = pkt.buf();
-	size_t size = pkt.size();
-	while (size) {
-	    res = write(fd_, buf, size);
-	    ASSERT(res >= 0);
-	    size -= res;
-	    buf += res;
-	}
-    }
-}
 
-void PacketQueue::TransmitPacket(PacketBase& packet) {
-    os_mq_send(tx_queue_, &packet);
-    packet.release(); // The memory is now owned by the queue.
+void DefaultPacketQueue::TransmitPacket(PacketBase& packet) {
+  Buffer<PacketBase>* b;
+  mainBufferPool->alloc(&b, nullptr);
+  *b->data() = packet;
+  packet.release(); // The memory is now owned by the buffer<pkt>.
+  outgoing_packet_queue_.insert(b);
 }
 
 void PacketQueue::TransmitConstPacket(const uint8_t* packet) {

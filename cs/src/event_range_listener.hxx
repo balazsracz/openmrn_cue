@@ -3,17 +3,16 @@
 
 #include "updater.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "executor/control_flow.hxx"
 
 class ListenerToEventProxy : public UpdateListener {
  public:
-  ListenerToEventProxy(BitRangeEventPC* proxy)
+  ListenerToEventProxy(nmranet::BitRangeEventPC* proxy)
       : proxy_(proxy) {}
 
   virtual uint8_t OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value);
 
  private:
-  BitRangeEventPC* proxy_;
+  nmranet::BitRangeEventPC* proxy_;
 };
 
 

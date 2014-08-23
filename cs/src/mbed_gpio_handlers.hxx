@@ -10,10 +10,14 @@
 #include "mbed.h"
 
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/Node.hxx"
 
-extern node_t node;
+namespace nmranet {
+class Node;
+}
+extern nmranet::DefaultNode g_node;
 
-class MbedGPIOListener : public BitEventInterface, public BitEventConsumer {
+class MbedGPIOListener : public nmranet::BitEventInterface, public nmranet::BitEventConsumer {
  public:
   MbedGPIOListener(uint64_t event_on, uint64_t event_off,
                    PinName pin)
@@ -25,17 +29,26 @@ class MbedGPIOListener : public BitEventInterface, public BitEventConsumer {
     memory_off_ = gpio.reg_clr;
     memory_on_ = gpio.reg_set;
     memory_read_ = gpio.reg_in;
+    SetState(false);
   }
 
   virtual bool GetCurrentState() {
     return (*memory_read_) & mask_;
   }
   virtual void SetState(bool new_value) {
-    if (new_value) *memory_on_ = mask_; else *memory_off_ = mask_;
+    if (new_value) {
+      *memory_on_ = mask_;
+    } else {
+#ifdef TARGET_LPC11Cxx
+      *memory_off_ = 0;
+#else
+      *memory_off_ = mask_;
+#endif
+    }
   }
 
-  virtual node_t node() {
-    return ::node;
+  virtual nmranet::Node* node() {
+    return &g_node;
   }
 
  private:

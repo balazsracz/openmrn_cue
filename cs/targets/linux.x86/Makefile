@@ -5,29 +5,32 @@ TEST_EXTRA_OBJS += error.o
 
 include $(OPENMRNPATH)/etc/prog.mk
 
-SYSLIBRARIES += -lautomata
+#SYSLIBRARIES += -lautomata
 
-$(EXECUTABLE)$(EXTENTION): lib/libautomata.a depmake
+$(EXECUTABLE)$(EXTENTION): lib/libautomata.a logic-demo.o
 #$(EXECUTABLE)$(EXTENTION): depmake
 
-lib/libautomata.a:
-	$(MAKE) -C ../../../automata
-	ln -sf $(realpath ../../../automata/libautomata.a) lib/
+#lib/libautomata.a:
 
-.PHONY: depmake
+OBJS += logic-demo.o
 
-#depmake:
-#	make -C $(OPENMRNPATH)/targets/$(TARGET) all
+logic-demo.o: logic-demo.cout
+	$(CC) $(CFLAGS) -x c $< -o $@
+	$(CC) -MM $(CFLAGS) -x c $< > $*.d
 
-rr-crossing.c : rr-crossing.cout
+.PHONY: logic-demo.dep
 
-.PHONY: rr-crossing.cout
+logic-demo.dep:
+	+$(MAKE) -C $(APP_PATH)/../automata logic-demo.cout
 
-rr-crossing.cout :
-	+$(MAKE) -C $(APP_PATH)/../automata rr-crossing.cout
-	cp -f $(APP_PATH)/../automata/rr-crossing.cout $@
+logic-demo.cout: $(APP_PATH)/../automata/logic-demo.cout logic-demo.dep
+	ln -sf $< $@
+
+#	
+#	+$(MAKE) -C $(APP_PATH)/../automata logic-demo.cout
+#	ln -sf $(APP_PATH)/../automata/logic-demo.cout $@
 
 cleangen:
-	rm -f rr-crossing.cout
+	rm -f logic-demo.cout
 
-veryclean clean: cleangen
+veryclean: cleangen

@@ -12,9 +12,7 @@
 
 #include "src/automata_runner.h"
 #include "nmranet_config.h"
-
-#include "utils/test_main.hxx"
-
+#include "automata_tests_helper.hxx"
 
 using automata::Board;
 using automata::StateRef;
@@ -100,7 +98,16 @@ TEST(RunnerTest, TrivialRunnerCreateDestroy) {
   string output;
   brd.Render(&output);
   {
-    AutomataRunner (NULL, AD(output));
+    AutomataRunner (NULL, AD(output), false);
+  }
+}
+
+TEST(RunnerTest, ThreadedRunnerCreateDestroy) {
+  automata::Board brd;
+  string output;
+  brd.Render(&output);
+  {
+    AutomataRunner (NULL, AD(output), true);
   }
 }
 
@@ -109,7 +116,7 @@ TEST(RunnerTest, TrivialRunnerRun) {
   string output;
   brd.Render(&output);
   {
-    AutomataRunner r(NULL, AD(output));
+    AutomataRunner r(NULL, AD(output), false);
     r.RunAllAutomata();
   }
 }
@@ -120,7 +127,7 @@ TEST(RunnerTest, SingleEmptyAutomataBoard) {
   string output;
   brd.Render(&output);
   {
-    AutomataRunner r(NULL, AD(output));
+    AutomataRunner r(NULL, AD(output), false);
     const auto& all_automata = r.GetAllAutomatas();
     EXPECT_EQ(1U, all_automata.size());
     EXPECT_EQ(0, all_automata[0]->GetId());
@@ -130,8 +137,6 @@ TEST(RunnerTest, SingleEmptyAutomataBoard) {
     r.RunAllAutomata();
   }
 }
-
-#include "automata_tests_helper.hxx"
 
 TEST_F(AutomataTests, DefAct0) {
   automata::Board brd;
@@ -195,6 +200,43 @@ TEST_F(AutomataTests, DefIfReg0) {
       auto wv = ImportVariable(&wb);
       Def().IfReg0(*rv).ActReg1(wv);
       Def().IfReg0(*rrv).ActReg1(wv);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, SetValue) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), SetState(3, 0xaa));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetValue(wv, 3, 0xaa);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, SetValueFromAspect) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), SetState(2, 0x55));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetAspect(0x55).ActSetValueFromAspect(wv, 2);
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata();
+}
+
+TEST_F(AutomataTests, GetValueFromAspect) {
+  automata::Board brd;
+  static MockBit wb(this);
+  EXPECT_CALL(wb.mock(), GetState(4)).WillOnce(Return(0x5a));
+  EXPECT_CALL(wb.mock(), SetState(2, 0x5a));
+  DefAut(testaut1, brd, {
+      auto wv = ImportVariable(&wb);
+      Def().ActSetAspect(0x55).ActGetValueToAspect(*wv, 4).ActSetValueFromAspect(wv, 2);
     });
   SetupRunner(&brd);
   runner_->RunAllAutomata();
@@ -396,16 +438,6 @@ TEST_F(AutomataTests, LoadEventId) {
 }
 
 TEST_F(AutomataTests, EventVar) {
-#ifdef CPP_EVENT_HANDLER
-  extern void EnsureCompatEventHandlerExists();
-  EnsureCompatEventHandlerExists();
-#endif
-  node_ = nmranet_node_create(0x02010d000001ULL, nmranet_if_,
-                              "Test Node", NULL);
-  ASSERT_TRUE(node_);
-  nmranet_node_user_description(node_, "Test Node");
-  nmranet_node_initialized(node_);
-
   Board brd;
   using automata::EventBasedVariable;
   EventBasedVariable led(&brd,
@@ -416,73 +448,24 @@ TEST_F(AutomataTests, EventVar) {
   static automata::GlobalVariable* var;
   var = &led;
   DefAut(testaut1, brd, {
-      
-ImportVariable(var);
+      ImportVariable(var);
     });
   string output;
   //brd.Render(&output);
   //EXPECT_EQ("", output);
+
+  // The query packet. -- never comes because we are running without thread.
+  //ExpectPacket(":X1991422AN0502010202650012;");
+  // Responds itself straight away.
+  //ExpectPacket(":X1954522AN0502010202650012;");
+
   SetupRunner(&brd);
   runner_->RunAllAutomata();
 }
 
-
-class CanDebugPipeMember : public PipeMember {
- public:
-  CanDebugPipeMember(Pipe* parent)
-      : parent_(parent) {
-    parent_->RegisterMember(this);
-  }
-
-  virtual ~CanDebugPipeMember() {
-    parent_->UnregisterMember(this);
-  }
-
-  virtual void write(const void* buf, size_t count) {
-    if (!count) return;
-    char outbuf[100];
-    const struct can_frame* frame = static_cast<const struct can_frame*>(buf);
-    while (count) {
-      assert(count >= sizeof(struct can_frame));
-      *gc_format_generate(frame, outbuf, 0) = '\0';
-      fprintf(stdout,"%s\n", outbuf);
-      count -= sizeof(*frame);
-    }
-  }
- private:
-  Pipe* parent_;
-};
-
-CanDebugPipeMember printer(&can_pipe0);
-
-
-
-
-
+GcPacketPrinter printer(&can_hub0);
 
 TEST_F(AutomataTests, EventVar2) {
-  node_ = nmranet_node_create(0x02010d000002ULL, nmranet_if_,
-                              "Test Node2", NULL);
-  ASSERT_TRUE(node_);
-  fprintf(stderr,"node_=%p\n", node_);
-  nmranet_node_user_description(node_, "Test Node2");
-
-  nmranet_event_producer(node_, 0x0502010202650012ULL, EVENT_STATE_INVALID);
-  nmranet_event_producer(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
-  nmranet_node_initialized(node_);
-  WaitForEventThread();
-
-  os_thread_t thread;
-  os_thread_create(&thread, "event_process_thread",
-                   0, 2048, &AutomataTests::DispatchThread,
-                   node_);
-
-  nmranet_event_produce(node_, 0x0502010202650012ULL, EVENT_STATE_INVALID);
-  nmranet_event_produce(node_, 0x0502010202650012ULL, EVENT_STATE_VALID);
-  nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_INVALID);
-  nmranet_event_produce(node_, 0x0502010202650013ULL, EVENT_STATE_VALID);
-  WaitForEventThread();
-
   Board brd;
   using automata::EventBasedVariable;
   EventBasedVariable led(&brd,
@@ -491,7 +474,7 @@ TEST_F(AutomataTests, EventVar2) {
                          0x0502010202650013ULL,
                          0, OFS_GLOBAL_BITS, 1);
   static automata::GlobalVariable* var;
-  WaitForEventThread();
+  wait_for_event_thread();
   var = &led;
   DefAut(testaut1, brd, {
       auto wv = ImportVariable(var);
@@ -501,12 +484,260 @@ TEST_F(AutomataTests, EventVar2) {
   string output;
   //brd.Render(&output);
   //EXPECT_EQ("", output);
+
+  // The query packet.
+  //ExpectPacket(":X1991422AN0502010202650012;");
+  // Responds itself straight away.
+  //ExpectPacket(":X1954522AN0502010202650012;");
+
   SetupRunner(&brd);
+  expect_packet(":X195B422AN0502010202650012;");
+  expect_packet(":X195B422AN0502010202650013;");
   runner_->RunAllAutomata();
-  WaitForEventThread();
+  wait_for_event_thread();
 }
 
+TEST_F(AutomataTests, SignalVar) {
+  Board brd;
+  using automata::EventBasedVariable;
+  using automata::SignalVariable;
+  static FakeBit trigger_stop(this);
+  static FakeBit trigger_f3(this);
+  uint8_t consumer_data[10] = {0,};
+  static const uint64_t EVENTID = 0x0501010114FF6000;
+  nmranet::ByteRangeEventC consumer(node_, EVENTID, consumer_data, 10);
+  static SignalVariable signalvar(&brd, "signal_name", EVENTID + 4*256, 0x5a);
+  wait_for_event_thread();
+  DefAut(testaut1, brd, {
+      auto sg = ImportVariable(&signalvar);
+      auto tstop = ImportVariable(trigger_stop);
+      auto tgof3 = ImportVariable(trigger_f3);
+      Def().IfReg1(tstop).ActSetValue(sg, 1, A_STOP);
+      Def().IfReg1(tgof3).ActSetAspect(A_F3).ActSetValueFromAspect(sg, 1);
+    });
+  trigger_stop.Set(false);
+  trigger_f3.Set(false);
+  string output;
+  expect_any_packet(); // ignore produced packets.
+  SetupRunner(&brd);
+  wait_for_event_thread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(0, consumer_data[5]);
+  runner_->RunAllAutomata();
+  wait_for_event_thread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(0, consumer_data[5]);
+  trigger_stop.Set(true);
+  runner_->RunAllAutomata();
+  wait_for_event_thread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(1, consumer_data[5]);
+  trigger_stop.Set(false);
+  trigger_f3.Set(true);
+  runner_->RunAllAutomata();
+  wait_for_event_thread();
+  EXPECT_EQ(0x5a, consumer_data[4]);
+  EXPECT_EQ(5, consumer_data[5]);
+}
 
 TEST_F(AutomataTests, EmptyTest) {
-  WaitForEventThread();
+  wait_for_event_thread();
+}
+
+TEST_F(AutomataTests, EmergencyStop) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().IfSetEStop();
+    });
+  SetupRunner(&brd);
+  expect_packet(":X195B422AN010100000000FFFF;");
+  runner_->RunAllAutomata();
+  wait_for_event_thread();
+}
+
+TEST_F(AutomataTests, EmergencyStart) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().IfClearEStop();
+    });
+  SetupRunner(&brd);
+  expect_packet(":X195B422AN010100000000FFFE;");
+  runner_->RunAllAutomata();
+  wait_for_event_thread();
+}
+
+TEST_F(AutomataTests, VariableOverrideTest) {
+  Board brd;
+  static FakeBit mbit1(this);
+  static FakeBit mbitA(this);
+  static FakeBit mbitB(this);
+  DefAut(testaut1, brd, {
+      auto& mselect = ImportVariable(mbit1);
+      LocalVariable m = ReserveVariable();
+      // Conditionally imports a variable.
+      Def().IfReg0(mselect).ActImportVariable(mbitA, m.GetId());
+      Def().IfReg1(mselect).ActImportVariable(mbitB, m.GetId());
+      Def().ActReg1(&m);
+    });
+  SetupRunner(&brd);
+  mbit1.Set(false);
+  mbitA.Set(false);
+  mbitB.Set(false);
+  runner_->RunAllAutomata();
+  EXPECT_TRUE(mbitA.Get());
+  EXPECT_FALSE(mbitB.Get());
+
+  mbit1.Set(false);
+  mbitA.Set(false);
+  mbitB.Set(false);
+  runner_->RunAllAutomata();
+  EXPECT_TRUE(mbitA.Get());
+  EXPECT_FALSE(mbitB.Get());
+
+  mbit1.Set(true);
+  mbitA.Set(false);
+  mbitB.Set(false);
+  runner_->RunAllAutomata();
+  EXPECT_FALSE(mbitA.Get());
+  EXPECT_TRUE(mbitB.Get());
+}
+
+TEST_F(AutomataTrainTest, CreateDestroy) {}
+
+TEST_F(AutomataTrainTest, SpeedIsFwd) {
+  Board brd;
+  static FakeBit mbit1(this);
+  static FakeBit mbit2(this);
+  DefAut(testaut1, brd, {
+      auto mb1 = ImportVariable(&mbit1);
+      auto mb2 = ImportVariable(&mbit2);
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().IfGetSpeed().IfSpeedIsForward().ActReg1(mb1);
+      Def().IfSpeedIsReverse().ActReg1(mb2);
+    });
+  SetupRunner(&brd);
+  nmranet::Velocity v(13.5);
+  v.forward();
+  trainImpl_.set_speed(v);
+  mbit1.Set(false);
+  mbit2.Set(false);
+  runner_->RunAllAutomata();
+
+  EXPECT_TRUE(mbit1.Get());
+  EXPECT_FALSE(mbit2.Get());
+
+  v.reverse();
+  trainImpl_.set_speed(v);
+  mbit1.Set(false);
+  mbit2.Set(false);
+  runner_->RunAllAutomata();
+
+  EXPECT_FALSE(mbit1.Get());
+  EXPECT_TRUE(mbit2.Get());
+  EXPECT_TRUE(mbit2.Get());
+}
+
+TEST_F(AutomataTrainTest, SpeedReverse) {
+  Board brd;
+  static FakeBit mbit1(this);
+  static FakeBit mbit2(this);
+  DefAut(testaut1, brd, {
+      auto mb1 = ImportVariable(&mbit1);
+      auto mb2 = ImportVariable(&mbit2);
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActReg0(mb1).ActReg0(mb2);
+      Def().IfGetSpeed();
+      Def().IfSpeedIsForward().ActReg1(mb1);
+      Def().IfSpeedIsReverse().ActReg1(mb2);
+      Def().IfReg1(*mb1).ActSpeedReverse().ActReg0(mb1);
+      Def().IfReg1(*mb2).ActSpeedForward().ActReg0(mb2);
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  nmranet::Velocity v(13.5);
+  v.forward();
+  trainImpl_.set_speed(v);
+  runner_->RunAllAutomata(); wait();
+
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+}
+
+TEST_F(AutomataTrainTest, SpeedReverseFlip) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().IfGetSpeed().ActDirectionFlip();
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  nmranet::Velocity v(13.5);
+  v.forward();
+  trainImpl_.set_speed(v);
+  runner_->RunAllAutomata(); wait();
+
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+
+  runner_->RunAllAutomata(); wait();
+  v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+  EXPECT_EQ(13.5, v.speed());
+}
+
+TEST_F(AutomataTrainTest, SpeedImmediateSet) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActLoadSpeed(true, 37);
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata(); wait();
+  nmranet::Velocity v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+  EXPECT_LT(36.5, v.mph());
+  EXPECT_GT(37.5, v.mph());
+}
+
+TEST_F(AutomataTrainTest, SpeedScale) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActLoadSpeed(true, 13).ActScaleSpeed(-2.0);
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata(); wait();
+  nmranet::Velocity v = trainImpl_.get_speed();
+  EXPECT_EQ(v.REVERSE, v.direction());
+  EXPECT_LT(25.5, v.mph());
+  EXPECT_GT(26.5, v.mph());
+}
+
+TEST_F(AutomataTrainTest, SpeedScaleDown) {
+  Board brd;
+  DefAut(testaut1, brd, {
+      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActLoadSpeed(true, 100).ActScaleSpeed(0.125);
+      Def().IfSetSpeed();
+    });
+  SetupRunner(&brd);
+  runner_->RunAllAutomata(); wait();
+  nmranet::Velocity v = trainImpl_.get_speed();
+  EXPECT_EQ(v.FORWARD, v.direction());
+  EXPECT_LT(12, v.mph());
+  EXPECT_GT(13, v.mph());
 }

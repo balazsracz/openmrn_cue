@@ -96,7 +96,10 @@ TEST(StateRefDeathTest, TooBigState) {
   EXPECT_EQ(31, ref.state);
   EXPECT_DEATH({
       StateRef nref(32);
-    }, "== id");
+      string output;
+      Automata::Op(nullptr, &output).IfState(nref);
+      //Automata::Op::CreateOperation(&output, ifs, acts);
+    }, "= state.state");
 }
 
 string S(std::initializer_list<int> l) {

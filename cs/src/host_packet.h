@@ -9,9 +9,9 @@
 #include "os/os.h"
 
 #include "cs_config.h"
+#include "utils/Hub.hxx"
 
 class GCAdapterBase;
-class PipeMember;
 
 class PacketBase {
 public:
@@ -59,6 +59,10 @@ public:
 	data_ = NULL;
     }
 
+    vector<uint8_t> as_vector() const {
+      return vector<uint8_t>(buf(), buf() + size());
+    }
+
 protected:
     size_t size_;
     uint8_t* data_;
@@ -92,7 +96,7 @@ public:
 	delete packet;
     }
     //! Makes packet empty when done.
-    void TransmitPacket(PacketBase& packet);
+    virtual void TransmitPacket(PacketBase& packet) = 0;
 
     //! Transmits a packet from const memory. The first byte of the packet is
     //! the length, and that many following byte will be transmitted.
@@ -103,35 +107,53 @@ public:
     }
 
 
-private:
+protected:
     //! Static instance returned by instance(). Non-NULL if packet queue is
     //! running.
     static PacketQueue* instance_;
+};
 
-    PacketQueue(int fd);
-    ~PacketQueue();
+class DefaultPacketQueue : public PacketQueue, public Service {
+ public:
+  bool synced() {
+    return synced_;
+  }
+
+  int fd() {
+    return async_fd_;
+  }
+
+  QAsync* outgoing_packet_queue() {
+    return &outgoing_packet_queue_;
+  }
+
+ private:
+  friend class PacketQueue;
+  class TxFlow;
+    DefaultPacketQueue(const char* dev);
+    ~DefaultPacketQueue();
+
+    void TransmitPacket(PacketBase& packet) OVERRIDE;
 
     //! Received packet handler thread body.
     void RxThreadBody();
-    //! Transmit packet handler thread.
-    void TxThreadBody();
 
     //! Called on every incoming packet. Takes ownership of pkt.
     void ProcessPacket(PacketBase* pkt);
     //! Handles incoming CMD_UMISC packets.
     void HandleMiscPacket(const PacketBase& in_pkt);
 
-    friend void* tx_thread(void* p);
     friend void* rx_thread(void* p);
 
     //! Set to true if the first successful sync packets are received.
     bool synced_;
 
-    //! Device to read/write packets from.
-    int fd_;
+    //! The queue of outgoing packets (to the host).
+    QAsync outgoing_packet_queue_;
 
-    //! Packets waiting for transmission to the host.
-    os_mq_t tx_queue_;
+    //! Device to read/write packets from.
+    int sync_fd_;
+    int async_fd_;
 
     //! Timer used to generate the sync packets towards the host.
     os_timer_t sync_packet_timer_;
@@ -140,7 +162,15 @@ private:
     //! protocol that runs over the specific USB packets.
     GCAdapterBase* gc_adapter_;
 
-    PipeMember* usb_vcom0_recv_;
+    HubPortInterface* usb_vcom0_recv_;
+    TxFlow* tx_flow_;
 };
+
+namespace bracz_custom {
+
+/** Takes a CAN packet in MCP2515 format and sends it to the track CANbus. */
+void handle_can_packet_from_host(const uint8_t*, unsigned);
+
+}
 
 #endif // _HOST_PACKET_H_

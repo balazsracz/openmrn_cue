@@ -7,6 +7,9 @@
 #include "base.h"
 #include "can-queue.h"
 #include "dcc-can-proto.h"
+#include "cs_config.h"
+
+#ifndef STATEFLOW_CS
 
 
 #define PRIORITY_SIZE 4
@@ -149,8 +152,8 @@ const struct const_loco_db_t const_lokdb[] = {
   { 2 , { 0, 2, 3, 4,  0xff, }, { LIGHT, HONK, FNT12, ABV,  0xff, },
     "ICE 2", MARKLIN_NEW | PUSHPULL }, // todo: check fnbits
   // 4
-  { 3, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RE 460 TSR", DCC_28 }, // todo: there is no beamer here
+  { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
   // 5
   { 32, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
     "RTS RAILTR", MARKLIN_NEW },
@@ -179,8 +182,31 @@ const struct const_loco_db_t const_lokdb[] = {
   { 27, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
     "WLE ER20", MARKLIN_NEW },
   // id 14
-  { 18, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "185 595-6", DCC_28 },
+  { 58, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "185 595-6", DCC_28 }, // NOTE: hardware is programmed for addr 18
+  // id 15
+  { 26, { 0,  0xff, }, { LIGHT,  0xff, },
+    "Re 460 HAG", MARKLIN_OLD | PUSHPULL },
+  // id 16
+  { 38, { 0,  0xff, }, { LIGHT,  0xff, },
+    "BDe 4/4 1460", MARKLIN_OLD | PUSHPULL },
+  // id 17
+  { 48, { 0,  0xff, }, { LIGHT,  0xff, },
+    "Re 4/4 II 11239", MARKLIN_NEW },
+  // id 18
+  { 66, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "Re 6/6 11665", DCC_128 },
+  // id 19
+  { 3, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RBe 4/4 1423", DCC_28 | PUSHPULL },
+  // id 20
+  { 24, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "Taurus", MARKLIN_NEW },
+  // id 21
+  { 52, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "RBe 4/4 1451", MARKLIN_NEW },
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
@@ -244,7 +270,8 @@ enum WriteState {
   SST_WAIT_VERIFY_2 = 10,
   SST_SEND_READ_BITS,
   SST_WAIT_READ,
-  SST_WAIT_READBIT
+  SST_WAIT_READBIT,
+  SST_EXIT_RESET,
 };
 
 enum ServiceModeRequest {
@@ -269,6 +296,7 @@ void UpdateByteCounter();
 struct dcc_master_state_t {
   uint8_t free_packet_count;
   unsigned alive : 1;
+  unsigned enabled : 1;
   unsigned service_mode : 1;
   unsigned service_mode_request : 2;
   unsigned service_mode_had_ack : 1;
@@ -279,6 +307,8 @@ struct dcc_master_state_t {
   uint8_t service_mode_value;
   uint8_t service_mode_state;
   uint8_t service_mode_next_bit;
+  uint8_t service_mode_retry_counter;
+#define DCC_SERVICE_RETRY_COUNT 10
 
   // Holds the id of the last loco that we have addressed.
   uint8_t last_loco_id;
@@ -290,7 +320,7 @@ struct dcc_master_state_t {
 
   struct prio {
     // loco ID - 0..DCC_NUM_LOCO - 1.
-    unsigned id : 4;
+    unsigned id : 5;
     // which item changed. 15 = speed.
     unsigned what : 4;
 #define PRIO_LSPEED 14
@@ -370,6 +400,14 @@ static void DccLoop_HandlePacketToMaster(const PacketBase& can_buf) {
     }
     case CANCMD_NOACK: {
       dcc_master.service_mode_had_noack = 1;
+      break;
+    }
+    case CANCMD_DISABLE: {
+      dcc_master.enabled = 0;
+      break;
+    }
+    case CANCMD_ENABLE: {
+      dcc_master.enabled = 1;
       break;
     }
     default:
@@ -872,15 +910,20 @@ static void HandleServiceMode() {
         return;
       }
       if (dcc_master.service_mode_had_noack) {
-        // Send back an error message.
-        SendServiceModeResponse(DCC_ERR_NOACK, 0);
-        return;
+        if (dcc_master.service_mode_retry_counter++ > DCC_SERVICE_RETRY_COUNT) {
+          // Send back an error message.
+          SendServiceModeResponse(DCC_ERR_NOACK, 0);
+          return;
+        } else {
+          dcc_master.service_mode_state = SST_VERIFY;
+        }
       }
       break;
     }
     case SST_WAIT_READBIT: {
       // This is where most of the wait will happen.
       if (dcc_master.service_mode_had_ack) {
+        dcc_master.service_mode_retry_counter = 0;
         if (dcc_master.service_mode_next_bit & 0x8) {
           // Bit is set.
           dcc_master.service_mode_value |=
@@ -901,9 +944,14 @@ static void HandleServiceMode() {
       }
       if (dcc_master.service_mode_had_noack) {
         if (dcc_master.service_mode_next_bit & 8) {
-          // Send back an error message.
-          SendServiceModeResponse(DCC_ERR_NOACK, 0);
-          return;
+          if (dcc_master.service_mode_retry_counter++ > DCC_SERVICE_RETRY_COUNT) {
+            // Send back an error message.
+            SendServiceModeResponse(DCC_ERR_NOACK, 0);
+            return;
+          } else {
+            dcc_master.service_mode_next_bit &= ~8;
+            dcc_master.service_mode_state = SST_SEND_READ_BITS;
+          }
         } else {
           dcc_master.service_mode_next_bit |= 8;
           dcc_master.service_mode_state = SST_SEND_READ_BITS;
@@ -952,13 +1000,21 @@ static void HandleServiceMode() {
         case SRQ_READ: {
           dcc_master.service_mode_state = SST_SEND_READ_BITS;
           dcc_master.service_mode_next_bit = 0;
+          dcc_master.service_mode_retry_counter = 0;
           break;
         }
         case SRQ_VERIFY: {
           dcc_master.service_mode_state = SST_VERIFY; //SST_SEND_WRITE;
+          dcc_master.service_mode_retry_counter = 0;
           break;
         }
       }
+      break;
+    }
+    case SST_EXIT_RESET: {
+      // Send a reset after the actions.
+      SendDccPacket(DCC_SERVICE_MODE_1X_CMD, 2, 0, 0, 0, 0);
+      dcc_master.service_mode_state = SST_WAIT_WRITE_2;
       break;
     }
     case SST_SEND_WRITE: {
@@ -1025,6 +1081,7 @@ static void HandleServiceMode() {
 void DccLoop_ProcessIO() {
   uint8_t log_pkt[6];
   if (dcc_master.alive &&
+      dcc_master.enabled &&
       dcc_master.service_mode) {
     log_pkt_to_host_ = CDST_HOST;
     uint8_t tmp = dcc_master.service_mode_state;
@@ -1040,6 +1097,7 @@ void DccLoop_ProcessIO() {
     }
   }
   if (dcc_master.alive &&
+      dcc_master.enabled &&
       !dcc_master.service_mode &&
       dcc_master.free_packet_count > 0) {
 
@@ -1115,6 +1173,7 @@ void DccLoop_Timer() {
 }
 
 void DccLoop_Init() {
+  dcc_master.enabled = 1;
   uint8_t i;
   for (i = 0; i < DCC_NUM_LOCO /* const_lokdb[i].address*/; ++i) {
     dcc_master_loco[i].address = const_lokdb[i].address;
@@ -1149,3 +1208,5 @@ void DccLoop_EmergencyStop() {
   //CANQueue_ProcessIO();
   //CANProcessIO();
 }
+
+#endif

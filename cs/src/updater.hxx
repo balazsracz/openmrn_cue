@@ -9,7 +9,7 @@
 #include "cs_config.h"
 #include "macros.h"
 #include "executor.hxx"
-#include "executor/control_flow.hxx"
+#include "executor/StateFlow.hxx"
 #include "updater_base.hxx"
 
 // A queue managing the updates of a single channel. This class will manage
@@ -92,34 +92,37 @@ private:
   DISALLOW_COPY_AND_ASSIGN(SynchronousUpdater);
 };
 
-class FlowUpdater : public ControlFlow {
+class FlowUpdater : public StateFlowBase {
 public:
-  FlowUpdater(Executor *executor, std::initializer_list<Updatable *> entries)
-      : ControlFlow(executor, EmptyNotifiable::DefaultInstance()),
-        queue_(entries) {
-    StartFlowAt(ST(StartUpdateTimer));
+  FlowUpdater(Service *service, std::initializer_list<Updatable *> entries)
+      : StateFlowBase(service),
+        queue_(entries),
+        sleep_data_(this) {
+    start_flow(STATE(StartUpdateTimer));
   }
 
-  ControlFlowAction StartUpdateTimer() {
+  UpdateQueue* queue() { return &queue_; }
+
+  Action StartUpdateTimer() {
     //WakeUpRepeatedly(&sleep_data_, MSEC_TO_PERIOD(50));
-    return CallImmediately(ST(WaitForWakeup));
+    return call_immediately(STATE(WaitForWakeup));
   }
 
-  ControlFlowAction WaitForWakeup() {
-    return Sleep(&sleep_data_, MSEC_TO_NSEC(5), ST(UpdateOne));
-    //return WaitForTimerWakeUpAndCall(&sleep_data_, ST(UpdateOne));
+  Action WaitForWakeup() {
+    return sleep_and_call(&sleep_data_, MSEC_TO_NSEC(5), STATE(UpdateOne));
+    //return WaitForTimerWakeUpAndCall(&sleep_data_, STATE(UpdateOne));
   }
 
-  ControlFlowAction UpdateOne() {
+  Action UpdateOne() {
     Updatable *next = queue_.GetNextEntry();
     ASSERT(next);
     next->PerformUpdate();
-    return YieldAndCall(ST(WaitForWakeup));
+    return yield_and_call(STATE(WaitForWakeup));
   }
 
 private:
   UpdateQueue queue_;
-  SleepData sleep_data_;
+  StateFlowTimer sleep_data_;
 };
 
 #endif

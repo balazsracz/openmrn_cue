@@ -9,6 +9,8 @@
 
 namespace automata {
 
+__attribute__((__weak__)) int FIRST_USER_STATE_ID = 10;
+
 Board::~Board() {
 }
 
@@ -50,7 +52,7 @@ void Board::RenderAutomatas(string* output) {
         (*output)[a.ptr_offset] = a.offset & 0xff;
         (*output)[a.ptr_offset + 1] = (a.offset >> 8) & 0xff;
     }
-    fprintf(stderr, "%d automtas, total output size: %d\n", automatas_.size(), output->size());
+    fprintf(stderr, "%d automatas, total output size: %d\n", automatas_.size(), output->size());
 }
 
 Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {
@@ -62,47 +64,56 @@ Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {
 
 const Automata::LocalVariable& Automata::ImportVariable(
     const GlobalVariable& var) {
-  int next_id = used_variables_.size();
   LocalVariable& ret = used_variables_[&var];
   if (ret.id < 0) {
+    int next_id = GetNextVariableId();
     ret.id = next_id;
     assert(ret.id < MAX_IMPORT_VAR);
+    if (0) fprintf(stderr, "aut %s: imported variable %p for id %d\n", name_.c_str(), &var, ret.id);
+    RenderImportVariable(var, ret.id);
   }
   return ret;
+}
+
+void Automata::RenderImportVariable(const GlobalVariable& var,
+                                    int local_id) {
+  Def().ActImportVariable(var, local_id);
+}
+
+Automata::LocalVariable Automata::ReserveVariable() {
+  const GlobalVariable* p = (const GlobalVariable*)(-1);
+  while (used_variables_.find(p) != used_variables_.end()) {
+    --p;
+  }
+  int id = GetNextVariableId();
+  reserved_variables_.insert(id);
+  if (0) fprintf(stderr, "aut %s: reserved variable id %d\n", name_.c_str(), id);
+  return LocalVariable(id);
+}
+
+void Automata::ClearUsedVariables() {
+  used_variables_.clear();
+  // We add the timer variable to the map with a fake key in order to
+  // reserve local bit 0.
+  used_variables_[NULL] = timer_bit_;
+  next_variable_id_ = 1;
+}
+
+int Automata::GetNextVariableId() {
+  while (reserved_variables_.count(next_variable_id_)) {
+    ++next_variable_id_;
+  }
+  HASSERT(next_variable_id_ < MAX_IMPORT_VAR);
+  return next_variable_id_++;
 }
 
 void Automata::Render(string* output) {
     output_ = NULL;
     // This will allocate all variables without outputing anything.
-    Body();
+    //Body();
     output_ = output;
-    // Adds variable imports.
-    vector<uint8_t> op;
-    vector<uint8_t> empty;
-    for (auto& it : used_variables_) {
-        if (it.first) {
-            op.clear();
-            op.push_back(_ACT_IMPORT_VAR);
-            uint8_t b1 = 0;
-            uint8_t b2 = 0;
-            uint16_t arg = output ? it.first->GetId().arg : 0;
-            HASSERT(arg < (8<<8));
-            b1 = (arg >> 8) << 5;
-            HASSERT(it.second.id < 32);
-            b1 |= (it.second.id & 31);
-            b2 = arg & 0xff;
-            op.push_back(b1);
-            op.push_back(b2); // argument, low bits
-            int gofs = output ? it.first->GetId().id : 0;
-            op.push_back(gofs & 0xff);
-            op.push_back((gofs >> 8) & 0xff);
-            Op::CreateOperation(output, empty, op);
-        } else {
-            // Checks that the timer bit is the NULL.
-            assert(it.second.id == 0);
-        }
-    }
     // Actually renders the body.
+    ClearUsedVariables();
     Body();
     if (output_) {
       output->push_back(0);  // EOF byte for the runner.
@@ -112,14 +123,14 @@ void Automata::Render(string* output) {
 
 void Automata::DefCopy(const Automata::LocalVariable& src,
                        Automata::LocalVariable* dst) {
-  Def().IfReg0(src).ActReg0(dst);
-  Def().IfReg1(src).ActReg1(dst);
+  Def().IfReg0(src).IfReg1(*dst).ActReg0(dst);
+  Def().IfReg1(src).IfReg0(*dst).ActReg1(dst);
 }
 
 void Automata::DefNCopy(const Automata::LocalVariable& src,
                         Automata::LocalVariable* dst) {
-  Def().IfReg0(src).ActReg1(dst);
-  Def().IfReg1(src).ActReg0(dst);
+  Def().IfReg0(src).IfReg0(*dst).ActReg1(dst);
+  Def().IfReg1(src).IfReg1(*dst).ActReg0(dst);
 }
 
 /*class MyAut : public Automata {
@@ -164,6 +175,7 @@ map<int, string>* GetOffsetMap() {
 
 }  // namespace automata
 
+namespace nmranet {
 const string& GetNameForOffset(int ofs) {
   static string empty;
   automata::OfsMap::const_iterator it = automata::g_ofs_map->find(ofs);
@@ -173,7 +185,9 @@ const string& GetNameForOffset(int ofs) {
     return empty;
   }
 }
+}
 
+namespace automata {
 string StringPrintf(const char* format, ...) {
   static const int kBufSize = 1000;
   char buffer[kBufSize];
@@ -193,4 +207,5 @@ string StringPrintf(const char* format, ...) {
   HASSERT(n >= 0);
   ret.resize(n);
   return ret;
+}
 }
