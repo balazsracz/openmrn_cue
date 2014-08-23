@@ -34,7 +34,7 @@ public:
   virtual void Write(uint16_t arg, nmranet::Node* node, Automata* aut, bool value) = 0;
   virtual uint8_t GetState(uint16_t arg) { HASSERT(0); return 0; }
   virtual void SetState(uint16_t arg, uint8_t state) { HASSERT(0); }
-  virtual void Initialize(nmranet::Node* node) {}
+  virtual void Initialize(nmranet::Node* node) = 0;
 };
 
 
@@ -99,6 +99,7 @@ private:
 	virtual void Write(uint16_t, nmranet::Node*, Automata* aut, bool value) {
 	    diewith(CS_DIE_AUT_WRITETIMERBIT);
 	}
+        void Initialize(nmranet::Node*) OVERRIDE {}
 	int GetId() {
 	    return id_;
 	}

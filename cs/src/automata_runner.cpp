@@ -249,6 +249,11 @@ class EventBlockBit : public ReadWriteBit {
     wait_for_notification();
   }
 
+  void Initialize(nmranet::Node*) OVERRIDE {
+    handler_->SendIdentified(&automata_write_helper, get_notifiable());
+    wait_for_notification();
+  }
+
  private:
   uint32_t* storage_;
   std::unique_ptr<nmranet::BitRangeEventPC> handler_;
@@ -282,6 +287,11 @@ class EventByteBlock : public ReadWriteBit {
     }
   }
 
+  void Initialize(nmranet::Node*) OVERRIDE {
+    handler_->SendIdentified(&automata_write_helper, get_notifiable());
+    wait_for_notification();
+  }
+
  private:
   uint8_t* storage_;
   std::unique_ptr<nmranet::ByteRangeEventP> handler_;
@@ -309,6 +319,11 @@ class EventByteBlockConsumer : public ReadWriteBit {
 
   virtual void SetState(uint16_t arg, uint8_t state) {
     storage_[arg] = state;
+  }
+
+  void Initialize(nmranet::Node*) OVERRIDE {
+    handler_->SendIdentified(&automata_write_helper, get_notifiable());
+    wait_for_notification();
   }
 
  private:
