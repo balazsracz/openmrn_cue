@@ -90,12 +90,9 @@ class MemorizingHandlerManager : public EventHandler {
   void HandleProducerIdentified(EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE;
   void HandleIdentifyGlobal(EventReport* event,
-                            BarrierNotifiable* done) OVERRIDE {
-    // TODO
-    return done->notify();
-  }
+                            BarrierNotifiable* done) OVERRIDE;
   void HandleIdentifyConsumer(EventReport* event,
-                                      BarrierNotifiable* done) {
+                              BarrierNotifiable* done) {
     // These are handled by individual blocks TODO: what if there is no block
     return done->notify();
   }
@@ -165,6 +162,7 @@ class MemorizingHandlerBlock : public EventHandler {
 
   void HandleIdentifyGlobal(EventReport* event,
                             BarrierNotifiable* done) OVERRIDE {
+    // Global identify is handler by the block manager.
     return done->notify();
   }
 

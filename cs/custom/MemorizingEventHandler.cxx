@@ -36,6 +36,7 @@
 
 #include "custom/MemorizingEventHandler.hxx"
 #include "nmranet/WriteHelper.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
 
 namespace nmranet {
 
@@ -77,6 +78,18 @@ void MemorizingHandlerManager::HandleProducerIdentified(
   AutoNotify n(done);
   if (!is_mine(event->event) || event->state != VALID) return;
   UpdateValidEvent(event->event);
+}
+
+void MemorizingHandlerManager::HandleIdentifyGlobal(EventReport* event,
+                                                    BarrierNotifiable* done) {
+  AutoNotify n(done);
+  uint64_t range = EncodeRange(event_base_, num_total_events_);
+  event_write_helper1.WriteAsync(
+      node_, Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+      WriteHelper::global(), eventid_to_buffer(range), done->new_child());
+  event_write_helper2.WriteAsync(
+      node_, Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
+      WriteHelper::global(), eventid_to_buffer(range), done->new_child());
 }
 
 void MemorizingHandlerManager::UpdateValidEvent(uint64_t eventid) {
@@ -127,9 +140,10 @@ void MemorizingHandlerBlock::ReportAndIdentify(uint64_t eventid, Defs::MTI mti,
   }
   event_write_helper2.WriteAsync(parent_->node(), mti, WriteHelper::global(),
                                  eventid_to_buffer(eventid), done->new_child());
-  event_write_helper1.WriteAsync(
+  // This will happen by us listening to our own identified call.
+  /*event_write_helper1.WriteAsync(
       parent_->node(), Defs::MTI_EVENT_REPORT, WriteHelper::global(),
-      eventid_to_buffer(current_event_), done->new_child());
+      eventid_to_buffer(current_event_), done->new_child());*/
 }
 
 /** Checks if a range intersects with our range; if so, then produces the
@@ -138,6 +152,9 @@ void MemorizingHandlerBlock::ReportRange(EventReport* event,
                                          BarrierNotifiable* done) {
   AutoNotify n(done);
   if (!is_mine_range(event)) return;
+  // We don't respond to range queries from ourselves; this should prevent us
+  // from generating event reports on the global identify message.
+  if (event->src_node.id == parent_->node()->node_id()) return;
   event_write_helper1.WriteAsync(
       parent_->node(), Defs::MTI_EVENT_REPORT, WriteHelper::global(),
       eventid_to_buffer(current_event_), done->new_child());
