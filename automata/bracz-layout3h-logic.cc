@@ -209,6 +209,7 @@ class MagnetPause {
 
 DefAut(watchdog, brd, {
     LocalVariable* w = ImportVariable(&watchdog);
+    Def().IfState(StInit).ActReg1(ImportVariable(&is_paused)).ActState(StBase);
     Def().IfTimerDone().ActReg1(w).ActReg0(w).ActTimer(1);
   });
 
@@ -216,6 +217,7 @@ DefAut(blinkaut, brd, {
   const int kBlinkSpeed = 3;
   LocalVariable* rep(ImportVariable(blink_variable.get()));
   const LocalVariable& lblink_off(ImportVariable(blink_off));
+
   Def().IfState(StInit).ActState(StUser1);
   Def()
       .IfState(StUser1)
@@ -300,7 +302,7 @@ void SimpleFollowStrategy(
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 EventBlock::Allocator train_perm(logic.allocator()->Allocate("perm", 256));
-EventBlock::Allocator train_tmp(logic.allocator()->Allocate("train", 64));
+EventBlock::Allocator train_tmp(logic.allocator()->Allocate("train", 128));
 
 MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
@@ -869,7 +871,7 @@ class CircleTrain : public TrainSchedule {
   CircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
                       train_perm.Allocate(name, 16, 8),
-                      train_tmp.Allocate(name, 16, 8),
+                      train_tmp.Allocate(name, 12, 4),
                       &stored_speed_),
         stored_speed_(&brd, "speed." + name,
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
@@ -911,6 +913,7 @@ CircleTrain train_icn("icn", 50, 16);
 CircleTrain train_re66("re_6_6", 66, 32);
 CircleTrain train_rts("rts_railtraction", 32, 20);
 CircleTrain train_re460hag("Re460_HAG", 26, 32);
+CircleTrain train_re465("Re465", 47, 32);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
