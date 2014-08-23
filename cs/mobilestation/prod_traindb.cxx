@@ -53,7 +53,7 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
     "Re 460 HAG", MARKLIN_OLD | PUSHPULL },  // Marklin 6090 (i think; best to check)
   // id 16
   { 38, { 0,  0xff, }, { LIGHT,  0xff, },
-    "BDe 4/4 1460", MARKLIN_OLD | PUSHPULL },
+    "BDe 4/4 1460", MARKLIN_OLD | PUSHPULL },  // Marklin 6080 -- AC motor
   // id 17
   { 48, { 0,  0xff, }, { LIGHT,  0xff, },
     "Re 4/4 II 11239", MARKLIN_NEW }, // ESU pre-lokpilot decoder, no DCC support
