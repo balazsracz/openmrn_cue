@@ -32,6 +32,8 @@
  * @date 7 Dec 2013
  */
 
+#define LOGLEVEL INFO
+
 #include <stdio.h>
 #include <unistd.h>
 
@@ -40,6 +42,7 @@
 #include "utils/Hub.hxx"
 #include "utils/HubDevice.hxx"
 #include "utils/HubDeviceNonBlock.hxx"
+#include "utils/GridConnectHub.hxx"
 #include "executor/Executor.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
@@ -72,15 +75,18 @@
 #include "mobilestation/TrainDb.hxx"
 
 #include "TivaDev.hxx"
+#include "ShortDetection.hxx"
 
 #include "inc/hw_types.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_ints.h"
+#include "dcc_control.hxx"
 
 
 TivaDCC dcc_hw("/dev/mainline", TIMER1_BASE, TIMER0_BASE, INT_TIMER0A, 16,
                (56 << 1) * (configCPU_CLOCK_HZ / 1000000),
                (100 << 1) * (configCPU_CLOCK_HZ / 1000000), 50, 60);
+
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -134,14 +140,19 @@ const size_t SERIAL_TX_BUFFER_SIZE = 16;
 const size_t main_stack_size = 900;
 }
 
+
+HubFlow stdout_hub(&g_service);
+auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
+
+extern "C" {
 void log_output(char* buf, int size) {
     if (size <= 0) return;
-    PacketBase pkt(size + 1);
-    pkt[0] = CMD_VCOM1;
-    memcpy(pkt.buf() + 1, buf, size);
-    PacketQueue::instance()->TransmitPacket(pkt);
+    auto* b = stdout_hub.alloc();
+    b->data()->assign(buf, size);
+    b->data()->push_back('\n');
+    stdout_hub.send(b);
 }
-
+}
 
 nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 3);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
@@ -208,9 +219,6 @@ mobilestation::TrainDb train_db;
 //mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 
 extern "C" {
-extern void enable_dcc();
-extern void disable_dcc();
-
 /** Timer interrupt for DCC packet handling.
  */
 void timer0a_interrupt_handler(void)
@@ -219,6 +227,8 @@ void timer0a_interrupt_handler(void)
 }
 
 }
+
+TivaShortDetectionModule g_short_det(&g_service, MSEC_TO_NSEC(1));
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -230,9 +240,10 @@ int appl_main(int argc, char* argv[])
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
     //PacketQueue::initialize("/dev/serUSB0");
-    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+    //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     //bracz_custom::init_host_packet_can_bridge(&can_hub1);
+    FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 
     nmranet::Velocity v;
     v.set_mph(29);
