@@ -66,6 +66,7 @@
 #include "src/automata_control.h"
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/TrackInterface.hxx"
+#include "custom/HostLogging.hxx"
 #include "mobilestation/MobileStationSlave.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
@@ -73,6 +74,7 @@
 #include "nmranet/TractionTrain.hxx"
 #include "dcc/Loco.hxx"
 #include "mobilestation/TrainDb.hxx"
+#include "dcc/LocalTrackIf.hxx"
 
 #include "TivaDev.hxx"
 #include "ShortDetection.hxx"
@@ -82,11 +84,24 @@
 #include "inc/hw_ints.h"
 #include "dcc_control.hxx"
 
-
-TivaDCC dcc_hw("/dev/mainline", TIMER1_BASE, TIMER0_BASE, INT_TIMER0A, 16,
-               (56 << 1) * (configCPU_CLOCK_HZ / 1000000),
+TivaDCC dcc_hw("/dev/mainline", TIMER1_BASE, TIMER0_BASE, INT_TIMER0A,
+               INT_TIMER1A, 16, (56 << 1) * (configCPU_CLOCK_HZ / 1000000),
                (100 << 1) * (configCPU_CLOCK_HZ / 1000000), 50, 60);
 
+extern "C" {
+/** Timer interrupt for DCC packet handling.
+ */
+void timer0a_interrupt_handler(void)
+{
+    dcc_hw.interrupt_handler();
+}
+
+void timer1a_interrupt_handler(void)
+{
+  dcc_hw.os_interrupt_handler();
+}
+
+}  // extern "C"
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -96,6 +111,9 @@ OVERRIDE_CONST(mobile_station_train_count, 0);
 
 OVERRIDE_CONST(automata_init_backoff, 20000);
 OVERRIDE_CONST(node_init_identify, 0);
+
+OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 250);
+
 
 namespace mobilestation {
 extern const struct const_loco_db_t const_lokdb[];
@@ -121,7 +139,7 @@ NO_THREAD nt;
 Executor<1> g_executor(nt);
 Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
-//CanHubFlow can_hub1(&g_service);
+CanHubFlow can_hub1(&g_service);  // this CANbus will have no hardware.
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
 
@@ -148,9 +166,16 @@ extern "C" {
 void log_output(char* buf, int size) {
     if (size <= 0) return;
     auto* b = stdout_hub.alloc();
+    HASSERT(b);
     b->data()->assign(buf, size);
-    b->data()->push_back('\n');
+    if (size > 1) b->data()->push_back('\n');
     stdout_hub.send(b);
+}
+}
+
+namespace bracz_custom {
+void send_host_log_event(HostLogEvent e) {
+  log_output((char*)&e, 1);
 }
 }
 
@@ -196,36 +221,37 @@ private:
     bool state_;
 };
 
-//CanIf can1_interface(&g_service, &can_hub1);
 
+dcc::LocalTrackIf track_if(&g_service, 2);
 //bracz_custom::TrackIfSend track_send(&can_hub1);
-//commandstation::UpdateProcessor cs_loop(&g_service, &track_send);
+commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
+commandstation::PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(&g_service, track_if.pool(), &cs_loop);
+
 //bracz_custom::TrackIfReceive track_recv(&can1_interface, &cs_loop);
 static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
 //bracz_custom::TrackPowerOnOffBit on_off(ON_EVENT_ID, ON_EVENT_ID+1, &track_send);
 //nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(&g_if_can);
 
-/*
+
 dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
-dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
+dcc::Dcc28Train train_Re460(dcc::DccShortAddress(22));
+//dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
 nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
-*/
 
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 mobilestation::TrainDb train_db;
+//CanIf can1_interface(&g_service, &can_hub1);
 //mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 
-extern "C" {
-/** Timer interrupt for DCC packet handling.
- */
-void timer0a_interrupt_handler(void)
-{
-    dcc_hw.interrupt_handler();
-}
 
+void mydisable()
+{
+  IntDisable(INT_TIMER5A);
+  IntDisable(INT_TIMER0A);
+  asm("BKPT 0");
 }
 
 TivaShortDetectionModule g_short_det(&g_service, MSEC_TO_NSEC(1));
@@ -237,6 +263,7 @@ TivaShortDetectionModule g_short_det(&g_service, MSEC_TO_NSEC(1));
  */
 int appl_main(int argc, char* argv[])
 {
+  //  mydisable();
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
     //PacketQueue::initialize("/dev/serUSB0");
@@ -245,10 +272,16 @@ int appl_main(int argc, char* argv[])
     //bracz_custom::init_host_packet_can_bridge(&can_hub1);
     FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 
+    int mainline = open("/dev/mainline", O_RDWR);
+    HASSERT(mainline > 0);
+    track_if.set_fd(mainline);
+
     nmranet::Velocity v;
     v.set_mph(29);
     //XXtrain_Re460.set_speed(v);
-    //XXtrain_Am843.set_speed(v);
+    train_Am843.set_speed(v);
+    train_Am843.set_fn(0, 1);
+    train_Re460.set_fn(0, 1);
 
     /*int fd = open("/dev/can0", O_RDWR);
     ASSERT(fd >= 0);
