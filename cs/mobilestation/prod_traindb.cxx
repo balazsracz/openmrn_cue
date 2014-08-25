@@ -17,7 +17,7 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
     "ICE 2", MARKLIN_NEW | PUSHPULL }, // todo: check fnbits
   // 4
   { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
+    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here // LD-32 decoder
   // 5
   { 32, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
     "RTS RAILTR", MARKLIN_NEW },  // Marklin Fx decoder
