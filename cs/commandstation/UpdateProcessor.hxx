@@ -100,4 +100,31 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
   unsigned hasRefreshSource_ : 1;
 };
 
+/** This flow can be used to take all entries that show up in a FixedPool and
+ * send them (empty) to a flow like the updateloop above. */
+template<class T>
+class PoolToQueueFlow : public StateFlowBase {
+ public:
+  PoolToQueueFlow(Service* service, FixedPool* source, FlowInterface<T>* dest)
+      : StateFlowBase(service),
+        source_(source),
+        dest_(dest) {
+    get_next_entry();
+  }
+
+ private:
+  Action get_next_entry() {
+    return allocate_and_call(dest_, STATE(got_entry), source_);
+  }
+
+  Action got_entry() {
+    auto* b = get_allocation_result(dest_);
+    dest_->send(b);
+    return get_next_entry();
+  }
+
+  FixedPool* source_;
+  FlowInterface<T>* dest_;
+};
+
 }  // namespace commandstation
