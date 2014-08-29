@@ -55,10 +55,11 @@ static const auto ADC_PERIPH = SYSCTL_PERIPH_ADC0;
 static const auto ADCPIN_PERIPH = SYSCTL_PERIPH_GPIOK;
 static const auto ADCPIN_BASE = GPIO_PORTK_BASE;
 static const auto ADCPIN_NUM = GPIO_PIN_0;
+static const auto ADCPIN_NUM_ALT = GPIO_PIN_2;
 static const auto ADCPIN_CH = ADC_CTL_CH16;
 static const auto ADC_INTERRUPT = INT_ADC0SS3;
 
-static const auto SHUTDOWN_CURRENT_AMPS = 0.7;
+static const auto SHUTDOWN_CURRENT_AMPS = 1.5;
 // ADC value at which we turn off the output.
 static const unsigned SHUTDOWN_LIMIT = (SHUTDOWN_CURRENT_AMPS * 0.2 / 3.3) * 0xfff;
 // We try this many times to reenable after a short.
@@ -84,6 +85,7 @@ class TivaShortDetectionModule : public StateFlowBase {
     SysCtlPeripheralEnable(ADC_PERIPH);
     SysCtlPeripheralEnable(ADCPIN_PERIPH);
     GPIOPinTypeADC(ADCPIN_BASE, ADCPIN_NUM);
+    GPIOPinTypeADC(ADCPIN_BASE, ADCPIN_NUM_ALT);
 
     // Sets ADC to 16 MHz clock.
     //ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PLL | ADC_CLOCK_RATE_FULL, 30);
@@ -174,5 +176,25 @@ void adc0_seq3_interrupt_handler(void) {
 }
 
 
+class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
+ public:
+  TivaTrackPowerOnOffBit(uint64_t event_on, uint64_t event_off)
+      : BitEventInterface(event_on, event_off) {}
+
+  virtual bool GetCurrentState() { return query_dcc(); }
+  virtual void SetState(bool new_value) {
+    if (new_value) {
+      enable_dcc();
+    } else {
+      disable_dcc();
+    }
+  }
+
+  virtual nmranet::Node* node()
+  {
+    extern nmranet::DefaultNode g_node;
+    return &g_node;
+  }
+};
 
 #endif // _TIVA_SHORTDETECTION_HXX_
