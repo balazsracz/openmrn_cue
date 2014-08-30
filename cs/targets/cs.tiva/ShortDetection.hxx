@@ -53,10 +53,10 @@ static const auto ADC_BASE = ADC0_BASE;
 static const auto ADC_PERIPH = SYSCTL_PERIPH_ADC0;
 
 static const auto ADCPIN_PERIPH = SYSCTL_PERIPH_GPIOK;
-static const auto ADCPIN_BASE = GPIO_PORTK_BASE;
-static const auto ADCPIN_NUM = GPIO_PIN_0;
-static const auto ADCPIN_NUM_ALT = GPIO_PIN_2;
-static const auto ADCPIN_CH = ADC_CTL_CH16;
+static const auto ADCPIN_BASE = GPIO_PORTB_BASE;
+static const auto ADCPIN_NUM = GPIO_PIN_5;
+//static const auto ADCPIN_NUM_ALT = GPIO_PIN_1;
+static const auto ADCPIN_CH = ADC_CTL_CH11;
 static const auto ADC_INTERRUPT = INT_ADC0SS3;
 
 static const auto SHUTDOWN_CURRENT_AMPS = 1.5;
@@ -84,8 +84,18 @@ class TivaShortDetectionModule : public StateFlowBase {
 
     SysCtlPeripheralEnable(ADC_PERIPH);
     SysCtlPeripheralEnable(ADCPIN_PERIPH);
-    GPIOPinTypeADC(ADCPIN_BASE, ADCPIN_NUM);
-    GPIOPinTypeADC(ADCPIN_BASE, ADCPIN_NUM_ALT);
+
+    GPIODirModeSet(ADCPIN_BASE, ADCPIN_NUM, GPIO_DIR_MODE_HW);
+    GPIOPadConfigSet(ADCPIN_BASE, ADCPIN_NUM, GPIO_STRENGTH_2MA,
+                     GPIO_PIN_TYPE_ANALOG);
+
+    auto kport = GPIO_PORTK_BASE;
+    auto kpin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3;
+    GPIODirModeSet(kport, kpin, GPIO_DIR_MODE_HW);
+    GPIOPadConfigSet(kport, kpin, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_ANALOG);
+
+    /*GPIOPinTypeADC(ADCPIN_BASE, ADCPIN_NUM);
+      GPIOPinTypeADC(kport, kpin);*/
 
     // Sets ADC to 16 MHz clock.
     //ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PLL | ADC_CLOCK_RATE_FULL, 30);
@@ -132,6 +142,7 @@ class TivaShortDetectionModule : public StateFlowBase {
     }
     if (adc_value[0] > SHUTDOWN_LIMIT) {
       disable_dcc();
+      LOG(INFO, "disable value: %04" PRIx32, adc_value[0]);
       ++num_disable_tries_;
       if (num_disable_tries_ < OVERCURRENT_RETRY) {
         return call_immediately(STATE(retry_wait));
