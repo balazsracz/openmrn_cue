@@ -76,7 +76,8 @@ class TivaShortDetectionModule : public StateFlowBase {
       : StateFlowBase(s),
         timer_(this),
         period_(period),
-        num_disable_tries_(0) {
+        num_disable_tries_(0),
+        num_overcurrent_tests_(0) {
     HASSERT(g_short_detector == nullptr);
     g_short_detector = this;
 
@@ -136,21 +137,28 @@ class TivaShortDetectionModule : public StateFlowBase {
     uint32_t adc_value[1];
     adc_value[0] = 0;
     ADCSequenceDataGet(ADC_BASE, SEQUENCER, adc_value);
+    if (adc_value[0] > SHUTDOWN_LIMIT) {
+      if (++num_overcurrent_tests_ >= 3) {
+        disable_dcc();
+        LOG(INFO, "disable value: %04" PRIx32, adc_value[0]);
+        ++num_disable_tries_;
+        if (num_disable_tries_ < OVERCURRENT_RETRY) {
+          return call_immediately(STATE(retry_wait));
+        } else {
+          return call_immediately(STATE(shorted));
+        }
+      } else {
+        // If we measured an overcurrent situation, we start another conversion
+        // straight away.
+        return call_immediately(STATE(start_conversion));
+      }
+    } else {
+      num_overcurrent_tests_ = 0;
+    }
     if (os_get_time_monotonic() > next_report_) {
       LOG(INFO, "adc value: %04" PRIx32, adc_value[0]);
       next_report_ = os_get_time_monotonic() + MSEC_TO_NSEC(250);
     }
-    if (adc_value[0] > SHUTDOWN_LIMIT) {
-      disable_dcc();
-      LOG(INFO, "disable value: %04" PRIx32, adc_value[0]);
-      ++num_disable_tries_;
-      if (num_disable_tries_ < OVERCURRENT_RETRY) {
-        return call_immediately(STATE(retry_wait));
-      } else {
-        return call_immediately(STATE(shorted));
-      }
-    }
-
     return call_immediately(STATE(start_timer));
   }
 
@@ -174,6 +182,7 @@ class TivaShortDetectionModule : public StateFlowBase {
   StateFlowTimer timer_;
   long long period_;
   uint8_t num_disable_tries_;
+  uint8_t num_overcurrent_tests_;
   long long next_report_;
 };
 
