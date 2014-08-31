@@ -87,7 +87,7 @@
 
 TivaDCC dcc_hw("/dev/mainline", TIMER1_BASE, TIMER0_BASE, INT_TIMER0A,
                INT_TIMER1A, (uint8_t*)(GPIO_PORTQ_BASE + (GPIO_PIN_0 << 2)), 16,
-               500, 500);
+               500, 2500);
 
 #define STANDALONE
 
@@ -266,8 +266,8 @@ nmranet::TrainService traction_service(&g_if_can);
 //dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 //nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
 //dcc::Dcc28Train train_Re460(dcc::DccShortAddress(22));
-dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
-nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
+//dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
+//nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
 
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
@@ -275,7 +275,7 @@ mobilestation::TrainDb train_db;
 CanIf can1_interface(&g_service, &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 
-//mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
+mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
 
 
 void mydisable()
