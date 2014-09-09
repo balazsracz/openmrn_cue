@@ -1,0 +1,1 @@
+../../../../openmrn/boards/ti-bracz-cs-123/target.ld

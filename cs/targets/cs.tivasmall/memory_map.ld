@@ -1,0 +1,1 @@
+../../../../openmrn/boards/ti-bracz-cs-123/memory_map.ld
