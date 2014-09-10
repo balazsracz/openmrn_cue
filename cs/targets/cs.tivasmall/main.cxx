@@ -152,12 +152,20 @@ extern "C" {
 extern insn_t automata_code[];
 }
 
-
 HubFlow stdout_hub(&g_service);
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
 extern "C" {
+
 void log_output(char* buf, int size) {
+    if (size <= 0) return;
+    PacketBase pkt(size + 1);
+    pkt[0] = CMD_VCOM1;
+    memcpy(pkt.buf() + 1, buf, size);
+    PacketQueue::instance()->TransmitPacket(pkt);
+}
+
+void xx_log_output(char* buf, int size) {
     if (size <= 0) return;
     auto* b = stdout_hub.alloc();
     HASSERT(b);
@@ -168,7 +176,7 @@ void log_output(char* buf, int size) {
 }
 
 namespace bracz_custom {
-void send_host_log_event(HostLogEvent e) {
+void xx_send_host_log_event(HostLogEvent e) {
   log_output((char*)&e, 1);
 }
 }
@@ -275,7 +283,7 @@ mobilestation::TrainDb train_db;
 CanIf can1_interface(&g_service, &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 
-//mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
+mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
 
 
 void mydisable()
@@ -307,7 +315,7 @@ int appl_main(int argc, char* argv[])
     //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
-    FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
+    //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 
     int mainline = open("/dev/mainline", O_RDWR);
     HASSERT(mainline > 0);
