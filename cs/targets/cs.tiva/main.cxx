@@ -332,8 +332,8 @@ int appl_main(int argc, char* argv[])
     // Bootstraps the alias allocation process.
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-    //AutomataRunner runner(&g_node, automata_code);
-    //resume_all_automata();
+    AutomataRunner runner(&g_node, automata_code);
+    resume_all_automata();
 
 #ifdef STANDALONE
     // Start dcc output
