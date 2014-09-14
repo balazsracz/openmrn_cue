@@ -31,6 +31,9 @@
 #include "nmranet/EventService.hxx"
 #include "nmranet/TractionDefs.hxx"
 
+extern int debug_variables;
+int debug_variables __attribute__((weak)) = 0;
+
 // This write helper will only ever be used synchronously.
 static nmranet::WriteHelper automata_write_helper;
 static SyncNotifiable g_notify_wait;
