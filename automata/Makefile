@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32 -Wall
+CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32 -Wall -isystem /opt/gmock/default/gtest/include
 
 OBJS=system.o control-logic.o registry.o
 
