@@ -17,13 +17,13 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
     "ICE 2", MARKLIN_NEW | PUSHPULL }, // todo: check fnbits
   // 4
   { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here // LD-32 decoder
+    "RE 460 TSR", DCC_128 }, // todo: there is no beamer here // LD-32 decoder
   // 5
   { 32, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
     "RTS RAILTR", MARKLIN_NEW },  // Marklin Fx decoder
   // 6
   { 61, { 0, 1, 2, 3, 4,  0xff, }, { LIGHT, ENGINE, LIGHT2, HONK, 7,  0xff, },
-    "MAV M61", MARKLIN_NEW /*DCC_28*/ }, // todo: check fn definition and type mapping // ESU LokSound V3.5
+    "MAV M61", DCC_128 }, // todo: check fn definition and type mapping // ESU LokSound V3.5
   // 7
   { 46, { 0, 1, 2, 3, 4, 5, 0xff, }, { LIGHT, HONK, ENGINE, FNT11, ABV, BEAMER,  0xff, },
     "RE 460 118-2", MFX | PUSHPULL },  // todo: there is F5 with beamer that can't be switched.
@@ -38,13 +38,13 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
     "DHG 700", MARKLIN_NEW },
   // id 11
   { 29, { 0, 4,  0xff }, { LIGHT, ABV,  0xff, },
-    "BR 290 022-3", MFX },
+    "BR 290 022-3", MFX }, // Marklin mfx
   // id 12
   { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
     "Am 843 093-6", DCC_28 },
   // id 13
   { 27, { 0, 4,  0xff, }, { LIGHT, ABV,  0xff, },
-    "WLE ER20", MARKLIN_NEW },
+    "WLE ER20", MARKLIN_NEW }, // Marklin fx
   // id 14
   { 58, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "185 595-6", DCC_28 }, // NOTE: hardware is programmed for addr 18 // I think this engine was returned to Acacio
