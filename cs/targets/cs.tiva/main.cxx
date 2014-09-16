@@ -304,7 +304,7 @@ int appl_main(int argc, char* argv[])
 #else
     PacketQueue::initialize("/dev/serUSB0");
 #endif
-    //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
     FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
