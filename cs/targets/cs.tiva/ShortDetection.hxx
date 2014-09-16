@@ -204,8 +204,10 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
   virtual bool GetCurrentState() { return query_dcc(); }
   virtual void SetState(bool new_value) {
     if (new_value) {
+      LOG(WARNING, "enable dcc");
       enable_dcc();
     } else {
+      LOG(WARNING, "disable dcc");
       disable_dcc();
     }
   }
