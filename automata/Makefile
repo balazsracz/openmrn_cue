@@ -58,6 +58,8 @@ flash: bracz-layout3h-logic
 bin: bracz-layout3h-logic
 	./bracz-layout3h-logic
 
+bracz-layout3h-logic.cout: bin
+
 #bin: convention-logic
 #	./convention-logic
 

@@ -925,7 +925,7 @@ int main(int argc, char** argv) {
   fwrite(output.data(), 1, output.size(), f);
   fclose(f);
 
-  f = fopen("automata.cout", "wb");
+  f = fopen("bracz-layout3h-logic.cout", "wb");
   fprintf(f, "const char automata_code[] = {\n  ");
   int c = 0;
   for (char t : output) {
