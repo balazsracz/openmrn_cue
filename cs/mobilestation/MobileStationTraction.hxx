@@ -48,7 +48,8 @@ class TrainDb;
 
 class MobileStationTraction : public Service {
  public:
-  MobileStationTraction(CanIf* mosta_if, nmranet::If* nmranet_if, TrainDb* train_db, nmranet::Node* query_node);
+  MobileStationTraction(CanIf* mosta_if, nmranet::If* nmranet_if,
+                        TrainDb* train_db, nmranet::Node* query_node);
   ~MobileStationTraction();
 
   nmranet::If* nmranet_if() {
@@ -67,8 +68,35 @@ class MobileStationTraction : public Service {
     return node_;
   }
 
+  enum EstopSource {
+    ESTOP_FROM_MOSTA = 1,
+    ESTOP_FROM_OPENLCB = 2,
+    ESTOP_FROM_LOCAL = 4,
+  };
+  /** Changes the estop state. This may trigger a message on one or more
+   * buses
+   * @param source is the bus from which the state change command arrived.
+   * @param is_stopped if true, set state to emergency stop.*/
+  void set_estop_state(EstopSource source, bool is_stopped);
+
+  /** @returns the stored estop state for a given source. true = estop.*/
+  bool get_estop_state(EstopSource source) {
+    return estopState_ & source;
+  }
+
  private:
-  Executable* handler_;   //< The implementation flow.
+  void update_estop_bit(EstopSource source, bool is_stopped) {
+    if (is_stopped) {
+      estopState_ |= source;
+    } else {
+      estopState_ &= ~source;
+    }
+  }
+
+  /** Bitmask on EStopSource. If a bit is set, that state is in estop. */
+  uint8_t estopState_;
+  struct Impl;
+  Impl* impl_;
   nmranet::If* nmranetIf_;
   CanIf* mostaIf_;
   TrainDb* trainDb_;

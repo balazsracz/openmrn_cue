@@ -39,15 +39,16 @@
 
 #include <inttypes.h>
 
-#include "utils/constants.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "nmranet/Defs.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/If.hxx"
 #include "nmranet/Node.hxx"
-#include "nmranet/Velocity.hxx"
-#include "nmranet/TractionDefs.hxx"
 #include "nmranet/TractionClient.hxx"
+#include "nmranet/TractionDefs.hxx"
+#include "nmranet/Velocity.hxx"
 #include "nmranet/WriteHelper.hxx"
+#include "utils/constants.hxx"
 
 #include "utils/CanIf.hxx"
 
@@ -60,8 +61,7 @@ class TractionImpl : public IncomingFrameFlow {
   TractionImpl(MobileStationTraction* s)
       : IncomingFrameFlow(s),
         tractionClient_(service()->nmranet_if(), service()->node()),
-        timer_(this),
-        lastEstopState_(0xFF) {
+        timer_(this) {
     service()->mosta_if()->frame_dispatcher()->register_handler(
         this, TRACTION_SET_ID, TRACTION_SET_MASK);
     service()->mosta_if()->frame_dispatcher()->register_handler(
@@ -78,7 +78,7 @@ class TractionImpl : public IncomingFrameFlow {
     return static_cast<MobileStationTraction*>(IncomingFrameFlow::service());
   }
 
- private:
+ public:
   enum {
     TRACTION_CMD_SHIFT = 7,
     TRACTION_CMD_MASK = 7,  // apply after shift, 3 bits.
@@ -94,6 +94,7 @@ class TractionImpl : public IncomingFrameFlow {
     TRACTION_TIMEOUT_MSEC = 500,
   };
 
+ private:
   static const uint64_t EVENT_POWER_ON = 0x0501010114FF0004ULL;
   static const uint64_t EVENT_POWER_OFF = 0x0501010114FF0005ULL;
 
@@ -104,11 +105,11 @@ class TractionImpl : public IncomingFrameFlow {
 
     if ((can_id & TRACTION_ESTOP_MASK) == (TRACTION_ESTOP_ID & TRACTION_ESTOP_MASK)) {
       if (frame().can_dlc == 3 && frame().data[0] == 1 &&
-          frame().data[1] == 0 && lastEstopState_ != frame().data[2]) {
-        LOG(ERROR, "estop command %d", frame().data[2]);
-        return allocate_and_call(
-            service()->nmranet_if()->addressed_message_write_flow(),
-            STATE(send_estop_command));
+          frame().data[1] == 0) {
+        //&& lastEstopState_ != frame().data[2]) {
+        service()->set_estop_state(MobileStationTraction::ESTOP_FROM_MOSTA,
+                                   frame().data[2]);
+        return release_and_exit();
       }
     } else if ((can_id & TRACTION_SET_MASK) == (TRACTION_SET_ID & TRACTION_SET_MASK)) {
       if (!service()->train_db()->is_train_id_known(train_id())) {
@@ -127,18 +128,6 @@ class TractionImpl : public IncomingFrameFlow {
     } else {
       LOG(ERROR, "unexpected command 0x%08" PRIx32 " masked 0x%08" PRIx32 " compare 0x%08x", can_id, (can_id & TRACTION_ESTOP_MASK), TRACTION_ESTOP_ID);
     }
-    return release_and_exit();
-  }
-
-  Action send_estop_command() {
-    auto* b = get_allocation_result(
-        service()->nmranet_if()->global_message_write_flow());
-    b->data()->reset(
-        nmranet::Defs::MTI_EVENT_REPORT, service()->node()->node_id(),
-        nmranet::eventid_to_buffer(frame().data[2] ? nmranet::TractionDefs::EMERGENCY_STOP_EVENT
-                                                   : nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
-    service()->nmranet_if()->global_message_write_flow()->send(b);
-    lastEstopState_ = frame().data[2];
     return release_and_exit();
   }
 
@@ -297,21 +286,98 @@ class TractionImpl : public IncomingFrameFlow {
   StateFlowTimer timer_;
   // The third byte of the Mosta response.
   uint8_t responseByte_;
-  uint8_t lastEstopState_;
 };
+
+
+class TrackPowerOnOffBit : public nmranet::BitEventInterface {
+ public:
+  TrackPowerOnOffBit(MobileStationTraction* s)
+      : BitEventInterface(nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
+                          nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT),
+        service_(s) {}
+
+  virtual bool GetCurrentState() {
+    return service_->get_estop_state(MobileStationTraction::ESTOP_FROM_OPENLCB);
+  }
+
+  virtual void SetState(bool new_value) {
+    service_->set_estop_state(MobileStationTraction::ESTOP_FROM_OPENLCB,
+                              new_value);
+  }
+
+  virtual nmranet::Node* node() { return service_->node(); }
+
+ private:
+  MobileStationTraction* service_;
+};
+
+struct MobileStationTraction::Impl {
+  Impl(MobileStationTraction* parent)
+      : handler_(parent)
+      , lcb_power_bit_(parent)
+      , lcb_power_bit_consumer_(&lcb_power_bit_) {}
+  ~Impl() {}
+  TractionImpl handler_;   //< The implementation flow.
+  TrackPowerOnOffBit lcb_power_bit_;
+  nmranet::BitEventConsumer lcb_power_bit_consumer_;
+};
+
+void MobileStationTraction::set_estop_state(EstopSource source,
+                                            bool is_stopped) {
+  // We set the stored state for that source.
+  update_estop_bit(source, is_stopped);
+  EstopSource bit;
+  bool last_state;
+  bit = ESTOP_FROM_MOSTA;
+  last_state = estopState_ & bit;
+  if (last_state != is_stopped) {
+    // Sends update to MoSta.
+    LOG(ERROR, "estop command %d to MoSta", is_stopped);
+    auto* b = mosta_if()->frame_write_flow()->alloc();
+    struct can_frame* f = b->data()->mutable_frame();
+    SET_CAN_FRAME_ID_EFF(*f, TractionImpl::TRACTION_ESTOP_ID);
+    SET_CAN_FRAME_EFF(*f);
+    f->can_dlc = 3;
+    f->data[0] = 1;
+    f->data[1] = 0;
+    f->data[2] = is_stopped ? 1 : 0;
+    mosta_if()->frame_write_flow()->send(b);
+
+    update_estop_bit(bit, is_stopped);
+  }
+  bit = ESTOP_FROM_OPENLCB;
+  last_state = estopState_ & bit;
+  if (last_state != is_stopped) {
+    // Sends update to OpenLCB.
+    LOG(ERROR, "estop command %d to OpenLCB", is_stopped);
+    auto* b = nmranet_if()->global_message_write_flow()->alloc();
+    b->data()->reset(
+        nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
+        nmranet::eventid_to_buffer(
+            is_stopped
+                ? nmranet::TractionDefs::EMERGENCY_STOP_EVENT
+                : nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
+    nmranet_if()->global_message_write_flow()->send(b);
+
+    update_estop_bit(bit, is_stopped);
+  }
+}
+
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
                                              nmranet::If* nmranet_if,
                                              TrainDb* train_db,
                                              nmranet::Node* query_node)
     : Service(nmranet_if->dispatcher()->service()->executor()),
+      estopState_(0),
       nmranetIf_(nmranet_if),
       mostaIf_(mosta_if),
       trainDb_(train_db),
       node_(query_node) {
-  handler_ = new TractionImpl(this);
+  impl_ = new Impl(this);
+  //impl_->handler_ = new TractionImpl(this);
 }
 
-MobileStationTraction::~MobileStationTraction() { delete handler_; }
+MobileStationTraction::~MobileStationTraction() { delete impl_; }
 
 }  // namespace mobilestation
