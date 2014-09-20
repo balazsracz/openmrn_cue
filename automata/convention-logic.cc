@@ -448,7 +448,7 @@ int main(int argc, char** argv) {
   fprintf(f, "};\n");
   fclose(f);
 
-  if (automata::GetOffsetMap()) {
+  /*if (automata::GetOffsetMap()) {
     f = fopen("variables.txt", "w");
     assert(f);
     map<int, string>& m(*automata::GetOffsetMap());
@@ -456,7 +456,7 @@ int main(int argc, char** argv) {
       fprintf(f, "%04x: %s\n", it.first * 2, it.second.c_str());
     }
     fclose(f);
-  }
+    }*/
 
   f = fopen("jmri-out.xml", "w");
   assert(f);
