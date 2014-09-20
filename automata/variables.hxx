@@ -347,8 +347,8 @@ class ByteImportVariable : public EventVariableBase {
   string name_;
 };
 
-void ClearOffsetMap();
-map<int, string>* GetOffsetMap();
+void ClearEventMap();
+map<uint64_t, string>* GetEventMap();
 
 }  // namespace
 

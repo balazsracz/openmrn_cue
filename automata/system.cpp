@@ -164,36 +164,36 @@ protected:
     }
     };*/
 
-typedef map<int, string> OfsMap;
-OfsMap* g_ofs_map = nullptr;
+typedef map<uint64_t, string> EventMap;
+EventMap* g_event_map = nullptr;
 
 GlobalVariable* EventBlock::Allocator::Allocate(const string& name) const {
   int ofs = next_entry_;
   BlockVariable* v = new BlockVariable(this, name);
-  if (!g_ofs_map) {
-    g_ofs_map = new OfsMap;
+  if (!g_event_map) {
+    g_event_map = new EventMap;
   }
-  (*g_ofs_map)[ofs] = v->name();
+  (*g_event_map)[block()->event_base() + ofs * 2] = v->name();
   return v;
 }
 
-void ClearOffsetMap() {
-  if (g_ofs_map) g_ofs_map->clear();
+void ClearEventMap() {
+  if (g_event_map) g_event_map->clear();
 }
 
-map<int, string>* GetOffsetMap() {
-  return g_ofs_map;
+EventMap* GetEventMap() {
+  return g_event_map;
 }
 
 }  // namespace automata
 
 namespace nmranet {
-const string& GetNameForOffset(int ofs) {
-  static string empty;
-  automata::OfsMap::const_iterator it = automata::g_ofs_map->find(ofs);
-  if (it != automata::g_ofs_map->end()) {
+const string& GetNameForEvent(uint64_t event) {
+  automata::EventMap::const_iterator it = automata::g_event_map->find(event);
+  if (it != automata::g_event_map->end()) {
     return it->second;
   } else {
+    static string empty;
     return empty;
   }
 }
