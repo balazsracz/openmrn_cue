@@ -947,11 +947,68 @@ class CircleTrain : public TrainSchedule {
   ByteImportVariable stored_speed_;
 };
 
+void IfWWB3EntryFree(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
+}
+
+auto g_wwb3_entry_free = NewCallback(&IfWWB3EntryFree);
+
+class EWIVPendelzug : public TrainSchedule {
+ public:
+  EWIVPendelzug(const string& name, uint16_t train_id, uint8_t default_speed)
+      : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
+                      train_perm.Allocate(name, 16, 8),
+                      train_tmp.Allocate(name, 12, 4), &stored_speed_),
+        stored_speed_(&brd, "speed." + name,
+                      BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_A301, &Block_WWB3.b_, &g_wwb3_entry_free);
+    SwitchTurnout(Turnout_WWW1.b.magnet(), false);
+    StopAndReverseAtStub(&Block_WWB3);
+
+    AddEagerBlockSequence({&Block_WWB3.b_, BLOCK_SEQUENCE4R},
+                          &g_not_paused_condition);
+
+    // in
+    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), false);
+    AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), true);
+
+
+    // back->front
+    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
+                               &g_loop_condition);
+    SwitchTurnout(Turnout_XXW8.b.magnet(), true);
+    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
+                               &g_loop_condition);
+    SwitchTurnout(Turnout_XXW8.b.magnet(), false);
+
+    // front->back
+    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1,
+                               &g_loop_condition);
+    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1x,
+                               &g_loop_condition);
+
+    // out
+    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
+    AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
+    AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
+  }
+
+  ByteImportVariable stored_speed_;
+};
+
 CircleTrain train_icn("icn", 50, 16);
 CircleTrain train_re66("re_6_6", 66, 32);
 CircleTrain train_rts("rts_railtraction", 32, 20);
 CircleTrain train_re460hag("Re460_HAG", 26, 32);
 CircleTrain train_re465("Re465", 47, 32);
+EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 15);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
