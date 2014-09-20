@@ -307,9 +307,11 @@ void SimpleFollowStrategy(
       .ActReg1(aut->ImportVariable(src->request_green()));*/
 }
 
+EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm");
+EventBlock logic2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
-EventBlock::Allocator train_perm(logic.allocator()->Allocate("perm", 256));
-EventBlock::Allocator train_tmp(logic.allocator()->Allocate("train", 128));
+EventBlock::Allocator& train_perm(*perm.allocator());
+EventBlock::Allocator train_tmp(logic2.allocator()->Allocate("train", 128));
 
 MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
@@ -976,9 +978,9 @@ int main(int argc, char** argv) {
 
   f = fopen("variables.txt", "w");
   assert(f);
-  map<int, string>& m(*automata::GetOffsetMap());
+  map<uint64_t, string>& m(*automata::GetEventMap());
   for (const auto& it : m) {
-    fprintf(f, "%04x: %s\n", it.first * 2, it.second.c_str());
+    fprintf(f, "%016llx: %s\n", it.first, it.second.c_str());
   }
   fclose(f);
 
