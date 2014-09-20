@@ -118,6 +118,9 @@ I2CSignal signal_YYB2_adv(&b7, 5, "YY.B2.adv");
 I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main");
 I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
 
+//I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
+//I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
+
 
 PhysicalSignal A360(&b2.InBrownBrown, &b2.RelBlue,
                     &signal_A360_main.signal, &signal_A360_adv.signal,
@@ -136,6 +139,10 @@ PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen,
 PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen,
                      &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal WWB3(&b6.InOraGreen, &b6.RelBlue,
+                    nullptr, nullptr,
+                    nullptr, nullptr, nullptr, nullptr);
+
 PhysicalSignal B421(&n8.d2, &n8.r2,
                     &signal_B421_main.signal, &signal_B421_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
@@ -308,11 +315,25 @@ MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 
+MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &b6.ActGreenGreen, &b6.ActGreenRed);
+StandardMovableTurnout Turnout_WWW1(
+    &brd, EventBlock::Allocator(logic.allocator(), "WW.W1", 40), &Magnet_WWW1);
+
+StandardFixedTurnout Turnout_WWW2(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "WW.W2", 40),
+                                  FixedTurnout::TURNOUT_CLOSED);
+
+StandardFixedTurnout Turnout_WWW5(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "WW.W5", 40),
+                                  FixedTurnout::TURNOUT_CLOSED);
+StubBlock Block_WWB3(&brd, &WWB3, &b6.InOraGreen, logic.allocator(), "WW.B3");
 StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
+
 StandardBlock Block_A301(&brd, &A301, logic.allocator(), "A301");
 StandardBlock Block_A321(&brd, &A321, logic.allocator(), "A321");
 StandardBlock Block_A347(&brd, &A347, logic.allocator(), "A347");
 StandardBlock Block_A360(&brd, &A360, logic.allocator(), "A360");
+
 StandardBlock Block_B421(&brd, &B421, logic.allocator(), "B421");
 StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
 StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
@@ -365,11 +386,15 @@ StandardBlock Block_XXB1(&brd, &XXB1, logic.allocator(), "XX.B1");
 StandardBlock Block_XXB2(&brd, &XXB2, logic.allocator(), "XX.B2");
 StandardBlock Block_XXB3(&brd, &XXB3, logic.allocator(), "XX.B3");
 
-#define BLOCK_SEQUENCE &Block_A360, &Block_A347, &Block_A321, &Block_A301, &Block_WWB14, &Block_B421, &Block_B447, &Block_B475
+#define BLOCK_SEQUENCE3 &Block_A360, &Block_A347, &Block_A321, &Block_A301
+#define BLOCK_SEQUENCE4R &Block_B421, &Block_B447, &Block_B475
+#define BLOCK_SEQUENCE4 &Block_WWB14, BLOCK_SEQUENCE4R
 
-std::vector<StandardBlock*> block_sequence = {BLOCK_SEQUENCE};
+std::vector<StandardBlock*> block_sequence3 = {BLOCK_SEQUENCE3};
+std::vector<StandardBlock*> block_sequence4 = {BLOCK_SEQUENCE4};
 
-bool ignored1 = BindSequence({BLOCK_SEQUENCE});
+bool ignored1 = BindSequence({BLOCK_SEQUENCE3});
+bool ignored2 = BindSequence({BLOCK_SEQUENCE4R});
 /*bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
 bool ignored3 = Block_XXB1.side_a()->Bind(Turnout_XXW8.b.side_closed());
 bool ignored4 = Block_XXB3.side_a()->Bind(Turnout_XXW8.b.side_thrown());
@@ -398,7 +423,15 @@ bool ign =
                {Det_380.side_b(), Block_A360.side_a()},
                {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
                {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
-               {Block_B475.side_b(), Turnout_W481.b.side_points()}, });
+               {Block_B475.side_b(), Turnout_W481.b.side_points()},
+               {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
+               {Block_WWB14.side_a(), Turnout_WWW1.b.side_thrown()},
+               {Turnout_WWW2.b.side_thrown(), Turnout_WWW1.b.side_closed()},
+               {Turnout_WWW2.b.side_closed(), Block_B421.side_a()},
+               {Turnout_WWW2.b.side_points(), Turnout_WWW5.b.side_points()},
+               {Turnout_WWW5.b.side_closed(), Block_WWB3.entry()},
+               {Turnout_WWW5.b.side_thrown(), Block_WWB14.side_b()},
+                   });
 
 /*DefAut(control_logic, brd, {
   StateRef StWaiting(4);
@@ -877,7 +910,10 @@ class CircleTrain : public TrainSchedule {
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
-    AddEagerBlockSequence({BLOCK_SEQUENCE}, &g_not_paused_condition);
+    AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_A301, &Block_WWB14, &g_not_paused_condition);
+    SwitchTurnout(Turnout_WWW1.b.magnet(), true);
+    AddEagerBlockSequence({BLOCK_SEQUENCE4}, &g_not_paused_condition);
 
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
