@@ -342,8 +342,8 @@ class StraightTrackWithDetector : public StraightTrack {
   // interface `from'. Returns NULL if no such detector was found.
   virtual const GlobalVariable *LookupFarDetector(
       const CtrlTrackInterface *from) {
-    // TODO(bracz): this should actually be propagated instead of NULLing.
-    return NULL;
+    if (!FindOtherSide(from)->binding()) return nullptr;
+    return FindOtherSide(from)->binding()->LookupFarDetector();
   }
 
  protected:
@@ -386,6 +386,7 @@ class StraightTrackShort : public StraightTrack {
 
   virtual const GlobalVariable *LookupCloseDetector(
       const CtrlTrackInterface *from) {
+    if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupCloseDetector();
   }
 
@@ -393,6 +394,7 @@ class StraightTrackShort : public StraightTrack {
   // interface `from'. Returns NULL if no such detector was found.
   virtual const GlobalVariable *LookupFarDetector(
       const CtrlTrackInterface *from) {
+    if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
 };
@@ -414,6 +416,7 @@ class StraightTrackLong : public StraightTrack {
   // interface `from'. Returns NULL if no such detector was found.
   virtual const GlobalVariable *LookupFarDetector(
       const CtrlTrackInterface *from) {
+    if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupNextDetector();
   }
 };
@@ -438,6 +441,7 @@ class SignalPiece : public StraightTrackShort {
 
   virtual const GlobalVariable *LookupCloseDetector(
       const CtrlTrackInterface *from) {
+    if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupCloseDetector();
   }
 
@@ -445,6 +449,7 @@ class SignalPiece : public StraightTrackShort {
   // interface `from'. Returns NULL if no such detector was found.
   virtual const GlobalVariable *LookupFarDetector(
       const CtrlTrackInterface *from) {
+    if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
 
