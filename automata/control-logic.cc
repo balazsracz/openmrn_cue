@@ -787,6 +787,34 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
       .ActState(StWaiting);
 }
 
+void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
+  // This will set the need_reverse to 1 just before the move.
+  auto* need_reverse = aut->ImportVariable(need_reverse_.get());
+  MapCurrentBlockPermaloc(&dest->b_);
+  Def()
+      .IfState(StMoving)
+      .IfReg1(current_block_permaloc_)
+      .ActReg1(need_reverse);
+  // This will flip the is_reversed permaloc once during the StWaiting state.
+  // We make use of the fact that we are before any state transitions outwards
+  // of the stub block.
+  auto* is_reversed = aut->ImportVariable(is_reversed_.get());
+  Def()
+      .IfState(StWaiting)
+      .IfReg1(current_block_permaloc_)
+      .IfReg1(*need_reverse)
+      .IfReg0(*is_reversed)
+      .ActReg1(is_reversed)
+      .ActReg0(need_reverse);
+  Def()
+      .IfState(StWaiting)
+      .IfReg1(current_block_permaloc_)
+      .IfReg1(*need_reverse)
+      .IfReg1(*is_reversed)
+      .ActReg0(is_reversed)
+      .ActReg0(need_reverse);
+}
+
 void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
   ScheduleLocation* loc = AllocateOrGetLocationByBlock(source);
   Def().ActImportVariable(*loc->permaloc(), current_block_permaloc_);

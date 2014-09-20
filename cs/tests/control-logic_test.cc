@@ -2198,6 +2198,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
       AddBlockTransitionOnPermit(t_->TopB.b(), t_->RStub.b(),
                                  &gate_stub_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
+      StopAndReverseAtStub(&t_->RStub.b_);
+
       AddEagerBlockTransition(t_->RRight.b(), t_->BotA.b());
       AddEagerBlockTransition(t_->RStub.b(), t_->BotA.b());
     }
@@ -2216,6 +2218,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   size_t i = 1;
   bool is_out = false;
   BlockInterface* last_block = blocks[0];
+  bool is_forward = true;
   for (int j = 0; j < 37; ++i, ++j) {
     BlockInterface* nblock;
     if (i == blocks.size()) {
@@ -2228,6 +2231,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
       } else {
         SetVar(*my_train.gate_stub_.granted(), true);
         nblock = &RStub;
+        is_forward = !is_forward;
       } // we went through the stub.
     } else {
       if (i > blocks.size()) {
@@ -2257,6 +2261,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
     }
     nblock->inverted_detector()->Set(false);
     Run(30);
+    EXPECT_EQ(is_forward,
+              trainImpl_.get_speed().direction() == nmranet::Velocity::FORWARD);
     if (i == blocks.size()) {
       EXPECT_FALSE(QueryVar(*my_train.gate_loop_.request()));
       EXPECT_FALSE(QueryVar(*my_train.gate_stub_.request()));

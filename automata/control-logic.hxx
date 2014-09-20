@@ -954,6 +954,7 @@ class TrainSchedule : public virtual AutomataPlugin {
         permit_granted_(aut_.ReserveVariable()),
         permit_taken_(aut_.ReserveVariable()),
         magnets_ready_(alloc_.Allocate("magnets_ready")),
+        need_reverse_(alloc_.Allocate("need_reverse")),
         outgoing_route_conditions_(
             NewCallbackPtr(this, &TrainSchedule::AddCurrentOutgoingConditions)),
         speed_var_(speed_var),
@@ -1041,6 +1042,12 @@ class TrainSchedule : public virtual AutomataPlugin {
   void AddBlockTransitionOnPermit(StandardBlock *source, StandardBlock *dest,
                                   RequestClientInterface *client,
                                   OpCallback *condition = nullptr);
+
+  // Moves the train into a stub block and turns the direction around. This
+  // should be called after the necessary turnout commands; nothing related to
+  // the previous block should be left around anymore. This must also appear
+  // before any state transitions outwards of the destination block.
+  void StopAndReverseAtStub(StubBlock* dest);
 
   // Stops the train at the destination block. This is a terminal state and
   // probably should be used for testing only.
@@ -1140,6 +1147,9 @@ class TrainSchedule : public virtual AutomataPlugin {
 
   // Used by the StTurnout state to know if all turnouts have already been set.
   std::unique_ptr<GlobalVariable> magnets_ready_;
+  // Used for the turnaround logic to figure out if we still need to switch the
+  // direction.
+  std::unique_ptr<GlobalVariable> need_reverse_;
 
   // Callback that will add all necessary checks for outgoing route setting.
   std::unique_ptr<OpCallback> outgoing_route_conditions_;
