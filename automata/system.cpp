@@ -9,6 +9,11 @@
 
 namespace automata {
 
+string* GetDebugData() {
+  static string debug_data;
+  return &debug_data;
+}
+
 __attribute__((__weak__)) int FIRST_USER_STATE_ID = 10;
 
 Board::~Board() {
@@ -17,6 +22,11 @@ Board::~Board() {
 void Board::Render(string* output) {
     RenderPreamble(output);
     RenderAutomatas(output);
+}
+
+void Board::AddAutomata(Automata* a) {
+  automatas_.push_back(AutomataInfo(*a));
+  Debug("automata %u: %s", automatas_.size() - 1, a->name().c_str());
 }
 
 void Board::RenderPreamble(string* output) {
@@ -47,12 +57,14 @@ void Board::RenderAutomatas(string* output) {
     for (auto& a: automatas_) {
         a.offset = output->size();
         assert(a.automata);
+        Debug("start automata %s", a.automata->name().c_str());
         a.automata->Render(output);
         // Put back the pointer into the table. Little-endian.
         (*output)[a.ptr_offset] = a.offset & 0xff;
         (*output)[a.ptr_offset + 1] = (a.offset >> 8) & 0xff;
     }
-    fprintf(stderr, "%d automatas, total output size: %d\n", automatas_.size(), output->size());
+    fprintf(stderr, "%d automatas, total output size: %d\n", automatas_.size(),
+            output->size());
 }
 
 Automata::LocalVariable* Automata::ImportVariable(GlobalVariable* var) {

@@ -946,6 +946,10 @@ int main(int argc, char** argv) {
   }
   fclose(f);
 
+  f = fopen("debug.txt", "w");
+  fwrite(GetDebugData()->data(), GetDebugData()->size(), 1, f);
+  fclose(f);
+
   f = fopen("jmri-out.xml", "w");
   assert(f);
   PrintAllEventVariables(f);

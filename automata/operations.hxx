@@ -78,10 +78,15 @@ public:
     Op(Automata* parent)
         : parent_(parent), output_(parent->output_) {}
 
-    Op(Automata* parent, string* output)
-        : parent_(parent), output_(output) {}
+    Op(Automata* parent, string* output, string f = "unknown", int line = 0)
+        : parent_(parent), output_(output), file_(f), line_(line) {}
 
     ~Op() {
+        if (output_) {
+          unsigned ofs = output_->size();
+          Debug("ofs %u: at %s:%d [%d?->%d]", ofs, file_.c_str(), line_,
+                ifs_.size(), acts_.size());
+        }
         CreateOperation(output_, ifs_, acts_);
     }
 
@@ -373,6 +378,9 @@ private:
     Automata* parent_;
     // This may be NULL to indicate null output.
     string* output_;
+
+    string file_;
+    int line_;
 };
 
 /*Automata::Op Automata::Def() {

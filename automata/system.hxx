@@ -22,7 +22,10 @@ using std::set;
 
 namespace automata {
 
+string* GetDebugData();
+
 string StringPrintf(const char* format, ...);
+#define Debug(...) *GetDebugData() += StringPrintf(__VA_ARGS__) + "\n"
 
 #ifndef DISALLOW_COPY_AND_ASSIGN
 //! Put this into the private section of a class to prevent the default copy
@@ -45,9 +48,7 @@ public:
     //! Generates the binary data for the entire board.
     void Render(string* output);
 
-    void AddAutomata(Automata* a) {
-        automatas_.push_back(AutomataInfo(*a));
-    }
+    void AddAutomata(Automata* a);
 
     void AddVariable(GlobalVariable* v) {
         global_variables_.push_back(v);
@@ -141,6 +142,9 @@ class Automata {
 
     void Render(string* output);
 
+  const string& name() { return name_; }
+
+
     string* output() { return output_; }
 
     class Op;
@@ -188,7 +192,7 @@ protected:
 
     LocalVariable timer_bit_;
 
-#define Def() Automata::Op(aut, aut->output())
+#define Def() Automata::Op(aut, aut->output(), __FILE__, __LINE__)
 
     string* output_;
 
