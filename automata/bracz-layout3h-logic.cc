@@ -970,8 +970,8 @@ class EWIVPendelzug : public TrainSchedule {
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     StopAndReverseAtStub(&Block_WWB3);
 
-    AddEagerBlockSequence({&Block_WWB3.b_, BLOCK_SEQUENCE4R},
-                          &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_WWB3.b_, &Block_B421, &g_wwb3_entry_free);
+    AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
 
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
@@ -1008,7 +1008,8 @@ CircleTrain train_re66("re_6_6", 66, 32);
 CircleTrain train_rts("rts_railtraction", 32, 20);
 CircleTrain train_re460hag("Re460_HAG", 26, 32);
 CircleTrain train_re465("Re465", 47, 32);
-EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 15);
+EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 20);
+EWIVPendelzug train_rbe44pendelzug("RBe4_4_ZVV", 52, 35);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
