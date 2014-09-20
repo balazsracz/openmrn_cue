@@ -32,6 +32,7 @@ class GMockBit : public ReadWriteBit {
   MOCK_METHOD4(Write, void(uint16_t arg, nmranet::Node* node, Automata* aut, bool value));
   MOCK_METHOD1(GetState, uint8_t(uint16_t arg));
   MOCK_METHOD2(SetState, void(uint16_t arg, uint8_t state));
+  MOCK_METHOD1(Initialize, void(nmranet::Node* node));
 };
 
 
@@ -48,6 +49,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
       *backend_ = value;
     }
+    void Initialize(nmranet::Node*) OVERRIDE {}
 
    private:
     bool* backend_;
@@ -63,6 +65,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
       // Ignored.
     }
+    void Initialize(nmranet::Node*) OVERRIDE {}
 
    private:
     bool* backend_;
@@ -192,7 +195,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
   }
 
   AutomataTests() {
-    automata::ClearOffsetMap();
+    automata::ClearEventMap();
     next_bit_offset_ = 4242;
     runner_ = NULL;
   }
