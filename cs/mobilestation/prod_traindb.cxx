@@ -61,14 +61,14 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
   { 66, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
     "Re 6/6 11665", DCC_128 },
   // id 19
-  { 3, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RBe 4/4 1423", DCC_28 | PUSHPULL },
+  { 52, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "RBe 4/4 1423 BL", DCC_128 }, // Viessmann basic decoder (te08 == LD32)
   // id 20
   { 24, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
     "Taurus", MARKLIN_NEW },
   // id 21
-  { 52, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
-    "RBe 4/4 1451", MARKLIN_NEW },
+  { 3, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RBe 4/4 1423", DCC_28 | PUSHPULL }, // Burned LokPilot 3.0
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
