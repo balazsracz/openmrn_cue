@@ -736,6 +736,8 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
       .IfTimerDone()
       .ActState(StStartTrain);
 
+  // TODO(balazs.racz): This can crash if the automata is in state StMoving and
+  // the operator removes all location permabits in an effort to stop the train.
   Def().IfState(StMoving)
       .IfReg1(current_block_detector_)
       .ActState(StStopTrain);
