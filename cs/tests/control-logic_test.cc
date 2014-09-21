@@ -119,6 +119,20 @@ class LogicTest : public AutomataNodeTests {
     StandardPluginAutomata aut_body;
   };
 
+  struct TestMovableDKW {
+    TestMovableDKW(LogicTest* test, const string& name)
+        : set_0(test),
+          set_1(test),
+          magnet(&test->magnet_aut_, name + ".mgn", &set_0, &set_1),
+          b(EventBlock::Allocator(test->alloc(), name, 48, 32), &magnet),
+          aut_body(name, &test->brd, &b) {}
+    FakeBit set_0;
+    FakeBit set_1;
+    MagnetDef magnet;
+    MovableDKW b;
+    StandardPluginAutomata aut_body;
+  };
+
   struct DKWTestLayout;
 
   Board brd;
@@ -1442,12 +1456,20 @@ struct LogicTest::DKWTestLayout {
                {in_a1.b()->side_a(), in_a2.b()->side_a()},
                {in_b1.b()->side_a(), in_b2.b()->side_a()}});
   }
+
+  DKW::Point BlockToPoint(const TestBlock* b) {
+    if (b == &in_a1) return DKW::POINT_A1;
+    if (b == &in_a2) return DKW::POINT_A2;
+    if (b == &in_b1) return DKW::POINT_B1;
+    if (b == &in_b2) return DKW::POINT_B2;
+    HASSERT(0 && "unknown block");
+  }
 };
 
 TEST_F(LogicTest, FixedDKW) {
   FixedDKW dkw(DKW::DKW_STRAIGHT, alloc()->Allocate("dkw", 120));
   DKWTestLayout l(this, &dkw);
-  debug_variables = 1;
+  //debug_variables = 1;
   SetupRunner(&brd);
   Run(30);
   for (int i = 0; i < 10; i++) {
@@ -1496,6 +1518,108 @@ TEST_F(LogicTest, FixedDKW) {
     EXPECT_FALSE(QueryVar(*dkw.simulated_occupancy_));
     EXPECT_FALSE(QueryVar(
         *dkw.get_route(DKW::POINT_B2, DKW::POINT_A2)->route_set.get()));
+  }
+}
+
+TEST_F(LogicTest, MovableDKW) {
+  FakeBit set_0(this);
+  FakeBit set_1(this);
+  MagnetDef magnet(&magnet_aut_, "dkw.mgn", &set_0, &set_1);
+  MovableDKW dkw(alloc()->Allocate("dkw", 120), &magnet);
+  DKWTestLayout l(this, &dkw);
+
+  SetupRunner(&brd);
+  Run(30);
+
+  auto move = [this, &l, &dkw](TestBlock* from, TestBlock* via, TestBlock* to) {
+    EXPECT_TRUE(QueryVar(from->b()->detector()));
+    SetVar(*from->b()->request_green(), true);
+    Run(20);
+    EXPECT_TRUE(QueryVar(from->b()->route_out()));
+    EXPECT_TRUE(from->signal_green()->Get());
+    EXPECT_TRUE(QueryVar(*dkw.any_route()));
+    EXPECT_TRUE(QueryVar(*dkw.simulated_occupancy_));
+
+    EXPECT_TRUE(QueryVar(*dkw.get_route(l.BlockToPoint(from),
+                                        l.BlockToPoint(via))->route_set.get()));
+    EXPECT_TRUE(QueryVar(to->b()->route_in()));
+
+    via->inverted_detector()->Set(false);
+    Run(20);
+    from->inverted_detector()->Set(true);
+    Run(20);
+    via->inverted_detector()->Set(true);
+    Run(20);
+    EXPECT_FALSE(QueryVar(*dkw.any_route()));
+    EXPECT_FALSE(QueryVar(*dkw.simulated_occupancy_));
+    EXPECT_FALSE(
+        QueryVar(*dkw.get_route(l.BlockToPoint(from), l.BlockToPoint(via))
+                      ->route_set.get()));
+    to->inverted_detector()->Set(false);
+    Run(20);
+  };
+
+  SetVar(*magnet.command, false);
+  SetVar(*magnet.current_state, false);
+  l.in_a1.inverted_detector()->Set(false);
+  Run(30);
+
+  for (int i = 0; i < 3; ++i) {
+    // A1->B1; B2->A2
+    fprintf(stderr, "round %d step 1\n", i);
+    move(&l.in_a1, &l.in_b1, &l.in_b2);
+    fprintf(stderr, "round %d step 2\n", i);
+    move(&l.in_b2, &l.in_a2, &l.in_a1);
+    fprintf(stderr, "round %d step 1b\n", i);
+    move(&l.in_a1, &l.in_b1, &l.in_b2);
+    fprintf(stderr, "round %d step 2b\n", i);
+    move(&l.in_b2, &l.in_a2, &l.in_a1);
+    SetVar(*magnet.command, true);
+    Run(20);
+    // A1->B2; B1->A2
+    fprintf(stderr, "round %d step 3\n", i);
+    move(&l.in_a1, &l.in_b2, &l.in_b1);
+    fprintf(stderr, "round %d step 4\n", i);
+    move(&l.in_b1, &l.in_a2, &l.in_a1);
+    fprintf(stderr, "round %d step 3b\n", i);
+    move(&l.in_a1, &l.in_b2, &l.in_b1);
+    fprintf(stderr, "round %d step 4b\n", i);
+    move(&l.in_b1, &l.in_a2, &l.in_a1);
+
+    fprintf(stderr, "round %d step 5\n", i);
+    move(&l.in_a1, &l.in_b2, &l.in_b1);
+    SetVar(*magnet.command, false);
+    Run(20);
+    // A2->B2; B1->A1;
+    fprintf(stderr, "round %d step 6\n", i);
+    move(&l.in_b1, &l.in_a1, &l.in_a2);
+    fprintf(stderr, "round %d step 7\n", i);
+    move(&l.in_a2, &l.in_b2, &l.in_b1);
+    fprintf(stderr, "round %d step 6b\n", i);
+    move(&l.in_b1, &l.in_a1, &l.in_a2);
+    fprintf(stderr, "round %d step 7b\n", i);
+    move(&l.in_a2, &l.in_b2, &l.in_b1);
+
+    fprintf(stderr, "round %d step 8\n", i);
+    move(&l.in_b1, &l.in_a1, &l.in_a2);
+    SetVar(*magnet.command, true);
+    Run(20);
+    // A2->B1; B2->A1
+    fprintf(stderr, "round %d step 9\n", i);
+    move(&l.in_a2, &l.in_b1, &l.in_b2);
+    fprintf(stderr, "round %d step a\n", i);
+    move(&l.in_b2, &l.in_a1, &l.in_a2);
+    fprintf(stderr, "round %d step 9b\n", i);
+    move(&l.in_a2, &l.in_b1, &l.in_b2);
+    fprintf(stderr, "round %d step ab\n", i);
+    move(&l.in_b2, &l.in_a1, &l.in_a2);
+    // Let's get back to a1 for another round.
+    fprintf(stderr, "round %d step b\n", i);
+    move(&l.in_a2, &l.in_b1, &l.in_b2);
+    SetVar(*magnet.command, false);
+    Run(20);
+    fprintf(stderr, "round %d step c\n", i);
+    move(&l.in_b2, &l.in_a2, &l.in_a1);
   }
 }
 
