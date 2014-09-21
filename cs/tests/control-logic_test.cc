@@ -1447,9 +1447,56 @@ struct LogicTest::DKWTestLayout {
 TEST_F(LogicTest, FixedDKW) {
   FixedDKW dkw(DKW::DKW_STRAIGHT, alloc()->Allocate("dkw", 120));
   DKWTestLayout l(this, &dkw);
-
+  debug_variables = 1;
   SetupRunner(&brd);
   Run(30);
+  for (int i = 0; i < 10; i++) {
+    fprintf(stderr, "round %d\n", i);
+    l.in_a1.inverted_detector()->Set(false);
+    Run(20);
+    SetVar(*l.in_a1.b()->request_green(), true);
+    Run(20);
+    EXPECT_TRUE(QueryVar(l.in_a1.b()->route_out()));
+    EXPECT_TRUE(l.in_a1.signal_green()->Get());
+    EXPECT_FALSE(QueryVar(*l.in_a1.b()->request_green()));
+    EXPECT_TRUE(QueryVar(*dkw.any_route()));
+    EXPECT_TRUE(QueryVar(*dkw.simulated_occupancy_));
+    EXPECT_TRUE(QueryVar(
+        *dkw.get_route(DKW::POINT_A1, DKW::POINT_B1)->route_set.get()));
+    EXPECT_TRUE(QueryVar(l.in_b2.b()->route_in()));
+    
+    l.in_b1.inverted_detector()->Set(false);
+    Run(20);
+    l.in_a1.inverted_detector()->Set(true);
+    Run(20);
+    l.in_b1.inverted_detector()->Set(true);
+    Run(20);
+    EXPECT_FALSE(QueryVar(*dkw.any_route()));
+    EXPECT_FALSE(QueryVar(*dkw.simulated_occupancy_));
+    EXPECT_FALSE(QueryVar(
+        *dkw.get_route(DKW::POINT_A1, DKW::POINT_B1)->route_set.get()));
+
+    l.in_b2.inverted_detector()->Set(false);
+    Run(20);
+    SetVar(*l.in_b2.b()->request_green(), true);
+    Run(20);
+    EXPECT_TRUE(l.in_b2.signal_green()->Get());
+    EXPECT_TRUE(QueryVar(*dkw.any_route()));
+    EXPECT_TRUE(QueryVar(
+        *dkw.get_route(DKW::POINT_B2, DKW::POINT_A2)->route_set.get()));
+    EXPECT_TRUE(QueryVar(l.in_a1.b()->route_in()));
+    
+    l.in_a2.inverted_detector()->Set(false);
+    Run(20);
+    l.in_b2.inverted_detector()->Set(true);
+    Run(20);
+    l.in_a2.inverted_detector()->Set(true);
+    Run(20);
+    EXPECT_FALSE(QueryVar(*dkw.any_route()));
+    EXPECT_FALSE(QueryVar(*dkw.simulated_occupancy_));
+    EXPECT_FALSE(QueryVar(
+        *dkw.get_route(DKW::POINT_B2, DKW::POINT_A2)->route_set.get()));
+  }
 }
 
 TEST_F(LogicTest, DISABLED_100trainz) {
