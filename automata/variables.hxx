@@ -159,7 +159,7 @@ class EventBlock : public EventVariableBase {
       o.next_entry_ = end_;
     }
 
-    Allocator Allocate(const string& name, int count, int alignment = 1) {
+    Allocator Allocate(const string& name, int count, int alignment = 1) const {
       return Allocator(this, name, count, alignment);
     }
 
