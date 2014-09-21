@@ -677,24 +677,24 @@ void TurnoutBase::TurnoutRoute(Automata* aut) {
 }
 
 void DKW::DKWRoute(Automata* aut) {
-  LocalVariable* any_route_setting_in_progress =
-      aut->ImportVariable(tmp_route_setting_in_progress_.get());
-
   for (const auto& d : routes_) {
     Def()
         .IfState(StInit)
         .ActReg0(aut->ImportVariable(d.route_set.get()))
         .ActReg0(aut->ImportVariable(d.route_pending.get()));
   }
-  const LocalVariable& state = aut->ImportVariable(*turnout_state_);
-  // Passes if state == 0 (closed).
-  auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
-  // Passes if state == 1 (thrown).
-  auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
-
   for (const auto& d : routes_) {
+    ClearAutomataVariables(aut);
+    LocalVariable* any_route_setting_in_progress =
+        aut->ImportVariable(tmp_route_setting_in_progress_.get());
+    const LocalVariable& state = aut->ImportVariable(*turnout_state_);
+    // Passes if state == 0 (closed).
+    auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+    // Passes if state == 1 (thrown).
+    auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+
     OpCallback* cb = nullptr;
-    switch(d.state) {
+    switch (d.state) {
       case DKW_STRAIGHT:
         cb = &closed_condition;
         break;

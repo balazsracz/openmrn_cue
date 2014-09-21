@@ -119,6 +119,8 @@ class LogicTest : public AutomataNodeTests {
     StandardPluginAutomata aut_body;
   };
 
+  struct DKWTestLayout;
+
   Board brd;
   EventBlock block_;
   MagnetCommandAutomata magnet_aut_;
@@ -1414,6 +1416,40 @@ TEST_F(LogicTest, MovableTurnout) {
   SetVar(*turnout_r.magnet.command, false);
   Run(15);
   }  // rinse repeat.
+}
+
+// The DKW test layout is an 8-shaped layout, with signals leading into each
+// end of the DKW, and being put back-to-back in pairs. The A1 and A2 are
+// connected through one side of the 8, and B1 and B2 are connected through the
+// other.
+struct LogicTest::DKWTestLayout {
+  TestBlock in_a1;
+  TestBlock in_a2;
+  TestBlock in_b1;
+  TestBlock in_b2;
+  StandardPluginAutomata dkw_body;
+  DKWTestLayout(LogicTest* test, DKW* dkw) 
+    : in_a1(test, "in_a1"),
+      in_a2(test, "in_a2"),
+      in_b1(test, "in_b1"),
+      in_b2(test, "in_b2"),
+      dkw_body("dkw", &test->brd, dkw)
+  {
+    BindPairs({{in_a1.b()->side_b(), dkw->point_a1()},
+               {in_a2.b()->side_b(), dkw->point_a2()},
+               {in_b1.b()->side_b(), dkw->point_b1()},
+               {in_b2.b()->side_b(), dkw->point_b2()},
+               {in_a1.b()->side_a(), in_a2.b()->side_a()},
+               {in_b1.b()->side_a(), in_b2.b()->side_a()}});
+  }
+};
+
+TEST_F(LogicTest, FixedDKW) {
+  FixedDKW dkw(DKW::DKW_STRAIGHT, alloc()->Allocate("dkw", 120));
+  DKWTestLayout l(this, &dkw);
+
+  SetupRunner(&brd);
+  Run(30);
 }
 
 TEST_F(LogicTest, DISABLED_100trainz) {
