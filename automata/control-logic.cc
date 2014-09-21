@@ -428,7 +428,7 @@ void SignalPiece::SignalRoute(Automata* aut) {
 }
 
 const CtrlTrackInterface* StraightTrack::FindOtherSide(
-    const CtrlTrackInterface* s) {
+    const CtrlTrackInterface* s) const {
   if (s == &side_a_) {
     return &side_b_;
   } else if (s == &side_b_) {
@@ -527,6 +527,8 @@ void MovableTurnout::CopyState(Automata* aut) {
       .ActReg0(turnoutstate);
 }
 
+
+
 void TurnoutBase::TurnoutOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
   auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
@@ -535,6 +537,28 @@ void TurnoutBase::TurnoutOccupancy(Automata* aut) {
     auto* route_set = aut->ImportVariable(d.route);
     auto release = NewCallback(&ReleaseRouteCallback, d.to, route_set);
     SimulateOccupancy(aut, sim_occ, tmp, *route_set, d.from, d.to, &release);
+  }
+}
+
+void DKW::DKWOccupancy(Automata* aut) {
+  auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
+  auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
+
+  for (const auto& d : routes_) {
+    auto* route_set = aut->ImportVariable(d.route_set.get());
+    auto release = NewCallback(&ReleaseRouteCallback,
+                               points_[d.to].interface.get(), route_set);
+    SimulateOccupancy(aut, sim_occ, tmp, *route_set,
+                      points_[d.from].interface.get(),
+                      points_[d.to].interface.get(), &release);
+  }
+}
+
+void TurnoutDirectionCheck(const LocalVariable& state, bool set, Automata::Op* op) {
+  if (set) {
+    op->IfReg1(state);
+  } else {
+    op->IfReg0(state);
   }
 }
 
@@ -555,8 +579,53 @@ void TurnoutBase::PopulateAnyRouteSet(Automata* aut) {
   }
 }
 
+void DKW::PopulateAnyRouteSet(Automata* aut) {
+  vector<const GlobalVariable*> all_routes;
+  for (const auto& d : routes_) {
+    all_routes.push_back(d.route_set.get());
+  }
+
+  LocalVariable* any_route_set = aut->ImportVariable(any_route_set_.get());
+
+  const vector<const automata::GlobalVariable*>& v = all_routes;
+
+  Def().Rept(&Automata::Op::IfReg0, v).ActReg0(any_route_set);
+
+  for (auto* v : all_routes) {
+    Def().IfReg1(aut->ImportVariable(*v)).ActReg1(any_route_set);
+  }
+}
+
+void ProxyOneDetector(Automata* aut, OpCallback* condition,
+                      const GlobalVariable* next, GlobalVariable* g_proxy) {
+  LocalVariable* proxy = aut->ImportVariable(g_proxy);
+  if (next) {
+    const LocalVariable& det = aut->ImportVariable(*next);
+    Def().RunCallback(condition).IfReg0(det).ActReg0(proxy);
+    Def().RunCallback(condition).IfReg1(det).ActReg1(proxy);
+  } else {
+    Def().RunCallback(condition).ActReg0(proxy);
+  }
+}
+
+void ProxyDetector(Automata* aut, OpCallback* condition,
+                   GlobalVariable* detector_next, GlobalVariable* detector_far,
+                   CtrlTrackInterface* binding) {
+  ProxyOneDetector(aut, condition, binding->LookupNextDetector(),
+                   detector_next);
+  ProxyOneDetector(aut, condition, binding->LookupFarDetector(), detector_far);
+}
+
 void TurnoutBase::ProxyDetectors(Automata* aut) {
-  LocalVariable* proxy_next = aut->ImportVariable(detector_next_.get());
+  const LocalVariable& state = aut->ImportVariable(*turnout_state_);
+  // Passes if state == 0 (closed).
+  auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+  // Passes if state == 1 (thrown).
+  auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+  ProxyDetector(aut, &closed_condition, detector_next_.get(), detector_far_.get(), side_closed_.binding());
+  ProxyDetector(aut, &thrown_condition, detector_next_.get(), detector_far_.get(), side_thrown_.binding());
+
+  /*  LocalVariable* proxy_next = aut->ImportVariable(detector_next_.get());
   LocalVariable* proxy_far = aut->ImportVariable(detector_far_.get());
   const LocalVariable& closed_next = aut->ImportVariable(*side_closed_.binding()->LookupNextDetector());
   const LocalVariable& thrown_next = aut->ImportVariable(*side_thrown_.binding()->LookupNextDetector());
@@ -583,15 +652,7 @@ void TurnoutBase::ProxyDetectors(Automata* aut) {
     Def().IfReg1(turnout_state).IfReg0(det).ActReg0(proxy_far);
   } else {
     Def().IfReg1(turnout_state).ActReg0(proxy_far);
-  }
-}
-
-void TurnoutDirectionCheck(const LocalVariable& state, bool set, Automata::Op* op) {
-  if (set) {
-    op->IfReg1(state);
-  } else {
-    op->IfReg0(state);
-  }
+    }*/
 }
 
 void TurnoutBase::TurnoutRoute(Automata* aut) {

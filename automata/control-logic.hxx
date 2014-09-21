@@ -15,6 +15,14 @@
 #include "variables.hxx"
 #include "gtest/gtest_prod.h"
 
+#ifndef OVERRIDE
+#if (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+#define OVERRIDE override
+#else
+#define OVERRIDE
+#endif
+#endif
+
 namespace automata {
 
 static constexpr StateRef StInit(0);
@@ -181,12 +189,13 @@ class OccupancyLookupInterface {
   // interface `from'. Returns NULL if no such detector was found. The interface
   // is interpreted by
   virtual const GlobalVariable *LookupCloseDetector(
-      const CtrlTrackInterface *from) = 0;
+      const CtrlTrackInterface *from) const = 0;
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
   virtual const GlobalVariable *LookupFarDetector(
-      const CtrlTrackInterface *from) = 0;
+      const CtrlTrackInterface *from) const = 0;
+
 };
 
 class CtrlTrackInterface {
@@ -205,6 +214,16 @@ class CtrlTrackInterface {
   std::unique_ptr<GlobalVariable> in_route_set_failure;
   std::unique_ptr<GlobalVariable> out_route_released;
 
+  // Occupancy value of the current block, or the neighboring block less than a
+  // train-length away.
+  virtual const GlobalVariable *LookupCloseDetector() const {
+    return lookup_if_->LookupCloseDetector(this);
+  }
+  // Occupancy value of the block that is more than train-length away.
+  virtual const GlobalVariable *LookupFarDetector() const {
+    return lookup_if_->LookupFarDetector(this);
+  }
+
   const GlobalVariable *LookupNextDetector() const {
     const GlobalVariable *ret = LookupCloseDetector();
     if (ret != nullptr) {
@@ -214,18 +233,7 @@ class CtrlTrackInterface {
     if (ret != nullptr) {
       return ret;
     }
-    extern bool could_not_retrieve_next_occupancy_variable();
-    HASSERT(false && could_not_retrieve_next_occupancy_variable());
-  }
-
-  // Occupancy value of the current block, or the neighboring block less than a
-  // train-length away.
-  const GlobalVariable *LookupCloseDetector() const {
-    return lookup_if_->LookupCloseDetector(this);
-  }
-  // Occupancy value of the block that is more than train-length away.
-  const GlobalVariable *LookupFarDetector() const {
-    return lookup_if_->LookupFarDetector(this);
+    HASSERT(0 && "could not retrieve next occupancy variable");
   }
 
   CtrlTrackInterface *binding() const { return binding_; }
@@ -282,7 +290,7 @@ class StraightTrack : public StraightTrackInterface,
   CtrlTrackInterface side_b_;
 
   // If you give this side_a() it will return side_b() and vice versa.
-  const CtrlTrackInterface *FindOtherSide(const CtrlTrackInterface *s);
+  const CtrlTrackInterface *FindOtherSide(const CtrlTrackInterface *s) const;
 
   FRIEND_TEST(LogicTest, SimulatedOccupancy_SingleShortPiece);
   FRIEND_TEST(LogicTest, SimulatedOccupancy_MultipleShortPiece);
@@ -333,15 +341,15 @@ class StraightTrackWithDetector : public StraightTrack {
         30, NewCallbackPtr(this, &StraightTrackWithDetector::DetectorRoute));
   }
 
-  virtual const GlobalVariable *LookupCloseDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupCloseDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     return detector_;
   }
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
-  virtual const GlobalVariable *LookupFarDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupFarDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
@@ -384,16 +392,16 @@ class StraightTrackShort : public StraightTrack {
                                          &StraightTrack::SimulateAllRoutes));
   }
 
-  virtual const GlobalVariable *LookupCloseDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupCloseDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupCloseDetector();
   }
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
-  virtual const GlobalVariable *LookupFarDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupFarDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
@@ -407,15 +415,15 @@ class StraightTrackLong : public StraightTrack {
                       NewCallbackPtr(this, &StraightTrack::SimulateAllRoutes));
   }
 
-  virtual const GlobalVariable *LookupCloseDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupCloseDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     return nullptr;
   }
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
-  virtual const GlobalVariable *LookupFarDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupFarDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupNextDetector();
   }
@@ -439,16 +447,16 @@ class SignalPiece : public StraightTrackShort {
     AddAutomataPlugin(30, NewCallbackPtr(this, &SignalPiece::SignalRoute));
   }
 
-  virtual const GlobalVariable *LookupCloseDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupCloseDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupCloseDetector();
   }
 
   // Returns the first occupancy detector outside of train length from the
   // interface `from'. Returns NULL if no such detector was found.
-  virtual const GlobalVariable *LookupFarDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupFarDetector(const CtrlTrackInterface *from) const
+      OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
@@ -653,8 +661,8 @@ class TurnoutBase : public TurnoutInterface,
   std::unique_ptr<GlobalVariable> detector_far_;
 
  private:
-  virtual const GlobalVariable *LookupCloseDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupCloseDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     if (from == &side_points_) {
       return detector_next_.get();
     } else {
@@ -662,8 +670,8 @@ class TurnoutBase : public TurnoutInterface,
     }
   }
 
-  virtual const GlobalVariable *LookupFarDetector(
-      const CtrlTrackInterface *from) {
+  const GlobalVariable *LookupFarDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
     if (from == &side_points_) {
       return detector_far_.get();
     } else {
@@ -727,6 +735,281 @@ class FixedTurnout : public TurnoutBase {
   void FixTurnoutState(Automata *aut);
 
   State state_;
+};
+
+class DKW : private OccupancyLookupInterface,
+            public virtual AutomataPlugin {
+ public:
+  enum State { DKW_STRAIGHT, DKW_CURVED };
+
+  // The connections are as follows: if DKW_STRAIGHT, POINT_A1--POINT_B1 and
+  // POINT_A2--POINT_B2. If DKW_CURVED, then A1--B2 and A2--B1.
+  enum Point {
+    POINT_A1,
+    POINT_A2,
+    POINT_B1,
+    POINT_B2,
+    POINT_MIN = POINT_A1,
+    POINT_MAX = POINT_B2,
+  };
+
+  enum Route {
+    ROUTE_MIN = 0,
+    ROUTE_MAX = 8,
+  };
+
+  DKW(const EventBlock::Allocator &allocator)
+      : routes_({RouteInfo(POINT_A1, POINT_B1, DKW_STRAIGHT),
+                 RouteInfo(POINT_A1, POINT_B2, DKW_CURVED),
+                 RouteInfo(POINT_A2, POINT_B2, DKW_STRAIGHT),
+                 RouteInfo(POINT_A2, POINT_B1, DKW_CURVED),
+                 RouteInfo(POINT_B1, POINT_A1, DKW_STRAIGHT),
+                 RouteInfo(POINT_B1, POINT_A2, DKW_CURVED),
+                 RouteInfo(POINT_B2, POINT_A2, DKW_STRAIGHT),
+                 RouteInfo(POINT_B2, POINT_A1, DKW_CURVED)}) {
+    for (int i = POINT_MIN; i <= POINT_MAX; ++i) {
+      points_[i].interface.reset(new CtrlTrackInterface(
+          allocator.Allocate(string("point_") + point_name(i), 8, 8), this));
+    }
+    for (int i = ROUTE_MIN; i <= ROUTE_MAX; ++i) {
+      routes_[i].route_set.reset(allocator.Allocate(
+          string("route_set_") + point_name(routes_[i].from) + "_" +
+          point_name(routes_[i].to)));
+    }
+    for (int i = ROUTE_MIN; i <= ROUTE_MAX; ++i) {
+      routes_[i].route_pending.reset(allocator.Allocate(
+          string("route_pending_") + point_name(routes_[i].from) + "_" +
+          point_name(routes_[i].to)));
+    }
+    for (int i = POINT_MIN; i <= POINT_MAX; ++i) {
+      points_[i].detector_next.reset(
+          allocator.Allocate("detector_next_" + point_name(i)));
+      points_[i].detector_far.reset(
+          allocator.Allocate("detector_far_" + point_name(i)));
+    }
+    any_route_set_.reset(allocator.Allocate("any_route_set"));
+    simulated_occupancy_.reset(allocator.Allocate("simulated_occ"));
+    turnout_state_.reset(allocator.Allocate("turnout_state"));
+    tmp_seen_train_in_next_.reset(allocator.Allocate("tmp_seen_train_in_next"));
+    tmp_route_setting_in_progress_.reset(
+        allocator.Allocate("tmp_route_setting_in_progress"));
+
+    AddAutomataPlugin(20, NewCallbackPtr(this, &DKW::DKWOccupancy));
+  }
+
+  string point_name(int p) {
+    return point_name(static_cast<Point>(p));
+  }
+
+  string point_name(Point p) {
+    switch (p) {
+    case POINT_A1: return "A1";
+    case POINT_A2: return "A2";
+    case POINT_B1: return "B1";
+    case POINT_B2: return "B2";
+    default:
+      HASSERT(0 && "Unknown point to name");
+    }
+  }
+
+  CtrlTrackInterface* GetPoint(Point p) {
+    return points_[p].interface.get();
+  }
+
+  Point FindPoint(const CtrlTrackInterface* from) const {
+    for (int i = POINT_MIN; i <= POINT_MAX; ++i) {
+      if (points_[i].interface.get() == from) return static_cast<Point>(i);
+    }
+    HASSERT(0 && "Tried to lookup an unknown point.");
+  }
+
+  const GlobalVariable *any_route() const { return any_route_set_.get(); }
+
+  const GlobalVariable *LookupCloseDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
+    auto* info = &points_[FindPoint(from)];
+    return info->detector_next.get();
+  }
+
+  const GlobalVariable *LookupFarDetector(
+      const CtrlTrackInterface *from) const OVERRIDE {
+    auto* info = &points_[FindPoint(from)];
+    return info->detector_far.get();
+  }
+
+private:
+  struct PointInfo {
+    std::unique_ptr<CtrlTrackInterface> interface;
+    // The "close detector" bit looking from the points.
+    std::unique_ptr<GlobalVariable> detector_next;
+    // The "far detector" bit looking from the points.
+    std::unique_ptr<GlobalVariable> detector_far;
+  };
+
+  struct RouteInfo {
+    RouteInfo(Point _from, Point _to, State _state)
+        : from(_from), to(_to), state(_state) {}
+    Point from;
+    Point to;
+    State state;
+    std::unique_ptr<GlobalVariable> route_set;
+    std::unique_ptr<GlobalVariable> route_pending;
+  };
+
+  unsigned get_route_number(Point from, Point to) {
+    for (int i = ROUTE_MIN; i <= ROUTE_MAX; ++i) {
+      if (routes_[i].from == from && routes_[i].to == to) {
+        return i;
+      }
+    }
+    HASSERT(0 && "requested unknown route");
+  }
+
+  RouteInfo* get_route(Point from, Point to) {
+    return &routes_[get_route_number(from, to)];
+  }
+
+  void DKWOccupancy(Automata *aut);
+  void PopulateAnyRouteSet(Automata *aut);
+  void ProxyDetectors(Automata *aut);
+  void TurnoutOccupancy(Automata *aut);
+  void TurnoutRoute(Automata *aut);
+
+  PointInfo points_[4];
+  RouteInfo routes_[8];
+  // Helper variable that is 1 iff any of the eight routes are set.
+  std::unique_ptr<GlobalVariable> any_route_set_;
+  std::unique_ptr<GlobalVariable> simulated_occupancy_;
+  // Is zero if turnout is closed, 1 if turnout is thrown.
+  std::unique_ptr<GlobalVariable> turnout_state_;
+  // Helper variable for simuating occupancy.
+  std::unique_ptr<GlobalVariable> tmp_seen_train_in_next_;
+  // Helper variable for excluding parallel route setting requests.
+  std::unique_ptr<GlobalVariable> tmp_route_setting_in_progress_;
+
+
+  /*  TurnoutBase(const EventBlock::Allocator &allocator)
+      : side_points_(EventBlock::Allocator(&allocator, "points", 8), this),
+        side_closed_(EventBlock::Allocator(&allocator, "closed", 8), this),
+        side_thrown_(EventBlock::Allocator(&allocator, "thrown", 8), this),
+        simulated_occupancy_(allocator.Allocate("simulated_occ")),
+        route_set_PC_(allocator.Allocate("route_set_PC")),
+        route_set_CP_(allocator.Allocate("route_set_CP")),
+        route_set_PT_(allocator.Allocate("route_set_PT")),
+        route_set_TP_(allocator.Allocate("route_set_TP")),
+        route_pending_PC_(allocator.Allocate("route_pending_PC")),
+        route_pending_CP_(allocator.Allocate("route_pending_CP")),
+        route_pending_PT_(allocator.Allocate("route_pending_PT")),
+        route_pending_TP_(allocator.Allocate("route_pending_TP")),
+        any_route_set_(allocator.Allocate("any_route_set")),
+        turnout_state_(allocator.Allocate("turnout_state")),
+        tmp_seen_train_in_next_(allocator.Allocate("tmp_seen_train_in_next")),
+        tmp_route_setting_in_progress_(
+            allocator.Allocate("tmp_route_setting_in_progress")),
+        detector_next_(allocator.Allocate("detector_next")),
+        detector_far_(allocator.Allocate("detector_far")) {
+    directions_.push_back(Direction(&side_points_, &side_closed_,
+                                    route_set_PC_.get(),
+                                    route_pending_PC_.get(), TURNOUT_CLOSED));
+    directions_.push_back(Direction(&side_points_, &side_thrown_,
+                                    route_set_PT_.get(),
+                                    route_pending_PT_.get(), TURNOUT_THROWN));
+    directions_.push_back(Direction(&side_closed_, &side_points_,
+                                    route_set_CP_.get(),
+                                    route_pending_CP_.get(), TURNOUT_DONTCARE));
+    directions_.push_back(Direction(&side_thrown_, &side_points_,
+                                    route_set_TP_.get(),
+                                    route_pending_TP_.get(), TURNOUT_DONTCARE));
+    AddAutomataPlugin(20, NewCallbackPtr(this, &TurnoutBase::TurnoutOccupancy));
+    AddAutomataPlugin(25, NewCallbackPtr(this, &TurnoutBase::ProxyDetectors));
+    AddAutomataPlugin(29, NewCallbackPtr(&ClearAutomataVariables));
+    AddAutomataPlugin(30, NewCallbackPtr(this, &TurnoutBase::TurnoutRoute));
+    AddAutomataPlugin(35,
+                      NewCallbackPtr(this, &TurnoutBase::PopulateAnyRouteSet));
+  }
+
+  virtual CtrlTrackInterface *side_points() { return &side_points_; }
+  virtual CtrlTrackInterface *side_closed() { return &side_closed_; }
+  virtual CtrlTrackInterface *side_thrown() { return &side_thrown_; }
+
+  const GlobalVariable *any_route() { return any_route_set_.get(); }
+
+ protected:
+  FRIEND_TEST(LogicTest, FixedTurnout);
+  FRIEND_TEST(LogicTest, MovableTurnout);
+
+  CtrlTrackInterface side_points_;
+  CtrlTrackInterface side_closed_;
+  CtrlTrackInterface side_thrown_;
+
+  struct Direction {
+    Direction(CtrlTrackInterface *f, CtrlTrackInterface *t, GlobalVariable *r,
+              GlobalVariable *rp, State state_cond)
+        : from(f),
+          to(t),
+          route(r),
+          route_pending(rp),
+          state_condition(state_cond) {}
+    CtrlTrackInterface *from;
+    CtrlTrackInterface *to;
+    GlobalVariable *route;
+    GlobalVariable *route_pending;
+    State state_condition;
+  };
+
+  vector<Direction> directions_;
+
+  std::unique_ptr<GlobalVariable> simulated_occupancy_;
+  // route from closed/thrown/points [in] to closed/thrown/points [out]
+  std::unique_ptr<GlobalVariable> route_set_PC_;
+  std::unique_ptr<GlobalVariable> route_set_CP_;
+  std::unique_ptr<GlobalVariable> route_set_PT_;
+  std::unique_ptr<GlobalVariable> route_set_TP_;
+  // temp var for routes
+  std::unique_ptr<GlobalVariable> route_pending_PC_;
+  std::unique_ptr<GlobalVariable> route_pending_CP_;
+  std::unique_ptr<GlobalVariable> route_pending_PT_;
+  std::unique_ptr<GlobalVariable> route_pending_TP_;
+
+  // Helper variable that is 1 iff any of the four routes are set.
+  std::unique_ptr<GlobalVariable> any_route_set_;
+
+  // Is zero if turnout is closed, 1 if turnout is thrown.
+  std::unique_ptr<GlobalVariable> turnout_state_;
+
+  // Helper variable for simuating occupancy.
+  std::unique_ptr<GlobalVariable> tmp_seen_train_in_next_;
+  // Helper variable for excluding parallel route setting requests.
+  std::unique_ptr<GlobalVariable> tmp_route_setting_in_progress_;
+
+  // The "close detector" bit looking from the points.
+  std::unique_ptr<GlobalVariable> detector_next_;
+  // The "far detector" bit looking from the points.
+  std::unique_ptr<GlobalVariable> detector_far_;
+
+ private:
+  virtual const GlobalVariable *LookupCloseDetector(
+      const CtrlTrackInterface *from) {
+    if (from == &side_points_) {
+      return detector_next_.get();
+    } else {
+      return side_points_.binding()->LookupCloseDetector();
+    }
+  }
+
+  virtual const GlobalVariable *LookupFarDetector(
+      const CtrlTrackInterface *from) {
+    if (from == &side_points_) {
+      return detector_far_.get();
+    } else {
+      return side_points_.binding()->LookupFarDetector();
+    }
+  }
+
+  void PopulateAnyRouteSet(Automata *aut);
+  void ProxyDetectors(Automata *aut);
+  void TurnoutOccupancy(Automata *aut);
+  void TurnoutRoute(Automata *aut);*/
 };
 
 // for the moment we map the stub track into a fixed turnout and parts for a
