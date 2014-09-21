@@ -847,7 +847,7 @@ class DKW : private OccupancyLookupInterface,
     return info->detector_far.get();
   }
 
-private:
+protected:
   struct PointInfo {
     std::unique_ptr<CtrlTrackInterface> interface;
     // The "close detector" bit looking from the points.
@@ -900,6 +900,49 @@ private:
   FRIEND_TEST(LogicTest, FixedDKW);
   FRIEND_TEST(LogicTest, MovableDKW);
 };
+
+class FixedDKW : public DKW {
+public:
+  FixedDKW(State state, const EventBlock::Allocator &allocator)
+    : DKW(allocator), fixed_state_(state) {
+    AddAutomataPlugin(9, NewCallbackPtr(this, &FixedDKW::FixDKWState));
+  }
+
+  void FixDKWState(Automata *aut) {
+    auto *turnoutstate = aut->ImportVariable(turnout_state_.get());
+    if (fixed_state_ == DKW_STRAIGHT) {
+      Def().ActReg0(turnoutstate);
+    } else {
+      Def().ActReg1(turnoutstate);
+    }
+  }
+
+  State fixed_state_;
+};
+
+class MovableDKW : public DKW {
+ public:
+  MovableDKW(const EventBlock::Allocator &allocator, MagnetDef *def)
+      : DKW(allocator), magnet_(def) {
+    AddAutomataPlugin(110, NewCallbackPtr(this, &MovableDKW::CopyState));
+  }
+
+  MagnetDef *magnet() { return magnet_; }
+
+ private:
+  // Copies the turnout state from the physical turnout's actual state.
+  void CopyState(Automata *aut) {
+    auto *turnoutstate = aut->ImportVariable(turnout_state_.get());
+    const auto &any_route_set = aut->ImportVariable(*any_route_set_);
+    const auto &physical_state =
+        aut->ImportVariable(*magnet_->current_state);
+    Def().IfReg0(any_route_set).IfReg1(physical_state).ActReg1(turnoutstate);
+    Def().IfReg0(any_route_set).IfReg0(physical_state).ActReg0(turnoutstate);
+  }
+
+  MagnetDef *magnet_;
+};
+
 
 // for the moment we map the stub track into a fixed turnout and parts for a
 // standardblock that is arranged as a loop from the closed to the thrown side.
