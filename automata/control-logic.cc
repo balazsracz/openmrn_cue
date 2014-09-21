@@ -216,12 +216,14 @@ void SignalPiece::SignalOccupancy(Automata* aut) {
   LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
   LocalVariable* signal = aut->ImportVariable(signal_);
   LocalVariable* route = aut->ImportVariable(route_set_ab_.get());
+  LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
   Def().IfReg1(prev_detector).ActReg1(occ);
   Def()
       .IfReg0(prev_detector)
       .IfReg1(*occ)
       .ActReg0(signal)
       .ActReg0(route)
+      .ActReg0(route2)
       .ActReg0(occ);
 }
 
