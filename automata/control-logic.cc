@@ -622,37 +622,25 @@ void TurnoutBase::ProxyDetectors(Automata* aut) {
   auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
   // Passes if state == 1 (thrown).
   auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
-  ProxyDetector(aut, &closed_condition, detector_next_.get(), detector_far_.get(), side_closed_.binding());
-  ProxyDetector(aut, &thrown_condition, detector_next_.get(), detector_far_.get(), side_thrown_.binding());
+  ProxyDetector(aut, &closed_condition, detector_next_.get(),
+                detector_far_.get(), side_closed_.binding());
+  ProxyDetector(aut, &thrown_condition, detector_next_.get(),
+                detector_far_.get(), side_thrown_.binding());
+}
 
-  /*  LocalVariable* proxy_next = aut->ImportVariable(detector_next_.get());
-  LocalVariable* proxy_far = aut->ImportVariable(detector_far_.get());
-  const LocalVariable& closed_next = aut->ImportVariable(*side_closed_.binding()->LookupNextDetector());
-  const LocalVariable& thrown_next = aut->ImportVariable(*side_thrown_.binding()->LookupNextDetector());
-  const LocalVariable& turnout_state = aut->ImportVariable(*turnout_state_);
-  Def().IfReg0(turnout_state).IfReg0(closed_next).ActReg0(proxy_next);
-  Def().IfReg0(turnout_state).IfReg1(closed_next).ActReg1(proxy_next);
-  Def().IfReg1(turnout_state).IfReg0(thrown_next).ActReg0(proxy_next);
-  Def().IfReg1(turnout_state).IfReg1(thrown_next).ActReg1(proxy_next);
-
-  const GlobalVariable* global_detector_far = nullptr;
-  global_detector_far = side_closed_.binding()->LookupFarDetector();
-  if (global_detector_far) {
-    const LocalVariable& det = aut->ImportVariable(*global_detector_far);
-    Def().IfReg0(turnout_state).IfReg1(det).ActReg1(proxy_far);
-    Def().IfReg0(turnout_state).IfReg0(det).ActReg0(proxy_far);
-  } else {
-    Def().IfReg0(turnout_state).ActReg0(proxy_far);
+void DKW::ProxyDetectors(Automata* aut) {
+  const LocalVariable& state = aut->ImportVariable(*turnout_state_);
+  // Passes if state == 0 (closed).
+  auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+  // Passes if state == 1 (thrown).
+  auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+  for (auto& r : routes_) {
+    ProxyDetector(
+        aut, r.state == DKW_STRAIGHT ? &closed_condition : &thrown_condition,
+        points_[r.from].detector_next.get(),
+        points_[r.from].detector_far.get(),
+        points_[r.to].interface->binding());
   }
-
-  global_detector_far = side_thrown_.binding()->LookupFarDetector();
-  if (global_detector_far) {
-    const LocalVariable& det = aut->ImportVariable(*global_detector_far);
-    Def().IfReg1(turnout_state).IfReg1(det).ActReg1(proxy_far);
-    Def().IfReg1(turnout_state).IfReg0(det).ActReg0(proxy_far);
-  } else {
-    Def().IfReg1(turnout_state).ActReg0(proxy_far);
-    }*/
 }
 
 void TurnoutBase::TurnoutRoute(Automata* aut) {
@@ -685,6 +673,39 @@ void TurnoutBase::TurnoutRoute(Automata* aut) {
     SimulateRoute(aut, cb, d.from, d.to, any_route_setting_in_progress,
                   aut->ImportVariable(d.route_pending),
                   {d.route, any_route_set_.get()}, {});
+  }
+}
+
+void DKW::DKWRoute(Automata* aut) {
+  LocalVariable* any_route_setting_in_progress =
+      aut->ImportVariable(tmp_route_setting_in_progress_.get());
+
+  for (const auto& d : routes_) {
+    Def()
+        .IfState(StInit)
+        .ActReg0(aut->ImportVariable(d.route_set.get()))
+        .ActReg0(aut->ImportVariable(d.route_pending.get()));
+  }
+  const LocalVariable& state = aut->ImportVariable(*turnout_state_);
+  // Passes if state == 0 (closed).
+  auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+  // Passes if state == 1 (thrown).
+  auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+
+  for (const auto& d : routes_) {
+    OpCallback* cb = nullptr;
+    switch(d.state) {
+      case DKW_STRAIGHT:
+        cb = &closed_condition;
+        break;
+      case DKW_CURVED:
+        cb = &thrown_condition;
+        break;
+    }
+    SimulateRoute(aut, cb, points_[d.from].interface.get(),
+                  points_[d.to].interface.get(), any_route_setting_in_progress,
+                  aut->ImportVariable(d.route_pending.get()),
+                  {d.route_set.get(), any_route_set_.get()}, {});
   }
 }
 
