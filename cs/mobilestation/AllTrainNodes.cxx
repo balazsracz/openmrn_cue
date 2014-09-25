@@ -49,16 +49,23 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
     unsigned address = db->get_traction_node(train_id) & 0xffffffff;
     unsigned mode = db->get_drive_mode(train_id);
     switch (mode & 7) {
-      case MARKLIN_OLD:
-      case MARKLIN_NEW:
-      case MFX: {
+      case MARKLIN_OLD: {
         trainImpl_[train_id] = new dcc::MMOldTrain(dcc::MMAddress(address));
         break;
       }
-      case DCC_28:
-      case DCC_128: {
+      case MARKLIN_NEW:
+      case MFX: {
+        trainImpl_[train_id] = new dcc::MMNewTrain(dcc::MMAddress(address));
+        break;
+      }
+      case DCC_28: {
         trainImpl_[train_id] =
             new dcc::Dcc28Train(dcc::DccShortAddress(address));
+        break;
+      }
+      case DCC_128:  {
+        trainImpl_[train_id] =
+            new dcc::Dcc128Train(dcc::DccShortAddress(address));
         break;
       }
       default:
