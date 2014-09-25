@@ -943,6 +943,20 @@ class MovableDKW : public DKW {
   MagnetDef *magnet_;
 };
 
+class StandardMovableDKW {
+ public:
+  StandardMovableDKW(Board *brd, const EventBlock::Allocator &alloc,
+                     MagnetDef *magnet)
+      : b(alloc, magnet), aut_(alloc.name(), brd, &b) {}
+
+  GlobalVariable *command() { return b.magnet()->command.get(); }
+  const GlobalVariable &state() { return *b.magnet()->current_state; }
+
+  MovableDKW b;
+
+ private:
+  StandardPluginAutomata aut_;
+};
 
 // for the moment we map the stub track into a fixed turnout and parts for a
 // standardblock that is arranged as a loop from the closed to the thrown side.
