@@ -149,8 +149,10 @@ class TivaShortDetectionModule : public StateFlowBase {
         }
       } else {
         // If we measured an overcurrent situation, we start another conversion
-        // straight away.
-        return call_immediately(STATE(start_conversion));
+        // really soon.
+        return sleep_and_call(&timer_, MSEC_TO_NSEC(1),
+                              STATE(start_conversion));
+        //return call_immediately(STATE(start_conversion));
       }
     } else {
       num_overcurrent_tests_ = 0;
