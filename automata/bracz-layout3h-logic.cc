@@ -155,6 +155,10 @@ PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen,
                     &signal_A460_main.signal, &signal_A460_adv.signal,
                     &signal_B460_adv.signal, &signal_A475_adv.signal);
 
+PhysicalSignal ZZA2(&b2.InOraGreen, &b2.LedGreen,
+                    nullptr, nullptr,
+                    nullptr, nullptr, nullptr, nullptr);
+
 PhysicalSignal YYC23(&ba.In0, &ba.Rel3,
                      &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
@@ -340,6 +344,16 @@ StandardBlock Block_B421(&brd, &B421, logic.allocator(), "B421");
 StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
 StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
 
+StandardFixedTurnout Turnout_ZZW2(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "ZZ.W2", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &b2.ActBlueGrey,
+                      &b2.ActBlueBrown);
+StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
+                                                        "ZZ.W3", 64),
+                            &Magnet_ZZW3);
+StubBlock Block_ZZA2(&brd, &ZZA2, &b2.InOraGreen, logic.allocator(), "ZZ.A2");
+
 StandardMiddleDetector Det_380(&brd, &b7.InOraRed,
                                EventBlock::Allocator(logic.allocator(),
                                                      "Det380", 24, 8));
@@ -369,24 +383,26 @@ StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "YY.W6", 40),
                                   FixedTurnout::TURNOUT_THROWN);
 
-StandardFixedTurnout Turnout_XXW1(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "XX.W1", 40),
+StandardFixedTurnout Turnout_XXW1(&brd,
+                                  EventBlock::Allocator(logic2.allocator(),
+                                                        "XX.W1", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-StandardFixedTurnout Turnout_XXW2(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "XX.W2", 40),
+StandardFixedTurnout Turnout_XXW2(&brd,
+                                  EventBlock::Allocator(logic2.allocator(),
+                                                        "XX.W2", 40),
                                   FixedTurnout::TURNOUT_THROWN);
 //MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey,
 //                      &b3.ActBlueBrown);
 StandardFixedTurnout Turnout_XXW7(
-    &brd, EventBlock::Allocator(logic.allocator(), "XX.W7", 40),
+    &brd, EventBlock::Allocator(logic2.allocator(), "XX.W7", 40),
     FixedTurnout::TURNOUT_CLOSED);  // we ignore the magnets here
 MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActBlueGrey, &ba.ActBlueBrown);
 StandardMovableTurnout Turnout_XXW8(
-    &brd, EventBlock::Allocator(logic.allocator(), "XX.W8", 40), &Magnet_XXW8);
+    &brd, EventBlock::Allocator(logic2.allocator(), "XX.W8", 40), &Magnet_XXW8);
 
-StandardBlock Block_XXB1(&brd, &XXB1, logic.allocator(), "XX.B1");
-StandardBlock Block_XXB2(&brd, &XXB2, logic.allocator(), "XX.B2");
-StandardBlock Block_XXB3(&brd, &XXB3, logic.allocator(), "XX.B3");
+StandardBlock Block_XXB1(&brd, &XXB1, logic2.allocator(), "XX.B1");
+StandardBlock Block_XXB2(&brd, &XXB2, logic2.allocator(), "XX.B2");
+StandardBlock Block_XXB3(&brd, &XXB3, logic2.allocator(), "XX.B3");
 
 #define BLOCK_SEQUENCE3 &Block_A360, &Block_A347, &Block_A321, &Block_A301
 #define BLOCK_SEQUENCE4R &Block_B421, &Block_B447, &Block_B475
@@ -422,10 +438,14 @@ bool ign =
                {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
                {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
                {Turnout_W381.b.side_thrown(), Det_380.side_a()},
-               {Det_380.side_b(), Block_A360.side_a()},
+               {Det_380.side_b(), Turnout_ZZW2.b.side_thrown()},
+               {Turnout_ZZW2.b.side_points(), Block_A360.side_a()},
+               {Turnout_ZZW2.b.side_closed(), DKW_ZZW3.b.point_a2()},
+               {DKW_ZZW3.b.point_b2(), Block_ZZA2.entry()},
                {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
                {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
-               {Block_B475.side_b(), Turnout_W481.b.side_points()},
+               {Block_B475.side_b(), DKW_ZZW3.b.point_a1()},
+               {DKW_ZZW3.b.point_b1(), Turnout_W481.b.side_points()},
                {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
                {Block_WWB14.side_a(), Turnout_WWW1.b.side_thrown()},
                {Turnout_WWW2.b.side_thrown(), Turnout_WWW1.b.side_closed()},
@@ -920,8 +940,10 @@ class CircleTrain : public TrainSchedule {
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), true);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
 
 
     // back->front
@@ -976,8 +998,10 @@ class EWIVPendelzug : public TrainSchedule {
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), true);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
 
 
     // back->front
@@ -1003,13 +1027,53 @@ class EWIVPendelzug : public TrainSchedule {
   ByteImportVariable stored_speed_;
 };
 
-CircleTrain train_icn("icn", 50, 16);
+void IfZZW3Free(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
+}
+
+auto g_zzw3_free = NewCallback(&IfZZW3Free);
+
+class StraightOnlyPushPull : public TrainSchedule {
+ public:
+  StraightOnlyPushPull(const string& name, uint16_t train_id,
+                       uint8_t default_speed)
+      : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
+                      train_perm.Allocate(name, 16, 8),
+                      train_tmp.Allocate(name, 12, 4), &stored_speed_),
+        stored_speed_(&brd, "speed." + name,
+                      BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_A301, &Block_WWB3.b_, &g_wwb3_entry_free);
+    SwitchTurnout(Turnout_WWW1.b.magnet(), false);
+    StopAndReverseAtStub(&Block_WWB3);
+
+    AddEagerBlockTransition(&Block_WWB3.b_, &Block_B421, &g_wwb3_entry_free);
+    AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
+
+    AddEagerBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    StopAndReverseAtStub(&Block_ZZA2);
+
+    AddEagerBlockTransition(&Block_ZZA2.b_, &Block_A360, &g_zzw3_free);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+  }
+
+  ByteImportVariable stored_speed_;
+};
+
+
+StraightOnlyPushPull train_icn("icn", 50, 16);
 CircleTrain train_re66("re_6_6", 66, 32);
 CircleTrain train_rts("rts_railtraction", 32, 20);
 CircleTrain train_re460hag("Re460_HAG", 26, 32);
 CircleTrain train_re465("Re465", 47, 32);
 EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 20);
-EWIVPendelzug train_rbe44pendelzug("RBe4_4_ZVV", 52, 35);
+CircleTrain train_rbe44("RBe4_4_ZVV", 52, 35);
+StraightOnlyPushPull train_m61("m61", 61, 30);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
