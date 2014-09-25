@@ -458,6 +458,11 @@ class SignalPiece : public StraightTrackShort {
   const GlobalVariable *LookupFarDetector(const CtrlTrackInterface *from) const
       OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
+    // Signal pieces do not let the FarDetector signal through in the direction
+    // of the signal through. Basically the body piece should not be able to
+    // see a train beyond the signal, since that might be the previous train
+    // that has passed here.
+    if (from == &side_a_) return nullptr;
     return FindOtherSide(from)->binding()->LookupFarDetector();
   }
 
