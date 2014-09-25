@@ -38,14 +38,18 @@ string EventToJmriFormat(uint64_t event) {
 void PrintAllEventVariables(FILE* f) {
   fprintf(stderr, "%d total variables \n", registered_variables()->size());
   for (const auto& v : *registered_variables()) {
+    string name = v.name;
+    if (name.substr(0, 7) == "logic2.") {
+      name.erase(5, 1);
+    }
     fprintf(f,
             "<sensor systemName=\"MS%s;%s\" inverted=\"false\" "
             "userName=\"%s\"> <systemName>MS%s;%s</systemName> "
             "<userName>%s</userName> </sensor>\n",
             EventToJmriFormat(v.event_on).c_str(),
-            EventToJmriFormat(v.event_off).c_str(), v.name.c_str(),
+            EventToJmriFormat(v.event_off).c_str(), name.c_str(),
             EventToJmriFormat(v.event_on).c_str(),
-            EventToJmriFormat(v.event_off).c_str(), v.name.c_str());
+            EventToJmriFormat(v.event_off).c_str(), name.c_str());
   }
 }
 
