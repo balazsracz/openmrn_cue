@@ -1131,9 +1131,11 @@ struct FlipFlopClient : public RequestClientInterface {
   DISALLOW_COPY_AND_ASSIGN(FlipFlopClient);
 };
 
+// next state: 14.
 static constexpr StateRef StWaiting(2);
 static constexpr StateRef StReadyToGo(3);
 static constexpr StateRef StRequestGreen(4);
+static constexpr StateRef StGreenRequested(13);
 static constexpr StateRef StGreenWait(5);
 static constexpr StateRef StStartTrain(6);
 static constexpr StateRef StMoving(7);

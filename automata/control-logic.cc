@@ -811,8 +811,14 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
   auto* magnets_ready = aut->ImportVariable(magnets_ready_.get());
   Def().IfState(StRequestGreen)
       .IfReg0(current_block_request_green_)
-      .ActReg1(&current_block_request_green_);
-  Def().IfState(StRequestGreen)
+      .ActReg1(&current_block_request_green_)
+      .ActState(StGreenRequested);
+  Def()
+      .IfState(StGreenRequested)
+      .IfReg0(current_block_request_green_)
+      .IfReg0(current_block_route_out_)
+      .ActState(StWaiting);
+  Def().IfState(StGreenRequested)
       .IfReg1(current_block_route_out_)
       .ActTimer(2)
       .ActState(StGreenWait);
