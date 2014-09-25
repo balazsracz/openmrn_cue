@@ -898,7 +898,8 @@ void IfFrontFrontInOkay(Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(is_paused))
       .IfReg0(op->parent()->ImportVariable(reset_all_routes))
       .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
+      .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()))
+      .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
 }
 
 // XXB1/XXB3 -> A360
@@ -916,6 +917,20 @@ void IfFrontBackOutOkay(Automata::Op* op) {
       .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()));
 }
 
+void IfZZW3Free(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
+}
+
+void IfWWB3EntryFree(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
+}
+
+auto g_wwb3_entry_free = NewCallback(&IfWWB3EntryFree);
+auto g_zzw3_free = NewCallback(&IfZZW3Free);
 auto g_loop_condition = NewCallback(&IfLoopOkay);
 auto g_front_front_in_condition = NewCallback(&IfFrontFrontInOkay);
 auto g_front_front_out_condition = NewCallback(&IfFrontFrontOutOkay);
@@ -935,10 +950,12 @@ class CircleTrain : public TrainSchedule {
     AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
     AddEagerBlockTransition(&Block_A301, &Block_WWB14, &g_not_paused_condition);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
-    AddEagerBlockSequence({BLOCK_SEQUENCE4}, &g_not_paused_condition);
+
+    AddEagerBlockTransition(&Block_WWB14, &Block_B421, &g_wwb3_entry_free);
+    AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
 
     // in
-    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
+    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
@@ -968,14 +985,6 @@ class CircleTrain : public TrainSchedule {
 
   ByteImportVariable stored_speed_;
 };
-
-void IfWWB3EntryFree(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
-}
-
-auto g_wwb3_entry_free = NewCallback(&IfWWB3EntryFree);
 
 class EWIVPendelzug : public TrainSchedule {
  public:
@@ -996,7 +1005,7 @@ class EWIVPendelzug : public TrainSchedule {
     AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
 
     // in
-    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_not_paused_condition);
+    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
@@ -1026,14 +1035,6 @@ class EWIVPendelzug : public TrainSchedule {
 
   ByteImportVariable stored_speed_;
 };
-
-void IfZZW3Free(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
-}
-
-auto g_zzw3_free = NewCallback(&IfZZW3Free);
 
 class StraightOnlyPushPull : public TrainSchedule {
  public:
@@ -1074,6 +1075,7 @@ CircleTrain train_re465("Re465", 47, 32);
 EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 20);
 CircleTrain train_rbe44("RBe4_4_ZVV", 52, 35);
 StraightOnlyPushPull train_m61("m61", 61, 30);
+CircleTrain train_11239("Re44_11239", 48, 28);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
