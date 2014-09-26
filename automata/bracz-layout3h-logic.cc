@@ -159,6 +159,10 @@ PhysicalSignal ZZA2(&b2.InOraGreen, &b2.LedGreen,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
+PhysicalSignal ZZA3(&b2.InOraRed, &b7.LedGreen,
+                    nullptr, nullptr,
+                    nullptr, nullptr, nullptr, nullptr);
+
 PhysicalSignal YYC23(&ba.In0, &ba.Rel3,
                      &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
@@ -344,6 +348,18 @@ StandardBlock Block_B421(&brd, &B421, logic.allocator(), "B421");
 StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
 StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
 
+StandardFixedTurnout Turnout_W359(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "W359", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+StandardFixedTurnout Turnout_W459(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "W459", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+
+MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &b2.ActGreenGreen,
+                      &b2.ActGreenRed);
+StandardMovableTurnout Turnout_ZZW1(
+    &brd, EventBlock::Allocator(logic.allocator(), "ZZ.W1", 40), &Magnet_ZZW1);
+
 StandardFixedTurnout Turnout_ZZW2(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "ZZ.W2", 40),
                                   FixedTurnout::TURNOUT_THROWN);
@@ -353,6 +369,7 @@ StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "ZZ.W3", 64),
                             &Magnet_ZZW3);
 StubBlock Block_ZZA2(&brd, &ZZA2, &b2.InOraGreen, logic.allocator(), "ZZ.A2");
+StubBlock Block_ZZA3(&brd, &ZZA3, &b2.InOraRed, logic.allocator(), "ZZ.A3");
 
 StandardMiddleDetector Det_380(&brd, &b7.InOraRed,
                                EventBlock::Allocator(logic.allocator(),
@@ -411,8 +428,8 @@ StandardBlock Block_XXB3(&brd, &XXB3, logic2.allocator(), "XX.B3");
 std::vector<StandardBlock*> block_sequence3 = {BLOCK_SEQUENCE3};
 std::vector<StandardBlock*> block_sequence4 = {BLOCK_SEQUENCE4};
 
-bool ignored1 = BindSequence({BLOCK_SEQUENCE3});
-bool ignored2 = BindSequence({BLOCK_SEQUENCE4R});
+bool ignored1 = BindSequence({&Block_A347, &Block_A321, &Block_A301});
+bool ignored2 = BindSequence({&Block_B421, &Block_B447});
 /*bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
 bool ignored3 = Block_XXB1.side_a()->Bind(Turnout_XXW8.b.side_closed());
 bool ignored4 = Block_XXB3.side_a()->Bind(Turnout_XXW8.b.side_thrown());
@@ -444,7 +461,14 @@ bool ign =
                {DKW_ZZW3.b.point_b2(), Block_ZZA2.entry()},
                {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
                {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
-               {Block_B475.side_b(), DKW_ZZW3.b.point_a1()},
+               {Block_B447.side_b(), Turnout_W459.b.side_closed()},
+               {Turnout_W459.b.side_points(), Block_B475.side_a()},
+               {Turnout_W459.b.side_thrown(), Turnout_W359.b.side_closed()},
+               {Turnout_W359.b.side_thrown(), Block_A360.side_b()},
+               {Turnout_W359.b.side_points(), Block_A347.side_a()},
+               {Block_B475.side_b(), Turnout_ZZW1.b.side_points()},
+               {Turnout_ZZW1.b.side_thrown(), DKW_ZZW3.b.point_a1()},
+               {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
                {DKW_ZZW3.b.point_b1(), Turnout_W481.b.side_points()},
                {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
                {Block_WWB14.side_a(), Turnout_WWW1.b.side_thrown()},
@@ -958,9 +982,11 @@ class CircleTrain : public TrainSchedule {
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
 
 
     // back->front
@@ -1008,9 +1034,11 @@ class EWIVPendelzug : public TrainSchedule {
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
 
 
     // back->front
@@ -1057,6 +1085,7 @@ class StraightOnlyPushPull : public TrainSchedule {
 
     AddEagerBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     StopAndReverseAtStub(&Block_ZZA2);
 
     AddEagerBlockTransition(&Block_ZZA2.b_, &Block_A360, &g_zzw3_free);
