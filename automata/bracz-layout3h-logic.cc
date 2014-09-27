@@ -947,6 +947,21 @@ void IfZZW3Free(Automata::Op* op) {
       .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
 }
 
+void IfZZW1Free(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_ZZW1.b.any_route()));
+}
+
+void IfZZ2OutFree(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_paused))
+      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_ZZW1.b.any_route()))
+      .IfReg0(op->parent()->ImportVariable(Block_B475.detector()))
+      .IfReg0(op->parent()->ImportVariable(Block_B475.route_in()))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_W359.b.any_route()));
+}
+
 void IfWWB3EntryFree(Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(is_paused))
       .IfReg0(op->parent()->ImportVariable(reset_all_routes))
@@ -955,14 +970,17 @@ void IfWWB3EntryFree(Automata::Op* op) {
 
 auto g_wwb3_entry_free = NewCallback(&IfWWB3EntryFree);
 auto g_zzw3_free = NewCallback(&IfZZW3Free);
+auto g_zzw1_free = NewCallback(&IfZZW1Free);
+auto g_zz2_out_free = NewCallback(&IfZZ2OutFree);
 auto g_loop_condition = NewCallback(&IfLoopOkay);
 auto g_front_front_in_condition = NewCallback(&IfFrontFrontInOkay);
 auto g_front_front_out_condition = NewCallback(&IfFrontFrontOutOkay);
 auto g_front_back_out_condition = NewCallback(&IfFrontBackOutOkay);
 
-class CircleTrain : public TrainSchedule {
+
+class LayoutSchedule : public TrainSchedule {
  public:
-  CircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
+  LayoutSchedule(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
                       train_perm.Allocate(name, 16, 8),
                       train_tmp.Allocate(name, 12, 4),
@@ -970,119 +988,36 @@ class CircleTrain : public TrainSchedule {
         stored_speed_(&brd, "speed." + name,
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
 
-  void RunTransition(Automata* aut) OVERRIDE {
+ protected:
+  // Runs down from ZZ to WW on track 300.
+  void Run360_to_301(Automata* aut) {
     AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
+  }
+
+  // In WW, runs around the loop track 11 to 14.
+  void RunLoopWW(Automata* aut) {
     AddEagerBlockTransition(&Block_A301, &Block_WWB14, &g_not_paused_condition);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
 
     AddEagerBlockTransition(&Block_WWB14, &Block_B421, &g_wwb3_entry_free);
-    AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
-
-    // in
-    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
-    SwitchTurnout(Turnout_W481.b.magnet(), false);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-    AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
-    SwitchTurnout(Turnout_W481.b.magnet(), true);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-
-
-    // back->front
-    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
-                               &g_loop_condition);
-    SwitchTurnout(Turnout_XXW8.b.magnet(), true);
-    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
-                               &g_loop_condition);
-    SwitchTurnout(Turnout_XXW8.b.magnet(), false);
-
-    // front->back
-    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1,
-                               &g_loop_condition);
-    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1x,
-                               &g_loop_condition);
-
-    // out
-    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
-    AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
-    AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
   }
 
-  ByteImportVariable stored_speed_;
-};
-
-class EWIVPendelzug : public TrainSchedule {
- public:
-  EWIVPendelzug(const string& name, uint16_t train_id, uint8_t default_speed)
-      : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
-                      train_perm.Allocate(name, 16, 8),
-                      train_tmp.Allocate(name, 12, 4), &stored_speed_),
-        stored_speed_(&brd, "speed." + name,
-                      BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
-
-  void RunTransition(Automata* aut) OVERRIDE {
-    AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
+  // In WW, run through the stub track, changing direction.
+  void RunStubWW(Automata* aut) {
     AddEagerBlockTransition(&Block_A301, &Block_WWB3.b_, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     StopAndReverseAtStub(&Block_WWB3);
 
     AddEagerBlockTransition(&Block_WWB3.b_, &Block_B421, &g_wwb3_entry_free);
-    AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
-
-    // in
-    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
-    SwitchTurnout(Turnout_W481.b.magnet(), false);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-    AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
-    SwitchTurnout(Turnout_W481.b.magnet(), true);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-
-
-    // back->front
-    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
-                               &g_loop_condition);
-    SwitchTurnout(Turnout_XXW8.b.magnet(), true);
-    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
-                               &g_loop_condition);
-    SwitchTurnout(Turnout_XXW8.b.magnet(), false);
-
-    // front->back
-    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1,
-                               &g_loop_condition);
-    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1x,
-                               &g_loop_condition);
-
-    // out
-    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
-    AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
-    AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
   }
 
-  ByteImportVariable stored_speed_;
-};
-
-class StraightOnlyPushPull : public TrainSchedule {
- public:
-  StraightOnlyPushPull(const string& name, uint16_t train_id,
-                       uint8_t default_speed)
-      : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
-                      train_perm.Allocate(name, 16, 8),
-                      train_tmp.Allocate(name, 12, 4), &stored_speed_),
-        stored_speed_(&brd, "speed." + name,
-                      BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
-
-  void RunTransition(Automata* aut) OVERRIDE {
-    AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
-    AddEagerBlockTransition(&Block_A301, &Block_WWB3.b_, &g_wwb3_entry_free);
-    SwitchTurnout(Turnout_WWW1.b.magnet(), false);
-    StopAndReverseAtStub(&Block_WWB3);
-
-    AddEagerBlockTransition(&Block_WWB3.b_, &Block_B421, &g_wwb3_entry_free);
+  // Runs up from WW to ZZ on track 400.
+  void Run421_to_475(Automata* aut) {
     AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
+  }
 
+  // Runs in ZZ into the stub track and reverses direction.
+  void RunStubZZ(Automata* aut) {
     AddEagerBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
@@ -1092,7 +1027,102 @@ class StraightOnlyPushPull : public TrainSchedule {
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
   }
 
+  void RunStub2ZZ(Automata* aut) {
+    AddEagerBlockTransition(&Block_B475, &Block_ZZA3.b_, &g_zzw1_free);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), false);
+    StopAndReverseAtStub(&Block_ZZA3);
+
+    AddEagerBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
+
+  }
+
+  // Runs the loop XX/YY from 475 to eventually 360
+  void RunLoopXXYY(Automata* aut) {
+    // in
+    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
+    SwitchTurnout(Turnout_W481.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+    AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), true);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+
+    // back->front
+    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
+                               &g_loop_condition);
+    SwitchTurnout(Turnout_XXW8.b.magnet(), true);
+    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
+                               &g_loop_condition);
+    SwitchTurnout(Turnout_XXW8.b.magnet(), false);
+
+    // front->back
+    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1,
+                               &g_loop_condition);
+    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1x,
+                               &g_loop_condition);
+
+    // out
+    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
+    AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
+    AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
+  }
+
   ByteImportVariable stored_speed_;
+};
+
+
+class CircleTrain : public LayoutSchedule {
+ public:
+  CircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    Run360_to_301(aut);
+    RunLoopWW(aut);
+    Run421_to_475(aut);
+    RunLoopXXYY(aut);
+  }
+};
+
+class EWIVPendelzug : public LayoutSchedule {
+ public:
+  EWIVPendelzug(const string& name, uint16_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    Run360_to_301(aut);
+    RunStubWW(aut);
+    Run421_to_475(aut);
+    RunLoopXXYY(aut);
+  }
+};
+
+class StraightOnlyPushPull : public LayoutSchedule {
+ public:
+  StraightOnlyPushPull(const string& name, uint16_t train_id,
+                       uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    Run360_to_301(aut);
+    RunStubWW(aut);
+    Run421_to_475(aut);
+    RunStubZZ(aut);
+  }
+};
+
+class ICEPushPull : public LayoutSchedule {
+ public:
+  ICEPushPull(const string& name, uint16_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    Run360_to_301(aut);
+    RunStubWW(aut);
+    Run421_to_475(aut);
+    RunStub2ZZ(aut);
+  }
 };
 
 
@@ -1105,6 +1135,7 @@ EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 20);
 CircleTrain train_rbe44("RBe4_4_ZVV", 52, 35);
 StraightOnlyPushPull train_m61("m61", 61, 30);
 CircleTrain train_11239("Re44_11239", 48, 28);
+ICEPushPull train_ice("ICE", 2, 16);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
