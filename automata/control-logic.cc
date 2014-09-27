@@ -1056,6 +1056,13 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .ActReg1(&current_direction_)
       .ActState(StReadyToGo);
 
+  // This should catch the case when we set an outgoing route that failed. Then
+  // we need to remove the routing bit or we'll get into big trouble.
+  Def().IfState(StWaiting)
+      .IfReg1(current_block_routingloc_)
+      .IfReg1(current_direction_)
+      .ActReg0(&current_direction_);
+
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
   Def().IfState(StRequestTransition)
