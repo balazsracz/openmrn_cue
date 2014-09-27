@@ -145,7 +145,7 @@ class EventBlock : public EventVariableBase {
               int alignment = 1)
         : name_(CreateNameFromParent(parent, name)), block_(parent->block_) {
       parent->Align(alignment);
-      next_entry_ = parent->Reserve(count);
+      next_entry_ = parent->Reserve(count, name);
       end_ = next_entry_ + count;
     }
 
@@ -165,7 +165,11 @@ class EventBlock : public EventVariableBase {
 
     // Reserves a number entries at the beginning of the block. Returns the
     // first entry that was reserved.
-    int Reserve(int count) const {
+    int Reserve(int count, string caller = "unknown") const {
+      if (next_entry_ + count > end_) {
+        fprintf(stderr, "Allocator '%s' block overrun trying to reserver %d entries for '%s'.\n", name().c_str(), count, caller.c_str());
+        HASSERT(0);
+      }
       HASSERT(next_entry_ + count <= end_);
       int ret = next_entry_;
       next_entry_ += count;
@@ -229,7 +233,7 @@ class BlockVariable : public GlobalVariable {
   BlockVariable(const EventBlock::Allocator* allocator, const string& name)
       : parent_(allocator->block()),
         name_(allocator->CreateNameFromParent(allocator, name)) {
-    int arg = allocator->Reserve(1);
+    int arg = allocator->Reserve(1, name);
     SetArg(arg);
     parent_->SetMinSize(arg);
     RegisterEventVariable(name_, event_on(), event_off());
