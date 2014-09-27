@@ -425,8 +425,15 @@ void SignalPiece::SignalRoute(Automata* aut) {
                          {route_set_ab_.get()}, {route_set_ba_.get()}, signal_,
                          request_green_);
 
-  aut->DefCopy(aut->ImportVariable(*route_set_ab_),
-               aut->ImportVariable(signal_));
+  // We set the signal to green (give power to track) if either ab or ba route
+  // is set. TODO(balazs.racz): This is actually a case where the signal and
+  // the track-power bit should be treated separately.
+  const auto& route_set_ab = aut->ImportVariable(*route_set_ab_);
+  const auto& route_set_ba = aut->ImportVariable(*route_set_ba_);
+  auto* signal = aut->ImportVariable(signal_);
+  Def().IfReg0(route_set_ab).IfReg0(route_set_ba).ActReg0(signal);
+  Def().IfReg1(route_set_ab).ActReg1(signal);
+  Def().IfReg1(route_set_ba).ActReg1(signal);
 }
 
 const CtrlTrackInterface* StraightTrack::FindOtherSide(
