@@ -1150,7 +1150,7 @@ struct FlipFlopClient : public RequestClientInterface {
   DISALLOW_COPY_AND_ASSIGN(FlipFlopClient);
 };
 
-// next state: 14.
+// next state: 17.
 static constexpr StateRef StWaiting(2);
 static constexpr StateRef StReadyToGo(3);
 static constexpr StateRef StRequestGreen(4);
@@ -1166,6 +1166,9 @@ static constexpr StateRef StTransitionDone(10);
 static constexpr StateRef StTurnout(11);
 static constexpr StateRef StTestCondition(12);
 
+static constexpr StateRef StBeforeReverseWait(14);
+static constexpr StateRef StReverseSendCommand(15);
+static constexpr StateRef StReverseDoneWait(16);
 
 class TrainSchedule : public virtual AutomataPlugin {
  public:

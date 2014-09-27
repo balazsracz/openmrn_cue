@@ -900,16 +900,38 @@ void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
       .IfState(StWaiting)
       .IfReg1(current_block_permaloc_)
       .IfReg1(*need_reverse)
+      .ActReg0(need_reverse)
+      .ActState(StBeforeReverseWait)
+      .ActTimer(3);
+  Def().IfState(StBeforeReverseWait)
+      .IfReg1(current_block_permaloc_)
+      .IfTimerDone()
       .IfReg0(*is_reversed)
       .ActReg1(is_reversed)
-      .ActReg0(need_reverse);
-  Def()
-      .IfState(StWaiting)
+      .ActState(StReverseSendCommand);
+  Def().IfState(StBeforeReverseWait)
       .IfReg1(current_block_permaloc_)
-      .IfReg1(*need_reverse)
+      .IfTimerDone()
       .IfReg1(*is_reversed)
       .ActReg0(is_reversed)
-      .ActReg0(need_reverse);
+      .ActState(StReverseSendCommand);
+  Def().IfState(StReverseSendCommand)
+      .IfReg1(current_block_permaloc_)
+      .ActSetId(train_node_id_)
+      .ActLoadSpeed(true, 0);
+  Def().IfState(StReverseSendCommand)
+      .IfReg1(current_block_permaloc_)
+      .IfReg1(*is_reversed)
+      .ActSpeedReverse();
+  Def().IfState(StReverseSendCommand)
+      .IfReg1(current_block_permaloc_)
+      .IfSetSpeed()
+      .ActState(StReverseDoneWait)
+      .ActTimer(3);
+  Def().IfState(StReverseDoneWait)
+      .IfReg1(current_block_permaloc_)
+      .IfTimerDone()
+      .ActState(StWaiting);
 }
 
 void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
