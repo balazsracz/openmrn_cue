@@ -142,6 +142,9 @@ PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen,
 PhysicalSignal WWB3(&b6.InOraGreen, &b6.RelBlue,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal WWB2(&b6.InOraRed, &b5.RelBlue,
+                    nullptr, nullptr,
+                    nullptr, nullptr, nullptr, nullptr);
 
 PhysicalSignal B421(&n8.d2, &n8.r2,
                     &signal_B421_main.signal, &signal_B421_adv.signal,
@@ -322,7 +325,7 @@ EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 EventBlock::Allocator& train_perm(*perm.allocator());
 EventBlock::Allocator train_tmp(logic2.allocator()->Allocate("train", 128));
 
-MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
+MagnetCommandAutomata g_magnet_aut(&brd, *logic2.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 
@@ -333,10 +336,18 @@ StandardMovableTurnout Turnout_WWW1(
 StandardFixedTurnout Turnout_WWW2(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "WW.W2", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
-
+StandardFixedTurnout Turnout_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
+                                                              "WW.W3", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &b5.ActOraGreen, &b5.ActOraRed);
+StandardMovableDKW DKW_WWW4(&brd, EventBlock::Allocator(logic.allocator(),
+                                                        "WW.W4", 64),
+                            &Magnet_WWW4);
 StandardFixedTurnout Turnout_WWW5(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "WW.W5", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
+
+StubBlock Block_WWB2(&brd, &WWB2, &b6.InOraRed, logic.allocator(), "WW.B2");
 StubBlock Block_WWB3(&brd, &WWB3, &b6.InOraGreen, logic.allocator(), "WW.B3");
 StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
 
@@ -391,13 +402,13 @@ MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b7.ActBlueGrey, &b7.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
 
-StandardBlock Block_YYB2(&brd, &YYB2, logic.allocator(), "YY.B2");
-StandardBlock Block_YYC23(&brd, &YYC23, logic.allocator(), "YY.C23");
+StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
+StandardBlock Block_YYC23(&brd, &YYC23, logic2.allocator(), "YY.C23");
 StandardMiddleDetector Det_YYC22(&brd, &ba.In1,
-                                 EventBlock::Allocator(logic.allocator(),
+                                 EventBlock::Allocator(logic2.allocator(),
                                                        "YY.C22", 24, 8));
 
-StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic.allocator(),
+StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic2.allocator(),
                                                               "YY.W6", 40),
                                   FixedTurnout::TURNOUT_THROWN);
 
@@ -472,10 +483,14 @@ bool ign =
                {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
                {DKW_ZZW3.b.point_b1(), Turnout_W481.b.side_points()},
                {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
-               {Block_WWB14.side_a(), Turnout_WWW1.b.side_thrown()},
+               {Block_WWB14.side_a(), DKW_WWW4.b.point_b1()},
+               {DKW_WWW4.b.point_b2(), Block_WWB2.entry()},
+               {DKW_WWW4.b.point_a2(), Turnout_WWW1.b.side_thrown()},
+               {Turnout_WWW3.b.side_thrown(), DKW_WWW4.b.point_a1()},
                {Turnout_WWW2.b.side_thrown(), Turnout_WWW1.b.side_closed()},
                {Turnout_WWW2.b.side_closed(), Block_B421.side_a()},
-               {Turnout_WWW2.b.side_points(), Turnout_WWW5.b.side_points()},
+               {Turnout_WWW2.b.side_points(), Turnout_WWW3.b.side_points()},
+               {Turnout_WWW3.b.side_closed(), Turnout_WWW5.b.side_points()},
                {Turnout_WWW5.b.side_closed(), Block_WWB3.entry()},
                {Turnout_WWW5.b.side_thrown(), Block_WWB14.side_b()},
                    });
@@ -1007,6 +1022,7 @@ class LayoutSchedule : public TrainSchedule {
   void RunLoopWW(Automata* aut) {
     AddEagerBlockTransition(&Block_A301, &Block_WWB14, &g_not_paused_condition);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), true);
 
     AddEagerBlockTransition(&Block_WWB14, &Block_B421, &g_wwb3_entry_free);
   }
