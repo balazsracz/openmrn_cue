@@ -258,6 +258,7 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&panda_bridge.l4));
   DefCopy(*rep, ImportVariable(&lpc11_back.l0));
   DefCopy(*rep, ImportVariable(&n8.l0));
+  DefCopy(ImportVariable(b6.InOraRed), ImportVariable(&b6.LedGreen));
 });
 
 DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase); });
