@@ -911,63 +911,70 @@ FlipFlopClient frc_toback("to_back", &front_flipflop);
 FlipFlopClient frc_fromback("from_back", &front_flipflop);
 FlipFlopClient frc_fromfront3("from_front3", &front_flipflop);
 
+std::unique_ptr<GlobalVariable> g_stop_b447(logic2.allocator()->Allocate("block_b447"));
+std::unique_ptr<GlobalVariable> g_stop_b360(logic2.allocator()->Allocate("block_b360"));
+
 void IfLoopOkay(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_XXW8.b.any_route()));
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW8.b.any_route()));
 }
 
 // B475->XXB2
 void IfFrontFrontInOkay(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
       .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()))
       .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
 }
 
 // XXB1/XXB3 -> A360
 void IfFrontFrontOutOkay(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
       .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
 }
 
 // YYC2 -> A360
 void IfFrontBackOutOkay(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()));
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()));
 }
 
 void IfZZW3Free(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
 }
 
 void IfZZW1Free(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_ZZW1.b.any_route()));
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_ZZW1.b.any_route()));
 }
 
 void IfZZ2OutFree(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_ZZW1.b.any_route()))
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_ZZW1.b.any_route()))
       .IfReg0(op->parent()->ImportVariable(Block_B475.detector()))
       .IfReg0(op->parent()->ImportVariable(Block_B475.route_in()))
       .IfReg0(op->parent()->ImportVariable(*Turnout_W359.b.any_route()));
 }
 
 void IfWWB3EntryFree(Automata::Op* op) {
-  op->IfReg0(op->parent()->ImportVariable(is_paused))
-      .IfReg0(op->parent()->ImportVariable(reset_all_routes))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
 }
 
+void IfB447OutNotBlocked(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*g_stop_b447));
+}
+
+void IfB360OutNotBlocked(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*g_stop_b360));
+}
+
+auto g_b447_not_blocked = NewCallback(&IfB447OutNotBlocked);
+auto g_b360_not_blocked = NewCallback(&IfB360OutNotBlocked);
 auto g_wwb3_entry_free = NewCallback(&IfWWB3EntryFree);
 auto g_zzw3_free = NewCallback(&IfZZW3Free);
 auto g_zzw1_free = NewCallback(&IfZZW1Free);
@@ -976,7 +983,6 @@ auto g_loop_condition = NewCallback(&IfLoopOkay);
 auto g_front_front_in_condition = NewCallback(&IfFrontFrontInOkay);
 auto g_front_front_out_condition = NewCallback(&IfFrontFrontOutOkay);
 auto g_front_back_out_condition = NewCallback(&IfFrontBackOutOkay);
-
 
 class LayoutSchedule : public TrainSchedule {
  public:
@@ -991,7 +997,9 @@ class LayoutSchedule : public TrainSchedule {
  protected:
   // Runs down from ZZ to WW on track 300.
   void Run360_to_301(Automata* aut) {
-    AddEagerBlockSequence({BLOCK_SEQUENCE3}, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked);
+    AddEagerBlockSequence({&Block_A347, &Block_A321, &Block_A301},
+                          &g_not_paused_condition);
   }
 
   // In WW, runs around the loop track 11 to 14.
@@ -1013,7 +1021,8 @@ class LayoutSchedule : public TrainSchedule {
 
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
-    AddEagerBlockSequence({BLOCK_SEQUENCE4R}, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_B421, &Block_B447, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_B447, &Block_B475, &g_b447_not_blocked);
   }
 
   // Runs in ZZ into the stub track and reverses direction.
@@ -1033,7 +1042,27 @@ class LayoutSchedule : public TrainSchedule {
     StopAndReverseAtStub(&Block_ZZA3);
 
     AddEagerBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
-
+    auto* stop_b447 = aut->ImportVariable(g_stop_b447.get());
+    auto* stop_b360 = aut->ImportVariable(g_stop_b360.get());
+    Def().IfReg0(current_block_permaloc_)
+        .ActReg0(stop_b447)
+        .ActReg0(stop_b360);
+    Def().IfReg1(current_block_permaloc_)
+        .IfState(StWaiting)
+        .ActReg1(stop_b447);
+    Def().IfReg1(current_block_permaloc_)
+        .IfState(StWaiting)
+        .IfReg1(aut->ImportVariable(Block_B475.detector()))
+        .ActReg0(stop_b360);
+    Def().IfReg1(current_block_permaloc_)
+        .IfState(StWaiting)
+        .IfReg1(aut->ImportVariable(Block_B475.route_in()))
+        .ActReg0(stop_b360);
+    Def().IfReg1(current_block_permaloc_)
+        .IfState(StWaiting)
+        .IfReg0(aut->ImportVariable(Block_B475.route_in()))
+        .IfReg0(aut->ImportVariable(Block_B475.detector()))
+        .ActReg1(stop_b360);
   }
 
   // Runs the loop XX/YY from 475 to eventually 360
@@ -1124,7 +1153,6 @@ class ICEPushPull : public LayoutSchedule {
     RunStub2ZZ(aut);
   }
 };
-
 
 StraightOnlyPushPull train_icn("icn", 50, 16);
 CircleTrain train_re66("re_6_6", 66, 32);
