@@ -338,7 +338,7 @@ StandardFixedTurnout Turnout_WWW2(&brd, EventBlock::Allocator(logic.allocator(),
                                   FixedTurnout::TURNOUT_CLOSED);
 StandardFixedTurnout Turnout_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "WW.W3", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+                                  FixedTurnout::TURNOUT_CLOSED);
 MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &b5.ActOraGreen, &b5.ActOraRed);
 StandardMovableDKW DKW_WWW4(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "WW.W4", 64),
