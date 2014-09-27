@@ -323,7 +323,7 @@ EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm");
 EventBlock logic2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 EventBlock::Allocator& train_perm(*perm.allocator());
-EventBlock::Allocator train_tmp(logic2.allocator()->Allocate("train", 128));
+EventBlock::Allocator train_tmp(logic2.allocator()->Allocate("train", 256));
 
 MagnetCommandAutomata g_magnet_aut(&brd, *logic2.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
@@ -927,6 +927,17 @@ FlipFlopClient frc_toback("to_back", &front_flipflop);
 FlipFlopClient frc_fromback("from_back", &front_flipflop);
 FlipFlopClient frc_fromfront3("from_front3", &front_flipflop);
 
+FlipFlopAutomata ww_in_flipflop(&brd, "ww_in_flipflop", *logic.allocator(), 32);
+FlipFlopClient ww_to2("to_2", &ww_in_flipflop);
+FlipFlopClient ww_to3("to_3", &ww_in_flipflop);
+
+FlipFlopAutomata ww_out_flipflop(&brd, "ww_out_flipflop", *logic.allocator(),
+                                 32);
+FlipFlopClient ww_from2("from_2", &ww_out_flipflop);
+FlipFlopClient ww_from3("from_3", &ww_out_flipflop);
+FlipFlopClient ww_from14("from_14", &ww_out_flipflop);
+
+
 std::unique_ptr<GlobalVariable> g_stop_b447(logic2.allocator()->Allocate("block_b447"));
 std::unique_ptr<GlobalVariable> g_stop_b360(logic2.allocator()->Allocate("block_b360"));
 
@@ -979,6 +990,17 @@ void IfWWB3EntryFree(Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
 }
 
+void IfWWB2EntryFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_WWW4.b.any_route()));
+}
+
+void IfWWB2ExitFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_WWW4.b.any_route()))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
+}
+
 void IfB447OutNotBlocked(Automata::Op* op) {
   IfNotPaused(op);
   op->IfReg0(op->parent()->ImportVariable(*g_stop_b447));
@@ -992,6 +1014,8 @@ void IfB360OutNotBlocked(Automata::Op* op) {
 auto g_b447_not_blocked = NewCallback(&IfB447OutNotBlocked);
 auto g_b360_not_blocked = NewCallback(&IfB360OutNotBlocked);
 auto g_wwb3_entry_free = NewCallback(&IfWWB3EntryFree);
+auto g_wwb2_entry_free = NewCallback(&IfWWB2EntryFree);
+auto g_wwb2_exit_free = NewCallback(&IfWWB2ExitFree);
 auto g_zzw3_free = NewCallback(&IfZZW3Free);
 auto g_zzw1_free = NewCallback(&IfZZW1Free);
 auto g_zz2_out_free = NewCallback(&IfZZ2OutFree);
@@ -1005,7 +1029,7 @@ class LayoutSchedule : public TrainSchedule {
   LayoutSchedule(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
                       train_perm.Allocate(name, 16, 8),
-                      train_tmp.Allocate(name, 12, 4),
+                      train_tmp.Allocate(name, 16, 8),
                       &stored_speed_),
         stored_speed_(&brd, "speed." + name,
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
@@ -1020,20 +1044,30 @@ class LayoutSchedule : public TrainSchedule {
 
   // In WW, runs around the loop track 11 to 14.
   void RunLoopWW(Automata* aut) {
-    AddEagerBlockTransition(&Block_A301, &Block_WWB14, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_A301, &Block_WWB14, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), true);
 
-    AddEagerBlockTransition(&Block_WWB14, &Block_B421, &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
+                               &g_wwb3_entry_free);
   }
 
   // In WW, run through the stub track, changing direction.
   void RunStubWW(Automata* aut) {
-    AddEagerBlockTransition(&Block_A301, &Block_WWB3.b_, &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     StopAndReverseAtStub(&Block_WWB3);
 
-    AddEagerBlockTransition(&Block_WWB3.b_, &Block_B421, &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2, &g_wwb2_entry_free);
+    SwitchTurnout(Turnout_WWW1.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), false);
+    StopAndReverseAtStub(&Block_WWB2);
+
+    AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
+                               &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(&Block_WWB2.b_, &Block_B421, &ww_from2,
+                               &g_wwb2_exit_free);
+    SwitchTurnout(DKW_WWW4.b.magnet(), true);
   }
 
   // Runs up from WW to ZZ on track 400.
