@@ -3,17 +3,17 @@
 
 #include "mbed.h"
 #include "os/os.h"
-#include "utils/pipe.hxx"
-#include "executor/executor.hxx"
+#include "utils/Hub.hxx"
+#include "utils/HubDevice.hxx"
+#include "executor/Executor.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
 
 #include "nmranet/IfCan.hxx"
-#include "nmranet/NMRAnetIf.hxx"
+#include "nmranet/If.hxx"
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/NMRAnetAsyncEventHandler.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
@@ -25,9 +25,10 @@
 
 // DEFINE_PIPE(gc_can_pipe, 1);
 
-Executor g_executor;
-
-DEFINE_PIPE(can_pipe, &g_executor, sizeof(struct can_frame));
+NO_THREAD nt;
+Executor<1> g_executor(nt);
+Service g_service(&g_executor);
+CanHubFlow can_hub0(&g_service);
 
 static const nmranet::NodeID NODE_ID = 0x050101011448ULL;
 
@@ -40,9 +41,10 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 1);
+nmranet::IfCan g_if_can(&g_executor, &can_hub0, 1, 3, 2);
+static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventIteratorFlow g_event_flow(&g_executor, 4);
+nmranet::EventService g_event_service(&g_if_can);
 WatchDogEventHandler g_watchdog(&g_node, WATCHDOG_EVENT_ID);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2820ULL;
@@ -53,10 +55,6 @@ extern "C" {
 #ifdef __FreeRTOS__ //TARGET_LPC11Cxx
 #endif
   
-}
-
-Executor* DefaultWriteFlowExecutor() {
-    return &g_executor;
 }
 
 extern "C" { void resetblink(uint32_t pattern); }
@@ -103,7 +101,7 @@ MbedGPIOListener listen_r1(R_EVENT_ID + 2, R_EVENT_ID + 3, P0_2);
 MbedGPIOListener listen_r2(R_EVENT_ID + 4, R_EVENT_ID + 5, P2_7);
 MbedGPIOListener listen_r3(R_EVENT_ID + 6, R_EVENT_ID + 7, P2_8);
 
-class AllGPIOProducers : private Executable, private Notifiable {
+class AllGPIOProducers : private Executable, private Atomic {
  public:
   AllGPIOProducers(uint64_t event_base)
       : exported_bits_(0),
@@ -120,19 +118,28 @@ class AllGPIOProducers : private Executable, private Notifiable {
   }
 
  private:
-  virtual void Run() {
+  void run() override {
+    {
+      AtomicHolder h(this);
+      pending_ = 0;
+    }
     for (int i = 0; i < kPinCount; ++i) {
-      if (!helper_busy_.HasBeenNotified()) return;
+      if (!helper_busy_.is_done()) return;
       uint32_t mask =  1<<i;
       bool new_value = (last_read_bits_ & mask) ? true : false;
-      producer_.Set(i, new_value, &helper_, helper_busy_.NewCallback(this));
+      producer_.Set(i, new_value, &helper_, helper_busy_.reset(this));
     }
   }
 
-  virtual void Notify() {
-    AtomicHolder h(&g_executor);
-    if (!g_executor.IsMaybePending(this)) {
-      g_executor.Add(this);
+  void notify() override {
+    {
+      AtomicHolder h(this);
+      if (!pending_) {
+        pending_ = 1;
+      } else {
+        return;
+      }
+      g_executor.add(this);
     }
   }
 
@@ -167,7 +174,7 @@ class AllGPIOProducers : private Executable, private Notifiable {
       }
       taskEXIT_CRITICAL();
       // Schedule callback on the main thread to send off events.
-      me->Notify();
+      me->notify();
       me->InitCounts();
     }
     return OS_TIMER_RESTART;
@@ -180,6 +187,7 @@ class AllGPIOProducers : private Executable, private Notifiable {
 
   uint8_t counts_[kPinCount];
   uint8_t max_count_;
+  uint8_t pending_ {0};
 
   // Backing store of the range producer.
   uint32_t exported_bits_;
@@ -190,7 +198,7 @@ class AllGPIOProducers : private Executable, private Notifiable {
   OSTimer timer_;
 
   nmranet::WriteHelper helper_;
-  ProxyNotifiable helper_busy_;
+  BarrierNotifiable helper_busy_;
 };
 
 static const uint64_t DET_EVENT_ID = 0x0501010114FF2810ULL;
@@ -204,16 +212,16 @@ AllGPIOProducers input_producers_(DET_EVENT_ID);
 int appl_main(int argc, char* argv[])
 {
 #ifdef TARGET_LPC11Cxx
-  lpc11cxx::CreateCanDriver(&can_pipe);
+  lpc11cxx::CreateCanDriver(&can_hub0);
 #endif
   //BlinkerFlow blinker(&g_node);
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     nmranet::BitEventConsumer consumer(&logger);
-    g_if_can.set_alias_allocator(
-        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
+    g_if_can.add_addressed_message_support();
     nmranet::AliasInfo info;
-    g_if_can.alias_allocator()->empty_aliases()->Release(&info);
-    nmranet::AddEventHandlerToIf(&g_if_can);
-    g_executor.ThreadBody();
+    // Bootstraps the alias allocation process.
+    g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
+    //nmranet::AddEventHandlerToIf(&g_if_can);
+    g_executor.thread_body();
     return 0;
 }

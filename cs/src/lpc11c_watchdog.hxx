@@ -11,35 +11,38 @@ extern "C" {
 void WDT_IRQHandler(void) { NVIC_SystemReset(); }
 }
 
+#undef OVERRIDE
+#define OVERRIDE override
+
 class WatchDogEventHandler : public nmranet::SimpleEventHandler {
  public:
-  WatchDogEventHandler(nmranet::AsyncNode* node, uint64_t event)
+  WatchDogEventHandler(nmranet::Node* node, uint64_t event)
       : node_(node), event_(event) {
     init_watchdog();
     reset_watchdog();
-    nmranet::NMRAnetEventRegistry::instance()->RegisterHandler(this, 0, 0);
+    nmranet::EventRegistry::instance()->register_handlerr(this, 0, 0);
   }
 
-  virtual void HandleEventReport(nmranet::EventReport* event,
-                                 Notifiable* done) {
+  void HandleEventReport(nmranet::EventReport* event,
+                         BarrierNotifiable* done) OVERRIDE {
     if (event->event == event_) {
       reset_watchdog();
     }
-    done->Notify();
+    done->notify();
   }
 
-  virtual void HandleIdentifyGlobal(nmranet::EventReport* event,
-                                    Notifiable* done) {
+  void HandleIdentifyGlobal(nmranet::EventReport* event,
+                            BarrierNotifiable* done) OVERRIDE {
     nmranet::event_write_helper1.WriteAsync(
         node_, nmranet::Defs::MTI_CONSUMER_IDENTIFIED_UNKNOWN,
-        nmranet::WriteHelper::global(), nmranet::EventIdToBuffer(event_), done);
+        nmranet::WriteHelper::global(), nmranet::eventid_to_buffer(event_), done);
   }
-  virtual void HandleIdentifyConsumer(nmranet::EventReport* event,
-                                      Notifiable* done) {
+  void HandleIdentifyConsumer(nmranet::EventReport* event,
+                              BarrierNotifiable* done) OVERRIDE {
     if (event->event == event_) {
       HandleIdentifyGlobal(event, done);
     } else {
-      done->Notify();
+      done->notify();
     }
   }
 
@@ -71,7 +74,7 @@ class WatchDogEventHandler : public nmranet::SimpleEventHandler {
     LPC_WDT->FEED = 0x55;
   }
 
-  nmranet::AsyncNode* node_;
+  nmranet::Node* node_;
   uint64_t event_;
 };
 
