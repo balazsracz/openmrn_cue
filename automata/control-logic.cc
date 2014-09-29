@@ -811,6 +811,7 @@ MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVaria
 
 void TrainSchedule::HandleInit(Automata* aut) {
   Def().IfState(StBase)
+      .ActReg0(aut->ImportVariable(last_set_reversed_.get()))
       .ActState(StWaiting);
 }
 
@@ -854,6 +855,8 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
 }
 
 void TrainSchedule::SendTrainCommands(Automata *aut) {
+  const auto& is_reversed = aut->ImportVariable(*is_reversed_);
+  auto* last_set_reversed = aut->ImportVariable(last_set_reversed_.get());
   Def().ActSetId(train_node_id_);
   if (speed_var_) {
     // Variable speed.
@@ -865,8 +868,15 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
         .ActLoadSpeed(true, 40);
   }
   Def().IfState(StStartTrain)
-      .IfReg1(aut->ImportVariable(*is_reversed_))
+      .IfReg1(is_reversed)
       .ActSpeedReverse();
+  // Copies is_reversed to last_set_reversed.
+  Def().IfState(StStartTrain)
+      .IfReg1(is_reversed)
+      .ActReg1(last_set_reversed);
+  Def().IfState(StStartTrain)
+      .IfReg0(is_reversed)
+      .ActReg0(last_set_reversed);
   Def().IfState(StStartTrain)
       .IfSetSpeed()
       .ActState(StRequestTransition);
@@ -874,11 +884,31 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
   Def().IfState(StTransitionDone)
       .ActState(StMoving);
 
+  // If is reversed != last_set_reversed, then we send a train stop command
+  // with the right direction bit. This should take care of startup train
+  // reversing.
+  Def().IfState(StWaiting)
+      .IfReg1(is_reversed)
+      .IfReg0(*last_set_reversed)
+      .ActState(StStopTrain);
+  Def().IfState(StWaiting)
+      .IfReg0(is_reversed)
+      .IfReg1(*last_set_reversed)
+      .ActState(StStopTrain);
+
   Def().IfState(StStopTrain)
       .ActLoadSpeed(true, 0);
   Def().IfState(StStopTrain)
-      .IfReg1(aut->ImportVariable(*is_reversed_))
+      .IfReg1(is_reversed)
       .ActSpeedReverse();
+  // Copies is_reversed to last_set_reversed.
+  Def().IfState(StStopTrain)
+      .IfReg1(is_reversed)
+      .ActReg1(last_set_reversed);
+  Def().IfState(StStopTrain)
+      .IfReg0(is_reversed)
+      .ActReg0(last_set_reversed);
+
   Def().IfState(StStopTrain)
       .IfSetSpeed()
       .ActState(StWaiting);
@@ -923,6 +953,17 @@ void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
       .IfReg1(current_block_permaloc_)
       .IfReg1(*is_reversed)
       .ActSpeedReverse();
+
+  // Copies is_reversed to last_set_reversed.
+  Def().IfState(StReverseSendCommand)
+      .IfReg1(current_block_permaloc_)
+      .IfReg1(*is_reversed)
+      .ActReg1(aut->ImportVariable(last_set_reversed_.get()));
+  Def().IfState(StReverseSendCommand)
+      .IfReg1(current_block_permaloc_)
+      .IfReg0(*is_reversed)
+      .ActReg0(aut->ImportVariable(last_set_reversed_.get()));
+
   Def().IfState(StReverseSendCommand)
       .IfReg1(current_block_permaloc_)
       .IfSetSpeed()
