@@ -145,6 +145,9 @@ PhysicalSignal WWB3(&b6.InOraGreen, &b6.RelBlue,
 PhysicalSignal WWB2(&b6.InOraRed, &b5.RelBlue,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal WWA11(&b6.InBrownBrown, &b6.LedGreen,
+                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
+                     nullptr, nullptr, nullptr, nullptr);
 
 PhysicalSignal B421(&n8.d2, &n8.r2,
                     &signal_B421_main.signal, &signal_B421_adv.signal,
@@ -261,7 +264,7 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&panda_bridge.l4));
   DefCopy(*rep, ImportVariable(&lpc11_back.l0));
   DefCopy(*rep, ImportVariable(&n8.l0));
-  DefCopy(ImportVariable(b6.InOraRed), ImportVariable(&b6.LedGreen));
+  DefCopy(ImportVariable(b5.InBrownGrey), ImportVariable(&b5.LedGreen));
 });
 
 DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase); });
@@ -347,6 +350,7 @@ StandardFixedTurnout Turnout_WWW5(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "WW.W5", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
 
+StandardBlock Block_WWA11(&brd, &WWA11, logic.allocator(), "WW.A11");
 StubBlock Block_WWB2(&brd, &WWB2, &b6.InOraRed, logic.allocator(), "WW.B2");
 StubBlock Block_WWB3(&brd, &WWB3, &b6.InOraGreen, logic.allocator(), "WW.B3");
 StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
@@ -384,23 +388,25 @@ StubBlock Block_ZZA2(&brd, &ZZA2, &b2.InOraGreen, logic.allocator(), "ZZ.A2");
 StubBlock Block_ZZA3(&brd, &ZZA3, &b2.InOraRed, logic.allocator(), "ZZ.A3");
 
 StandardMiddleDetector Det_380(&brd, &b7.InOraRed,
-                               EventBlock::Allocator(logic.allocator(),
+                               EventBlock::Allocator(logic2.allocator(),
                                                      "Det380", 24, 8));
 
-StandardFixedTurnout Turnout_W381(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "W381", 40),
+StandardFixedTurnout Turnout_W381(&brd,
+                                  EventBlock::Allocator(logic2.allocator(),
+                                                        "W381", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-StandardFixedTurnout Turnout_W382(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "W382", 40),
+StandardFixedTurnout Turnout_W382(&brd,
+                                  EventBlock::Allocator(logic2.allocator(),
+                                                        "W382", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
 
 StandardMiddleDetector Det_500(&brd, &b7.InBrownBrown,
-                               EventBlock::Allocator(logic.allocator(),
+                               EventBlock::Allocator(logic2.allocator(),
                                                      "Det500", 24, 8));
 
 MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b7.ActBlueGrey, &b7.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
-    &brd, EventBlock::Allocator(logic.allocator(), "W481", 40), &Magnet_W481);
+    &brd, EventBlock::Allocator(logic2.allocator(), "W481", 40), &Magnet_W481);
 
 StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
 StandardBlock Block_YYC23(&brd, &YYC23, logic2.allocator(), "YY.C23");
@@ -483,7 +489,8 @@ bool ign =
                {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
                {DKW_ZZW3.b.point_b1(), Turnout_W481.b.side_points()},
                {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
-               {Block_WWB14.side_a(), DKW_WWW4.b.point_b1()},
+               {Block_WWB14.side_a(), Block_WWA11.side_b()},
+               {Block_WWA11.side_a(), DKW_WWW4.b.point_b1()},
                {DKW_WWW4.b.point_b2(), Block_WWB2.entry()},
                {DKW_WWW4.b.point_a2(), Turnout_WWW1.b.side_thrown()},
                {Turnout_WWW3.b.side_thrown(), DKW_WWW4.b.point_a1()},
@@ -691,9 +698,10 @@ class LayoutSchedule : public TrainSchedule {
 
   // In WW, runs around the loop track 11 to 14.
   void RunLoopWW(Automata* aut) {
-    AddEagerBlockTransition(&Block_A301, &Block_WWB14, &g_wwb2_entry_free);
+    AddEagerBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), true);
+    AddEagerBlockTransition(&Block_WWA11, &Block_WWB14, &g_not_paused_condition);
 
     AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
                                &g_wwb3_entry_free);
@@ -907,6 +915,13 @@ int main(int argc, char** argv) {
   assert(f);
   PrintAllEventVariablesInBashFormat(f);
   fclose(f);
+
+  fprintf(stderr, "Allocator %s: %d entries remaining\n",
+          logic.allocator()->name().c_str(), logic.allocator()->remaining());
+  fprintf(stderr, "Allocator %s: %d entries remaining\n",
+          logic2.allocator()->name().c_str(), logic2.allocator()->remaining());
+  fprintf(stderr, "Allocator %s: %d entries remaining\n",
+          perm.allocator()->name().c_str(), perm.allocator()->remaining());
 
   return 0;
 };
