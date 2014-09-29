@@ -158,7 +158,7 @@ class TivaShortDetectionModule : public StateFlowBase {
       num_overcurrent_tests_ = 0;
     }
     if (os_get_time_monotonic() > next_report_) {
-      LOG(INFO, "adc value: %04" PRIx32, adc_value[0]);
+      LOG(INFO, "  adc value: %04" PRIx32, adc_value[0]);
       next_report_ = os_get_time_monotonic() + MSEC_TO_NSEC(250);
     }
     return call_immediately(STATE(start_timer));
