@@ -1022,8 +1022,17 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
       .IfReg0(next_block_detector_)
       .IfReg0(current_block_route_out_)
       .IfReg0(next_block_route_in_)
+      .IfReg0(aut->ImportVariable(*is_frozen_))
       .RunCallback(condition)
       .ActState(StReadyToGo);
+
+  // Handles the frozen request.
+  Def().IfState(StWaiting)
+      .IfReg1(aut->ImportVariable(*is_frozen_))
+      .ActState(StFrozen);
+  Def().IfState(StFrozen)
+      .IfReg0(aut->ImportVariable(*is_frozen_))
+      .ActState(StWaiting);
 
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
@@ -1073,6 +1082,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .IfReg0(next_block_detector_)
       .IfReg0(current_block_route_out_)
       .IfReg0(next_block_route_in_)
+      .IfReg0(aut->ImportVariable(*is_frozen_))
       .RunCallback(condition)
       .ActState(StWaiting)
       .ActReg1(&permit_request_);

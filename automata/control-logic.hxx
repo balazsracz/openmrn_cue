@@ -1150,7 +1150,7 @@ struct FlipFlopClient : public RequestClientInterface {
   DISALLOW_COPY_AND_ASSIGN(FlipFlopClient);
 };
 
-// next state: 17.
+// next state: 18.
 static constexpr StateRef StWaiting(2);
 static constexpr StateRef StReadyToGo(3);
 static constexpr StateRef StRequestGreen(4);
@@ -1169,6 +1169,7 @@ static constexpr StateRef StTestCondition(12);
 static constexpr StateRef StBeforeReverseWait(14);
 static constexpr StateRef StReverseSendCommand(15);
 static constexpr StateRef StReverseDoneWait(16);
+static constexpr StateRef StFrozen(17);
 
 class TrainSchedule : public virtual AutomataPlugin {
  public:
@@ -1183,6 +1184,7 @@ class TrainSchedule : public virtual AutomataPlugin {
         aut(&aut_),
         is_reversed_(permanent_alloc_.Allocate("is_reversed")),
         last_set_reversed_(alloc_.Allocate("last_reversed")),
+        is_frozen_(permanent_alloc_.Allocate("do_not_move")),
         current_block_detector_(aut_.ReserveVariable()),
         current_block_request_green_(aut_.ReserveVariable()),
         current_block_route_out_(aut_.ReserveVariable()),
@@ -1363,6 +1365,9 @@ class TrainSchedule : public virtual AutomataPlugin {
   std::unique_ptr<GlobalVariable> is_reversed_;
   // 1 if we have last set the train to reversed mode.
   std::unique_ptr<GlobalVariable> last_set_reversed_;
+
+  // 1 if the train is requested not to be moved (by the operator).
+  std::unique_ptr<GlobalVariable> is_frozen_;
 
   Automata::LocalVariable current_block_detector_;
   Automata::LocalVariable current_block_request_green_;
