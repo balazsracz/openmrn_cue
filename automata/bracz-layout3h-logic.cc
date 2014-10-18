@@ -55,7 +55,7 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
 
 I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22);
 NativeIO n8(0x28);
-AccBoard ba(0x2a);
+AccBoard ba(0x2a), bb(0x2b);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -122,7 +122,7 @@ I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
 //I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
 
 
-PhysicalSignal A360(&b2.InBrownBrown, &b2.RelBlue,
+PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0,
                     &signal_A360_main.signal, &signal_A360_adv.signal,
                     &signal_B375_main.signal, &signal_B375_adv.signal,
                     &signal_A375_adv.signal, &signal_B360_adv.signal);
@@ -156,16 +156,22 @@ PhysicalSignal B447(&n8.d0, &n8.r0,
                     &signal_B447_main.signal, &signal_B447_adv.signal,
                     &signal_A421_main.signal, &signal_A421_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal B475(&b2.InBrownGrey, &b2.RelGreen,
+PhysicalSignal B460(&bb.InGreenGreen, &bb.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal B475(&bb.InBrownGrey, &bb.Rel1,
                     &signal_B475_main.signal, &signal_B475_adv.signal,
                     &signal_A460_main.signal, &signal_A460_adv.signal,
                     &signal_B460_adv.signal, &signal_A475_adv.signal);
 
-PhysicalSignal ZZA2(&b2.InOraGreen, &b2.LedGreen,
+PhysicalSignal ZZA2(&bb.InOraGreen, &bb.LedGreen,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal ZZA3(&b2.InOraRed, &b7.LedGreen,
+PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow,
+                    nullptr, nullptr,
+                    nullptr, nullptr, nullptr, nullptr);
+
+PhysicalSignal YYA3(&b1.InBrownBrown, &b1.LedGreen,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -256,7 +262,7 @@ DefAut(blinkaut, brd, {
       .ActReg1(rep);
 
   DefCopy(*rep, ImportVariable(&b1.LedRed));
-  DefCopy(*rep, ImportVariable(&b2.LedRed));
+  DefCopy(*rep, ImportVariable(&bb.LedGoldSw));
   DefCopy(*rep, ImportVariable(&ba.LedGoldSw));
   DefCopy(*rep, ImportVariable(&b5.LedRed));
   DefCopy(*rep, ImportVariable(&b6.LedRed));
@@ -326,7 +332,7 @@ EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm");
 EventBlock logic2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 EventBlock::Allocator& train_perm(*perm.allocator());
-EventBlock::Allocator train_tmp(logic2.allocator()->Allocate("train", 256));
+EventBlock::Allocator train_tmp(logic2.allocator()->Allocate("train", 384));
 
 MagnetCommandAutomata g_magnet_aut(&brd, *logic2.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
@@ -362,6 +368,7 @@ StandardBlock Block_A360(&brd, &A360, logic.allocator(), "A360");
 
 StandardBlock Block_B421(&brd, &B421, logic.allocator(), "B421");
 StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
+StandardBlock Block_B460(&brd, &B460, logic.allocator(), "B460");
 StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
 
 StandardFixedTurnout Turnout_W359(&brd, EventBlock::Allocator(logic.allocator(),
@@ -371,21 +378,21 @@ StandardFixedTurnout Turnout_W459(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "W459", 40),
                                   FixedTurnout::TURNOUT_THROWN);
 
-MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &b2.ActGreenGreen,
-                      &b2.ActGreenRed);
+MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &bb.ActGreenGreen,
+                      &bb.ActGreenRed);
 StandardMovableTurnout Turnout_ZZW1(
     &brd, EventBlock::Allocator(logic.allocator(), "ZZ.W1", 40), &Magnet_ZZW1);
 
 StandardFixedTurnout Turnout_ZZW2(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "ZZ.W2", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &b2.ActBlueGrey,
-                      &b2.ActBlueBrown);
+MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueGrey,
+                      &bb.ActBlueBrown);
 StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "ZZ.W3", 64),
                             &Magnet_ZZW3);
-StubBlock Block_ZZA2(&brd, &ZZA2, &b2.InOraGreen, logic.allocator(), "ZZ.A2");
-StubBlock Block_ZZA3(&brd, &ZZA3, &b2.InOraRed, logic.allocator(), "ZZ.A3");
+StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic.allocator(), "ZZ.A2");
+StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic.allocator(), "ZZ.A3");
 
 StandardMiddleDetector Det_380(&brd, &b7.InOraRed,
                                EventBlock::Allocator(logic2.allocator(),
@@ -409,6 +416,7 @@ StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic2.allocator(), "W481", 40), &Magnet_W481);
 
 StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
+StandardBlock Block_YYA3(&brd, &YYA3, logic2.allocator(), "YY.A3");
 StandardBlock Block_YYC23(&brd, &YYC23, logic2.allocator(), "YY.C23");
 StandardMiddleDetector Det_YYC22(&brd, &ba.In1,
                                  EventBlock::Allocator(logic2.allocator(),
@@ -440,14 +448,14 @@ StandardBlock Block_XXB2(&brd, &XXB2, logic2.allocator(), "XX.B2");
 StandardBlock Block_XXB3(&brd, &XXB3, logic2.allocator(), "XX.B3");
 
 #define BLOCK_SEQUENCE3 &Block_A360, &Block_A347, &Block_A321, &Block_A301
-#define BLOCK_SEQUENCE4R &Block_B421, &Block_B447, &Block_B475
+#define BLOCK_SEQUENCE4R &Block_B421, &Block_B447, &Block_B460, &Block_B475
 #define BLOCK_SEQUENCE4 &Block_WWB14, BLOCK_SEQUENCE4R
 
 std::vector<StandardBlock*> block_sequence3 = {BLOCK_SEQUENCE3};
 std::vector<StandardBlock*> block_sequence4 = {BLOCK_SEQUENCE4};
 
 bool ignored1 = BindSequence({&Block_A347, &Block_A321, &Block_A301});
-bool ignored2 = BindSequence({&Block_B421, &Block_B447});
+bool ignored2 = BindSequence({&Block_B421, &Block_B447, &Block_B460});
 /*bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
 bool ignored3 = Block_XXB1.side_a()->Bind(Turnout_XXW8.b.side_closed());
 bool ignored4 = Block_XXB3.side_a()->Bind(Turnout_XXW8.b.side_thrown());
@@ -478,8 +486,9 @@ bool ign =
                {Turnout_ZZW2.b.side_closed(), DKW_ZZW3.b.point_a2()},
                {DKW_ZZW3.b.point_b2(), Block_ZZA2.entry()},
                {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
-               {Block_YYC23.side_a(), Turnout_W481.b.side_closed()},
-               {Block_B447.side_b(), Turnout_W459.b.side_closed()},
+               {Block_YYC23.side_a(), Block_YYA3.side_b()},
+               {Block_YYA3.side_a(), Turnout_W481.b.side_closed()},
+               {Block_B460.side_b(), Turnout_W459.b.side_closed()},
                {Turnout_W459.b.side_points(), Block_B475.side_a()},
                {Turnout_W459.b.side_thrown(), Turnout_W359.b.side_closed()},
                {Turnout_W359.b.side_thrown(), Block_A360.side_b()},
@@ -592,7 +601,7 @@ FlipFlopClient ww_from3("from_3", &ww_out_flipflop);
 FlipFlopClient ww_from14("from_14", &ww_out_flipflop);
 
 
-std::unique_ptr<GlobalVariable> g_stop_b447(logic2.allocator()->Allocate("block_b447"));
+std::unique_ptr<GlobalVariable> g_stop_b460(logic2.allocator()->Allocate("block_b447"));
 std::unique_ptr<GlobalVariable> g_stop_b360(logic2.allocator()->Allocate("block_b360"));
 
 void IfLoopOkay(Automata::Op* op) {
@@ -655,9 +664,9 @@ void IfWWB2ExitFree(Automata::Op* op) {
       .IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
 }
 
-void IfB447OutNotBlocked(Automata::Op* op) {
+void IfB460OutNotBlocked(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*g_stop_b447));
+  op->IfReg0(op->parent()->ImportVariable(*g_stop_b460));
 }
 
 void IfB360OutNotBlocked(Automata::Op* op) {
@@ -665,7 +674,7 @@ void IfB360OutNotBlocked(Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(*g_stop_b360));
 }
 
-auto g_b447_not_blocked = NewCallback(&IfB447OutNotBlocked);
+auto g_b460_not_blocked = NewCallback(&IfB460OutNotBlocked);
 auto g_b360_not_blocked = NewCallback(&IfB360OutNotBlocked);
 auto g_wwb3_entry_free = NewCallback(&IfWWB3EntryFree);
 auto g_wwb2_entry_free = NewCallback(&IfWWB2EntryFree);
@@ -682,8 +691,8 @@ class LayoutSchedule : public TrainSchedule {
  public:
   LayoutSchedule(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
-                      train_perm.Allocate(name, 16, 8),
-                      train_tmp.Allocate(name, 16, 8),
+                      train_perm.Allocate(name, 24, 8),
+                      train_tmp.Allocate(name, 24, 8),
                       &stored_speed_),
         stored_speed_(&brd, "speed." + name,
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
@@ -728,7 +737,8 @@ class LayoutSchedule : public TrainSchedule {
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
     AddEagerBlockTransition(&Block_B421, &Block_B447, &g_not_paused_condition);
-    AddEagerBlockTransition(&Block_B447, &Block_B475, &g_b447_not_blocked);
+    AddEagerBlockTransition(&Block_B447, &Block_B460, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked);
   }
 
   // Runs in ZZ into the stub track and reverses direction.
@@ -748,14 +758,14 @@ class LayoutSchedule : public TrainSchedule {
     StopAndReverseAtStub(&Block_ZZA3);
 
     AddEagerBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
-    auto* stop_b447 = aut->ImportVariable(g_stop_b447.get());
+    auto* stop_b460 = aut->ImportVariable(g_stop_b460.get());
     auto* stop_b360 = aut->ImportVariable(g_stop_b360.get());
     Def().IfReg0(current_block_permaloc_)
-        .ActReg0(stop_b447)
+        .ActReg0(stop_b460)
         .ActReg0(stop_b360);
     Def().IfReg1(current_block_permaloc_)
         .IfState(StWaiting)
-        .ActReg1(stop_b447);
+        .ActReg1(stop_b460);
     Def().IfReg1(current_block_permaloc_)
         .IfState(StWaiting)
         .IfReg1(aut->ImportVariable(Block_B475.detector()))
@@ -774,7 +784,7 @@ class LayoutSchedule : public TrainSchedule {
   // Runs the loop XX/YY from 475 to eventually 360
   void RunLoopXXYY(Automata* aut) {
     // in
-    AddBlockTransitionOnPermit(&Block_B475, &Block_YYC23, &frc_toback, &g_zzw3_free);
+    AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
@@ -782,6 +792,8 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(Turnout_W481.b.magnet(), true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+
+    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
 
     // back->front
     AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
@@ -870,6 +882,7 @@ CircleTrain train_rbe44("RBe4_4_ZVV", 52, 35);
 StraightOnlyPushPull train_m61("m61", 61, 30);
 CircleTrain train_11239("Re44_11239", 48, 28);
 ICEPushPull train_ice("ICE", 2, 16);
+CircleTrain train_re474("Re474", 12, 30);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
