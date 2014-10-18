@@ -180,7 +180,7 @@ static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
 
-static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
+static const uint64_t EVENT_ID = 0x0501010114FF2038ULL;
 const int main_priority = 0;
 
 extern "C" { void resetblink(uint32_t pattern); }
@@ -286,7 +286,7 @@ void mydisable()
 }
 
 TivaShortDetectionModule g_short_det(&g_service, MSEC_TO_NSEC(1));
-BlinkerFlow blinker(&g_node);
+//BlinkerFlow blinker(&g_node);
 
 
 /** Entry point to application.
