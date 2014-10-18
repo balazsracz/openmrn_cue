@@ -77,11 +77,15 @@ AutomataRunner& AutomataRunner::ResetForAutomata(Automata* aut) {
 void AutomataRunner::CreateVarzAndAutomatas() {
   ip_ = 0;
   int id = 0;
+  aut_offset_t last_ofs = ip_;
   do {
-    int ofs = load_insn();
+    aut_offset_t ofs = load_insn();
     ofs |= load_insn() << 8;
     LOG(VERBOSE, "read automata ofs: ofs %d\n", ofs);
     if (!ofs) break;
+    if (ofs < last_ofs) {
+      ofs = ((last_ofs & ~0xffff) + 0x10000) | ofs;
+    }
     all_automata_.push_back(new ::Automata(id++, ofs));
   } while (1);
   // This will execute all preamble commands, including the variable create
@@ -92,7 +96,7 @@ void AutomataRunner::CreateVarzAndAutomatas() {
 void AutomataRunner::Run() {
   uint8_t insn;
   uint8_t numif, numact;
-  int endif, endcond;
+  aut_offset_t endif, endcond;
   bool keep;
   while (1) {
     // LOG(VERBOSE, "ip: %d\n", ip_);

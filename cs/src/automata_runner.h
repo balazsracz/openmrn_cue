@@ -20,7 +20,7 @@ using std::vector;
 #include "nmranet/TractionClient.hxx"
 #include "executor/Timer.hxx"
 
-typedef uint16_t aut_offset_t;
+typedef unsigned aut_offset_t;
 typedef uint8_t insn_t;
 
 namespace nmranet { class Node; }
