@@ -495,7 +495,13 @@ struct AccBoard {
         ActOraRed(Act2),
         ActOraGreen(Act3),
         ActBlueBrown(Act4),
-        ActBlueGrey(Act5)
+        ActBlueGrey(Act5),
+        InBrownBrown(In0),
+        InBrownGrey(In1),
+        InOraRed(In2),
+        InOraGreen(In3),
+        InGreenGreen(In4),
+        InGreenYellow(In5)
   {}
 
 
@@ -518,7 +524,10 @@ struct AccBoard {
   EventBasedVariable In0, In1, In2, In3, In4, In5, In6, In7;
 
   EventBasedVariable &ActGreenGreen, &ActGreenRed, &ActOraRed, &ActOraGreen,
-                         &ActBlueBrown, &ActBlueGrey;
+      &ActBlueBrown, &ActBlueGrey;
+
+  EventBasedVariable &InBrownBrown, &InBrownGrey, &InOraRed, &InOraGreen,
+      &InGreenGreen, &InGreenYellow;
 };
 
 
