@@ -7,13 +7,13 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
   // 0
   { 50, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0xff} , { LIGHT, ENGINE, HONK, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HONK, SOUNDP, SOUNDP, SOUNDP, HONK, HONK, HONK, HONK, HONK, HONK, 0xff }, "ICN", DCC_28 | PUSHPULL },  // ESU loksound V4.0 MM/DCC
   // 1
-  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
+  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
     "BR 260417", DCC_28 },  // ESU LokPilot 3.0
   // 2
   { 12, { 0, 2, 3, 4,  0xff, }, { LIGHT, BEAMER, HONK, ABV,  0xff, },
     "RE 474 014-8", MFX }, // todo: check fnbits
   // 3
-  { 2 , { 0, 2, 3, 4,  0xff, }, { LIGHT, HONK, FNT12, ABV,  0xff, },
+  { 2 , { 0, 2, 3, 4,  0xff, }, { LIGHT, HONK, SPEECH, ABV,  0xff, },
     "ICE 2", MARKLIN_NEW | PUSHPULL }, // todo: check fnbits
   // 4
   { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
@@ -52,8 +52,8 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
   { 26, { 0,  0xff, }, { LIGHT,  0xff, },
     "Re 460 HAG", MARKLIN_OLD | PUSHPULL },  // Marklin 6090 (i think; best to check)
   // id 16
-  { 38, { 0,  0xff, }, { LIGHT,  0xff, },
-    "BDe 4/4 1460", MARKLIN_OLD | PUSHPULL },  // Marklin 6080 -- AC motor
+  { 38, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "BDe 4/4 1640", DCC_128 | PUSHPULL },  // Tams LD-G32, DC motor
   // id 17
   { 48, { 0,  0xff, }, { LIGHT,  0xff, },
     "Re 4/4 II 11239", MARKLIN_NEW }, // ESU pre-lokpilot decoder, no DCC support
@@ -67,11 +67,17 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
   { 24, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
     "Taurus", MARKLIN_NEW },
   // id 21
-  { 3, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+  { 33, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "RBe 4/4 1423", DCC_28 | PUSHPULL }, // Burned LokPilot 3.0
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
+  // id 22
+  { 68, {0, 1, 2, 3, 4, 0xff }, { LIGHT, LIGHT1, ENGINE, WHISTLE, ABV, 0xff   },
+    "Ce6/8 Krokodil", MFX },
+  // id 23
+  { 3, {0, 1, 2, 3, 4, 0xff }, { LIGHT, HONK, ENGINE, SHUNT, ABV, 0xff },
+    "Re 10/10", DCC_128 },
+  // id 24
+  { 19, {0, 1, 2, 3, 4, 0xff }, { LIGHT, SMOKE, ENGINE, WHISTLE, ABV, 0xff },
+    "BR 18.3", MFX },
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
 };

@@ -58,6 +58,7 @@ extern const size_t const_lokdb_size;
 enum Symbols {
   LIGHT = 1,
   BEAMER = 2,
+  SHUNT = 5,
   TELEX = 6,
   ABV = 8,
   SMOKE = 10,
