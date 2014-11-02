@@ -55,10 +55,11 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
         bus_(bus),
         numSignals_(num_signals),
         nextSignal_(0),
-        wakeup_(0),
+        go_sleep_(0),
         waiting_(0),
         timer_(this)
   {
+    memset(backingStore_, 0, num_signals * 2);
     reset_flow(STATE(refresh));
     // Sets all signals to ESTOP.
     auto* b = bus->alloc();
@@ -72,10 +73,10 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
   void send_update(Buffer<string>* b, uint8_t address, uint8_t aspect) {
     auto& s = *b->data();
     s.clear();
-    s.push_back(0);  // broadcast address
+    s.push_back(address);
     s.push_back(3);  // len
     s.push_back(3 /*SCMD_ASPECT*/);
-    s.push_back(0 /*ESTOP*/);
+    s.push_back(aspect);
     bus_->send(b);
   }
 
@@ -90,12 +91,14 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
   Action start_refresh() {
     waiting_ = 0;
     lastUpdateTime_ = os_get_time_monotonic();
-    // Skips signas for which we don't have an address.
-    while (nextSignal_ < numSignals_ && !backingStore_[nextSignal_ << 1]) {
+    // Skips signals for which we don't have an address. Slot zero is always
+    // used even if address is 0.
+    while (nextSignal_ < numSignals_ &&
+           (nextSignal_ > 0 && !backingStore_[nextSignal_ << 1])) {
       ++nextSignal_;
     }
-    if (wakeup_ || (nextSignal_ >= numSignals_)) {
-      wakeup_ = 0;
+    if (go_sleep_ || (nextSignal_ >= numSignals_)) {
+      go_sleep_ = 0;
       return call_immediately(STATE(refresh));
     }
     return allocate_and_call(bus_, STATE(fill_packet));
@@ -106,6 +109,7 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
     b->set_done(n_.reset(this));
     send_update(b, backingStore_[nextSignal_ << 1],
                 backingStore_[(nextSignal_ << 1) + 1]);
+    nextSignal_++;
     return wait_and_call(STATE(start_refresh));
   }
 
@@ -113,7 +117,7 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
     auto* b = bus_->alloc();  // sync alloc -- not very nice.
     send_update(b, backingStore_[offset & ~1], backingStore_[offset | 1]);
     lastUpdateTime_ = os_get_time_monotonic();
-    wakeup_ = 1;
+    go_sleep_ = 1;
   }
 
  private:
@@ -123,7 +127,7 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
 
   unsigned numSignals_ : 8;
   unsigned nextSignal_ : 8;
-  unsigned wakeup_ : 1;   // 1 if there was an update from the changed callback
+  unsigned go_sleep_ : 1;  // 1 if there was an update from the changed callback
   unsigned waiting_ : 1;  // unused
 
   BarrierNotifiable n_;

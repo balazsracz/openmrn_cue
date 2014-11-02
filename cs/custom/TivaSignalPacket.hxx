@@ -100,7 +100,7 @@ TivaSignalPacketSender::TivaSignalPacketSender(Service* s, unsigned baudrate,
     : SignalPacketBase(s), uartBase_(uart_base), interrupt_(interrupt) {
   MAP_IntDisable(interrupt);
   MAP_UARTConfigSetExpClk(
-      uartBase_, MAP_SysCtlClockGet(), baudrate,
+      uartBase_, configCPU_CLOCK_HZ, baudrate,
       UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_ZERO);
   MAP_IntPrioritySet(interrupt_,
                      std::min(0xff, configKERNEL_INTERRUPT_PRIORITY + 0x20));
