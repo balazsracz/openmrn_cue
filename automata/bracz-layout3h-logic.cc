@@ -594,7 +594,7 @@ FlipFlopClient ww_from3("from_3", &ww_out_flipflop);
 FlipFlopClient ww_from14("from_14", &ww_out_flipflop);
 
 
-std::unique_ptr<GlobalVariable> g_stop_b460(logic2.allocator()->Allocate("block_b447"));
+std::unique_ptr<GlobalVariable> g_stop_b460(logic2.allocator()->Allocate("block_b460"));
 std::unique_ptr<GlobalVariable> g_stop_b360(logic2.allocator()->Allocate("block_b360"));
 
 void IfLoopOkay(Automata::Op* op) {
