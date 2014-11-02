@@ -727,6 +727,16 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(DKW_WWW4.b.magnet(), true);
   }
 
+  // In WW, run through the stub track, changing direction.
+  void RunStubWWB3(Automata* aut) {
+    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
+    SwitchTurnout(Turnout_WWW1.b.magnet(), false);
+    StopAndReverseAtStub(&Block_WWB3);
+
+    AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
+                               &g_wwb3_entry_free);
+  }
+
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
     AddEagerBlockTransition(&Block_B421, &Block_B447, &g_not_paused_condition);
@@ -852,6 +862,20 @@ class StraightOnlyPushPull : public LayoutSchedule {
   }
 };
 
+class M61PushPull : public LayoutSchedule {
+ public:
+  M61PushPull(const string& name, uint16_t train_id,
+              uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    Run360_to_301(aut);
+    RunStubWWB3(aut);
+    Run421_to_475(aut);
+    RunStubZZ(aut);
+  }
+};
+
 class ICEPushPull : public LayoutSchedule {
  public:
   ICEPushPull(const string& name, uint16_t train_id, uint8_t default_speed)
@@ -872,10 +896,14 @@ CircleTrain train_re460hag("Re460_HAG", 26, 32);
 CircleTrain train_re465("Re465", 47, 32);
 EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 20);
 CircleTrain train_rbe44("RBe4_4_ZVV", 52, 35);
-StraightOnlyPushPull train_m61("m61", 61, 30);
+M61PushPull train_m61("m61", 61, 30);
 CircleTrain train_11239("Re44_11239", 48, 28);
 ICEPushPull train_ice("ICE", 2, 16);
+CircleTrain train_wle("wle_er20", 27, 30);
 CircleTrain train_re474("Re474", 12, 30);
+CircleTrain train_krokodil("Krokodil", 68, 35);
+CircleTrain train_rheingold("Rheingold", 19, 35);
+CircleTrain train_re10_10("Re_10_10", 3, 35);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
