@@ -2,7 +2,7 @@
 #define _ISOC99_SOURCE
 #endif
 
-//#define LOGLEVEL VERBOSE
+#define LOGLEVEL WARNING
 // Workaroundfor bug in <memory> for gcc 2.6.2 lpcxpresso newlib
 #ifndef __CR2_C___4_6_2_BITS_SHARED_PTR_H__
 #define __CR2_C___4_6_2_BITS_SHARED_PTR_H__
@@ -78,15 +78,23 @@ void AutomataRunner::CreateVarzAndAutomatas() {
   ip_ = 0;
   int id = 0;
   aut_offset_t last_ofs = ip_;
+  aut_offset_t last_raw_ofs = ip_;
   do {
     aut_offset_t ofs = load_insn();
     ofs |= load_insn() << 8;
     LOG(VERBOSE, "read automata ofs: ofs %d\n", ofs);
     if (!ofs) break;
-    if (ofs < last_ofs) {
-      ofs = ((last_ofs & ~0xffff) + 0x10000) | ofs;
+    aut_offset_t final_ofs = ofs;
+    if (ofs < last_raw_ofs) {
+      final_ofs = ((last_ofs & ~0xffff) + 0x10000) | ofs;
+    } else {
+      final_ofs = (last_ofs & ~0xffff) | ofs;
     }
-    all_automata_.push_back(new ::Automata(id++, ofs));
+    last_raw_ofs = ofs;
+    all_automata_.push_back(new ::Automata(id++, final_ofs));
+    LOG(WARNING, "automata %d raw_ofs %d final_ofs: ofs %d\n", id - 1, ofs,
+        final_ofs);
+    last_ofs = final_ofs;
   } while (1);
   // This will execute all preamble commands, including the variable create
   // commands.
