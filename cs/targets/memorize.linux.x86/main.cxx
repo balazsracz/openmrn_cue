@@ -70,7 +70,7 @@ nmranet::EventService g_event_service(&g_if_can);
 static const uint64_t BRACZ_LAYOUT = 0x0501010114FF0000ULL;
 
 nmranet::MemorizingHandlerManager g_permabits(&g_node, BRACZ_LAYOUT | 0xC000,
-                                              512, 2);
+                                              1024, 2);
 
 /** Entry point to application.
  * @param argc number of command line arguments
