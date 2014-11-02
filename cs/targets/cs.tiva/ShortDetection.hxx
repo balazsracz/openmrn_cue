@@ -138,7 +138,7 @@ class TivaShortDetectionModule : public StateFlowBase {
     adc_value[0] = 0;
     ADCSequenceDataGet(ADC_BASE, SEQUENCER, adc_value);
     if (adc_value[0] > SHUTDOWN_LIMIT) {
-      if (++num_overcurrent_tests_ >= 3) {
+      if (++num_overcurrent_tests_ >= 5) {
         disable_dcc();
         LOG(INFO, "disable value: %04" PRIx32, adc_value[0]);
         ++num_disable_tries_;
@@ -148,6 +148,7 @@ class TivaShortDetectionModule : public StateFlowBase {
           return call_immediately(STATE(shorted));
         }
       } else {
+        LOG(INFO, "overcurrent value: %04" PRIx32, adc_value[0]);
         // If we measured an overcurrent situation, we start another conversion
         // really soon.
         return sleep_and_call(&timer_, MSEC_TO_NSEC(1),
