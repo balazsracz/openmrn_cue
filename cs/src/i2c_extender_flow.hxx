@@ -15,13 +15,15 @@ class Node;
 static const int DATA_REPEAT_COUNT = 3;
 static nmranet::WriteHelper g_i2c_write_helper;
 
-class I2cExtenderBoard : public ControlFlow {
+class I2cExtenderBoard : public StateFlowBase {
 public:
-  I2cExtenderBoard(I2CDriver* driver, uint8_t address, Executor *executor,
-                   nmranet::Node *node)
-      : ControlFlow(executor, nullptr), driver_(driver), address_(address),
-        bit_pc_(node, BRACZ_LAYOUT | (address << 8), &io_store_, 24),
-        signal_c_(node, (BRACZ_LAYOUT & (~0xFFFFFF)) | (address << 16), signal_data_, sizeof(signal_data_)) {
+ I2cExtenderBoard(I2CDriver* driver, uint8_t address, nmranet::Node* node)
+     : StateFlowBase(node->interface()->dispatcher()->service()),
+       driver_(driver),
+       address_(address),
+       bit_pc_(node, BRACZ_LAYOUT | (address << 8), &io_store_, 24),
+       signal_c_(node, (BRACZ_LAYOUT & (~0xFFFFFF)) | (address << 16),
+                 signal_data_, sizeof(signal_data_)) {
     io_store_ = 1;
     // This code only works for little-endian otherwise the bitrange-eventpc
     // will export different bytes than what we read from i2c.
@@ -32,12 +34,12 @@ public:
   }
 
   Action GetHardware() {
-    return Allocate(driver_->allocator(), STATE(StartReceive));
+    return allocate_and_call(STATE(StartReceive), driver_->mutex());
   }
 
   Action StartReceive() {
     driver_->StartRead(address_, 0, 1, this);
-    return WaitAndCall(STATE(ReadDone));
+    return wait_and_call(STATE(ReadDone));
   }
 
   Action ReadDone() {
@@ -59,7 +61,7 @@ public:
       // Failure to read, start over counting and try again later.
       resetblink(0x80000A02);
       data_count_ = 0;
-      driver_->Release();
+      driver_->mutex()->Unlock();
       return yield_and_call(STATE(GetHardware));
     }
   }
@@ -69,8 +71,9 @@ public:
       bool old_state = bit_pc_.Get(kReadBitOffset + i);
       bool new_state = new_data_ & (1 << i);
       if (new_state != old_state) {
-        bit_pc_.Set(kReadBitOffset + i, new_state, &g_i2c_write_helper, this);
-        return wait_for_notification();
+        bit_pc_.Set(kReadBitOffset + i, new_state, &g_i2c_write_helper,
+                    n_.reset(this));
+        return wait();
       }
     }
     return call_immediately(STATE(StartSend));
@@ -82,7 +85,7 @@ public:
     buf[1] = io_data_[1];
     memcpy(buf + 2, signal_data_, sizeof(signal_data_));
     driver_->StartWrite(address_, 2 + sizeof(signal_data_), this);
-    return WaitAndCall(STATE(WriteDone));
+    return wait_and_call(STATE(WriteDone));
   }
 
   Action WriteDone() {
@@ -91,7 +94,7 @@ public:
     } else {
       resetblink(0x80000A02);
     }
-    driver_->Release();
+    driver_->mutex()->Unlock();
     return call_immediately(STATE(GetHardware));
   }
 
@@ -114,7 +117,7 @@ private:
   };
 
   uint8_t signal_data_[EXT_SIGNAL_COUNT * 2];
-
+  BarrierNotifiable n_;
   nmranet::BitRangeEventPC bit_pc_;
   nmranet::ByteRangeEventC signal_c_;
 };

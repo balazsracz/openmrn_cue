@@ -6,13 +6,14 @@
 #include "utils/AsyncMutex.hxx"
 
 class ExecutorBase;
+class Service;
 
 class I2CDriver : public Executable {
 public:
   static const int kMaxWriteSize = 50;
   static const int kMaxReadSize = 4;
 
-  I2CDriver(ExecutorBase* e);
+  I2CDriver(Service* s);
 
   AsyncMutex *mutex() { return &mutex_; }
 
@@ -28,7 +29,7 @@ public:
 
   // Callback on the (global) executor that calls the done closure and releases
   // *this.
-  virtual void Run();
+  virtual void run();
 
   bool success() {
     return success_;
@@ -36,7 +37,7 @@ public:
 
  public:
   static I2CDriver* instance_;
-  static long long Timeout(void*, void*);
+  static void Timeout();
   // called by the interrupt service routine.
   void isr();
 

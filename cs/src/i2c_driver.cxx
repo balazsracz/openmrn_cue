@@ -33,6 +33,32 @@
 #include "i2c_driver.hxx"
 
 #include "executor/Executor.hxx"
+#include "executor/StateFlow.hxx"
+
+class TimerFlow : public StateFlowBase
+{
+public:
+    TimerFlow(Service *service, long long period_nsec, void (*fun)())
+        : StateFlowBase(service), sleepData_(this), period_(period_nsec), fun_(fun) {
+        start_flow(STATE(handle_sleep));
+    }
+
+private:
+    Action execute()
+    {
+        (*fun_)();
+        return call_immediately(STATE(handle_sleep));
+    }
+
+    Action handle_sleep()
+    {
+        return sleep_and_call(&sleepData_, period_, STATE(execute));
+    }
+
+    StateFlowTimer sleepData_;
+    long long period_;
+    void (*fun_)();
+};
 
 #define CON_AA 4
 #define CON_SI 8
@@ -42,7 +68,8 @@
 
 // For panda i2cbridge: we use i2c 1.
 
-I2CDriver::I2CDriver(ExecutorBase* e) : executor_(e), done_(nullptr) {
+I2CDriver::I2CDriver(Service *service)
+    : executor_(service->executor()), done_(nullptr) {
   HASSERT(!instance_);
   instance_ = this;
 #ifndef TARGET_LPC11Cxx
@@ -50,8 +77,7 @@ I2CDriver::I2CDriver(ExecutorBase* e) : executor_(e), done_(nullptr) {
 #elif defined(TARGET_LPC2368)
 #endif
   InitHardware();
-  os_timer_start(os_timer_create(&I2CDriver::Timeout, nullptr, nullptr),
-                 MSEC_TO_NSEC(500));
+  new TimerFlow(service, MSEC_TO_NSEC(500), &I2CDriver::Timeout);
 }
 
 I2CDriver *I2CDriver::instance_ = nullptr;
@@ -262,15 +288,15 @@ void I2CDriver::isr() {
 }
 
 /* static */
-long long I2CDriver::Timeout(void*, void*) {
+void I2CDriver::Timeout() {
   if (!instance_->done_) {
     // No transaction in progress.
-    return OS_TIMER_RESTART;
+    return;
   }
   if (!instance_->timeout_) {
     // We set the flag to act upon it next time.
     instance_->timeout_ = 1;
-    return OS_TIMER_RESTART;
+    return;
   }
   // Now: we have a timeout condition.
   instance_->InitHardware(); // will disable IRQ.
@@ -278,7 +304,7 @@ long long I2CDriver::Timeout(void*, void*) {
   instance_->success_ = false;
   instance_->executor_->add(instance_);
 
-  return OS_TIMER_RESTART;
+  return;
 }
 
 void I2CDriver::TransferDoneFromISR(bool succeeded) {
@@ -288,7 +314,7 @@ void I2CDriver::TransferDoneFromISR(bool succeeded) {
   executor_->add_from_isr(this);
 }
 
-void I2CDriver::Run() {
+void I2CDriver::run() {
   Notifiable* done = done_;
   done_ = nullptr;
   done->notify();
