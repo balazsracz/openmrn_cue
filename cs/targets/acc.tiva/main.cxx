@@ -216,7 +216,12 @@ TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14,
 nmranet::RefreshLoop loop(&g_node,
                           {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
-bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node, NODE_ID << 16, 8 /* numsignals */);
+#define NUM_SIGNALS 32
+
+bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
+                                     (R_EVENT_ID & ~0xffffff) |
+                                         ((R_EVENT_ID & 0xff00) << 8),
+                                     NUM_SIGNALS);
 
 /** Entry point to application.
  * @param argc number of command line arguments
