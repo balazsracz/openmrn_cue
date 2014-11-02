@@ -74,37 +74,37 @@ I2CSignal signal_XXB2_adv(&b1, 9, "XX.B2.adv");  // was: b3
 I2CSignal signal_A301_main(&b5, 72, "A301.main");
 I2CSignal signal_A301_adv(&b5, 73, "A301.adv");
 
-I2CSignal signal_A321_main(&b2, 36, "A321.main");
-I2CSignal signal_A321_adv(&b2, 37, "A321.adv");
-I2CSignal signal_A421_main(&b2, 42, "A421.main");
-I2CSignal signal_A421_adv(&b2, 43, "A421.adv");
+I2CSignal signal_A321_main(&bb, 36, "A321.main");
+I2CSignal signal_A321_adv(&bb, 37, "A321.adv");
+I2CSignal signal_A421_main(&bb, 42, "A421.main");
+I2CSignal signal_A421_adv(&bb, 43, "A421.adv");
 
-I2CSignal signal_B321_main(&b2, 38, "B321.main");
-I2CSignal signal_B321_adv(&b2, 39, "B321.adv");
-I2CSignal signal_B421_main(&b2, 40, "B421.main");
-I2CSignal signal_B421_adv(&b2, 41, "B421.adv");
+I2CSignal signal_B321_main(&bb, 38, "B321.main");
+I2CSignal signal_B321_adv(&bb, 39, "B321.adv");
+I2CSignal signal_B421_main(&bb, 40, "B421.main");
+I2CSignal signal_B421_adv(&bb, 41, "B421.adv");
 
-I2CSignal signal_A347_main(&b2, 20, "A347.main");
-I2CSignal signal_A347_adv(&b2, 21, "A347.adv");
+I2CSignal signal_A347_main(&bb, 20, "A347.main");
+I2CSignal signal_A347_adv(&bb, 21, "A347.adv");
 
-I2CSignal signal_B447_main(&b2, 10, "B447.main");
-I2CSignal signal_B447_adv(&b2, 11, "B447.adv");
+I2CSignal signal_B447_main(&bb, 10, "B447.main");
+I2CSignal signal_B447_adv(&bb, 11, "B447.adv");
 
-I2CSignal signal_A360_main(&b2, 12, "A360.main");
-I2CSignal signal_A360_adv(&b2, 13, "A360.adv");
-I2CSignal signal_A460_main(&b2, 14, "A460.main");
-I2CSignal signal_A460_adv(&b2, 15, "A460.adv");
+I2CSignal signal_A360_main(&bb, /*12*/142, "A360.main");
+I2CSignal signal_A360_adv(&bb, 13, "A360.adv");
+I2CSignal signal_A460_main(&bb, /*14*/139, "A460.main");
+I2CSignal signal_A460_adv(&bb, 15, "A460.adv");
 
-I2CSignal signal_B360_adv(&b2, 17, "B360.adv");
-I2CSignal signal_B460_adv(&b2, 19, "B460.adv");
+I2CSignal signal_B360_adv(&bb, 17, "B360.adv");
+I2CSignal signal_B460_adv(&bb, 19, "B460.adv");
 
-I2CSignal signal_A375_adv(&b2, 75, "A375.adv");
-I2CSignal signal_A475_adv(&b2, 74, "A475.adv");
+I2CSignal signal_A375_adv(&bb, 75, "A375.adv");
+I2CSignal signal_A475_adv(&bb, 74, "A475.adv");
 
-I2CSignal signal_B375_main(&b2, 32, "B375.main");
-I2CSignal signal_B375_adv(&b2, 33, "B375.adv");
-I2CSignal signal_B475_main(&b2, 6, "B475.main");
-I2CSignal signal_B475_adv(&b2, 7, "B475.adv");
+I2CSignal signal_B375_main(&bb, 32, "B375.main");
+I2CSignal signal_B375_adv(&bb, 33, "B375.adv");
+I2CSignal signal_B475_main(&bb, 6, "B475.main");
+I2CSignal signal_B475_adv(&bb, 7, "B475.adv");
 
 I2CSignal signal_XXB1_main(&b1, 25, "XX.B1.main");
 I2CSignal signal_XXB3_main(&b1, 24, "XX.B3.main");

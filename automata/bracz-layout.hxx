@@ -196,7 +196,8 @@ struct I2CBoard {
 };
 
 struct I2CSignal {
-  I2CSignal(I2CBoard* extender, uint8_t signal_id, const string& name)
+  template<class EXT>
+  I2CSignal(EXT* extender, uint8_t signal_id, const string& name)
       : signal(&brd, name, extender->NewSignalVariable(), signal_id) {}
 
   SignalVariable signal;
