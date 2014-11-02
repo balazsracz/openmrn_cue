@@ -118,11 +118,12 @@ class EventBasedVariable : public EventVariableBase {
 
 class EventBlock : public EventVariableBase {
  public:
-  EventBlock(Board* brd, uint64_t event_base, const string& name)
+  EventBlock(Board* brd, uint64_t event_base, const string& name,
+             int size = 8 << 8)
       : EventVariableBase(brd),
         event_base_(event_base),
         size_(1),
-        allocator_(this, name) {}
+        allocator_(this, name, size) {}
 
   virtual void Render(string* output) {
     CreateEventId(0, event_base_, output);
@@ -138,8 +139,8 @@ class EventBlock : public EventVariableBase {
 
   class Allocator {
    public:
-    Allocator(EventBlock* block, const string& name)
-        : name_(name), block_(block), next_entry_(0), end_(8 << 8) {}
+    Allocator(EventBlock* block, const string& name, int size = 8 << 8)
+        : name_(name), block_(block), next_entry_(0), end_(size) {}
 
     Allocator(const Allocator* parent, const string& name, int count,
               int alignment = 1)

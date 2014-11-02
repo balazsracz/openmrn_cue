@@ -328,7 +328,7 @@ void SimpleFollowStrategy(
       .ActReg1(aut->ImportVariable(src->request_green()));*/
 }
 
-EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm");
+EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm", 1024 / 2);
 EventBlock logic2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 EventBlock::Allocator& train_perm(*perm.allocator());
