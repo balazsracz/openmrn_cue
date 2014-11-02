@@ -447,13 +447,6 @@ StandardBlock Block_XXB1(&brd, &XXB1, logic2.allocator(), "XX.B1");
 StandardBlock Block_XXB2(&brd, &XXB2, logic2.allocator(), "XX.B2");
 StandardBlock Block_XXB3(&brd, &XXB3, logic2.allocator(), "XX.B3");
 
-#define BLOCK_SEQUENCE3 &Block_A360, &Block_A347, &Block_A321, &Block_A301
-#define BLOCK_SEQUENCE4R &Block_B421, &Block_B447, &Block_B460, &Block_B475
-#define BLOCK_SEQUENCE4 &Block_WWB14, BLOCK_SEQUENCE4R
-
-std::vector<StandardBlock*> block_sequence3 = {BLOCK_SEQUENCE3};
-std::vector<StandardBlock*> block_sequence4 = {BLOCK_SEQUENCE4};
-
 bool ignored1 = BindSequence({&Block_A347, &Block_A321, &Block_A301});
 bool ignored2 = BindSequence({&Block_B421, &Block_B447, &Block_B460});
 /*bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
