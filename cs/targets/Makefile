@@ -1,5 +1,5 @@
 include $(APP_PATH)/config.mk
-SUBDIRS = cs.panda cs.mbed cs.tiva marklinproxy.panda linux.x86 memorize.linux.x86 # i2cbridge.1  i2ctest i2cbridge.panda nativeio11c24.1
+SUBDIRS = cs.panda cs.mbed cs.tiva cs.tivasmall marklinproxy.panda linux.x86 memorize.linux.x86 # i2cbridge.1  i2ctest i2cbridge.panda nativeio11c24.1
 
 ifdef PROD
 SUBDIRS += prod.i2cbridge.27
