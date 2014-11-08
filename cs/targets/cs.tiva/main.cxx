@@ -86,60 +86,7 @@
 #include "dcc_control.hxx"
 
 
-struct DccHwDefs {
-  /// base address of a capture compare pwm timer pair
-  static const unsigned long CCP_BASE = TIMER1_BASE;
-  /// an otherwise unused interrupt number (could be that of the capture compare pwm timer)
-  static const unsigned long OS_INTERRUPT = INT_TIMER1A;
-  /// base address of an interval timer
-  static const unsigned long INTERVAL_BASE = TIMER0_BASE;
-  /// interrupt number of the interval timer
-  static const unsigned long INTERVAL_INTERRUPT = INT_TIMER0A;
-  
-  /** @returns the number of preamble bits to send exclusive of end of packet
-   *  '1' bit */
-  static int dcc_preamble_count() { return 16; }
-
-  static constexpr uint8_t* LED_PTR =
-      (uint8_t*)(GPIO_PORTQ_BASE + (GPIO_PIN_0 << 2));
-  static void flip_led() {
-    static uint8_t flip = 0xff;
-    flip = ~flip;
-    *LED_PTR = flip;
-  }
-
-  /** the time (in nanoseconds) to wait between turning off the low driver and
-   * turning on the high driver. */
-  static const int H_DEADBAND_DELAY_NSEC = 500;
-  /** the time (in nanoseconds) to wait between turning off the high driver and
-   * turning on the low driver. */
-  static const int L_DEADBAND_DELAY_NSEC = 2500;
-
-  /** @returns true to produce the RailCom cutout, else false */
-  static bool railcom_cutout() { return false; }
-
-  /** number of outgoing messages we can queue */
-  static const size_t Q_SIZE = 4;
-};
-
-TivaDCC<DccHwDefs> dcc_hw("/dev/mainline");
-
 #define STANDALONE
-
-extern "C" {
-/** Timer interrupt for DCC packet handling.
- */
-void timer0a_interrupt_handler(void)
-{
-    dcc_hw.interrupt_handler();
-}
-
-void timer1a_interrupt_handler(void)
-{
-  dcc_hw.os_interrupt_handler();
-}
-
-}  // extern "C"
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
