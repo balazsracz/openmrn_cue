@@ -41,23 +41,14 @@
 #include "driverlib/interrupt.h"
 #include "driverlib/pin_map.h"
 #include "driverlib/sysctl.h"
+#include "driverlib/rom_map.h"
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
 
 #include "executor/StateFlow.hxx"
 #include "utils/logging.h"
 #include "dcc_control.hxx"
-
-static const int SEQUENCER = 3;
-static const auto ADC_BASE = ADC0_BASE;
-static const auto ADC_PERIPH = SYSCTL_PERIPH_ADC0;
-
-static const auto ADCPIN_PERIPH = SYSCTL_PERIPH_GPIOK;
-static const auto ADCPIN_BASE = GPIO_PORTB_BASE;
-static const auto ADCPIN_NUM = GPIO_PIN_5;
-//static const auto ADCPIN_NUM_ALT = GPIO_PIN_1;
-static const auto ADCPIN_CH = ADC_CTL_CH11;
-static const auto ADC_INTERRUPT = INT_ADC0SS3;
+#include "DccHardware.hxx"
 
 static const auto SHUTDOWN_CURRENT_AMPS = 1.5;
 // ADC value at which we turn off the output.
@@ -66,10 +57,10 @@ static const unsigned SHUTDOWN_LIMIT = (SHUTDOWN_CURRENT_AMPS * 0.2 / 3.3) * 0xf
 static const unsigned OVERCURRENT_RETRY = 3;
 static const long long OVERCURRENT_RETRY_DELAY = MSEC_TO_NSEC(300);
 
-
+template<class HW>
 class TivaShortDetectionModule;
-static TivaShortDetectionModule* g_short_detector = nullptr;
 
+template<class HW>
 class TivaShortDetectionModule : public StateFlowBase {
  public:
   TivaShortDetectionModule(Service* s, long long period)
@@ -78,47 +69,37 @@ class TivaShortDetectionModule : public StateFlowBase {
         period_(period),
         num_disable_tries_(0),
         num_overcurrent_tests_(0) {
-    HASSERT(g_short_detector == nullptr);
-    g_short_detector = this;
-
     start_flow(STATE(start_timer));
 
-    SysCtlPeripheralEnable(ADC_PERIPH);
-    SysCtlPeripheralEnable(ADCPIN_PERIPH);
+    SysCtlPeripheralEnable(HW::ADC_PERIPH);
+    SysCtlPeripheralEnable(HW::ADCPIN_PERIPH);
 
-    GPIODirModeSet(ADCPIN_BASE, ADCPIN_NUM, GPIO_DIR_MODE_HW);
-    GPIOPadConfigSet(ADCPIN_BASE, ADCPIN_NUM, GPIO_STRENGTH_2MA,
+    GPIODirModeSet(HW::ADCPIN_BASE, HW::ADCPIN_PIN, GPIO_DIR_MODE_HW);
+    GPIOPadConfigSet(HW::ADCPIN_BASE, HW::ADCPIN_PIN, GPIO_STRENGTH_2MA,
                      GPIO_PIN_TYPE_ANALOG);
-
-    auto kport = GPIO_PORTK_BASE;
-    auto kpin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3;
-    GPIODirModeSet(kport, kpin, GPIO_DIR_MODE_HW);
-    GPIOPadConfigSet(kport, kpin, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_ANALOG);
-
-    /*GPIOPinTypeADC(ADCPIN_BASE, ADCPIN_NUM);
-      GPIOPinTypeADC(kport, kpin);*/
 
     // Sets ADC to 16 MHz clock.
     //ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PLL | ADC_CLOCK_RATE_FULL, 30);
-    ADCHardwareOversampleConfigure(ADC_BASE, 64);
+    ADCHardwareOversampleConfigure(HW::ADC_BASE, 64);
 
-    ADCSequenceConfigure(ADC_BASE, SEQUENCER, ADC_TRIGGER_PROCESSOR, 0);
-    ADCSequenceStepConfigure(ADC_BASE, SEQUENCER, 0, ADCPIN_CH | ADC_CTL_IE |
-                             ADC_CTL_SHOLD_256 | ADC_CTL_END);
-    ADCSequenceEnable(ADC_BASE, SEQUENCER);
+    ADCSequenceConfigure(HW::ADC_BASE, HW::ADC_SEQUENCER, ADC_TRIGGER_PROCESSOR,
+                         0);
+    ADCSequenceStepConfigure(
+        HW::ADC_BASE, HW::ADC_SEQUENCER, 0,
+        HW::ADCPIN_CH | ADC_CTL_IE | ADC_CTL_SHOLD_256 | ADC_CTL_END);
+    ADCSequenceEnable(HW::ADC_BASE, HW::ADC_SEQUENCER);
 
-    ADCIntEnable(ADC_BASE, SEQUENCER);
-    MAP_IntPrioritySet(ADC_INTERRUPT, configKERNEL_INTERRUPT_PRIORITY);
-    MAP_IntEnable(ADC_INTERRUPT);
+    ADCIntEnable(HW::ADC_BASE, HW::ADC_SEQUENCER);
+    MAP_IntPrioritySet(HW::ADC_INTERRUPT, configKERNEL_INTERRUPT_PRIORITY);
+    MAP_IntEnable(HW::ADC_INTERRUPT);
     next_report_ = 0;
   }
 
   ~TivaShortDetectionModule() {
-    g_short_detector = nullptr;
   }
 
   void interrupt_handler() {
-    ADCIntClear(ADC_BASE, SEQUENCER);
+    ADCIntClear(HW::ADC_BASE, HW::ADC_SEQUENCER);
     notify_from_isr();
   }
 
@@ -128,17 +109,17 @@ class TivaShortDetectionModule : public StateFlowBase {
   }
 
   Action start_conversion() {
-    ADCIntClear(ADC_BASE, SEQUENCER);
-    ADCProcessorTrigger(ADC_BASE, SEQUENCER);
+    ADCIntClear(HW::ADC_BASE, HW::ADC_SEQUENCER);
+    ADCProcessorTrigger(HW::ADC_BASE, HW::ADC_SEQUENCER);
     return wait_and_call(STATE(conversion_done));
   }
 
   Action conversion_done() {
     uint32_t adc_value[1];
     adc_value[0] = 0;
-    ADCSequenceDataGet(ADC_BASE, SEQUENCER, adc_value);
+    ADCSequenceDataGet(HW::ADC_BASE, HW::ADC_SEQUENCER, adc_value);
     if (adc_value[0] > SHUTDOWN_LIMIT) {
-      if (++num_overcurrent_tests_ >= 3) {
+      if (++num_overcurrent_tests_ >= 5) {
         disable_dcc();
         LOG(INFO, "disable value: %04" PRIx32, adc_value[0]);
         ++num_disable_tries_;
@@ -148,15 +129,18 @@ class TivaShortDetectionModule : public StateFlowBase {
           return call_immediately(STATE(shorted));
         }
       } else {
+        LOG(INFO, "overcurrent value: %04" PRIx32, adc_value[0]);
         // If we measured an overcurrent situation, we start another conversion
-        // straight away.
-        return call_immediately(STATE(start_conversion));
+        // really soon.
+        return sleep_and_call(&timer_, MSEC_TO_NSEC(1),
+                              STATE(start_conversion));
+        //return call_immediately(STATE(start_conversion));
       }
     } else {
       num_overcurrent_tests_ = 0;
     }
     if (os_get_time_monotonic() > next_report_) {
-      LOG(INFO, "adc value: %04" PRIx32, adc_value[0]);
+      LOG(INFO, "  adc value: %04" PRIx32, adc_value[0]);
       next_report_ = os_get_time_monotonic() + MSEC_TO_NSEC(250);
     }
     return call_immediately(STATE(start_timer));
@@ -178,23 +162,12 @@ class TivaShortDetectionModule : public StateFlowBase {
     return call_immediately(STATE(start_timer));
   }
 
-
   StateFlowTimer timer_;
   long long period_;
   uint8_t num_disable_tries_;
   uint8_t num_overcurrent_tests_;
   long long next_report_;
 };
-
-extern "C" {
-
-void adc0_seq3_interrupt_handler(void) {
-  // COMPILE_ASSERT(ADC_BASE == ADC0_BASE && SEQUENCER == 3)
-  g_short_detector->interrupt_handler();
-}
-
-}
-
 
 class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
  public:
@@ -204,8 +177,10 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
   virtual bool GetCurrentState() { return query_dcc(); }
   virtual void SetState(bool new_value) {
     if (new_value) {
+      LOG(WARNING, "enable dcc");
       enable_dcc();
     } else {
+      LOG(WARNING, "disable dcc");
       disable_dcc();
     }
   }
