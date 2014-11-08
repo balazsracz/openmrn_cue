@@ -78,7 +78,7 @@
 #include "mobilestation/AllTrainNodes.hxx"
 
 #include "TivaDCC.hxx"
-#include "ShortDetection.hxx"
+#include "custom/TivaShortDetection.hxx"
 
 #include "inc/hw_types.h"
 #include "inc/hw_memmap.h"
@@ -267,8 +267,13 @@ void mydisable()
   asm("BKPT 0");
 }
 
-TivaShortDetectionModule g_short_det(&g_service, MSEC_TO_NSEC(1));
-//BlinkerFlow blinker(&g_node);
+TivaShortDetectionModule<DccHwDefs> g_short_detector(&g_service,
+                                                     MSEC_TO_NSEC(1));
+extern "C" {
+void adc0_seq3_interrupt_handler(void) {
+  g_short_detector.interrupt_handler();
+}
+}
 
 
 /** Entry point to application.

@@ -77,34 +77,15 @@
 #include "dcc/LocalTrackIf.hxx"
 #include "mobilestation/AllTrainNodes.hxx"
 
-#include "TivaDCC.hxx"
-#include "ShortDetection.hxx"
+#include "custom/TivaShortDetection.hxx"
 
 #include "inc/hw_types.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_ints.h"
 #include "dcc_control.hxx"
-
-TivaDCC dcc_hw("/dev/mainline", TIMER0_BASE, TIMER1_BASE, INT_TIMER1A,
-               INT_TIMER0A, (uint8_t*)(GPIO_PORTF_BASE + (GPIO_PIN_3 << 2)), 16,
-               500, 2500);
+#include "DccHardware.hxx"
 
 #define STANDALONE
-
-extern "C" {
-/** Timer interrupt for DCC packet handling.
- */
-void timer1a_interrupt_handler(void)
-{
-    dcc_hw.interrupt_handler();
-}
-
-void timer0a_interrupt_handler(void)
-{
-  dcc_hw.os_interrupt_handler();
-}
-
-}  // extern "C"
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -116,7 +97,6 @@ OVERRIDE_CONST(automata_init_backoff, 20000);
 OVERRIDE_CONST(node_init_identify, 0);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
-
 
 namespace mobilestation {
 
@@ -293,9 +273,16 @@ void mydisable()
   asm("BKPT 0");
 }
 
-//TivaShortDetectionModule g_short_det(&g_service, MSEC_TO_NSEC(1));
-BlinkerFlow blinker(&g_node);
+TivaShortDetectionModule<DccHwDefs> g_short_detector(&g_service,
+                                                     MSEC_TO_NSEC(1));
+extern "C" {
+void adc0_seq3_interrupt_handler(void) {
+  // COMPILE_ASSERT(ADC_BASE == ADC0_BASE && SEQUENCER == 3)
+  g_short_detector.interrupt_handler();
+}
+}
 
+BlinkerFlow blinker(&g_node);
 
 /** Entry point to application.
  * @param argc number of command line arguments
