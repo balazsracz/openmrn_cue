@@ -90,7 +90,7 @@ struct DccHwDefs {
 
   /** the time (in nanoseconds) to wait between turning off the low driver and
    * turning on the high driver. */
-  static const int H_DEADBAND_DELAY_NSEC = 500;
+  static const int H_DEADBAND_DELAY_NSEC = 1500;
   /** the time (in nanoseconds) to wait between turning off the high driver and
    * turning on the low driver. */
   static const int L_DEADBAND_DELAY_NSEC = 2500;
@@ -107,10 +107,10 @@ struct DccHwDefs {
   static const int ADC_SEQUENCER = 3;
   static const auto ADC_INTERRUPT = INT_ADC0SS3;
 
-  static const auto ADCPIN_PERIPH = SYSCTL_PERIPH_GPIOB;
-  static const auto ADCPIN_BASE = GPIO_PORTB_BASE;
-  static const auto ADCPIN_PIN = GPIO_PIN_5;
-  static const auto ADCPIN_CH = ADC_CTL_CH11;
+  static const auto ADCPIN_PERIPH = SYSCTL_PERIPH_GPIOE;
+  static const auto ADCPIN_BASE = GPIO_PORTE_BASE;
+  static const auto ADCPIN_PIN = GPIO_PIN_1;
+  static const auto ADCPIN_CH = ADC_CTL_CH2;
 };
 
 
