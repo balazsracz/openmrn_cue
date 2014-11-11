@@ -107,9 +107,12 @@ const struct const_loco_db_t const_lokdb[] = {
   { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
     "Am 843 093-6", DCC_28 },
   // 1
+  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
+    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
+  // 2
   { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
-  // 2 (jim's)
+  // 3 (jim's)
   //{ 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
