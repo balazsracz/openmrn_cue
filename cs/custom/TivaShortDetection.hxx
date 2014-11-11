@@ -53,6 +53,11 @@
 static const auto SHUTDOWN_CURRENT_AMPS = 1.5;
 // ADC value at which we turn off the output.
 static const unsigned SHUTDOWN_LIMIT = (SHUTDOWN_CURRENT_AMPS * 0.2 / 3.3) * 0xfff;
+
+static const auto KILL_CURRENT_AMPS = 4.0;
+// ADC value at which we turn off the output.
+static const unsigned KILL_LIMIT = (KILL_CURRENT_AMPS * 0.2 / 3.3) * 0xfff;
+
 // We try this many times to reenable after a short.
 static const unsigned OVERCURRENT_RETRY = 3;
 static const long long OVERCURRENT_RETRY_DELAY = MSEC_TO_NSEC(300);
@@ -118,10 +123,16 @@ class TivaShortDetectionModule : public StateFlowBase {
     uint32_t adc_value[1];
     adc_value[0] = 0;
     ADCSequenceDataGet(HW::ADC_BASE, HW::ADC_SEQUENCER, adc_value);
+    if (adc_value[0] > KILL_LIMIT) {
+      disable_dcc();
+      LOG(INFO, "kill value: %04" PRIx32, adc_value[0]);
+      return call_immediately(STATE(shorted));
+    }
     if (adc_value[0] > SHUTDOWN_LIMIT) {
-      if (++num_overcurrent_tests_ >= 5) {
+      if (++num_overcurrent_tests_ >= 5 || adc_value[0] > KILL_LIMIT) {
         disable_dcc();
-        LOG(INFO, "disable value: %04" PRIx32, adc_value[0]);
+        LOG(INFO, "%s value: %04" PRIx32,
+            adc_value[0] <= KILL_LIMIT ? "disable" : "kill", adc_value[0]);
         ++num_disable_tries_;
         if (num_disable_tries_ < OVERCURRENT_RETRY) {
           return call_immediately(STATE(retry_wait));
