@@ -84,6 +84,8 @@
 #include "inc/hw_ints.h"
 #include "dcc_control.hxx"
 #include "DccHardware.hxx"
+#include "TivaDCC.hxx"
+#include "dcc/RailCom.hxx"
 
 #define STANDALONE
 
@@ -98,7 +100,7 @@ OVERRIDE_CONST(node_init_identify, 0);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 
-namespace mobilestation {
+/*namespace mobilestation {
 
 extern const struct const_loco_db_t const_lokdb[];
 
@@ -112,6 +114,9 @@ const struct const_loco_db_t const_lokdb[] = {
   // 2
   { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
     "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
+  // id 3
+  { 38, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "BDe 4/4 1640", DCC_128 | PUSHPULL },  // Tams LD-G32, DC motor
   // 3 (jim's)
   //{ 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
   { 0, {0, }, {0,}, "", 0},
@@ -122,7 +127,7 @@ extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 }  // namespace mobilestation
-
+*/
 NO_THREAD nt;
 Executor<1> g_executor(nt);
 Service g_service(&g_executor);
@@ -245,6 +250,56 @@ private:
     bool state_;
 };
 
+extern TivaDCC<DccHwDefs> dcc_hw;
+
+class RailcomDebugFlow : public StateFlowBase {
+ public:
+  RailcomDebugFlow() : StateFlowBase(&g_service) {
+    start_flow(STATE(register_and_sleep));
+  }
+
+ private:
+  Action register_and_sleep() {
+    dcc_hw.railcom_buffer_notify_ = this;
+    return wait_and_call(STATE(railcom_arrived));
+  }
+
+  Action railcom_arrived() {
+    char buf[200];
+    int ofs = 0;
+    for (int i = 0; i < dcc_hw.railcom_buffer_len_; ++i) {
+      ofs += sprintf(buf+ofs, "0x%02x (0x%02x), ", dcc_hw.railcom_buffer_[i],
+                     dcc::railcom_decode[dcc_hw.railcom_buffer_[i]]);
+    }
+    uint8_t type = (dcc::railcom_decode[dcc_hw.railcom_buffer_[0]] >> 2);
+    if (dcc_hw.railcom_buffer_len_ == 2) {
+      uint8_t payload = dcc::railcom_decode[dcc_hw.railcom_buffer_[0]] & 0x3;
+      payload <<= 6;
+      payload |= dcc::railcom_decode[dcc_hw.railcom_buffer_[1]];
+      switch(type) {
+        case dcc::RMOB_ADRLOW:
+          ofs += sprintf(buf+ofs, "adrlow=%d", payload);
+          break;
+        case dcc::RMOB_ADRHIGH:
+          ofs += sprintf(buf+ofs, "adrhigh=%d", payload);
+          break;
+        case dcc::RMOB_EXT:
+          ofs += sprintf(buf+ofs, "ext=%d", payload);
+          break;
+        case dcc::RMOB_DYN:
+          ofs += sprintf(buf+ofs, "dyn=%d", payload);
+          break;
+        case dcc::RMOB_SUBID:
+          ofs += sprintf(buf+ofs, "subid=%d", payload);
+          break;
+        default:
+          ofs += sprintf(buf+ofs, "type-%d=%d", type, payload);
+      }
+    }
+    LOG(INFO, "Railcom data: %s", buf);
+    return call_immediately(STATE(register_and_sleep));
+  }
+} railcom_debug;
 
 dcc::LocalTrackIf track_if(&g_service, 2);
 commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
