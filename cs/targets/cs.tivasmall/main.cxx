@@ -294,14 +294,17 @@ BlinkerFlow blinker(&g_node);
  */
 int appl_main(int argc, char* argv[])
 {
-  //  mydisable();
+  disable_dcc();
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
+
+    setblink(0x800A02);
 #ifdef STANDALONE
-    PacketQueue::initialize("/dev/serUSB0");
+    PacketQueue::initialize("/dev/serUSB0", true /* false */);
 #else
-    PacketQueue::initialize("/dev/serUSB0");
+    PacketQueue::initialize("/dev/serUSB0", true);
 #endif
+    setblink(0);
     //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);

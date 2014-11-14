@@ -93,8 +93,8 @@ extern "C" { void start(void); }
 
 PacketQueue* PacketQueue::instance_ = NULL;
 
-void PacketQueue::initialize(const char* serial_device) {
-    instance_ = new DefaultPacketQueue(serial_device);
+void PacketQueue::initialize(const char* serial_device, bool force_sync) {
+  instance_ = new DefaultPacketQueue(serial_device, force_sync);
 }
 
 void* rx_thread(void* p) {
@@ -194,9 +194,10 @@ class DefaultPacketQueue::TxFlow : public StateFlowBase {
   uint8_t sizeBuf_;
 };
 
-DefaultPacketQueue::DefaultPacketQueue(const char* dev) : Service(g_service.executor()), synced_(false) {
+DefaultPacketQueue::DefaultPacketQueue(const char* dev, bool force_sync) : Service(g_service.executor()), synced_(false) {
     async_fd_ = open(dev, O_RDWR | O_NONBLOCK);
     sync_fd_ = open(dev, O_RDWR);
+    if (force_sync) ForceInitialSync();
     os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
@@ -217,6 +218,44 @@ DefaultPacketQueue::~DefaultPacketQueue() {
     // There is no way to destroy an os_mq_t.
     // There is no way to stop a thread.
     abort();
+}
+
+void DefaultPacketQueue::ForceInitialSync() {
+  int send_ofs = 0;
+  char receive[sizeof(syncpacket)];
+  int receive_ofs = 0;
+  while (true) {
+    // try receive one byte
+    if (receive_ofs == 0) {
+      int res = ::read(async_fd_, receive, 1);
+      if (res > 0 && receive[0] == 15) {
+        receive_ofs = 1;
+      }
+    }
+    // try receive the rest of the sync packet.
+    if (receive_ofs > 0) {
+      int res = ::read(async_fd_, receive + receive_ofs, sizeof(receive) - receive_ofs);
+      receive_ofs += res;
+      if (receive_ofs == sizeof(syncpacket)) {
+        if (0 == memcmp(receive, syncpacket, sizeof(syncpacket))) {
+          synced_ = true;
+          return;
+        }
+        receive_ofs = 0;
+      }
+    }
+    // try send sync packet
+    int res = ::write(async_fd_, syncpacket, sizeof(syncpacket));
+    if (res > 0 && res < (int)sizeof(syncpacket)) {
+      send_ofs += res;
+      // if we managed to send anything, we'll send the rest of the packet.
+      res = ::write(sync_fd_, syncpacket + send_ofs,
+                    sizeof(syncpacket) - send_ofs);
+      send_ofs += res;
+      HASSERT(send_ofs == sizeof(syncpacket));
+      send_ofs = 0;
+    }
+  }
 }
 
 void DefaultPacketQueue::RxThreadBody() {
