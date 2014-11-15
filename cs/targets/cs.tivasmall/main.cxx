@@ -87,7 +87,7 @@
 #include "TivaDCC.hxx"
 #include "dcc/RailCom.hxx"
 
-#define STANDALONE
+//#define STANDALONE
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -145,6 +145,19 @@ HubFlow stdout_hub(&g_service);
 
 extern "C" {
 
+#ifdef STANDALONE
+
+void log_output(char* buf, int size) {
+    if (size <= 0) return;
+    auto* b = stdout_hub.alloc();
+    HASSERT(b);
+    b->data()->assign(buf, size);
+    if (size > 1) b->data()->push_back('\n');
+    stdout_hub.send(b);
+}
+
+#else
+
 void log_output(char* buf, int size) {
     if (size <= 0) return;
     PacketBase pkt(size + 1);
@@ -153,21 +166,17 @@ void log_output(char* buf, int size) {
     PacketQueue::instance()->TransmitPacket(pkt);
 }
 
-void xx_log_output(char* buf, int size) {
-    if (size <= 0) return;
-    auto* b = stdout_hub.alloc();
-    HASSERT(b);
-    b->data()->assign(buf, size);
-    if (size > 1) b->data()->push_back('\n');
-    stdout_hub.send(b);
-}
+#endif
+
 }
 
+#ifdef STANDALONE
 namespace bracz_custom {
-void xx_send_host_log_event(HostLogEvent e) {
+void send_host_log_event(HostLogEvent e) {
   log_output((char*)&e, 1);
 }
 }
+#endif
 
 static const int kLocalNodesCount = 30;
 nmranet::IfCan g_if_can(&g_executor, &can_hub0, kLocalNodesCount, 3,
@@ -355,7 +364,6 @@ int appl_main(int argc, char* argv[])
 
     setblink(0x800A02);
 #ifdef STANDALONE
-    PacketQueue::initialize("/dev/serUSB0", true /* false */);
 #else
     PacketQueue::initialize("/dev/serUSB0", true);
 #endif
