@@ -91,10 +91,10 @@ struct DccHwDefs {
 
   /** the time (in nanoseconds) to wait between turning off the low driver and
    * turning on the high driver. */
-  static const int H_DEADBAND_DELAY_NSEC = 1000;
+  static const int H_DEADBAND_DELAY_NSEC = 6000;
   /** the time (in nanoseconds) to wait between turning off the high driver and
    * turning on the low driver. */
-  static const int L_DEADBAND_DELAY_NSEC = 1000;
+  static const int L_DEADBAND_DELAY_NSEC = 6000;
 
   /** @returns true to produce the RailCom cutout, else false */
   static bool railcom_cutout() { return true; }

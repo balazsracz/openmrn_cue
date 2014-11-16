@@ -39,6 +39,11 @@
 #include "driverlib/adc.h"
 #include "driverlib/timer.h"
 
+#define DECL_PIN(NAME, PORT, NUM)                \
+  static const auto NAME##_PERIPH = SYSCTL_PERIPH_GPIO##PORT; \
+  static const auto NAME##_BASE = GPIO_PORT##PORT##_BASE; \
+  static const auto NAME##_PIN = GPIO_PIN_##NUM
+
 struct DccHwDefs {
   /// base address of a capture compare pwm timer pair
   static const unsigned long CCP_BASE = TIMER1_BASE;
@@ -81,7 +86,7 @@ struct DccHwDefs {
    *  (value==false) will be driven high during the second half of the DCC bit
    *  (minus L_DEADBAND_DELAY_NSEC), and low during the first half.  A
    *  non-inverted pin will be driven low as safe setting at startup. */
-  static const bool PIN_L_INVERT = false;
+  static const bool PIN_L_INVERT = true;
 #endif
 
   /** Defines whether the high driver pin is inverted or not. A non-inverted
@@ -105,10 +110,10 @@ struct DccHwDefs {
 
   /** the time (in nanoseconds) to wait between turning off the low driver and
    * turning on the high driver. */
-  static const int H_DEADBAND_DELAY_NSEC = 500;
+  static const int H_DEADBAND_DELAY_NSEC = 6000;
   /** the time (in nanoseconds) to wait between turning off the high driver and
    * turning on the low driver. */
-  static const int L_DEADBAND_DELAY_NSEC = 2500;
+  static const int L_DEADBAND_DELAY_NSEC = 6000;
 
   /** @returns true to produce the RailCom cutout, else false */
   static bool railcom_cutout() { return false; }
@@ -122,12 +127,19 @@ struct DccHwDefs {
   static const int ADC_SEQUENCER = 3;
   static const auto ADC_INTERRUPT = INT_ADC0SS3;
 
-  static const auto ADCPIN_PERIPH = SYSCTL_PERIPH_GPIOB;
-  static const auto ADCPIN_BASE = GPIO_PORTB_BASE;
-  static const auto ADCPIN_PIN = GPIO_PIN_5;
-  static const auto ADCPIN_CH = ADC_CTL_CH11;
+  DECL_PIN(ADCPIN, K, 3);
+  static const auto ADCPIN_CH = ADC_CTL_CH19;
+
+  // Pins defined for railcom
+  //DECL_PIN(RAILCOM_TRIGGER, B, 4);
+  DECL_PIN(RAILCOM_TRIGGER, H, 1);
+  static const auto RAILCOM_TRIGGER_INVERT = true;
+
+  static const auto RAILCOM_UART_BASE = UART6_BASE;
+  static const auto RAILCOM_UART_PERIPH = SYSCTL_PERIPH_UART6;
+  DECL_PIN(RAILCOM_UARTPIN, P, 0);
+  static const auto RAILCOM_UARTPIN_CONFIG = GPIO_PP0_U6RX;
 };
 
 
 #endif // _DCC_HARDWARE_HXX_
-
