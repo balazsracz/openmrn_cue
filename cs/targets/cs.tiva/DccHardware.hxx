@@ -116,7 +116,7 @@ struct DccHwDefs {
   static const int L_DEADBAND_DELAY_NSEC = 6000;
 
   /** @returns true to produce the RailCom cutout, else false */
-  static bool railcom_cutout() { return false; }
+  static bool railcom_cutout() { return true; }
 
   /** number of outgoing messages we can queue */
   static const size_t Q_SIZE = 4;

@@ -86,7 +86,7 @@
 #include "dcc_control.hxx"
 
 
-#define STANDALONE
+//#define STANDALONE
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -139,6 +139,8 @@ HubFlow stdout_hub(&g_service);
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
 extern "C" {
+#ifdef STANDALONE
+
 void log_output(char* buf, int size) {
     if (size <= 0) return;
     auto* b = stdout_hub.alloc();
@@ -147,13 +149,28 @@ void log_output(char* buf, int size) {
     if (size > 1) b->data()->push_back('\n');
     stdout_hub.send(b);
 }
+
+#else
+
+void log_output(char* buf, int size) {
+    if (size <= 0) return;
+    PacketBase pkt(size + 1);
+    pkt[0] = CMD_VCOM1;
+    memcpy(pkt.buf() + 1, buf, size);
+    PacketQueue::instance()->TransmitPacket(pkt);
 }
 
+#endif
+}
+
+#ifdef STANDALONE
 namespace bracz_custom {
-void xx_send_host_log_event(HostLogEvent e) {
+void send_host_log_event(HostLogEvent e) {
   log_output((char*)&e, 1);
 }
 }
+#endif
+
 
 static const int kLocalNodesCount = 30;
 nmranet::IfCan g_if_can(&g_executor, &can_hub0, kLocalNodesCount, 3,
@@ -275,6 +292,56 @@ void adc0_seq3_interrupt_handler(void) {
 }
 }
 
+extern TivaDCC<DccHwDefs> dcc_hw;
+
+class RailcomDebugFlow : public StateFlowBase {
+ public:
+  RailcomDebugFlow() : StateFlowBase(&g_service) {
+    start_flow(STATE(register_and_sleep));
+  }
+
+ private:
+  Action register_and_sleep() {
+    dcc_hw.railcom_buffer_notify_ = this;
+    return wait_and_call(STATE(railcom_arrived));
+  }
+
+  Action railcom_arrived() {
+    char buf[200];
+    int ofs = 0;
+    for (int i = 0; i < dcc_hw.railcom_buffer_len_; ++i) {
+      ofs += sprintf(buf+ofs, "0x%02x (0x%02x), ", dcc_hw.railcom_buffer_[i],
+                     dcc::railcom_decode[dcc_hw.railcom_buffer_[i]]);
+    }
+    uint8_t type = (dcc::railcom_decode[dcc_hw.railcom_buffer_[0]] >> 2);
+    if (dcc_hw.railcom_buffer_len_ == 2) {
+      uint8_t payload = dcc::railcom_decode[dcc_hw.railcom_buffer_[0]] & 0x3;
+      payload <<= 6;
+      payload |= dcc::railcom_decode[dcc_hw.railcom_buffer_[1]];
+      switch(type) {
+        case dcc::RMOB_ADRLOW:
+          ofs += sprintf(buf+ofs, "adrlow=%d", payload);
+          break;
+        case dcc::RMOB_ADRHIGH:
+          ofs += sprintf(buf+ofs, "adrhigh=%d", payload);
+          break;
+        case dcc::RMOB_EXT:
+          ofs += sprintf(buf+ofs, "ext=%d", payload);
+          break;
+        case dcc::RMOB_DYN:
+          ofs += sprintf(buf+ofs, "dyn=%d", payload);
+          break;
+        case dcc::RMOB_SUBID:
+          ofs += sprintf(buf+ofs, "subid=%d", payload);
+          break;
+        default:
+          ofs += sprintf(buf+ofs, "type-%d=%d", type, payload);
+      }
+    }
+    LOG(INFO, "Railcom data: %s", buf);
+    return call_immediately(STATE(register_and_sleep));
+  }
+} railcom_debug;
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -289,7 +356,7 @@ int appl_main(int argc, char* argv[])
 #ifdef STANDALONE
     PacketQueue::initialize("/dev/serUSB0");
 #else
-    PacketQueue::initialize("/dev/serUSB0");
+    PacketQueue::initialize("/dev/serUSB0", true);
 #endif
     HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
@@ -325,6 +392,7 @@ int appl_main(int argc, char* argv[])
 #ifdef STANDALONE
     // Start dcc output
     enable_dcc();
+
 #else
     // Do not start dcc output.
     disable_dcc();
