@@ -179,7 +179,8 @@ public:
 private:
     ReadWriteBit* GetBit(int offset) {
 	if (!imported_bits_[offset]) {
-	    diewith(CS_DIE_AUT_IMPORTERROR);
+            LOG(ERROR, "Bit %d not imported, ip: %d", offset, ip_);
+            diewith(CS_DIE_AUT_IMPORTERROR);
 	}
 	return imported_bits_[offset];
     }
