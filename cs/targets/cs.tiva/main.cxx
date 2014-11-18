@@ -296,28 +296,29 @@ extern TivaDCC<DccHwDefs> dcc_hw;
 
 class RailcomDebugFlow : public StateFlowBase {
  public:
-  RailcomDebugFlow() : StateFlowBase(&g_service) {
+  RailcomDebugFlow(int fd) : StateFlowBase(&g_service), fd_(fd) {
     start_flow(STATE(register_and_sleep));
   }
 
  private:
   Action register_and_sleep() {
-    dcc_hw.railcom_buffer_notify_ = this;
+    ::ioctl(fd_, CAN_IOC_READ_ACTIVE, this);
     return wait_and_call(STATE(railcom_arrived));
   }
 
-  Action railcom_arrived() {
-    char buf[200];
+  string display_railcom_data(const uint8_t* data, int len) {
+    static char buf[200];
     int ofs = 0;
-    for (int i = 0; i < dcc_hw.railcom_buffer_len_; ++i) {
-      ofs += sprintf(buf+ofs, "0x%02x (0x%02x), ", dcc_hw.railcom_buffer_[i],
-                     dcc::railcom_decode[dcc_hw.railcom_buffer_[i]]);
+    HASSERT(len <= 6);
+    for (int i = 0; i < len; ++i) {
+      ofs += sprintf(buf+ofs, "0x%02x (0x%02x), ", data[i],
+                     dcc::railcom_decode[data[i]]);
     }
-    uint8_t type = (dcc::railcom_decode[dcc_hw.railcom_buffer_[0]] >> 2);
-    if (dcc_hw.railcom_buffer_len_ == 2) {
-      uint8_t payload = dcc::railcom_decode[dcc_hw.railcom_buffer_[0]] & 0x3;
+    uint8_t type = (dcc::railcom_decode[data[0]] >> 2);
+    if (len == 2) {
+      uint8_t payload = dcc::railcom_decode[data[0]] & 0x3;
       payload <<= 6;
-      payload |= dcc::railcom_decode[dcc_hw.railcom_buffer_[1]];
+      payload |= dcc::railcom_decode[data[1]];
       switch(type) {
         case dcc::RMOB_ADRLOW:
           ofs += sprintf(buf+ofs, "adrlow=%d", payload);
@@ -338,10 +339,26 @@ class RailcomDebugFlow : public StateFlowBase {
           ofs += sprintf(buf+ofs, "type-%d=%d", type, payload);
       }
     }
-    LOG(INFO, "Railcom data: %s", buf);
+    return string(buf, ofs);
+  }
+
+  Action railcom_arrived() {
+    dcc::Feedback fb;
+    int ret = ::read(fd_, &fb, sizeof(fb));
+    HASSERT(ret == sizeof(fb));
+    if (fb.ch1Size) {
+      LOG(INFO, "Railcom CH1 data: %s",
+          display_railcom_data(fb.ch1Data, fb.ch1Size).c_str());
+    }
+    if (fb.ch2Size) {
+      LOG(INFO, "Railcom CH2 data: %s",
+          display_railcom_data(fb.ch2Data, fb.ch2Size).c_str());
+    }
     return call_immediately(STATE(register_and_sleep));
   }
-} railcom_debug;
+
+  int fd_;
+};
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -366,6 +383,8 @@ int appl_main(int argc, char* argv[])
     int mainline = open("/dev/mainline", O_RDWR);
     HASSERT(mainline > 0);
     track_if.set_fd(mainline);
+    RailcomDebugFlow railcom_debug(mainline);
+
 
     nmranet::Velocity v;
     v.set_mph(29);
