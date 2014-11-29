@@ -5,6 +5,9 @@ import sys
 import re
 
 
+class LocationInfo:
+  pass
+
 class Sensor:
   def __init__(self, system_name, user_name):
     self.system_name = system_name
@@ -161,6 +164,7 @@ class Memory:
     if not self.system_name:
       self.system_name = 'IM:LOC:' + str(self.GetNextId())
     e.set('systemName', self.system_name)
+    e.set('value', 'unknown')
     sn = FindOrInsert(e, 'systemName')
     sn.text = self.system_name
     un = FindOrInsert(e, 'userName')
@@ -212,6 +216,16 @@ class TrainLocLogixConditional:
     s.set('systemName', memory_name)
     s.set('type', '12')
 
+  def AddJythonAction(self, e, value):
+    s = ET.SubElement(e, 'conditionalAction')
+    s.tail = '\n'
+    s.set('option', '1')
+    s.set('type', '30')
+    s.set('systemName', ' ')
+    s.set('data', '-1')
+    s.set('delay', '0')
+    s.set('string', value)
+
   def Update(self, e):
     e.clear();
     e.set('antecedent', 'R1')
@@ -222,7 +236,7 @@ class TrainLocLogixConditional:
     global all_location_logix_conditionals
     all_location_logix_conditionals.append(self.system_name)
     e.set('systemName', self.system_name)
-    e.set('triggerOnChange', 'yes')
+    e.set('triggerOnChange', 'no')
     e.set('userName', self.user_name)
     s = FindOrInsert(e, 'systemName')
     s.text = self.system_name
@@ -242,12 +256,17 @@ class TrainLocLogixConditional:
     s.set('type', '1')
     self.AddMemoryAction(e, 'train.' + self.train_name, self.location_name)
     self.AddMemoryAction(e, 'loc.' + self.location_name, self.train_name)
-
+    coord = all_location_coordinates[self.location_name]
+    self.AddJythonAction(e, "PositionLocoMarker(\"3H layout\", \""
+                         + self.train_name + "\", "
+                         + str(int(coord.center[0]))+ ", "
+                         + str(int(coord.center[1])) + ", HORIZONTAL)")
 
 all_sensors = []
 all_locations = []
 all_trains = []
 all_location_logix_conditionals = []
+all_location_coordinates = {}
 
 def ParseAllSensors(sensor_tree):
   """Reads all the sensor objects from the xml tree passed in, and fills out the global list all_sensors."""
@@ -375,6 +394,59 @@ def GetAllLocationList():
       locations.append(m.group(1))
   return locations
 
+class LayoutIndex:
+  """Class maintaining data structures about a LayoutEditor track plan."""
+  def __init__(self, tree_root, name):
+    """tree_root is the full XML file, name is the layout editor panel name."""
+    self.root = tree_root
+    self.panel = self.root.find('./LayoutEditor[@name=\''+name+'\']')
+    if self.panel is None: raise Exception("Panel " + name + " not found in file.")
+    self.InitIdentMap()
+
+  def InitIdentMap(self):
+    self.ident_map = {}
+    for entry in self.panel:
+      if entry.get('ident'):
+        self.ident_map[entry.get('ident')] = entry
+
+  def GetMarginCoordinate(self, dest, source):
+    """returns the coordinates of the point between source and dest"""
+    dnode = self.ident_map[dest]
+    if dnode.tag == 'positionablepoint':
+      return (float(dnode.get('x')), float(dnode.get('y')))
+    if dnode.tag == 'layoutturnout':
+      if source == dnode.get('connectaname'):
+        return (2 * float(dnode.get('xcen')) - float(dnode.get('xb')),
+                2 * float(dnode.get('ycen')) - float(dnode.get('yb')))
+      elif source == dnode.get('connectbname'):
+        return (float(dnode.get('xb')), float(dnode.get('yb')))
+      elif source == dnode.get('connectcname'):
+        return (float(dnode.get('xc')), float(dnode.get('yc')))
+      elif source == dnode.get('connectdname'):
+        return (2 * float(dnode.get('xcen')) - float(dnode.get('xc')),
+                2 * float(dnode.get('ycen')) - float(dnode.get('yc')))
+      else: raise Exception("Target turnout does not seem to connect to source " + source + ": " + dest)
+    raise Exception("Don't know how to figure out position for " + dnode);
+
+  def FindCenterLocation(self, segment):
+    """Returns a tuple (x,y,orientation) for the center of a given segment. Segment is an XML element for a track segment"""
+    if segment.tag != 'tracksegment': raise Exception("FindCenterLocation will only work for tracksegments. Called on: " + segment);
+    coord_a = self.GetMarginCoordinate(segment.get('connect1name'), segment.get('ident'))
+    coord_b = self.GetMarginCoordinate(segment.get('connect2name'), segment.get('ident'))
+    return ((coord_a[0] + coord_b[0]) / 2, (coord_a[1] + coord_b[1]) / 2)
+
+def GetLocationCoordinates(all_location, tree_root, editor_name):
+  """Returns a dict from location string to x,y,orientation tuples"""
+  ret = {}
+  index = LayoutIndex(tree_root, editor_name)
+  for loc in all_location:
+    segments = tree_root.findall('LayoutEditor/tracksegment[@blockname=\'' + loc + '\']')
+    if not segments: raise Exception("Cound not find track segment for block " + loc)
+    segment = segments[0]
+    ret[loc] = LocationInfo()
+    ret[loc].center = index.FindCenterLocation(segment)
+  return ret
+
 def RenderMemoryVariables(output_tree_root):
   desired_memory_list = []
   for location in all_locations:
@@ -395,7 +467,7 @@ def RenderLogixConditionals(output_tree_root):
     desired_conditionals.append(TrainLocLogixConditional(sensor.user_name))
   print("Number of train location logix conditionals: ", len(desired_conditionals))
   all_cond_node = output_tree_root.find('conditionals')
-  TrainLocLogixConditional.SetMaxId(GetMaxSystemId(all_cond_node, 'IX:GEN:TRAINLOC:C'))
+  TrainLocLogixConditional.SetMaxId(GetMaxSystemId(all_cond_node, 'IX:GEN:TRAINLOC:BCC'))
   MergeEntries(all_cond_node, desired_conditionals)
 
   # Finds the main logix node
@@ -412,6 +484,64 @@ def RenderLogixConditionals(output_tree_root):
     e.set('systemName', systemname)
     i += 1
 
+def CreateSensorIcon(x, y, sensorname):
+  base = ET.XML("    <sensoricon sensor=\"" + sensorname + "\" x=\"" + str(x) + "\" y=\"" + str(y) + "\" level=\"9\" forcecontroloff=\"false\" hidden=\"no\" positionable=\"true\" showtooltip=\"true\" editable=\"true\" momentary=\"false\" icon=\"yes\" class=\"jmri.jmrit.display.configurexml.SensorIconXml\">      <tooltip>" + sensorname + "</tooltip>      <active url=\"program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif\" degrees=\"0\" scale=\"1.0\"><rotation>0</rotation></active><inactive url=\"program:resources/icons/smallschematics/tracksegments/circuit-empty.gif\" degrees=\"0\" scale=\"1.0\"><rotation>0</rotation></inactive><unknown url=\"program:resources/icons/smallschematics/tracksegments/circuit-error.gif\" degrees=\"0\" scale=\"1.0\"><rotation>0</rotation></unknown><inconsistent url=\"program:resources/icons/smallschematics/tracksegments/circuit-error.gif\" degrees=\"0\" scale=\"1.0\"><rotation>0</rotation></inconsistent><iconmaps /></sensoricon>\n")
+  return base
+
+def CreateMemoryLabel(x, y, memoryname):
+  return ET.XML('<memoryicon blueBack="255" blueBorder="0" borderSize="1" class="jmri.jmrit.display.configurexml.MemoryIconXml" defaulticon="program:resources/icons/misc/X-red.gif" editable="false" fixedWidth="80" forcecontroloff="false" greenBack="255" greenBorder="0" hidden="no" justification="left" level="9" memory="' + memoryname + '" positionable="true" redBack="255" redBorder="0" selectable="no" showtooltip="false" size="12" style="0" x="' + str(x) + '" y="' + str(y) + '">\n<toolTip>' + memoryname +'</toolTip>\n</memoryicon>\n')
+
+def CreateTextLabel(x, y, text):
+  return ET.XML('    <positionablelabel blue="51" class="jmri.jmrit.display.configurexml.PositionableLabelXml" editable="false" forcecontroloff="false" green="51" hidden="no" justification="centre" level="9" positionable="true" red="51" showtooltip="false" size="12" style="1" text="' + text + '" x="' + str(x) + '" y="' + str(y) + '"/>\n')
+sensoroffset = 3
+
+def PrintBlockLine(layout, block, x0, y):
+  layout.append(CreateTextLabel(x0 - 80, y, block))
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".request_green"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".body_det.simulated_occ"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".body.route_set_ab"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".signal.route_set_ab"))
+  x0 += 40
+  layout.append(CreateMemoryLabel(x0, y, "loc." + block))
+
+def CreateLocoIcon(x, y, text):
+  return ET.XML('    <locoicon x="'+str(x)+'" y="' + str(y) + '" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="'+ text + '" size="12" style="0" red="51" green="51" blue="51" redBack="238" greenBack="238" blueBack="238" justification="centre" orientation="horizontal" icon="yes" dockX="967" dockY="153" class="jmri.jmrit.display.configurexml.LocoIconXml">\n      <icon url="program:resources/icons/markers/loco-white.gif" degrees="0" scale="1.0">\n        <rotation>0</rotation>\n      </icon>\n    </locoicon>\n');
+
+def PrintTrainLine(layout, train, x0, y):
+  layout.append(CreateTextLabel(x0 - 120, y, train))
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "perm." + train + ".is_reversed"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "perm." + train + ".do_not_move"))
+  x0 += 40
+  layout.append(CreateMemoryLabel(x0, y, "train." + train))
+  x0 += 80
+  layout.append(CreateLocoIcon(x0, y, train))
+
+def RenderPanelLocationTable(output_tree_root):
+  layout = output_tree_root.find('./LayoutEditor[@name=\'3H layout\']')
+  if not layout:
+    raise Exception("Cannot find layout editor node.")
+  for entry in layout.findall('./sensoricon[@level=\'9\']'):
+    layout.remove(entry)
+  for entry in layout.findall('./positionablelabel[@level=\'9\']'):
+    layout.remove(entry)
+  for entry in layout.findall('./locoicon[@level=\'9\']'):
+    layout.remove(entry)
+  y = 190;
+  x0 = 250;
+  for block in all_locations:
+    PrintBlockLine(layout, block, x0, y)
+    y += 40
+  y = 190
+  x0 = 700
+  for train in all_trains:
+    PrintTrainLine(layout, train, x0, y);
+    y += 40
+
+
 def main():
   if len(sys.argv) < 2:
     print(("Usage: %s jmri-infile.xml jmri-outfile.xml" % sys.argv[0]), file=sys.stderr)
@@ -421,14 +551,16 @@ def main():
   root = xml_tree.getroot()
   sensor_tree_root = ReadVariableFile()
   ParseAllSensors(sensor_tree_root)
-  global all_trains, all_locations
+  global all_trains, all_locations, all_location_coordinates
   all_trains = GetAllTrainList()
   all_locations = GetAllLocationList()
-  print (len(all_trains), " trains, ", len(all_locations), " locations. found")
+  all_location_coordinates = GetLocationCoordinates(all_locations, root, "3H layout")
+  print (len(all_trains), " trains, ", len(all_locations), " locations found (", len(all_location_coordinates), " with coord)")
   RenderSensors(root)
   RenderSystemBlocks(root)
   RenderMemoryVariables(root)
   RenderLogixConditionals(root)
+  RenderPanelLocationTable(root)
   print("number of sensors: %d" % len(all_sensors))
   xml_tree.write(sys.argv[2])
 
