@@ -347,11 +347,13 @@ class RailcomDebugFlow : public StateFlowBase {
     int ret = ::read(fd_, &fb, sizeof(fb));
     HASSERT(ret == sizeof(fb));
     if (fb.ch1Size) {
-      LOG(INFO, "Railcom CH1 data: %s",
+      LOG(INFO, "Railcom CH1 data(%" PRIu32 "): %s",
+          fb.feedbackKey,
           display_railcom_data(fb.ch1Data, fb.ch1Size).c_str());
     }
     if (fb.ch2Size) {
-      LOG(INFO, "Railcom CH2 data: %s",
+      LOG(INFO, "Railcom CH2 data(%" PRIu32 "): %s",
+          fb.feedbackKey,
           display_railcom_data(fb.ch2Data, fb.ch2Size).c_str());
     }
     return call_immediately(STATE(register_and_sleep));
