@@ -39,11 +39,6 @@
 #include "driverlib/adc.h"
 #include "driverlib/timer.h"
 
-#define DECL_PIN(NAME, PORT, NUM)                \
-  static const auto NAME##_PERIPH = SYSCTL_PERIPH_GPIO##PORT; \
-  static const auto NAME##_BASE = GPIO_PORT##PORT##_BASE; \
-  static const auto NAME##_PIN = GPIO_PIN_##NUM
-
 struct DccHwDefs {
   /// base address of a capture compare pwm timer pair
   static const unsigned long CCP_BASE = TIMER1_BASE;
