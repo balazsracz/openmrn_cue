@@ -64,7 +64,9 @@
 #include "dcc/RailCom.hxx"
 #include "dcc/Packet.hxx"
 #include "hardware.hxx"
+#include "TivaNRZ.hxx"
 #include "dcc/Receiver.hxx"
+#include "SimpleLog.hxx"
 
 NO_THREAD nt;
 Executor<1> g_executor(nt);
@@ -241,12 +243,14 @@ struct RailcomReaderParams {
 void* railcom_uart_thread(void* arg) {
   auto* opts = static_cast<RailcomReaderParams*>(arg);
 
+  int async_fd = ::open(opts->file_path, O_NONBLOCK | O_RDONLY);
+  int sync_fd = ::open(opts->file_path, O_RDONLY);
+
   MAP_UARTConfigSetExpClk(
       opts->base, configCPU_CLOCK_HZ, 250000,
       UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE);
 
-  int async_fd = ::open(opts->file_path, O_NONBLOCK | O_RDONLY);
-  int sync_fd = ::open(opts->file_path, O_RDONLY);
+
   HASSERT(async_fd > 0);
   HASSERT(sync_fd > 0);
   nmranet::WriteHelper::payload_type p;
@@ -254,8 +258,9 @@ void* railcom_uart_thread(void* arg) {
     int count = 0;
     p.clear();
     count += ::read(sync_fd, opts->packetbuf, 1);
+    MAP_GPIOPinWrite(LED_GREEN, 0);
     if (dcc::railcom_decode[(int)opts->packetbuf[0]] == dcc::INV) {
-      continue;
+      //continue;
     }
     usleep(1000);
     count += ::read(async_fd, opts->packetbuf + 1, 7);
@@ -309,25 +314,24 @@ public:
     : dcc::DccDecodeFlow(&g_service, "/dev/nrz0") {}
 
 private:
-
-  void dcc_packet_finished() override {
+  void dcc_packet_finished(const uint8_t* payload, size_t len) override {
     auto* b = g_packet_debug_flow.alloc();
-    b->data()->dlc = ofs_ + 1;
-    memcpy(b->data()->payload, data_, ofs_ + 1);
+    b->data()->dlc = len;
+    memcpy(b->data()->payload, payload, len);
     g_packet_debug_flow.send(b);
   }
 
-  void mm_packet_finished() override {
+  void mm_packet_finished(const uint8_t* payload, size_t len) override {
     auto* b = g_packet_debug_flow.alloc();
-    b->data()->dlc = ofs_ + 1;
-    data_[0] |= 0xFC;
-    memcpy(b->data()->payload, data_, ofs_ + 1);
+    b->data()->dlc = len;
+    memcpy(b->data()->payload, payload, len);
+    b->data()->payload[0] |= 0xFC;
     g_packet_debug_flow.send(b);
   }
 
   void debug_data(uint32_t value) override {
     value /= (configCPU_CLOCK_HZ / 1000000);
-    log(parseState_);
+    log(decoder_.state());
     log(value);
   }
 
