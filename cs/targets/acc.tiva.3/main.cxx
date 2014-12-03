@@ -262,6 +262,7 @@ void* railcom_uart_thread(void* arg) {
     HASSERT(count >= 1);
     // disables the uart until the next packet is here.
     HWREG(UART2_BASE + UART_O_CTL) &= ~UART_CTL_RXE;
+    MAP_GPIOPinWrite(LED_GREEN, 0);
 
     p.assign(opts->packetbuf, count);
     opts->h.WriteAsync(&g_node, nmranet::Defs::MTI_XPRESSNET, opts->h.global(),
@@ -308,7 +309,7 @@ public:
     : dcc::DccDecodeFlow(&g_service, "/dev/nrz0") {}
 
 private:
-  
+
   void dcc_packet_finished() override {
     auto* b = g_packet_debug_flow.alloc();
     b->data()->dlc = ofs_ + 1;
@@ -316,6 +317,27 @@ private:
     g_packet_debug_flow.send(b);
   }
 
+  void mm_packet_finished() override {
+    auto* b = g_packet_debug_flow.alloc();
+    b->data()->dlc = ofs_ + 1;
+    data_[0] |= 0xFC;
+    memcpy(b->data()->payload, data_, ofs_ + 1);
+    g_packet_debug_flow.send(b);
+  }
+
+  void debug_data(uint32_t value) override {
+    value /= (configCPU_CLOCK_HZ / 1000000);
+    log(parseState_);
+    log(value);
+  }
+
+  void log(uint8_t value) {
+    dbuffer[ptr] = value;
+    ++ptr;
+    if (ptr >= sizeof(dbuffer)) ptr = 0;
+  }
+  uint8_t dbuffer[1024];
+  uint16_t ptr = 0;
 };
 
 DccDecodeFlow* g_decode_flow;
