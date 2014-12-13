@@ -55,7 +55,7 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
 
 I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22);
 NativeIO n8(0x28);
-AccBoard ba(0x2a), bb(0x2b);
+AccBoard ba(0x2a), bb(0x2b), bc(0x2c);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -264,6 +264,7 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&b1.LedRed));
   DefCopy(*rep, ImportVariable(&bb.LedGoldSw));
   DefCopy(*rep, ImportVariable(&ba.LedGoldSw));
+  DefCopy(*rep, ImportVariable(&bc.LedGoldSw));
   DefCopy(*rep, ImportVariable(&b5.LedRed));
   DefCopy(*rep, ImportVariable(&b6.LedRed));
   DefCopy(*rep, ImportVariable(&b7.LedRed));
@@ -273,7 +274,16 @@ DefAut(blinkaut, brd, {
   DefCopy(ImportVariable(b5.InBrownGrey), ImportVariable(&b5.LedGreen));
 });
 
-DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase); });
+DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
+    DefCopy(ImportVariable(bc.In0), ImportVariable(&bc.Act0));
+    DefCopy(ImportVariable(bc.In1), ImportVariable(&bc.Act1));
+    DefCopy(ImportVariable(bc.In2), ImportVariable(&bc.Act2));
+    DefCopy(ImportVariable(bc.In3), ImportVariable(&bc.Act3));
+    DefCopy(ImportVariable(bc.In4), ImportVariable(&bc.Act4));
+    DefCopy(ImportVariable(bc.In5), ImportVariable(&bc.Act5));
+    DefCopy(ImportVariable(bc.In6), ImportVariable(&bc.Act6));
+    DefCopy(ImportVariable(bc.In7), ImportVariable(&bc.Act7));
+  });
 
 // Adds the necessary conditions that represent if there is a train at the
 // source track waiting to depart.
