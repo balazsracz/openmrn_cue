@@ -53,6 +53,8 @@
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/EventBitProducer.hxx"
 #include "nmranet/RefreshLoop.hxx"
+#include "nmranet/DatagramCan.hxx"
+#include "nmranet/MemoryConfig.hxx"
 #include "utils/Debouncer.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "driverlib/gpio.h"
@@ -85,6 +87,12 @@ nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
+nmranet::CanDatagramService g_datagram_service(&g_if_can, 2, 2);
+nmranet::MemoryConfigHandler g_memory_config_handler(&g_datagram_service, &g_node, 1);
+
+namespace nmranet {
+Pool* const g_incoming_datagram_allocator = mainBufferPool;
+}
 
 bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625, UART1_BASE,
                                                  INT_RESOLVE(INT_UART1_, 0));
