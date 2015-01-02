@@ -48,12 +48,13 @@
 
 //#define STANDALONE
 
-Executor<1> g_executor("g_executor", 0, 1024);
+Executor<1> g_executor("g_executor", 2, 1024);
 Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 
 OVERRIDE_CONST(gc_generate_newlines, 1);
 OVERRIDE_CONST(main_thread_stack_size, 2500);
+OVERRIDE_CONST(main_thread_priority, 1);
 
 /** Proxy class for sending canbus traffic to the Bootloader HAL. */
 class BootloaderPort : public CanHubPort
@@ -73,7 +74,6 @@ public:
     virtual Action entry()
     {
         AtomicHolder h(this);
-        LOG(INFO, "Received CAN frame %08" PRIx32 ", skipmember %p", GET_CAN_FRAME_ID_EFF(message()->data()->frame()), message()->data()->skipMember_);
         is_waiting_ = true;
         return wait_and_call(STATE(sent));
     }
@@ -152,7 +152,6 @@ bool try_send_can_frame(const struct can_frame &frame)
     auto *b = can_hub0.alloc();
     *b->data()->mutable_frame() = frame;
     b->data()->skipMember_ = &g_bootloader_port;
-    LOG(INFO, "sending can frame, skip member %p", b->data()->skipMember_);
     can_hub0.send(b);
     return true;
 }
@@ -223,11 +222,8 @@ int appl_main(int argc, char* argv[])
 
     can_hub0.register_port(&g_bootloader_port);
 
-    LOG(INFO, "Up. can hub %p, bootloader port %p", &can_hub0, &g_bootloader_port);
-
     while(1) {
         bootloader_entry();
-        
     }
 
     return 0;
