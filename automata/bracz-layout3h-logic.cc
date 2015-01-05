@@ -55,7 +55,7 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
 
 I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22);
 NativeIO n8(0x28);
-AccBoard ba(0x2a), bb(0x2b), bc(0x2c);
+AccBoard ba(0x2a), bb(0x2b), bc(0x2c), be(0x2e);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -171,7 +171,7 @@ PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYA3(&b1.InBrownBrown, &b1.LedGreen,
+PhysicalSignal YYA3(&be.InGreenYellow, &b1.LedGreen,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -179,17 +179,17 @@ PhysicalSignal YYC23(&ba.In0, &ba.Rel3,
                      &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal XXB1(&b1.InBrownGrey, &b1.RelGreen,
+PhysicalSignal XXB1(&be.InBrownBrown, &b1.RelGreen,
                     &signal_XXB1_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal XXB2(&ba.In3, &ba.Rel2,
                     &signal_XXB2_main.signal, &signal_XXB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal XXB3(&b1.InOraRed, &b1.RelBlue,
+PhysicalSignal XXB3(&be.InBrownGrey, &b1.RelBlue,
                     &signal_XXB3_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB2(&b7.InBrownGrey, &b7.RelGreen,
+PhysicalSignal YYB2(&be.InOraGreen, &b7.RelGreen,
                     &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -274,7 +274,7 @@ DefAut(blinkaut, brd, {
   DefCopy(ImportVariable(b5.InBrownGrey), ImportVariable(&b5.LedGreen));
 });
 
-DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
+/*DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
     DefCopy(ImportVariable(bc.In0), ImportVariable(&bc.Act0));
     DefCopy(ImportVariable(bc.In1), ImportVariable(&bc.Act1));
     DefCopy(ImportVariable(bc.In2), ImportVariable(&bc.Act2));
@@ -283,7 +283,7 @@ DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
     DefCopy(ImportVariable(bc.In5), ImportVariable(&bc.Act5));
     DefCopy(ImportVariable(bc.In6), ImportVariable(&bc.Act6));
     DefCopy(ImportVariable(bc.In7), ImportVariable(&bc.Act7));
-  });
+    });*/
 
 // Adds the necessary conditions that represent if there is a train at the
 // source track waiting to depart.
@@ -404,7 +404,7 @@ StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
 StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic.allocator(), "ZZ.A2");
 StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic.allocator(), "ZZ.A3");
 
-StandardMiddleDetector Det_380(&brd, &b7.InOraRed,
+StandardMiddleDetector Det_380(&brd, &bb.InGreenYellow,
                                EventBlock::Allocator(logic2.allocator(),
                                                      "Det380", 24, 8));
 
@@ -417,11 +417,11 @@ StandardFixedTurnout Turnout_W382(&brd,
                                                         "W382", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
 
-StandardMiddleDetector Det_500(&brd, &b7.InBrownBrown,
+StandardMiddleDetector Det_500(&brd, &be.InOraRed,
                                EventBlock::Allocator(logic2.allocator(),
                                                      "Det500", 24, 8));
 
-MagnetDef Magnet_W481(&g_magnet_aut, "W481", &b7.ActBlueGrey, &b7.ActBlueBrown);
+MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBlueGrey, &be.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic2.allocator(), "W481", 40), &Magnet_W481);
 
