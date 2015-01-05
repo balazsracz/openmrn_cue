@@ -18,6 +18,9 @@ $(AUTOMATA).o: %.o: %.cout
 	$(CC) -MM $(CFLAGS) -x c $< > $*.d
 
 OBJS += $(AUTOMATA).o
+ifdef HWVER
+CXXFLAGS+= -D$(HWVER)
+endif
 
 $(EXECUTABLE)$(EXTENTION): $(AUTOMATA).o
 

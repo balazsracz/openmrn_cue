@@ -122,8 +122,15 @@ struct DccHwDefs {
   static const int ADC_SEQUENCER = 3;
   static const auto ADC_INTERRUPT = INT_ADC0SS3;
 
+#ifdef HW_V1
   DECL_PIN(ADCPIN, K, 3);
   static const auto ADCPIN_CH = ADC_CTL_CH19;
+#elif defined(HW_V2)
+  DECL_PIN(ADCPIN, K, 2);
+  static const auto ADCPIN_CH = ADC_CTL_CH18;
+#else
+#error define version with HWVER=HW_V1 or HWVER=HW_V2
+#endif
 
   // Pins defined for railcom
   //DECL_PIN(RAILCOM_TRIGGER, B, 4);
