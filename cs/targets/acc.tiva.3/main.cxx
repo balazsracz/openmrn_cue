@@ -267,7 +267,7 @@ void* railcom_uart_thread(void* arg) {
     p.clear();
     count += ::read(sync_fd, opts->packetbuf, 1);
     MAP_GPIOPinWrite(LED_GREEN, 0);
-    if (dcc::railcom_decode[(int)opts->packetbuf[0]] == dcc::INV) {
+    if (dcc::railcom_decode[(int)opts->packetbuf[0]] == dcc::RailcomDefs::INV) {
       //continue;
     }
     usleep(1000);
