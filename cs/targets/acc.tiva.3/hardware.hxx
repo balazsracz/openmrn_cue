@@ -7,9 +7,44 @@
 #include "inc/hw_ints.h"
 #include "driverlib/timer.h"
 
-#define LED_GREEN GPIO_PORTD_BASE, GPIO_PIN_5
-#define LED_BLUE GPIO_PORTG_BASE, GPIO_PIN_1
-#define LED_YELLOW GPIO_PORTB_BASE, GPIO_PIN_0
+GPIO_PIN(LED_RED, LedPin, D, 6);
+GPIO_PIN(LED_GREEN, LedPin, D, 5);
+GPIO_PIN(LED_BLUE, LedPin, G, 1);
+GPIO_PIN(LED_YELLOW, LedPin, B, 0);
+
+GPIO_PIN(LED_BLUE_SW, LedPin, B, 6);
+GPIO_PIN(LED_GOLD_SW, LedPin, B, 7);
+
+GPIO_PIN(DBG_SIGNAL, GpioOutputSafeLow, B, 1);
+
+typedef LED_RED_Pin BlinkerLed;
+
+struct Debug {
+  // One for the duration of the first byte successfully read from the uart
+  // device for railcom until the next 1 msec when the receiver gets disabled.
+  typedef DummyPin RailcomUartReceived;
+  // Measures the time from the end of a DCC packet until the entry of the
+  // user-space state flow.
+  typedef DummyPin DccPacketDelay;
+
+  // High between start_cutout and end_cutout from the TivaRailcom driver.
+  typedef DBG_SIGNAL_Pin RailcomDriverCutout;
+  //typedef DummyPin/*LED_GREEN_Pin*/ RailcomDriverCutout;
+
+  // Flips every timer capture interrupt from the dcc deocder flow.
+  //typedef LED_GREEN_Pin DccDecodeInterrupts;
+  typedef DummyPin DccDecodeInterrupts;
+ 
+  // Flips every timer capture interrupt from the dcc deocder flow.
+  //typedef DBG_SIGNAL_Pin RailcomE0;
+  typedef LED_GREEN_Pin RailcomE0;
+
+  // Flips every timer capture interrupt from the dcc deocder flow.
+  //typedef LED_GREEN_Pin RailcomError;
+  typedef LED_BLUE_SW_Pin RailcomError;
+
+
+};
 
 struct DCCDecode
 {
