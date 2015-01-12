@@ -71,7 +71,7 @@
 #include "SimpleLog.hxx"
 
 NO_THREAD nt;
-Executor<1> g_executor(nt);
+Executor<5> g_executor(nt);
 Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 
@@ -88,14 +88,17 @@ static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
 nmranet::CanDatagramService g_datagram_service(&g_if_can, 2, 2);
-nmranet::MemoryConfigHandler g_memory_config_handler(&g_datagram_service, &g_node, 1);
+nmranet::MemoryConfigHandler g_memory_config_handler(&g_datagram_service,
+                                                     &g_node, 1);
 
 namespace nmranet {
 Pool* const g_incoming_datagram_allocator = mainBufferPool;
 }
 
-bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625, UART1_BASE,
+/*bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625, UART1_BASE,
                                                  INT_RESOLVE(INT_UART1_, 0));
+*/
+
 
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
@@ -235,10 +238,10 @@ nmranet::RefreshLoop loop(&g_node,
 
 #define NUM_SIGNALS 32
 
-bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
+/*bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
                                      (R_EVENT_ID & ~0xffffff) |
                                          ((R_EVENT_ID & 0xff00) << 8),
-                                     NUM_SIGNALS);
+                                         NUM_SIGNALS);*/
 struct RailcomReaderParams {
   const char* file_path;
   uint32_t base;
@@ -258,7 +261,6 @@ void* railcom_uart_thread(void* arg) {
       opts->base, configCPU_CLOCK_HZ, 250000,
       UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE);
 
-
   HASSERT(async_fd > 0);
   HASSERT(sync_fd > 0);
   nmranet::WriteHelper::payload_type p;
@@ -266,16 +268,16 @@ void* railcom_uart_thread(void* arg) {
     int count = 0;
     p.clear();
     count += ::read(sync_fd, opts->packetbuf, 1);
-    MAP_GPIOPinWrite(LED_GREEN, 0);
+    Debug::RailcomUartReceived::set(true);
     if (dcc::railcom_decode[(int)opts->packetbuf[0]] == dcc::RailcomDefs::INV) {
-      //continue;
+      // continue;
     }
     usleep(1000);
     count += ::read(async_fd, opts->packetbuf + 1, 7);
     HASSERT(count >= 1);
     // disables the uart until the next packet is here.
     HWREG(UART2_BASE + UART_O_CTL) &= ~UART_CTL_RXE;
-    MAP_GPIOPinWrite(LED_GREEN, 0);
+    Debug::RailcomUartReceived::set(false);
 
     p.assign(opts->packetbuf, count);
     opts->h.WriteAsync(&g_node, nmranet::Defs::MTI_XPRESSNET, opts->h.global(),
@@ -287,16 +289,16 @@ void* railcom_uart_thread(void* arg) {
 
 RailcomReaderParams r1{"/dev/ser2", UART2_BASE};
 
-
-class DccPacketDebugFlow : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
+class DccPacketDebugFlow : public StateFlow<Buffer<dcc::Packet>, QList<1>> {
  public:
   DccPacketDebugFlow(nmranet::Node* node)
-      : StateFlow<Buffer<dcc::Packet>, QList<1> >(node->interface()->dispatcher()->service()),
+      : StateFlow<Buffer<dcc::Packet>, QList<1>>(
+            node->interface()->dispatcher()->service()),
         node_(node) {}
 
  private:
   Action entry() override {
-    MAP_GPIOPinWrite(LED_BLUE, 0xff);
+    Debug::DccPacketDelay::set(false);
     return allocate_and_call(node_->interface()->global_message_write_flow(),
                              STATE(msg_allocated));
   }
@@ -307,7 +309,8 @@ class DccPacketDebugFlow : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
 
     b->data()->reset(
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 1),
-        node_->node_id(), string((char*)message()->data()->payload, message()->data()->dlc));
+        node_->node_id(),
+        string((char*)message()->data()->payload, message()->data()->dlc));
     node_->interface()->global_message_write_flow()->send(b);
     return release_and_exit();
   }
@@ -315,13 +318,11 @@ class DccPacketDebugFlow : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
   nmranet::Node* node_;
 } g_packet_debug_flow(&g_node);
 
-
 class DccDecodeFlow : public dcc::DccDecodeFlow {
-public:
-  DccDecodeFlow()
-    : dcc::DccDecodeFlow(&g_service, "/dev/nrz0") {}
+ public:
+  DccDecodeFlow() : dcc::DccDecodeFlow(&g_service, "/dev/nrz0") {}
 
-private:
+ private:
   void dcc_packet_finished(const uint8_t* payload, size_t len) override {
     auto* b = g_packet_debug_flow.alloc();
     b->data()->dlc = len;
@@ -354,22 +355,97 @@ private:
 
 DccDecodeFlow* g_decode_flow;
 
+typedef StructContainer<dcc::Feedback> RailcomHubContainer;
+typedef HubContainer<RailcomHubContainer> RailcomHubData;
+typedef FlowInterface<Buffer<RailcomHubData>> RailcomHubPortInterface;
+typedef StateFlow<Buffer<RailcomHubData>, QList<1>> RailcomHubPort;
+typedef GenericHubFlow<RailcomHubData> RailcomHubFlow;
+
+RailcomHubFlow railcom_hub(&g_service);
+
+namespace nmranet {
+class RailcomProxy : public RailcomHubPort {
+ public:
+  RailcomProxy(RailcomHubFlow* parent, Node* node)
+      : RailcomHubPort(parent->service()), parent_(parent), node_(node) {
+    parent_->register_port(this);
+  }
+
+  ~RailcomProxy() { parent_->unregister_port(this); }
+
+  Action entry() {
+    if (message()->data()->ch1Size) {
+      return allocate_and_call(node_->interface()->global_message_write_flow(),
+                               STATE(ch1_msg_allocated));
+    } else {
+      return call_immediately(STATE(maybe_send_ch2));
+    }
+  }
+
+  Action ch1_msg_allocated() {
+    auto* b =
+        get_allocation_result(node_->interface()->global_message_write_flow());
+
+    b->data()->reset(
+        static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 3),
+        node_->node_id(), string());
+    b->data()->payload.push_back(message()->data()->channel | 0x10);
+    b->data()->payload.append((char*)message()->data()->ch1Data, message()->data()->ch1Size);
+    node_->interface()->global_message_write_flow()->send(b);
+
+    return call_immediately(STATE(maybe_send_ch2));
+  }
+
+  Action maybe_send_ch2() {
+    if (message()->data()->ch2Size) {
+      return allocate_and_call(node_->interface()->global_message_write_flow(),
+                               STATE(ch2_msg_allocated));
+    } else {
+      return release_and_exit();
+    }
+  }
+
+  Action ch2_msg_allocated() {
+    auto* b =
+        get_allocation_result(node_->interface()->global_message_write_flow());
+
+    b->data()->reset(
+        static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 4),
+        node_->node_id(), string());
+    b->data()->payload.push_back(message()->data()->channel | 0x20);
+    b->data()->payload.append((char*)message()->data()->ch2Data, message()->data()->ch2Size);
+    node_->interface()->global_message_write_flow()->send(b);
+
+    return release_and_exit();
+  }
+
+  RailcomHubFlow* parent_;
+  Node* node_;
+};
+}
+
+nmranet::RailcomProxy railcom_proxy(&railcom_hub, &g_node);
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
-  MAP_GPIOPinWrite(LED_GREEN, 0);
-  MAP_GPIOPinWrite(LED_YELLOW, 0);
-  MAP_GPIOPinWrite(LED_BLUE, 0);
+  LED_GREEN_Pin::set(false);
+  LED_YELLOW_Pin::set(false);
+  LED_BLUE_Pin::set(false);
+  // we need to enable the dcc receiving driver.
+  ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
   HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+  HubDeviceNonBlock<RailcomHubFlow> railcom_port(&railcom_hub, "/dev/railcom");
   // Bootstraps the alias allocation process.
   g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-  os_thread_create(nullptr, "railcom_reader", 1, 800, &railcom_uart_thread,
-                   &r1);
-  g_decode_flow = new DccDecodeFlow();
+  //os_thread_create(nullptr, "railcom_reader", 1, 800, &railcom_uart_thread,
+  //                 &r1);
+
+  //g_decode_flow = new DccDecodeFlow();
   g_executor.thread_body();
   return 0;
 }
