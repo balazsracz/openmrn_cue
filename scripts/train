@@ -1,0 +1,8 @@
+#!/bin/bash
+
+SCRIPTNAME="$1"
+shift
+
+CANDIDATE=~/train/openlcb/private_openmrn/scripts/train-$SCRIPTNAME.sh
+
+exec $CANDIDATE "$@"
