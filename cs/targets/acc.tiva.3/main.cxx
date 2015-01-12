@@ -366,14 +366,22 @@ RailcomHubFlow railcom_hub(&g_service);
 namespace nmranet {
 class RailcomProxy : public RailcomHubPort {
  public:
-  RailcomProxy(RailcomHubFlow* parent, Node* node)
-      : RailcomHubPort(parent->service()), parent_(parent), node_(node) {
+  RailcomProxy(RailcomHubFlow* parent, Node* node,
+               RailcomHubPort* occupancy_port)
+      : RailcomHubPort(parent->service()),
+        parent_(parent),
+        node_(node),
+        occupancyPort_(occupancy_port) {
     parent_->register_port(this);
   }
 
   ~RailcomProxy() { parent_->unregister_port(this); }
 
   Action entry() {
+    if (message()->data()->channel == 0xff && occupancyPort_) {
+      occupancyPort_->send(transfer_message());
+      return exit();
+    }
     if (message()->data()->ch1Size) {
       return allocate_and_call(node_->interface()->global_message_write_flow(),
                                STATE(ch1_msg_allocated));
@@ -421,10 +429,47 @@ class RailcomProxy : public RailcomHubPort {
 
   RailcomHubFlow* parent_;
   Node* node_;
+  RailcomHubPort* occupancyPort_;
 };
+
+class FeedbackBasedOccupancy : public RailcomHubPort {
+public:
+  FeedbackBasedOccupancy(Node* node, uint64_t event_base, unsigned channel_count)
+    : RailcomHubPort(node->interface()),
+      currentValues_(0),
+      eventHandler_(node, event_base, &currentValues_, channel_count) {}
+
+  Action entry() {
+    if (message()->data()->channel != 0xff) return release_and_exit();
+    uint32_t new_values = message()->data()->ch1Data[0];
+    release();
+    if (new_values == currentValues_) return exit();
+    unsigned bit = 1;
+    unsigned ofs = 0;
+    uint32_t diff = new_values ^ currentValues_;
+    while (bit && ((diff & bit) == 0)) {
+      bit <<= 1;
+      ofs++;
+    }
+    eventHandler_.Set(ofs, (new_values & bit), &h_, n_.reset(this));
+    return wait_and_call(STATE(set_done));
+  }
+
+  Action set_done() {
+    return exit();
+  }
+
+private:
+  uint32_t currentValues_;
+  BitRangeEventPC eventHandler_;
+  WriteHelper h_;
+  BarrierNotifiable n_;
+};
+
 }
 
-nmranet::RailcomProxy railcom_proxy(&railcom_hub, &g_node);
+nmranet::FeedbackBasedOccupancy railcom_occupancy(&g_node, R_EVENT_ID + 24, 4);
+nmranet::RailcomProxy railcom_proxy(&railcom_hub, &g_node, &railcom_occupancy);
 
 /** Entry point to application.
  * @param argc number of command line arguments
