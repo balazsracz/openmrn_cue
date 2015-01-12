@@ -33,7 +33,10 @@
  * @date 15 May 2014
  */
 
-class CanHubFlow;
+#ifndef _BRACZ_CUSTOM_HOSTPACKETCANPORT_HXX_
+#define _BRACZ_CUSTOM_HOSTPACKETCANPORT_HXX_
+
+#include "utils/Hub.hxx"
 
 namespace bracz_custom {
 
@@ -43,3 +46,5 @@ namespace bracz_custom {
 void init_host_packet_can_bridge(CanHubFlow* device);
 
 }  // namespace bracz_custom
+
+#endif // _BRACZ_CUSTOM_HOSTPACKETCANPORT_HXX_

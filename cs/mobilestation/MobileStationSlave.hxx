@@ -40,8 +40,6 @@
 #include "executor/StateFlow.hxx"
 #include "utils/CanIf.hxx"
 
-class CanHubFlow;
-
 namespace mobilestation {
 
 class MobileStationSlave;
