@@ -46,6 +46,7 @@
 #include "utils/GcTcpHub.hxx"
 #include "utils/HubDevice.hxx"
 #include "utils/HubDeviceNonBlock.hxx"
+#include "dcc/RailcomBroadcastDecoder.hxx"
 #include "nmranet/IfCan.hxx"
 #include "nmranet/Defs.hxx"
 #include "nmranet/AliasAllocator.hxx"
@@ -55,6 +56,7 @@
 #include "nmranet/RefreshLoop.hxx"
 #include "nmranet/DatagramCan.hxx"
 #include "nmranet/MemoryConfig.hxx"
+#include "nmranet/TractionDefs.hxx"
 #include "utils/Debouncer.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "driverlib/gpio.h"
@@ -95,10 +97,10 @@ namespace nmranet {
 Pool* const g_incoming_datagram_allocator = mainBufferPool;
 }
 
-/*bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625, UART1_BASE,
+/*bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
+   UART1_BASE,
                                                  INT_RESOLVE(INT_UART1_, 0));
 */
-
 
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
@@ -372,10 +374,11 @@ class RailcomProxy : public RailcomHubPort {
         parent_(parent),
         node_(node),
         occupancyPort_(occupancy_port) {
-    parent_->register_port(this);
+    // parent_->register_port(this);
   }
 
-  ~RailcomProxy() { parent_->unregister_port(this); }
+  ~RailcomProxy() {  // parent_->unregister_port(this);
+  }
 
   Action entry() {
     if (message()->data()->channel == 0xff && occupancyPort_) {
@@ -398,7 +401,8 @@ class RailcomProxy : public RailcomHubPort {
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 3),
         node_->node_id(), string());
     b->data()->payload.push_back(message()->data()->channel | 0x10);
-    b->data()->payload.append((char*)message()->data()->ch1Data, message()->data()->ch1Size);
+    b->data()->payload.append((char*)message()->data()->ch1Data,
+                              message()->data()->ch1Size);
     node_->interface()->global_message_write_flow()->send(b);
 
     return call_immediately(STATE(maybe_send_ch2));
@@ -421,7 +425,8 @@ class RailcomProxy : public RailcomHubPort {
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 4),
         node_->node_id(), string());
     b->data()->payload.push_back(message()->data()->channel | 0x20);
-    b->data()->payload.append((char*)message()->data()->ch2Data, message()->data()->ch2Size);
+    b->data()->payload.append((char*)message()->data()->ch2Data,
+                              message()->data()->ch2Size);
     node_->interface()->global_message_write_flow()->send(b);
 
     return release_and_exit();
@@ -432,12 +437,108 @@ class RailcomProxy : public RailcomHubPort {
   RailcomHubPort* occupancyPort_;
 };
 
+class RailcomBroadcastFlow : public RailcomHubPort {
+ public:
+  RailcomBroadcastFlow(RailcomHubFlow* parent, Node* node,
+                       RailcomHubPort* occupancy_port,
+                       RailcomHubPort* debug_port, unsigned channel_count)
+      : RailcomHubPort(parent->service()),
+        parent_(parent),
+        node_(node),
+        occupancyPort_(occupancy_port),
+        debugPort_(debug_port),
+        size_(channel_count),
+        channels_(new dcc::RailcomBroadcastDecoder[channel_count]) {
+    parent_->register_port(this);
+  }
+
+  ~RailcomBroadcastFlow() {
+    parent_->unregister_port(this);
+    delete[] channels_;
+  }
+
+  Action entry() {
+    auto channel = message()->data()->channel;
+    if (channel == 0xff && occupancyPort_) {
+      occupancyPort_->send(transfer_message());
+      return exit();
+    }
+    if (channel >= size_ ||
+        !channels_[channel].process_packet(*message()->data())) {
+      debugPort_->send(transfer_message());
+      return exit();
+    }
+    auto& decoder = channels_[channel];
+    if (decoder.current_address() == decoder.lastAddress_) {
+      return release_and_exit();
+    }
+    // Now: the visible address has changed. Send event reports.
+    return allocate_and_call(node_->interface()->global_message_write_flow(),
+                             STATE(send_invalid));
+  }
+
+  Action send_invalid() {
+    auto channel = message()->data()->channel;
+    auto& decoder = channels_[channel];
+    auto* b = get_allocation_result(node_->interface()->global_message_write_flow());
+    b->data()->reset(
+        Defs::MTI_PRODUCER_IDENTIFIED_INVALID, node_->node_id(),
+        eventid_to_buffer(address_to_eventid(channel, decoder.lastAddress_)));
+    b->set_done(n_.reset(this));
+    node_->interface()->global_message_write_flow()->send(b);
+    return wait_and_call(STATE(allocate_for_event));
+  }
+
+  Action allocate_for_event() {
+    return allocate_and_call(node_->interface()->global_message_write_flow(),
+                             STATE(send_event));
+  }
+
+  Action send_event() {
+    auto channel = message()->data()->channel;
+    auto& decoder = channels_[channel];
+    auto* b = get_allocation_result(node_->interface()->global_message_write_flow());
+    b->data()->reset(Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     eventid_to_buffer(address_to_eventid(
+                         channel, decoder.current_address())));
+    b->set_done(n_.reset(this));
+    node_->interface()->global_message_write_flow()->send(b);
+    decoder.lastAddress_ = decoder.current_address();
+    release();
+    return wait_and_call(STATE(finish));
+  }
+
+  Action finish() { return exit(); }
+
+ private:
+  static const uint64_t FEEDBACK_EVENTID_BASE;
+  uint64_t address_to_eventid(unsigned channel, uint16_t address) {
+    uint64_t ret = FEEDBACK_EVENTID_BASE;
+    ret |= uint64_t(channel & 0xff) << 48;
+    ret |= address;
+    return ret;
+  }
+
+  RailcomHubFlow* parent_;
+  Node* node_;
+  RailcomHubPort* occupancyPort_;
+  RailcomHubPort* debugPort_;
+  unsigned size_;
+  dcc::RailcomBroadcastDecoder* channels_;
+  BarrierNotifiable n_;
+};
+
+const uint64_t RailcomBroadcastFlow::FEEDBACK_EVENTID_BASE =
+  (0x09ULL << 56) | TractionDefs::NODE_ID_DCC;
+
+
 class FeedbackBasedOccupancy : public RailcomHubPort {
-public:
-  FeedbackBasedOccupancy(Node* node, uint64_t event_base, unsigned channel_count)
-    : RailcomHubPort(node->interface()),
-      currentValues_(0),
-      eventHandler_(node, event_base, &currentValues_, channel_count) {}
+ public:
+  FeedbackBasedOccupancy(Node* node, uint64_t event_base,
+                         unsigned channel_count)
+      : RailcomHubPort(node->interface()),
+        currentValues_(0),
+        eventHandler_(node, event_base, &currentValues_, channel_count) {}
 
   Action entry() {
     if (message()->data()->channel != 0xff) return release_and_exit();
@@ -455,21 +556,20 @@ public:
     return wait_and_call(STATE(set_done));
   }
 
-  Action set_done() {
-    return exit();
-  }
+  Action set_done() { return exit(); }
 
-private:
+ private:
   uint32_t currentValues_;
   BitRangeEventPC eventHandler_;
   WriteHelper h_;
   BarrierNotifiable n_;
 };
-
 }
-
 nmranet::FeedbackBasedOccupancy railcom_occupancy(&g_node, R_EVENT_ID + 24, 4);
 nmranet::RailcomProxy railcom_proxy(&railcom_hub, &g_node, &railcom_occupancy);
+nmranet::RailcomBroadcastFlow railcom_broadcast(&railcom_hub, &g_node,
+                                                &railcom_occupancy,
+                                                &railcom_proxy, 4);
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -487,10 +587,10 @@ int appl_main(int argc, char* argv[]) {
   // Bootstraps the alias allocation process.
   g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-  //os_thread_create(nullptr, "railcom_reader", 1, 800, &railcom_uart_thread,
+  // os_thread_create(nullptr, "railcom_reader", 1, 800, &railcom_uart_thread,
   //                 &r1);
 
-  //g_decode_flow = new DccDecodeFlow();
+  // g_decode_flow = new DccDecodeFlow();
   g_executor.thread_body();
   return 0;
 }
