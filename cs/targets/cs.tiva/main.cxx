@@ -385,7 +385,10 @@ int appl_main(int argc, char* argv[])
     int mainline = open("/dev/mainline", O_RDWR);
     HASSERT(mainline > 0);
     track_if.set_fd(mainline);
-    RailcomDebugFlow railcom_debug(mainline);
+    
+    int railcom_fd = open("/dev/railcom", O_RDWR);
+    HASSERT(railcom_fd > 0);
+    RailcomDebugFlow railcom_debug(railcom_fd);
 
 
     nmranet::Velocity v;
