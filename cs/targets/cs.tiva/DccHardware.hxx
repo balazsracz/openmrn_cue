@@ -38,8 +38,44 @@
 
 #include "driverlib/adc.h"
 #include "driverlib/timer.h"
-#include "TivaGPIO.h"
+#include "TivaGPIO.hxx"
 
+struct RailcomDefs
+{
+    static const uint32_t CHANNEL_COUNT = 1;
+    static const uint32_t UART_PERIPH[CHANNEL_COUNT];
+    static const uint32_t UART_BASE[CHANNEL_COUNT];
+    // Make sure there are enough entries here for all the channels times a few
+    // DCC packets.
+    static const uint32_t Q_SIZE = 6;
+
+    static const auto OS_INTERRUPT = INT_UART6;
+
+    GPIO_HWPIN(CH1, GpioHwPin, P, 0, U6RX);
+
+    static void hw_init() {
+         CH1_Pin::hw_init();
+    }
+
+    static void set_input() {
+        CH1_Pin::set_input();
+    }
+
+    static void set_hw() {
+        CH1_Pin::set_hw();
+    }
+
+    /** @returns a bitmask telling which pins are active. Bit 0 will be set if
+     * channel 0 is active (drawing current).*/
+    static uint8_t sample() {
+        uint8_t ret = 0;
+        if (!CH1_Pin::get()) ret |= 1;
+        return ret;
+    }
+};
+
+const uint32_t RailcomDefs::UART_BASE[] __attribute__((weak)) = {UART6_BASE};
+const uint32_t RailcomDefs::UART_PERIPH[] __attribute__((weak)) = {SYSCTL_PERIPH_UART6};
 
 struct DccHwDefs {
   /// base address of a capture compare pwm timer pair
