@@ -38,6 +38,8 @@
 
 #include "driverlib/adc.h"
 #include "driverlib/timer.h"
+#include "TivaGPIO.h"
+
 
 struct DccHwDefs {
   /// base address of a capture compare pwm timer pair

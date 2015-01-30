@@ -261,6 +261,7 @@ private:
 
 extern TivaDCC<DccHwDefs> dcc_hw;
 
+/*
 class RailcomDebugFlow : public StateFlowBase {
  public:
   RailcomDebugFlow() : StateFlowBase(&g_service) {
@@ -309,6 +310,7 @@ class RailcomDebugFlow : public StateFlowBase {
     return call_immediately(STATE(register_and_sleep));
   }
 } railcom_debug;
+*/
 
 dcc::LocalTrackIf track_if(&g_service, 2);
 commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
