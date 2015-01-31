@@ -101,15 +101,15 @@ OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 
 
 namespace mobilestation {
-/*
+
 extern const struct const_loco_db_t const_lokdb[];
 
 const struct const_loco_db_t const_lokdb[] = {
   // 0
-  { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
+  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
+    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
   // 1
-  { 66, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+  { 46, { 0, 0xff, }, { LIGHT, 0xff, },
     "Re 6/6 11665", DCC_128 },
   // 2 (jim's)
   //{ 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
@@ -119,7 +119,7 @@ const struct const_loco_db_t const_lokdb[] = {
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
-*/
+
 }  // namespace mobilestation
 
 NO_THREAD nt;
