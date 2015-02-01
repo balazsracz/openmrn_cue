@@ -3,7 +3,7 @@ CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32 -Wall -isystem /opt/gmock/def
 OBJS=system.o control-logic.o registry.o
 
 AUTS = rr-crossing.cpp logic-demo.cpp 
-OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout
 BINS = $(AUTS:.cpp=)
 
 all: lib test-aut bracz-layout3h-logic bin
@@ -40,6 +40,9 @@ bracz-layout3h-logic: $(OBJS) bracz-layout3h-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ bracz-layout3h-logic.o $(OBJS) 
 
 convention-logic: convention-logic.o $(OBJS)  # control-logic.hxx
+	$(CXX) $(CXXFLAGS) -o $@ $+
+
+stbaker-logic: stbaker-logic.o $(OBJS)  # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ $+
 
 clean:
