@@ -55,9 +55,9 @@ namespace bracz_custom {
 class TivaSignalPacketSender : public SignalPacketBase,
                                public Singleton<TivaSignalPacketSender> {
  public:
-  /** Example: Sender(&g_service, 15625, UART1_BASE,  */
-  TivaSignalPacketSender(Service* s, unsigned baudrate, unsigned uart_base,
-                         unsigned interrupt);
+  /** Example: Sender(&g_service, SYSCTL_PERIPH_UART1, 15625, UART1_BASE,  */
+  TivaSignalPacketSender(Service* s, unsigned uart_periph, unsigned baudrate,
+                         unsigned uart_base, unsigned interrupt);
 
   /** Called from the UART interrupt handler. */
   void interrupt();
@@ -95,10 +95,12 @@ class TivaSignalPacketSender : public SignalPacketBase,
 DEFINE_SINGLETON_INSTANCE(TivaSignalPacketSender);
 
 TivaSignalPacketSender::TivaSignalPacketSender(Service* s, unsigned baudrate,
+                                               unsigned uart_periph,
                                                unsigned uart_base,
                                                unsigned interrupt)
     : SignalPacketBase(s), uartBase_(uart_base), interrupt_(interrupt) {
   MAP_IntDisable(interrupt);
+  MAP_SysCtlPeripheralEnable(uart_periph);
   MAP_UARTConfigSetExpClk(
       uartBase_, configCPU_CLOCK_HZ, baudrate,
       UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_ZERO);

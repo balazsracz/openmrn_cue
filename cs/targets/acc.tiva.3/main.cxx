@@ -97,10 +97,10 @@ namespace nmranet {
 Pool* const g_incoming_datagram_allocator = mainBufferPool;
 }
 
-/*bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
-   UART1_BASE,
+bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
+                                                 SYSCTL_PERIPH_UART1,
+                                                 UART1_BASE,
                                                  INT_RESOLVE(INT_UART1_, 0));
-*/
 
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
@@ -240,10 +240,10 @@ nmranet::RefreshLoop loop(&g_node,
 
 #define NUM_SIGNALS 32
 
-/*bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
+bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
                                      (R_EVENT_ID & ~0xffffff) |
-                                         ((R_EVENT_ID & 0xff00) << 8),
-                                         NUM_SIGNALS);*/
+                                     ((R_EVENT_ID & 0xff00) << 8),
+                                     NUM_SIGNALS);
 struct RailcomReaderParams {
   const char* file_path;
   uint32_t base;
