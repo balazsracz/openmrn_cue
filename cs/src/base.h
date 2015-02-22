@@ -18,5 +18,9 @@
 #define OFS_BITS 2
 
 
-#endif  // _BRACZ_TRAIN_BASE_H
+// ==== Signal handler flow definitions
+#define CMD_SIGNALPACKET 0x10   // arg1... the signal packet (arg1=address arg2=len arg3... = payload. the payload has to be one less bytes than len). Maximum length value is 12.
 
+
+
+#endif  // _BRACZ_TRAIN_BASE_H
