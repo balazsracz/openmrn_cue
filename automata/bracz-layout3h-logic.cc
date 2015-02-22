@@ -55,7 +55,7 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
 
 I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22);
 NativeIO n8(0x28);
-AccBoard ba(0x2a), bb(0x2b), bc(0x2c), be(0x2e);
+AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -261,14 +261,13 @@ DefAut(blinkaut, brd, {
       .ActState(StUser1)
       .ActReg1(rep);
 
-  DefCopy(*rep, ImportVariable(&b1.LedRed));
-  DefCopy(*rep, ImportVariable(&bb.LedGoldSw));
-  DefCopy(*rep, ImportVariable(&ba.LedGoldSw));
-  DefCopy(*rep, ImportVariable(&bc.LedGoldSw));
+  DefCopy(*rep, ImportVariable(&ba.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&bb.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&bc.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&bd.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&be.LedBlueSw));
   DefCopy(*rep, ImportVariable(&b5.LedRed));
   DefCopy(*rep, ImportVariable(&b6.LedRed));
-  DefCopy(*rep, ImportVariable(&b7.LedRed));
-  DefCopy(*rep, ImportVariable(&panda_bridge.l4));
   DefCopy(*rep, ImportVariable(&lpc11_back.l0));
   DefCopy(*rep, ImportVariable(&n8.l0));
   DefCopy(ImportVariable(b5.InBrownGrey), ImportVariable(&b5.LedGreen));
