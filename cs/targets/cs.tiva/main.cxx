@@ -53,8 +53,11 @@
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/EventBitProducer.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
+#include "utils/Debouncer.hxx"
+#include "nmranet/RefreshLoop.hxx"
 
 // for logging implementation
 #include "src/host_packet.h"
@@ -78,6 +81,7 @@
 #include "mobilestation/AllTrainNodes.hxx"
 
 #include "TivaDCC.hxx"
+#include "hardware.hxx"
 #include "custom/TivaShortDetection.hxx"
 
 #include "inc/hw_types.h"
@@ -253,6 +257,25 @@ private:
     bool state_;
 };
 
+class TivaGPIOProducerBit : public nmranet::BitEventInterface {
+ public:
+  TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
+                      uint8_t port_bit)
+      : BitEventInterface(event_on, event_off),
+        ptr_(reinterpret_cast<const uint8_t*>(port_base +
+                                              (((unsigned)port_bit) << 2))) {}
+
+  bool GetCurrentState() OVERRIDE { return *ptr_; }
+
+  void SetState(bool new_value) OVERRIDE {
+    DIE("cannot set state of input producer");
+  }
+
+  nmranet::Node* node() OVERRIDE { return &g_node; }
+
+ private:
+  const uint8_t* ptr_;
+};
 
 dcc::LocalTrackIf track_if(&g_service, 2);
 commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
@@ -261,6 +284,21 @@ TivaTrackPowerOnOffBit on_off(nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                               nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
 nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(&g_if_can);
+
+typedef nmranet::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
+                                TivaGPIOProducerBit> TivaSwitchProducer;
+QuiesceDebouncer::Options opts(3);
+
+TivaSwitchProducer sw1(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                       nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
+                       USR_SW1_Pin::GPIO_BASE, USR_SW1_Pin::GPIO_PIN);
+
+nmranet::RefreshLoop loop(&g_node, {&sw1});
+
+/*TivaSwitchProducer sw2(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                       nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
+                       USR_SW1::GPIO_BASE, USR_SW1::GPIO_PIN);
+*/
 
 //dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 //nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
@@ -275,6 +313,10 @@ CanIf can1_interface(&g_service, &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 
 mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
+
+typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
+    TivaGPIOProducer;
+
 
 
 void mydisable()
