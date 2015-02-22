@@ -15,7 +15,7 @@ GPIO_PIN(LED_YELLOW, LedPin, B, 0);
 GPIO_PIN(LED_BLUE_SW, LedPin, B, 6);
 GPIO_PIN(LED_GOLD_SW, LedPin, B, 7);
 
-GPIO_PIN(DBG_SIGNAL, GpioOutputSafeLow, B, 1);
+//GPIO_PIN(DBG_SIGNAL, GpioOutputSafeLow, B, 1);
 
 typedef LED_RED_Pin BlinkerLed;
 
@@ -28,8 +28,8 @@ struct Debug {
   typedef DummyPin DccPacketDelay;
 
   // High between start_cutout and end_cutout from the TivaRailcom driver.
-  typedef DBG_SIGNAL_Pin RailcomDriverCutout;
-  //typedef DummyPin/*LED_GREEN_Pin*/ RailcomDriverCutout;
+  //typedef DBG_SIGNAL_Pin RailcomDriverCutout;
+  typedef DummyPin RailcomDriverCutout;
 
   // Flips every timer capture interrupt from the dcc deocder flow.
   typedef LED_BLUE_SW_Pin DccDecodeInterrupts;
@@ -43,7 +43,9 @@ struct Debug {
   typedef DummyPin RailcomError;
   //typedef LED_BLUE_SW_Pin RailcomError;
 
-
+    typedef DummyPin RailcomDataReceived;
+    typedef DummyPin RailcomAnyData;
+    typedef DummyPin RailcomPackets;
 };
 
 struct DCCDecode
