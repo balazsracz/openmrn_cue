@@ -34,6 +34,9 @@
  * @date 19 Jul 2014
  */
 
+#ifndef _BRACZ_CUSTOM_SIGNALPACKET_HXX_
+#define _BRACZ_CUSTOM_SIGNALPACKET_HXX_
+
 #include "executor/StateFlow.hxx"
 #include "utils/Hub.hxx"
 
@@ -122,3 +125,5 @@ class SignalPacketBase : public SignalPacketBaseInterface {
 };
 
 }  // namespace bracz_custom
+
+#endif // _BRACZ_CUSTOM_SIGNALPACKET_HXX_
