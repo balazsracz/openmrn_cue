@@ -65,6 +65,7 @@
 #define ENABLE_TIVA_SIGNAL_DRIVER
 #include "custom/TivaSignalPacket.hxx"
 #include "custom/SignalLoop.hxx"
+#include "custom/SignalServer.hxx"
 #include "dcc/RailCom.hxx"
 #include "dcc/Packet.hxx"
 #include "hardware.hxx"
@@ -244,6 +245,10 @@ bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
                                      (R_EVENT_ID & ~0xffffff) |
                                      ((R_EVENT_ID & 0xff00) << 8),
                                      NUM_SIGNALS);
+
+bracz_custom::SignalServer signal_server(&g_datagram_service, &g_node,
+                                         &g_signalbus);
+
 struct RailcomReaderParams {
   const char* file_path;
   uint32_t base;
