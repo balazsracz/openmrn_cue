@@ -106,6 +106,7 @@ OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 
 namespace mobilestation {
 
+/*
 extern const struct const_loco_db_t const_lokdb[];
 
 const struct const_loco_db_t const_lokdb[] = {
@@ -123,7 +124,7 @@ const struct const_loco_db_t const_lokdb[] = {
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
-
+*/
 }  // namespace mobilestation
 
 NO_THREAD nt;
@@ -183,7 +184,7 @@ static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
 
-static const uint64_t EVENT_ID = 0x0501010114FF2038ULL;
+static const uint64_t EVENT_ID = 0x0501010114FF2B08ULL;
 const int main_priority = 0;
 
 extern "C" { void resetblink(uint32_t pattern); }
@@ -277,6 +278,30 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
   const uint8_t* ptr_;
 };
 
+class TivaGPIOConsumer : public nmranet::BitEventInterface,
+                         public nmranet::BitEventConsumer {
+ public:
+  TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port,
+                   uint8_t pin)
+      : BitEventInterface(event_on, event_off),
+        BitEventConsumer(this),
+        memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
+
+  bool GetCurrentState() OVERRIDE { return (*memory_) ? true : false; }
+  void SetState(bool new_value) OVERRIDE {
+    if (new_value) {
+      *memory_ = 0xff;
+    } else {
+      *memory_ = 0;
+    }
+  }
+
+  nmranet::Node* node() OVERRIDE { return &g_node; }
+
+ private:
+  volatile uint8_t* memory_;
+};
+
 dcc::LocalTrackIf track_if(&g_service, 2);
 commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
 commandstation::PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(&g_service, track_if.pool(), &cs_loop);
@@ -293,7 +318,14 @@ TivaSwitchProducer sw1(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                        nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
                        USR_SW1_Pin::GPIO_BASE, USR_SW1_Pin::GPIO_PIN);
 
-nmranet::RefreshLoop loop(&g_node, {&sw1});
+TivaSwitchProducer sw2(opts, BRACZ_LAYOUT | 0x0000,
+                       BRACZ_LAYOUT | 0x0001,
+                       USR_SW2_Pin::GPIO_BASE, USR_SW2_Pin::GPIO_PIN);
+
+TivaGPIOConsumer led_acc(BRACZ_LAYOUT | 4, BRACZ_LAYOUT | 5, io::AccPwrLed::GPIO_BASE, io::AccPwrLed::GPIO_PIN);
+TivaGPIOConsumer led_go(BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,  io::GoPausedLed::GPIO_BASE, io::GoPausedLed::GPIO_PIN);
+
+nmranet::RefreshLoop loop(&g_node, {&sw1, &sw2});
 
 /*TivaSwitchProducer sw2(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                        nmranet::TractionDefs::EMERGENCY_STOP_EVENT,

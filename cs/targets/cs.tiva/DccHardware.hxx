@@ -39,6 +39,7 @@
 #include "driverlib/adc.h"
 #include "driverlib/timer.h"
 #include "TivaGPIO.hxx"
+#include "hardware.hxx"
 
 struct RailcomDefs
 {
@@ -133,12 +134,8 @@ struct DccHwDefs {
    *  packet '1' bit) */
   static int dcc_preamble_count() { return 16; }
 
-  static constexpr uint8_t* LED_PTR =
-      (uint8_t*)(GPIO_PORTQ_BASE + (GPIO_PIN_0 << 2));
   static void flip_led() {
-    static uint8_t flip = 0xff;
-    flip = ~flip;
-    *LED_PTR = flip;
+    io::TrackPktLed::toggle();
   }
 
   /** the time (in nanoseconds) to wait between turning off the low driver and
