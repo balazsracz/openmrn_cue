@@ -96,7 +96,6 @@ class TivaShortDetectionModule : public StateFlowBase {
 
     ADCIntEnable(HW::ADC_BASE, HW::ADC_SEQUENCER);
     MAP_IntPrioritySet(HW::ADC_INTERRUPT, configKERNEL_INTERRUPT_PRIORITY);
-    MAP_IntEnable(HW::ADC_INTERRUPT);
     next_report_ = 0;
   }
 
@@ -116,6 +115,7 @@ class TivaShortDetectionModule : public StateFlowBase {
   Action start_conversion() {
     ADCIntClear(HW::ADC_BASE, HW::ADC_SEQUENCER);
     ADCProcessorTrigger(HW::ADC_BASE, HW::ADC_SEQUENCER);
+    MAP_IntEnable(HW::ADC_INTERRUPT);
     return wait_and_call(STATE(conversion_done));
   }
 
