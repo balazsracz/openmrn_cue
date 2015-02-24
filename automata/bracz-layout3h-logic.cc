@@ -208,6 +208,7 @@ GlobalVariable* NewTempVariable(Board* board) {
 }
 
 unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
+unique_ptr<GlobalVariable> acc_off_tmp(NewTempVariable(&brd));
 
 EventBasedVariable led(&brd, "led", 0x0502010202650012ULL,
                        0x0502010202650013ULL, 7, 31, 1);
@@ -238,6 +239,26 @@ DefAut(watchdog, brd, {
     LocalVariable* w = ImportVariable(&watchdog);
     Def().IfState(StInit).ActReg1(ImportVariable(&is_paused)).ActState(StBase);
     Def().IfTimerDone().ActReg1(w).ActReg0(w).ActTimer(1);
+
+    auto* signal_off_tmp = ImportVariable(acc_off_tmp.get());
+    auto* signal_on = ImportVariable(&power_acc);
+    const auto& signal_short = ImportVariable(short_det);
+    const auto& signal_over = ImportVariable(overcur);
+    Def().IfReg1(*signal_on).ActReg0(signal_off_tmp);
+    Def().IfReg1(signal_short).ActReg0(signal_off_tmp);
+    Def().IfReg1(signal_over).ActReg0(signal_off_tmp);
+
+    // If the signal power is off but no short and no overcurrent detected,
+    // turn it back on.
+    Def().IfReg0(*signal_on).IfReg1(*signal_off_tmp).ActReg1(signal_on);
+
+    // But do this only after waiting for one cycle for any overcurrent event
+    // to come in.
+    Def()
+        .IfReg0(*signal_on)
+        .IfReg0(signal_short)
+        .IfReg0(signal_over)
+        .ActReg0(signal_off_tmp);
   });
 
 DefAut(blinkaut, brd, {
