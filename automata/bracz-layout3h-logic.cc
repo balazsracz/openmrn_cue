@@ -258,7 +258,7 @@ DefAut(watchdog, brd, {
         .IfReg0(*signal_on)
         .IfReg0(signal_short)
         .IfReg0(signal_over)
-        .ActReg0(signal_off_tmp);
+        .ActReg1(signal_off_tmp);
   });
 
 DefAut(blinkaut, brd, {
