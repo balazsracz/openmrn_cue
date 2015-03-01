@@ -68,55 +68,84 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-I2CSignal signal_XXB2_main(&b1, 8, "XX.B2.main");  // was: b3
-I2CSignal signal_XXB2_adv(&b1, 9, "XX.B2.adv");  // was: b3
+I2CSignal signal_XXB2_main(&b1, 8, "XX.B2.main"); // 143 (0x8F)
+I2CSignal signal_XXB2_adv(&b1, 9, "XX.B2.adv");
 
 I2CSignal signal_A301_main(&b5, 72, "A301.main");
 I2CSignal signal_A301_adv(&b5, 73, "A301.adv");
 
-I2CSignal signal_A321_main(&bb, 36, "A321.main");
+I2CSignal signal_A321_main(&bb, 36, "A321.main");  // 166 0xA6
 I2CSignal signal_A321_adv(&bb, 37, "A321.adv");
-I2CSignal signal_A421_main(&bb, 42, "A421.main");
+I2CSignal signal_A421_main(&bb, 42, "A421.main");  // 134 (0x86)
 I2CSignal signal_A421_adv(&bb, 43, "A421.adv");
 
-I2CSignal signal_B321_main(&bb, 38, "B321.main");
+I2CSignal signal_B321_main(&bb, 38, "B321.main");  // 172 0xAC
 I2CSignal signal_B321_adv(&bb, 39, "B321.adv");
-I2CSignal signal_B421_main(&bb, 40, "B421.main");
+I2CSignal signal_B421_main(&bb, 40, "B421.main");  // 176 (0xB0)
 I2CSignal signal_B421_adv(&bb, 41, "B421.adv");
 
 I2CSignal signal_A347_main(&bb, 20, "A347.main");
 I2CSignal signal_A347_adv(&bb, 21, "A347.adv");
 
-I2CSignal signal_B447_main(&bb, 10, "B447.main");
+I2CSignal signal_B447_main(&bb, 10, "B447.main");  // 131 0x83
 I2CSignal signal_B447_adv(&bb, 11, "B447.adv");
 
-I2CSignal signal_A360_main(&bb, /*12*/142, "A360.main");
+I2CSignal signal_A360_main(&bb, 12, "A360.main"); // 142 (0x8E)
 I2CSignal signal_A360_adv(&bb, 13, "A360.adv");
-I2CSignal signal_A460_main(&bb, /*14*/139, "A460.main");
+I2CSignal signal_A460_main(&bb, 14, "A460.main");  // 139 (0x8B)
 I2CSignal signal_A460_adv(&bb, 15, "A460.adv");
 
-I2CSignal signal_B360_adv(&bb, 17, "B360.adv");
-I2CSignal signal_B460_adv(&bb, 19, "B460.adv");
+I2CSignal signal_B360_adv(&bb, 17, "B360.adv");  // 138 (0x8A)
+I2CSignal signal_B460_adv(&bb, 19, "B460.adv");  // 144 0x90
 
-I2CSignal signal_A375_adv(&bb, 75, "A375.adv");
-I2CSignal signal_A475_adv(&bb, 74, "A475.adv");
+I2CSignal signal_A375_adv(&bb, 75, "A375.adv");  // 149 0x95
+I2CSignal signal_A475_adv(&bb, 74, "A475.adv");  // 129 0x81
 
-I2CSignal signal_B375_main(&bb, 32, "B375.main");
+I2CSignal signal_B375_main(&bb, 32, "B375.main");  // 145 0x91
 I2CSignal signal_B375_adv(&bb, 33, "B375.adv");
-I2CSignal signal_B475_main(&bb, 6, "B475.main");
+I2CSignal signal_B475_main(&bb, 6, "B475.main"); // 155 0x9B
 I2CSignal signal_B475_adv(&bb, 7, "B475.adv");
 
-I2CSignal signal_XXB1_main(&b1, 25, "XX.B1.main");
-I2CSignal signal_XXB3_main(&b1, 24, "XX.B3.main");
+I2CSignal signal_XXB1_main(&b1, 25, "XX.B1.main"); // 147 (0x93)
+I2CSignal signal_XXB3_main(&b1, 24, "XX.B3.main"); // 140 (0x8C)
 
-I2CSignal signal_YYC23_main(&b1, 26, "YY.C23.main"); // was: b3
-I2CSignal signal_YYC23_adv(&b1, 27, "YY.C23.adv");  // was: b3
+I2CSignal signal_YYC23_main(&b1, 26, "YY.C23.main"); //  158 (0x9E)
+I2CSignal signal_YYC23_adv(&b1, 27, "YY.C23.adv");
 
-I2CSignal signal_YYB2_main(&b7, 4, "YY.B2.main");
+I2CSignal signal_YYB2_main(&b7, 4, "YY.B2.main"); // 141 (0x8D)
 I2CSignal signal_YYB2_adv(&b7, 5, "YY.B2.adv");
 
 I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main");
 I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
+
+
+/* More signals
+
+address 158 (0x9E) main 26 adv 27  reflashed in YYC23
+address 143 (0x8F) main 8 adv 9 reflashed in XXB2
+address 155 (0x9B) main 6 adv 7   reflashed in B475
+address 145 (0x91) main 32 adv 33 reflashed in B375
+
+address 129 (0x81) adv 74 reflashed in A475
+address 149 (0x95) adv 75 reflashed in A375
+
+address 142 (0x8E) main 12 adv 13 reflashed in A460
+address 139 (0x8B) main 14 adv 15 reflashed in A360
+address 144 (0x90) adv 19 reflashed in B460
+address 138 (0x8A) adv 17 reflashed in B360
+address 131 (0x83) main 10 adv 11 reflashed in B447
+
+
+address 166 (0xA6) main 36 adv 37 reflashed in A321
+address 172 (0xAC) main 38 adv 39 reflashed in B321
+address 176 (0xB0) main 40 adv 41 reflashed in B421
+address 134 (0x86) main 42 adv 43 reflashed in A421
+
+address 147 (0x93) main 25 reflashed in XX.B1
+address 140 (0x8C) main 24 reflashed in XX.B3
+
+address 141 (0x8D) main 4 adv 5 reflashed in YY.B2
+*/
 
 //I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
 //I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
