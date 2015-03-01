@@ -36,11 +36,27 @@
 #ifndef _BRACZ_CUSTOM_SIGNALLOOP_HXX_
 #define _BRACZ_CUSTOM_SIGNALLOOP_HXX_
 
+#include "utils/Singleton.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "custom/SignalPacket.hxx"
 
 namespace bracz_custom {
 
-class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
+class SignalLoopInterface : public Singleton<SignalLoopInterface> {
+ public:
+  /** Turns off the signal looping. This is used for temporarily gaining fulla
+   * ccess to the bus, in order to send reboot and bootloader packets in a
+   * specific sequence. */
+  virtual void disable_loop() = 0;
+  /** Turns on signal looping. This is the default state at reset. */
+  virtual void enable_loop() = 0;
+};
+
+
+class SignalLoop : public StateFlowBase,
+                   private nmranet::ByteRangeEventC,
+                   public SignalLoopInterface,
+                   private Atomic {
  public:
   /** We wait this long between two refresh cycles or an interactive update and
    * a refresh cycle. */
@@ -57,6 +73,7 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
         nextSignal_(0),
         go_sleep_(0),
         waiting_(0),
+        paused_(0),
         timer_(this)
   {
     memset(backingStore_, 0, num_signals * 2);
@@ -97,7 +114,7 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
            (nextSignal_ > 0 && !backingStore_[nextSignal_ << 1])) {
       ++nextSignal_;
     }
-    if (go_sleep_ || (nextSignal_ >= numSignals_)) {
+    if (paused_ || go_sleep_ || (nextSignal_ >= numSignals_)) {
       go_sleep_ = 0;
       return call_immediately(STATE(refresh));
     }
@@ -120,6 +137,14 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
     go_sleep_ = 1;
   }
 
+  void enable_loop() OVERRIDE {
+    paused_ = 0;
+  }
+
+  void disable_loop() OVERRIDE {
+    paused_ = 1;
+  }
+
  private:
   long long lastUpdateTime_;
   SignalPacketBaseInterface* bus_;
@@ -128,7 +153,8 @@ class SignalLoop : public StateFlowBase, private nmranet::ByteRangeEventC {
   unsigned numSignals_ : 8;
   unsigned nextSignal_ : 8;
   unsigned go_sleep_ : 1;  // 1 if there was an update from the changed callback
-  unsigned waiting_ : 1;  // unused
+  unsigned waiting_ : 1;  // 1 during sleep until next refresh
+  unsigned paused_ : 1;
 
   BarrierNotifiable n_;
   StateFlowTimer timer_;

@@ -33,6 +33,7 @@
  */
 
 #include "custom/SignalServer.hxx"
+#include "custom/SignalLoop.hxx"
 #include "src/base.h"
 
 using nmranet::Node;
@@ -57,6 +58,14 @@ StateFlowBase::Action SignalServer::entry() {
   switch (cmd) {
     case CMD_SIGNALPACKET: {
       return allocate_and_call(signalbus_, STATE(send_signalpacket));
+    }
+    case CMD_SIGNAL_PAUSE: {
+      Singleton<SignalLoopInterface>::instance()->disable_loop();
+      return respond_ok(0);
+    }
+    case CMD_SIGNAL_RESUME: {
+      Singleton<SignalLoopInterface>::instance()->enable_loop();
+      return respond_ok(0);
     }
     default:
       return respond_reject(nmranet::Defs::ERROR_UNIMPLEMENTED_SUBCMD);
