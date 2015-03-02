@@ -53,8 +53,8 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
                             BRACZ_LAYOUT | 0x0012, BRACZ_LAYOUT | 0x0013, 7,
                             30, 4);
 
-I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22);
-NativeIO n8(0x28);
+I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
+//NativeIO n8(0x28);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
 
 /*StateRef StGreen(2);
@@ -68,27 +68,27 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-I2CSignal signal_XXB2_main(&b1, 8, "XX.B2.main"); // 143 (0x8F)
-I2CSignal signal_XXB2_adv(&b1, 9, "XX.B2.adv");
+I2CSignal signal_XXB2_main(&ba, 8, "XX.B2.main"); // 143 (0x8F)
+I2CSignal signal_XXB2_adv(&ba, 9, "XX.B2.adv");
 
 I2CSignal signal_A301_main(&b5, 72, "A301.main");
 I2CSignal signal_A301_adv(&b5, 73, "A301.adv");
 
-I2CSignal signal_A321_main(&bb, 36, "A321.main");  // 166 0xA6
-I2CSignal signal_A321_adv(&bb, 37, "A321.adv");
-I2CSignal signal_A421_main(&bb, 42, "A421.main");  // 134 (0x86)
-I2CSignal signal_A421_adv(&bb, 43, "A421.adv");
+I2CSignal signal_A321_main(&bd, 36, "A321.main");  // 166 0xA6
+I2CSignal signal_A321_adv(&bd, 37, "A321.adv");
+I2CSignal signal_A421_main(&bd, 42, "A421.main");  // 134 (0x86)
+I2CSignal signal_A421_adv(&bd, 43, "A421.adv");
 
-I2CSignal signal_B321_main(&bb, 38, "B321.main");  // 172 0xAC
-I2CSignal signal_B321_adv(&bb, 39, "B321.adv");
-I2CSignal signal_B421_main(&bb, 40, "B421.main");  // 176 (0xB0)
-I2CSignal signal_B421_adv(&bb, 41, "B421.adv");
+I2CSignal signal_B321_main(&bd, 38, "B321.main");  // 172 0xAC
+I2CSignal signal_B321_adv(&bd, 39, "B321.adv");
+I2CSignal signal_B421_main(&bd, 40, "B421.main");  // 176 (0xB0)
+I2CSignal signal_B421_adv(&bd, 41, "B421.adv");
 
-I2CSignal signal_A347_main(&bb, 20, "A347.main");
-I2CSignal signal_A347_adv(&bb, 21, "A347.adv");
+I2CSignal signal_A347_main(&bd, 20, "A347.main");
+I2CSignal signal_A347_adv(&bd, 21, "A347.adv");
 
-I2CSignal signal_B447_main(&bb, 10, "B447.main");  // 131 0x83
-I2CSignal signal_B447_adv(&bb, 11, "B447.adv");
+I2CSignal signal_B447_main(&bd, 10, "B447.main");  // 131 0x83
+I2CSignal signal_B447_adv(&bd, 11, "B447.adv");
 
 I2CSignal signal_A360_main(&bb, 12, "A360.main"); // 142 (0x8E)
 I2CSignal signal_A360_adv(&bb, 13, "A360.adv");
@@ -106,14 +106,14 @@ I2CSignal signal_B375_adv(&bb, 33, "B375.adv");
 I2CSignal signal_B475_main(&bb, 6, "B475.main"); // 155 0x9B
 I2CSignal signal_B475_adv(&bb, 7, "B475.adv");
 
-I2CSignal signal_XXB1_main(&b1, 25, "XX.B1.main"); // 147 (0x93)
-I2CSignal signal_XXB3_main(&b1, 24, "XX.B3.main"); // 140 (0x8C)
+I2CSignal signal_XXB1_main(&ba, 25, "XX.B1.main"); // 147 (0x93)
+I2CSignal signal_XXB3_main(&ba, 24, "XX.B3.main"); // 140 (0x8C)
 
-I2CSignal signal_YYC23_main(&b1, 26, "YY.C23.main"); //  158 (0x9E)
-I2CSignal signal_YYC23_adv(&b1, 27, "YY.C23.adv");
+I2CSignal signal_YYC23_main(&ba, 26, "YY.C23.main"); //  158 (0x9E)
+I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
 
-I2CSignal signal_YYB2_main(&b7, 4, "YY.B2.main"); // 141 (0x8D)
-I2CSignal signal_YYB2_adv(&b7, 5, "YY.B2.adv");
+I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main"); // 141 (0x8D)
+I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
 I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main");
 I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
@@ -155,10 +155,10 @@ PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0,
                     &signal_A360_main.signal, &signal_A360_adv.signal,
                     &signal_B375_main.signal, &signal_B375_adv.signal,
                     &signal_A375_adv.signal, &signal_B360_adv.signal);
-PhysicalSignal A347(&n8.d1, &n8.r1,
+PhysicalSignal A347(&bd.In1, &bd.Rel1,
                     &signal_A347_main.signal, &signal_A347_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal A321(&n8.d3, &n8.r3,
+PhysicalSignal A321(&bd.In3, &bd.Rel3,
                     &signal_A321_main.signal, &signal_A321_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen,
@@ -178,10 +178,10 @@ PhysicalSignal WWA11(&b6.InBrownBrown, &b6.LedGreen,
                      &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal B421(&n8.d2, &n8.r2,
+PhysicalSignal B421(&bd.In2, &bd.Rel2,
                     &signal_B421_main.signal, &signal_B421_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal B447(&n8.d0, &n8.r0,
+PhysicalSignal B447(&bd.In0, &bd.Rel0,
                     &signal_B447_main.signal, &signal_B447_adv.signal,
                     &signal_A421_main.signal, &signal_A421_adv.signal,
                     nullptr, nullptr);
@@ -200,7 +200,7 @@ PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYA3(&be.InGreenYellow, &b1.LedGreen,
+PhysicalSignal YYA3(&be.InGreenYellow, &be.Rel0,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -208,17 +208,17 @@ PhysicalSignal YYC23(&ba.In0, &ba.Rel3,
                      &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal XXB1(&be.InBrownBrown, &b1.RelGreen,
+PhysicalSignal XXB1(&be.InBrownBrown, &be.Rel1,
                     &signal_XXB1_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal XXB2(&ba.In3, &ba.Rel2,
                     &signal_XXB2_main.signal, &signal_XXB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal XXB3(&be.InBrownGrey, &b1.RelBlue,
+PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel2,
                     &signal_XXB3_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB2(&be.InOraGreen, &b7.RelGreen,
+PhysicalSignal YYB2(&be.InOraGreen, &be.Rel3,
                     &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -319,7 +319,6 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&b5.LedRed));
   DefCopy(*rep, ImportVariable(&b6.LedRed));
   DefCopy(*rep, ImportVariable(&lpc11_back.l0));
-  DefCopy(*rep, ImportVariable(&n8.l0));
   DefCopy(ImportVariable(b5.InBrownGrey), ImportVariable(&b5.LedGreen));
 });
 
