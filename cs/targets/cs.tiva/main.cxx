@@ -310,6 +310,9 @@ TivaTrackPowerOnOffBit on_off(nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
 nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(&g_if_can);
 
+TivaAccPowerOnOffBit acc_on_off(BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
+nmranet::BitEventConsumer accpowerbit(&acc_on_off);
+
 typedef nmranet::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
                                 TivaGPIOProducerBit> TivaSwitchProducer;
 QuiesceDebouncer::Options opts(3);
@@ -358,11 +361,16 @@ void mydisable()
   asm("BKPT 0");
 }
 
-TivaShortDetectionModule<DccHwDefs> g_short_detector(&g_service,
-                                                     MSEC_TO_NSEC(1));
+TivaShortDetectionModule<DccHwDefs> g_short_detector(&g_service);
+
+AccessoryOvercurrentMeasurement<AccHwDefs> g_acc_short_detector(&g_service, &g_node);
+
 extern "C" {
 void adc0_seq3_interrupt_handler(void) {
   g_short_detector.interrupt_handler();
+}
+void adc0_seq2_interrupt_handler(void) {
+  g_acc_short_detector.interrupt_handler();
 }
 }
 

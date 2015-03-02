@@ -52,7 +52,8 @@
 
 static const auto SHUTDOWN_CURRENT_AMPS = 1.5;
 // ADC value at which we turn off the output.
-static const unsigned SHUTDOWN_LIMIT = (SHUTDOWN_CURRENT_AMPS * 0.2 / 3.3) * 0xfff;
+static const unsigned SHUTDOWN_LIMIT =
+    (SHUTDOWN_CURRENT_AMPS * 0.2 / 3.3) * 0xfff;
 
 static const auto KILL_CURRENT_AMPS = 4.0;
 // ADC value at which we turn off the output.
@@ -62,18 +63,20 @@ static const unsigned KILL_LIMIT = (KILL_CURRENT_AMPS * 0.2 / 3.3) * 0xfff;
 static const unsigned OVERCURRENT_RETRY = 3;
 static const long long OVERCURRENT_RETRY_DELAY = MSEC_TO_NSEC(300);
 
-template<class HW>
+template <class HW>
 class TivaShortDetectionModule;
 
-template<class HW>
-class TivaShortDetectionModule : public StateFlowBase {
+template <class HW>
+class ADCFlowBase : public StateFlowBase {
  public:
-  TivaShortDetectionModule(Service* s, long long period)
-      : StateFlowBase(s),
-        timer_(this),
-        period_(period),
-        num_disable_tries_(0),
-        num_overcurrent_tests_(0) {
+  void interrupt_handler() {
+    ADCIntClear(HW::ADC_BASE, HW::ADC_SEQUENCER);
+    notify_from_isr();
+  }
+
+ protected:
+  ADCFlowBase(Service* s, long long period)
+      : StateFlowBase(s), timer_(this), period_(period) {
     start_flow(STATE(start_timer));
 
     SysCtlPeripheralEnable(HW::ADC_PERIPH);
@@ -84,7 +87,8 @@ class TivaShortDetectionModule : public StateFlowBase {
                      GPIO_PIN_TYPE_ANALOG);
 
     // Sets ADC to 16 MHz clock.
-    //ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PLL | ADC_CLOCK_RATE_FULL, 30);
+    // ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PLL | ADC_CLOCK_RATE_FULL,
+    // 30);
     ADCHardwareOversampleConfigure(HW::ADC_BASE, 64);
 
     ADCSequenceConfigure(HW::ADC_BASE, HW::ADC_SEQUENCER, ADC_TRIGGER_PROCESSOR,
@@ -96,22 +100,19 @@ class TivaShortDetectionModule : public StateFlowBase {
 
     ADCIntEnable(HW::ADC_BASE, HW::ADC_SEQUENCER);
     MAP_IntPrioritySet(HW::ADC_INTERRUPT, configKERNEL_INTERRUPT_PRIORITY);
-    next_report_ = 0;
   }
 
-  ~TivaShortDetectionModule() {
-  }
-
-  void interrupt_handler() {
-    ADCIntClear(HW::ADC_BASE, HW::ADC_SEQUENCER);
-    notify_from_isr();
-  }
-
- private:
   Action start_timer() {
     return sleep_and_call(&timer_, period_, STATE(start_conversion));
   }
 
+  Action start_after(long long period) {
+    return sleep_and_call(&timer_, period, STATE(start_conversion));
+  }
+
+  StateFlowTimer timer_;
+
+ private:
   Action start_conversion() {
     ADCIntClear(HW::ADC_BASE, HW::ADC_SEQUENCER);
     ADCProcessorTrigger(HW::ADC_BASE, HW::ADC_SEQUENCER);
@@ -123,16 +124,42 @@ class TivaShortDetectionModule : public StateFlowBase {
     uint32_t adc_value[1];
     adc_value[0] = 0;
     ADCSequenceDataGet(HW::ADC_BASE, HW::ADC_SEQUENCER, adc_value);
-    if (adc_value[0] > KILL_LIMIT) {
+    return sample(adc_value[0]);
+  }
+
+  virtual Action sample(uint32_t adc_value) = 0;
+
+  long long period_;
+};
+
+template <class HW>
+class TivaShortDetectionModule : public ADCFlowBase<HW> {
+ public:
+  TivaShortDetectionModule(Service* s)
+      : ADCFlowBase<HW>(s, MSEC_TO_NSEC(1)),
+        num_disable_tries_(0),
+        num_overcurrent_tests_(0) {
+    next_report_ = 0;
+  }
+
+  ~TivaShortDetectionModule() {}
+
+ private:
+  typedef StateFlowBase::Action Action;
+  using StateFlowBase::call_immediately;
+  using StateFlowBase::sleep_and_call;
+
+  Action sample(uint32_t adc_value) OVERRIDE {
+    if (adc_value > KILL_LIMIT) {
       disable_dcc();
-      LOG(INFO, "kill value: %04" PRIx32, adc_value[0]);
+      LOG(INFO, "kill value: %04" PRIx32, adc_value);
       return call_immediately(STATE(shorted));
     }
-    if (adc_value[0] > SHUTDOWN_LIMIT) {
-      if (++num_overcurrent_tests_ >= 5 || adc_value[0] > KILL_LIMIT) {
+    if (adc_value > SHUTDOWN_LIMIT) {
+      if (++num_overcurrent_tests_ >= 5 || adc_value > KILL_LIMIT) {
         disable_dcc();
         LOG(INFO, "%s value: %04" PRIx32,
-            adc_value[0] <= KILL_LIMIT ? "disable" : "kill", adc_value[0]);
+            adc_value <= KILL_LIMIT ? "disable" : "kill", adc_value);
         ++num_disable_tries_;
         if (num_disable_tries_ < OVERCURRENT_RETRY) {
           return call_immediately(STATE(retry_wait));
@@ -140,18 +167,17 @@ class TivaShortDetectionModule : public StateFlowBase {
           return call_immediately(STATE(shorted));
         }
       } else {
-        LOG(INFO, "overcurrent value: %04" PRIx32, adc_value[0]);
+        LOG(INFO, "overcurrent value: %04" PRIx32, adc_value);
         // If we measured an overcurrent situation, we start another conversion
         // really soon.
-        return sleep_and_call(&timer_, MSEC_TO_NSEC(1),
-                              STATE(start_conversion));
-        //return call_immediately(STATE(start_conversion));
+        return this->start_after(MSEC_TO_NSEC(1));
+        // return call_immediately(STATE(start_conversion));
       }
     } else {
       num_overcurrent_tests_ = 0;
     }
     if (os_get_time_monotonic() > next_report_) {
-      LOG(INFO, "  adc value: %04" PRIx32, adc_value[0]);
+      LOG(INFO, "  adc value: %04" PRIx32, adc_value);
       next_report_ = os_get_time_monotonic() + MSEC_TO_NSEC(250);
     }
     return call_immediately(STATE(start_timer));
@@ -165,7 +191,8 @@ class TivaShortDetectionModule : public StateFlowBase {
   }
 
   Action retry_wait() {
-    return sleep_and_call(&timer_, OVERCURRENT_RETRY_DELAY, STATE(retry_enable));
+    return sleep_and_call(&this->timer_, OVERCURRENT_RETRY_DELAY,
+                          STATE(retry_enable));
   }
 
   Action retry_enable() {
@@ -173,11 +200,154 @@ class TivaShortDetectionModule : public StateFlowBase {
     return call_immediately(STATE(start_timer));
   }
 
-  StateFlowTimer timer_;
-  long long period_;
   uint8_t num_disable_tries_;
   uint8_t num_overcurrent_tests_;
   long long next_report_;
+};
+
+template <class HW>
+class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
+ public:
+  AccessoryOvercurrentMeasurement(Service* s, nmranet::Node* node)
+      : ADCFlowBase<HW>(s, MSEC_TO_NSEC(10)), num_short_(0), node_(node) {
+    last_time_not_overcurrent_ = os_get_time_monotonic();
+    AccHwDefs::VOLTAGE_Pin::hw_init();
+    is_voltage_ = 0;
+    num_uv_ = 0;
+  }
+
+ private:
+  typedef StateFlowBase::Action Action;
+  using StateFlowBase::call_immediately;
+  using StateFlowBase::allocate_and_call;
+  using StateFlowBase::get_allocation_result;
+
+  Action sample(uint32_t adc_value) OVERRIDE {
+    if (is_voltage_) {
+      set_current();
+      return voltage_sample(adc_value);
+    } else {
+      set_voltage();
+    }
+    long long now = os_get_time_monotonic();
+    if (adc_value >= HW::SHORT_LIMIT) {
+      if (num_short_++ > HW::SHORT_COUNT) {
+        HW::ACC_ENABLE_Pin::set(false);
+        LOG(INFO, "acc short value: %04" PRIx32, adc_value);
+        return call_immediately(STATE(shorted));
+      } else {
+        return this->start_after(MSEC_TO_NSEC(1));
+      }
+    } else {
+      num_short_ = 0;
+    }
+    if (adc_value >= HW::OVERCURRENT_LIMIT) {
+      if (now - last_time_not_overcurrent_ > HW::OVERCURRENT_TIME) {
+        HW::ACC_ENABLE_Pin::set(false);
+        LOG(INFO, "acc overcurrent value: %04" PRIx32, adc_value);
+        return call_immediately(STATE(overcurrent));
+      }
+    } else {
+      last_time_not_overcurrent_ = now;
+    }
+    if (count_report_++ > 50) {
+      count_report_ = 0;
+      LOG(INFO, "acc readout: %04" PRIx32, adc_value);
+    }
+    return this->start_timer();
+  }
+
+  Action voltage_sample(uint32_t adc_value) OVERRIDE {
+    adc_value *= 201;
+    adc_value >>= 12;
+    if (!count_report_) {
+      LOG(INFO, "acc voltage: %" PRId32, adc_value);
+    }
+    if (!HW::ACC_ENABLE_Pin::get()) {
+      num_uv_ = 0;
+    }
+    if (adc_value < 140) {
+      if (num_uv_++ > HW::SHORT_COUNT) {
+        return call_immediately(STATE(shorted));
+      }
+    } else {
+      num_uv_ = 0;
+    }
+    return this->start_timer();
+  }
+
+  Action shorted() {
+    return allocate_and_call(node_->interface()->global_message_write_flow(),
+                             STATE(send_shorted));
+  }
+
+  Action send_shorted() {
+    auto* b =
+        get_allocation_result(node_->interface()->global_message_write_flow());
+    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     nmranet::eventid_to_buffer(HW::EVENT_SHORT));
+    node_->interface()->global_message_write_flow()->send(b);
+    return call_immediately(STATE(off));
+  }
+
+  Action overcurrent() {
+    return allocate_and_call(node_->interface()->global_message_write_flow(),
+                             STATE(send_overcurrent));
+  }
+
+  Action send_overcurrent() {
+    auto* b =
+        get_allocation_result(node_->interface()->global_message_write_flow());
+    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT));
+    node_->interface()->global_message_write_flow()->send(b);
+    return call_immediately(STATE(off));
+  }
+
+  Action off() {
+    return allocate_and_call(node_->interface()->global_message_write_flow(),
+                             STATE(send_off));
+  }
+
+  Action send_off() {
+    auto* b =
+        get_allocation_result(node_->interface()->global_message_write_flow());
+    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     nmranet::eventid_to_buffer(HW::EVENT_OFF));
+    node_->interface()->global_message_write_flow()->send(b);
+    return this->start_timer();
+  }
+
+  // Switches the ADC sequencer to the voltage pin.
+  void set_voltage() {
+    is_voltage_ = 1;
+    ADCSequenceDisable(HW::ADC_BASE, HW::ADC_SEQUENCER);
+    ADCSequenceConfigure(HW::ADC_BASE, HW::ADC_SEQUENCER, ADC_TRIGGER_PROCESSOR,
+                         0);
+    ADCSequenceStepConfigure(
+        HW::ADC_BASE, HW::ADC_SEQUENCER, 0,
+        HW::VOLTAGEPIN_CH | ADC_CTL_IE | ADC_CTL_SHOLD_256 | ADC_CTL_END);
+    ADCSequenceEnable(HW::ADC_BASE, HW::ADC_SEQUENCER);
+  }
+
+  // Switches the ADC sequencer to the current pin.
+  void set_current() {
+    is_voltage_ = 0;
+    ADCSequenceDisable(HW::ADC_BASE, HW::ADC_SEQUENCER);
+    ADCSequenceConfigure(HW::ADC_BASE, HW::ADC_SEQUENCER, ADC_TRIGGER_PROCESSOR,
+                         0);
+    ADCSequenceStepConfigure(
+        HW::ADC_BASE, HW::ADC_SEQUENCER, 0,
+        HW::ADCPIN_CH | ADC_CTL_IE | ADC_CTL_SHOLD_256 | ADC_CTL_END);
+    ADCSequenceEnable(HW::ADC_BASE, HW::ADC_SEQUENCER);
+  }
+
+  long long last_time_not_overcurrent_;
+  unsigned num_short_ : 8;
+  unsigned num_uv_ : 8;
+  unsigned is_voltage_ : 1;
+  unsigned count_report_;
+  nmranet::Node* node_;
 };
 
 class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
@@ -196,11 +366,39 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
     }
   }
 
-  virtual nmranet::Node* node()
-  {
+  virtual nmranet::Node* node() {
     extern nmranet::DefaultNode g_node;
     return &g_node;
   }
 };
 
-#endif // _TIVA_SHORTDETECTION_HXX_
+class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
+ public:
+  TivaAccPowerOnOffBit(uint64_t event_on, uint64_t event_off)
+      : BitEventInterface(event_on, event_off) {}
+
+  virtual bool GetCurrentState() { return AccHwDefs::ACC_ENABLE_Pin::get(); }
+  virtual void SetState(bool new_value) {
+    if (!AccHwDefs::ACC_ENABLE_Pin::get() && new_value) {
+      // We are turning power on.
+      // sends some event reports to clear off the shorted and overcurrent bits.
+      auto* b = node()->interface()->global_message_write_flow()->alloc();
+      b->data()->reset(
+          nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
+          nmranet::eventid_to_buffer(AccHwDefs::EVENT_OVERCURRENT ^ 1));
+      node()->interface()->global_message_write_flow()->send(b);
+      b = node()->interface()->global_message_write_flow()->alloc();
+      b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
+                       nmranet::eventid_to_buffer(AccHwDefs::EVENT_SHORT ^ 1));
+      node()->interface()->global_message_write_flow()->send(b);
+    }
+    AccHwDefs::ACC_ENABLE_Pin::set(new_value);
+  }
+
+  virtual nmranet::Node* node() {
+    extern nmranet::DefaultNode g_node;
+    return &g_node;
+  }
+};
+
+#endif  // _TIVA_SHORTDETECTION_HXX_

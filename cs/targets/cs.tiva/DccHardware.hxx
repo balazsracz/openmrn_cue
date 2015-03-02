@@ -40,6 +40,7 @@
 #include "driverlib/timer.h"
 #include "TivaGPIO.hxx"
 #include "hardware.hxx"
+#include "src/cs_config.h"
 
 struct RailcomDefs
 {
@@ -176,6 +177,32 @@ struct DccHwDefs {
   static const auto RAILCOM_UART_PERIPH = SYSCTL_PERIPH_UART6;
   DECL_PIN(RAILCOM_UARTPIN, P, 0);
   static const auto RAILCOM_UARTPIN_CONFIG = GPIO_PP0_U6RX;
+};
+
+
+struct AccHwDefs {
+  GPIO_PIN(ACC_ENABLE, GpioOutputSafeLow, B, 5);
+  GPIO_PIN(VOLTAGE, GpioADCPin, K, 3);
+  static const auto VOLTAGEPIN_CH = ADC_CTL_CH19;
+
+  DECL_PIN(ADCPIN, B, 4);
+  static const auto ADCPIN_CH = ADC_CTL_CH10;
+
+  // Data defined for the short detection module.
+  static const auto ADC_BASE = ADC0_BASE;
+  static const auto ADC_PERIPH = SYSCTL_PERIPH_ADC0;
+  static const int ADC_SEQUENCER = 2;
+  static const auto ADC_INTERRUPT = INT_ADC0SS2;
+
+  static const unsigned OVERCURRENT_LIMIT = 0x3E0;  // 0.33 Amps
+  static const unsigned SHORT_LIMIT = 0x846;  // ~1.5 amps
+
+  static const long long OVERCURRENT_TIME = SEC_TO_NSEC(10);
+  static const unsigned SHORT_COUNT = 5;
+
+  static const uint64_t EVENT_SHORT = BRACZ_LAYOUT | 0x0006;
+  static const uint64_t EVENT_OVERCURRENT = BRACZ_LAYOUT | 0x0008;
+  static const uint64_t EVENT_OFF = BRACZ_LAYOUT | 0x0005;
 };
 
 
