@@ -342,8 +342,8 @@ void mydisable()
   asm("BKPT 0");
 }
 
-TivaShortDetectionModule<DccHwDefs> g_short_detector(&g_service,
-                                                     MSEC_TO_NSEC(1));
+TivaShortDetectionModule<DccHwDefs> g_short_detector(&g_service);
+
 extern "C" {
 void adc0_seq3_interrupt_handler(void) {
   // COMPILE_ASSERT(ADC_BASE == ADC0_BASE && SEQUENCER == 3)
@@ -370,7 +370,7 @@ int appl_main(int argc, char* argv[])
     PacketQueue::initialize("/dev/serUSB0", true);
 #endif
     setblink(0);
-    //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
     //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
