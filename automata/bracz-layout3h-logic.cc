@@ -84,8 +84,8 @@ I2CSignal signal_B321_adv(&bd, 39, "B321.adv");
 I2CSignal signal_B421_main(&bd, 40, "B421.main");  // 176 (0xB0)
 I2CSignal signal_B421_adv(&bd, 41, "B421.adv");
 
-I2CSignal signal_A347_main(&bd, 20, "A347.main");
-I2CSignal signal_A347_adv(&bd, 21, "A347.adv");
+I2CSignal signal_A347_main(&bd, 22, "A347.main");  // 157 (0x9D)
+I2CSignal signal_A347_adv(&bd, 23, "A347.adv");
 
 I2CSignal signal_B447_main(&bd, 10, "B447.main");  // 131 0x83
 I2CSignal signal_B447_adv(&bd, 11, "B447.adv");
@@ -115,7 +115,7 @@ I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
 I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main"); // 141 (0x8D)
 I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
-I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main");
+I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main"); // ?? DUP ADDR
 I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
 
 
@@ -145,6 +145,9 @@ address 147 (0x93) main 25 reflashed in XX.B1
 address 140 (0x8C) main 24 reflashed in XX.B3
 
 address 141 (0x8D) main 4 adv 5 reflashed in YY.B2
+
+address 157 (0x9D) main 22 adv 23 reflashed in A347
+
 */
 
 //I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
@@ -155,10 +158,10 @@ PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0,
                     &signal_A360_main.signal, &signal_A360_adv.signal,
                     &signal_B375_main.signal, &signal_B375_adv.signal,
                     &signal_A375_adv.signal, &signal_B360_adv.signal);
-PhysicalSignal A347(&bd.In1, &bd.Rel1,
+PhysicalSignal A347(&bd.In3, &bd.Rel1,
                     &signal_A347_main.signal, &signal_A347_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal A321(&bd.In3, &bd.Rel3,
+PhysicalSignal A321(&bd.In5, &bd.Rel3,
                     &signal_A321_main.signal, &signal_A321_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen,
@@ -178,10 +181,10 @@ PhysicalSignal WWA11(&b6.InBrownBrown, &b6.LedGreen,
                      &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal B421(&bd.In2, &bd.Rel2,
+PhysicalSignal B421(&bd.In4, &bd.Rel2,
                     &signal_B421_main.signal, &signal_B421_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal B447(&bd.In0, &bd.Rel0,
+PhysicalSignal B447(&bd.In2, &bd.Rel0,
                     &signal_B447_main.signal, &signal_B447_adv.signal,
                     &signal_A421_main.signal, &signal_A421_adv.signal,
                     nullptr, nullptr);
