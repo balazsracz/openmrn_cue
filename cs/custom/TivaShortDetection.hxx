@@ -71,6 +71,7 @@ class ADCFlowBase : public StateFlowBase {
  public:
   void interrupt_handler() {
     ADCIntClear(HW::ADC_BASE, HW::ADC_SEQUENCER);
+    MAP_IntDisable(HW::ADC_INTERRUPT);
     notify_from_isr();
   }
 
