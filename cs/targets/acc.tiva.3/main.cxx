@@ -163,8 +163,8 @@ TivaGPIOConsumer led_blue(R_EVENT_ID + 6, R_EVENT_ID + 7, GPIO_PORTG_BASE,
                           GPIO_PIN_1);
 TivaGPIOConsumer led_bluesw(R_EVENT_ID + 8, R_EVENT_ID + 9, GPIO_PORTB_BASE,
                             GPIO_PIN_6);
-TivaGPIOConsumer led_goldsw(R_EVENT_ID + 10, R_EVENT_ID + 11, GPIO_PORTB_BASE,
-                            GPIO_PIN_7);
+//TivaGPIOConsumer led_goldsw(R_EVENT_ID + 10, R_EVENT_ID + 11, GPIO_PORTB_BASE,
+//                            GPIO_PIN_7);
 
 /* TODO: check the pin numbers here
 
@@ -198,12 +198,19 @@ TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14,
 class TivaGPIOProducerBit : public nmranet::BitEventInterface {
  public:
   TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
-                      uint8_t port_bit)
+                      uint8_t port_bit, bool display = false)
       : BitEventInterface(event_on, event_off),
         ptr_(reinterpret_cast<const uint8_t*>(port_base +
-                                              (((unsigned)port_bit) << 2))) {}
+                                              (((unsigned)port_bit) << 2))),
+        display_(display) {}
 
-  bool GetCurrentState() OVERRIDE { return *ptr_; }
+  bool GetCurrentState() OVERRIDE {
+    bool result = *ptr_;
+    if (display_) {
+      Debug::DetectRepeat::set(result);
+    }
+    return result;
+  }
 
   void SetState(bool new_value) OVERRIDE {
     DIE("cannot set state of input producer");
@@ -213,18 +220,19 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
 
  private:
   const uint8_t* ptr_;
+  bool display_;
 };
 
 typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
-QuiesceDebouncer::Options opts(8);
+QuiesceDebouncer::Options opts(15);
 
 TivaGPIOProducer in0(opts, R_EVENT_ID + 48 + 0, R_EVENT_ID + 49 + 0,
                      GPIO_PORTA_BASE, GPIO_PIN_0);
 TivaGPIOProducer in1(opts, R_EVENT_ID + 48 + 2, R_EVENT_ID + 49 + 2,
                      GPIO_PORTA_BASE, GPIO_PIN_1);
 TivaGPIOProducer in2(opts, R_EVENT_ID + 48 + 4, R_EVENT_ID + 49 + 4,
-                     GPIO_PORTA_BASE, GPIO_PIN_2);
+                     GPIO_PORTA_BASE, GPIO_PIN_2, true);
 TivaGPIOProducer in3(opts, R_EVENT_ID + 48 + 6, R_EVENT_ID + 49 + 6,
                      GPIO_PORTA_BASE, GPIO_PIN_3);
 TivaGPIOProducer in4(opts, R_EVENT_ID + 48 + 8, R_EVENT_ID + 49 + 8,

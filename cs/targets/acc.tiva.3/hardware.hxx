@@ -32,8 +32,8 @@ struct Debug {
   typedef DummyPin RailcomDriverCutout;
 
   // Flips every timer capture interrupt from the dcc deocder flow.
-  typedef LED_BLUE_SW_Pin DccDecodeInterrupts;
-  //typedef DummyPin DccDecodeInterrupts;
+  //typedef LED_BLUE_SW_Pin DccDecodeInterrupts;
+  typedef DummyPin DccDecodeInterrupts;
  
   // Flips every timer capture interrupt from the dcc deocder flow.
   //typedef DBG_SIGNAL_Pin RailcomE0;
@@ -46,6 +46,9 @@ struct Debug {
     typedef DummyPin RailcomDataReceived;
     typedef DummyPin RailcomAnyData;
     typedef DummyPin RailcomPackets;
+
+
+  typedef LED_GOLD_SW_Pin DetectRepeat;
 };
 
 struct DCCDecode
