@@ -761,7 +761,6 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
       .IfReg1(*current_state)
       .ActState(def->aut_state)
       .ActTimer(1)
-      .ActReg0(current_state)
       .ActReg1(set_0);
   // Releases the magnets and the lock.
   Def()
