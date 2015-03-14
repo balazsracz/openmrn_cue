@@ -17,6 +17,35 @@ GPIO_PIN(LED_GOLD_SW, LedPin, B, 7);
 
 //GPIO_PIN(DBG_SIGNAL, GpioOutputSafeLow, B, 1);
 
+GPIO_PIN(REL0, GpioOutputSafeLow, C, 4);
+GPIO_PIN(REL1, GpioOutputSafeLow, C, 5);
+GPIO_PIN(REL2, GpioOutputSafeLow, G, 5);
+GPIO_PIN(REL3, GpioOutputSafeLow, F, 3);
+
+GPIO_PIN(OUT0, GpioOutputSafeLow, E, 4);
+GPIO_PIN(OUT1, GpioOutputSafeLow, E, 5);
+GPIO_PIN(OUT2, GpioOutputSafeLow, D, 0);
+GPIO_PIN(OUT3, GpioOutputSafeLow, D, 1);
+GPIO_PIN(OUT4, GpioOutputSafeLow, D, 2);
+GPIO_PIN(OUT5, GpioOutputSafeLow, D, 3);
+GPIO_PIN(OUT6, GpioOutputSafeLow, E, 2);
+GPIO_PIN(OUT7, GpioOutputSafeLow, E, 3);
+
+GPIO_PIN(IN0, GpioInputNP, A, 0);
+GPIO_PIN(IN1, GpioInputNP, A, 1);
+GPIO_PIN(IN2, GpioInputNP, A, 2);
+GPIO_PIN(IN3, GpioInputNP, A, 3);
+GPIO_PIN(IN4, GpioInputNP, A, 4);
+GPIO_PIN(IN5, GpioInputNP, A, 5);
+GPIO_PIN(IN6, GpioInputNP, A, 6);
+GPIO_PIN(IN7, GpioInputNP, A, 7);
+
+GPIO_PIN(BUT_BLUE, GpioInputPU, C, 6);
+GPIO_PIN(BUT_GOLD, GpioInputPU, C, 7);
+
+GPIO_PIN(RC4_SHADOW, GpioInputNP, F, 0);
+
+
 typedef LED_RED_Pin BlinkerLed;
 
 struct Debug {
@@ -71,6 +100,8 @@ struct DCCDecode
 
     static const int Q_SIZE = 32;
 };
+
+#define HAVE_RAILCOM
 
 struct RailcomHw
 {
