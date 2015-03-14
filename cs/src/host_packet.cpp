@@ -198,7 +198,7 @@ DefaultPacketQueue::DefaultPacketQueue(const char* dev, bool force_sync) : Servi
     async_fd_ = open(dev, O_RDWR | O_NONBLOCK);
     sync_fd_ = open(dev, O_RDWR);
     if (force_sync) ForceInitialSync();
-    os_thread_create(NULL, "host_pkt_rx", 0, PACKET_RX_THREAD_STACK_SIZE,
+    os_thread_create(NULL, "host_pkt_rx", 3, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
     os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(1000));
