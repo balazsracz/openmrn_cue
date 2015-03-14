@@ -68,8 +68,8 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-I2CSignal signal_XXB2_main(&ba, 8, "XX.B2.main"); // 143 (0x8F)
-I2CSignal signal_XXB2_adv(&ba, 9, "XX.B2.adv");
+I2CSignal signal_XXB2_main(&ba, 31, "XX.B2.main"); // 159 (0x9F)
+I2CSignal signal_XXB2_adv(&ba, 32, "XX.B2.adv");
 
 I2CSignal signal_A301_main(&bc, 72, "A301.main");
 I2CSignal signal_A301_adv(&bc, 73, "A301.adv");
@@ -122,7 +122,7 @@ I2CSignal signal_WWB14_adv(&bc, 23, "WW.B14.adv");
 /* More signals
 
 address 158 (0x9E) main 26 adv 27  reflashed in YYC23
-address 143 (0x8F) main 8 adv 9 reflashed in XXB2
+GONE address 143 (0x8F) main 8 adv 9 reflashed in XXB2
 address 155 (0x9B) main 6 adv 7   reflashed in B475
 address 145 (0x91) main 32 adv 33 reflashed in B375
 
@@ -147,7 +147,7 @@ address 140 (0x8C) main 24 reflashed in XX.B3
 address 141 (0x8D) main 4 adv 5 reflashed in YY.B2
 
 address 157 (0x9D) main 22 adv 23 reflashed in A347
-
+address 159 (0x9F) main 31 adv 32 reflashed in XX.B2
 */
 
 //I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
