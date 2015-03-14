@@ -72,6 +72,8 @@ class SystemBlock:
     sn = FindOrInsert(e, 'systemName')
     sn.text = self.system_name
     un = FindOrInsert(e, 'userName')
+    if un.text != self.user_name:
+      print("Overwriting user name", un.text, "with", self.user_name)
     un.text = self.user_name
     pm = FindOrInsert(e, 'permissive')
     pm.text = 'no'
@@ -316,7 +318,7 @@ def GetMaxSystemId(parent_element, strip_letters = 'IBL'):
 def MergeEntries(parent_element, desired_list):
   """Merges a list of desired objects with an existing XML collection subtree.
 
-  parent_element: an XML Element whise children are the XML representation of our objects.
+  parent_element: an XML Element whose children are the XML representation of our objects.
   desired_list: each entry is a python object that represents a desired entry in the parent element.
 
   This function will modify parent_element in place. All entries in
@@ -327,7 +329,11 @@ def MergeEntries(parent_element, desired_list):
   """
   if not len(desired_list): return
   rep = desired_list[0]
+  #print("desired: %d '%s'" % (len(desired_list), parent_element.tag))
   seen_entries = {}
+  num_e = 0
+  num_d = 0
+  to_delete = []
   for e in parent_element:
     key = rep.__class__.get_key(e)
     if key == None:
@@ -338,15 +344,27 @@ def MergeEntries(parent_element, desired_list):
       print("Error: duplicate key ", key, " in entry of ", parent_element.tag)
       ET.dump(seen_entries[key])
       ET.dump(e)
-      parent_element.remove(seen_entries[key])
+      num_d = num_d + 1
+      to_delete.append(seen_entries[key])
     seen_entries[key] = e
+    num_e = num_e + 1
+    #print("found '%s' at " % key, e);
+  #print("seen %d '%s' (add %d del %d total %d): " % (len(seen_entries), parent_element.tag, num_e, num_d, num_e - num_d), seen_entries)
+  for e in to_delete:
+    parent_element.remove(e)
+  desired_map = {}
   for o in desired_list:
+    desired_map[o.key()] = o
     if o.key() in seen_entries:
       o.Update(seen_entries[o.key()])
     else:
+      print("inserting new element for key '%s' to '%s'" % (o.key(), parent_element.tag))
       e = ET.SubElement(parent_element, rep.xml_name())
       o.Update(e)
       e.tail = '\n'
+  for key in seen_entries.keys():
+    if key not in desired_map:
+      print("Undesired in %s: '%s'" % (parent_element.tag, key))
 
 def RenderSystemBlocks(output_tree_root):
   desired_block_list = []
@@ -372,9 +390,9 @@ def RenderSystemBlocks(output_tree_root):
   all_block_node = output_tree_root.find('blocks')
   SystemBlock.SetMaxId(GetMaxSystemId(all_block_node))
   MergeEntries(all_block_node, desired_block_list)
-  all_block_node = output_tree_root.find('layoutblocks')
-  LayoutBlock.SetMaxId(GetMaxSystemId(all_block_node))
-  MergeEntries(all_block_node, desired_lblock_list)
+  all_lblock_node = output_tree_root.find('layoutblocks')
+  LayoutBlock.SetMaxId(GetMaxSystemId(all_lblock_node))
+  MergeEntries(all_lblock_node, desired_lblock_list)
 
 def GetAllTrainList():
   """Returns a list of strings, with each train name."""
@@ -402,12 +420,23 @@ class LayoutIndex:
     self.panel = self.root.find('./LayoutEditor[@name=\''+name+'\']')
     if self.panel is None: raise Exception("Panel " + name + " not found in file.")
     self.InitIdentMap()
+    self.InitBlockMap()
 
   def InitIdentMap(self):
     self.ident_map = {}
     for entry in self.panel:
       if entry.get('ident'):
         self.ident_map[entry.get('ident')] = entry
+
+  def InitBlockMap(self):
+    self.block_map = {}
+    for entry in self.panel:
+      blockname = entry.get('blockname')
+      if entry.get('ident') and blockname:
+        if not self.block_map.get(blockname):
+          self.block_map[blockname] = []
+        self.block_map[blockname].append(entry.get('ident'))
+    print("block map: ", self.block_map)
 
   def GetMarginCoordinate(self, dest, source):
     """returns the coordinates of the point between source and dest"""
