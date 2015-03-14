@@ -17,8 +17,8 @@ GPIO_PIN(LED_GOLD_SW, LedPin, B, 7);
 
 //GPIO_PIN(DBG_SIGNAL, GpioOutputSafeLow, B, 1);
 
-GPIO_PIN(REL0, GpioOutputSafeLow, C, 4);
-GPIO_PIN(REL1, GpioOutputSafeLow, C, 5);
+GPIO_PIN(REL0, GpioOutputSafeLow, F, 2);
+GPIO_PIN(REL1, GpioOutputSafeLow, F, 1);
 GPIO_PIN(REL2, GpioOutputSafeLow, G, 5);
 GPIO_PIN(REL3, GpioOutputSafeLow, F, 3);
 
@@ -28,8 +28,8 @@ GPIO_PIN(OUT2, GpioOutputSafeLow, D, 0);
 GPIO_PIN(OUT3, GpioOutputSafeLow, D, 1);
 GPIO_PIN(OUT4, GpioOutputSafeLow, D, 2);
 GPIO_PIN(OUT5, GpioOutputSafeLow, D, 3);
-GPIO_PIN(OUT6, GpioOutputSafeLow, E, 2);
-GPIO_PIN(OUT7, GpioOutputSafeLow, E, 3);
+GPIO_PIN(OUT6, GpioOutputSafeLow, E, 3);
+GPIO_PIN(OUT7, GpioOutputSafeLow, E, 2);
 
 GPIO_PIN(IN0, GpioInputNP, A, 0);
 GPIO_PIN(IN1, GpioInputNP, A, 1);
