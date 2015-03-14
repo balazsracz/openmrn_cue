@@ -24,12 +24,93 @@ class Sensor:
     un = ET.SubElement(e, 'userName')
     un.text = self.user_name
 
+class Turnout:
+  def __init__(self, system_name, user_name, sensor_name):
+    self.system_name = system_name
+    self.user_name = user_name
+    self.sensor_name = sensor_name
+
+  def Render(self, parent_element):
+    e = ET.SubElement(parent_element, 'turnout')
+    e.tail = '\n'
+    e.set('systemName', self.system_name)
+    e.set('inverted', 'false')
+    e.set('userName', self.user_name)
+    e.set('automate', 'Default')
+    if self.sensor_name:
+      e.set('feedback', 'ONESENSOR')
+      e.set('sensor1', self.sensor_name)
+    else:
+      e.set('feedback', 'DIRECT')
+    sn = ET.SubElement(e, 'systemName')
+    sn.text = self.system_name
+    un = ET.SubElement(e, 'userName')
+    un.text = self.user_name
+
 def FindOrInsert(element, tag):
   """Find the first child element with a given tag, or if not found, creates one. Returns the (old or new) tag."""
   sn = element.find(tag)
   if sn is None:
     sn = ET.SubElement(element, tag)
   return sn
+
+def FindOrInsertWithDefines(element, tag, defines):
+  """Find the first child element with a given tag, or if not found, creates one. Returns the (old or new) tag."""
+  sn = element.find('./%s[@defines=\'%s\']' % (tag, defines))
+  if sn is None:
+    sn = ET.SubElement(element, tag)
+    sn.set('defines', defines)
+  return sn
+
+class SignalHead:
+  def __init__(self, name):
+    self.user_name = name
+    self.turnout_name = name
+
+  def key(self):
+    return self.user_name
+
+  @staticmethod
+  def get_key(e):
+    s = e.get('userName')
+    if s: return s
+    s = e.find('userName')
+    if s is not None: return s.text
+    return None
+
+  @staticmethod
+  def xml_name():
+    return 'signalhead'
+
+  @classmethod
+  def GetNextId(cls):
+    next_id = cls.max_id
+    cls.max_id = cls.max_id + 1
+    return next_id
+
+  @classmethod
+  def SetMaxId(cls, i):
+    cls.max_id = i
+
+  def Update(self, e):
+    e.set('class', "jmri.implementation.configurexml.SingleTurnoutSignalHeadXml")
+    e.set('userName', self.user_name)
+    self.system_name = e.get('systemName')
+    if not self.system_name:
+      self.system_name = 'LH' + str(self.GetNextId())
+    e.set('systemName', self.system_name)
+    sn = FindOrInsert(e, 'systemName')
+    sn.text = self.system_name
+    un = FindOrInsert(e, 'userName')
+    if un.text != self.user_name:
+      print("Overwriting user name", un.text, "with", self.user_name)
+    un.text = self.user_name
+    at = FindOrInsertWithDefines(e, 'appearance', 'thrown')
+    at.text = 'green'
+    ac = FindOrInsertWithDefines(e, 'appearance', 'closed')
+    ac.text = 'red'
+    ta = FindOrInsertWithDefines(e, 'turnoutname', 'aspect')
+    ta.text = self.turnout_name
 
 class SystemBlock:
   def __init__(self, user_name, sensor_name):
@@ -265,6 +346,8 @@ class TrainLocLogixConditional:
                          + str(int(coord.center[1])) + ", HORIZONTAL)")
 
 all_sensors = []
+sensor_by_user_name = {}
+all_turnouts = []
 all_locations = []
 all_trains = []
 all_location_logix_conditionals = []
@@ -276,7 +359,9 @@ def ParseAllSensors(sensor_tree):
   for entry in root.findall('sensor'):
     system_name = entry.get('systemName')
     user_name = entry.get('userName')
-    all_sensors.append(Sensor(system_name, user_name))
+    s = Sensor(system_name, user_name)
+    all_sensors.append(s)
+    sensor_by_user_name[user_name] = s
 
 def ReadVariableFile():
   """Reads the file jmri-out.xml, parses it as an xml element tree and returns the tree root Element."""
@@ -293,6 +378,50 @@ def RenderSensors(output_tree_root):
     all_sensors_node.remove(sensor)
   for sensor in all_sensors:
     sensor.Render(all_sensors_node)
+
+def RenderTurnouts(output_tree_root):
+  all_turnouts_node = output_tree_root.find('turnouts')
+  all_turnout_children = all_turnouts_node.findall('turnout')
+  for turnout in all_turnout_children:
+    all_turnouts_node.remove(turnout)
+  for turnout in all_turnouts:
+    turnout.Render(all_turnouts_node)
+
+def CreateTurnouts():
+  for sensor in all_sensors:
+    m = re.match('logic.(.*).turnout_state', sensor.user_name)
+    if m:
+      blockname = m.group(1)
+      if re.match('fake_turnout', blockname): continue
+      magnet_command_name = 'logic.magnets.%s.command' % blockname
+      if magnet_command_name in sensor_by_user_name:
+        # movable turnout
+        systemname = sensor_by_user_name[magnet_command_name].system_name
+      else:
+        systemname = sensor.system_name
+      username = blockname
+      sensorname = sensor.user_name
+      # rename system_name to have the right prefix
+      systemname = 'MT' + systemname[2:]
+      all_turnouts.append(Turnout(systemname, username, sensorname))
+    m = re.match('logic.(.*).signal.route_set_ab', sensor.user_name)
+    if m:
+      blockname = m.group(1)
+      systemname = 'MT' + sensor.system_name[2:]
+      username = 'Sig.' + blockname
+      sensorname = sensor.user_name
+      all_turnouts.append(Turnout(systemname, username, sensorname))
+    continue
+    m = re.match('logic.(.*).body_det.simulated_occ', sensor.user_name)
+    if m:
+      blockname = m.group(1)
+      if re.match('^[0-9]', blockname):  #no signal here
+        blockname = 'Det' + blockname
+      username = blockname
+      sensorname = sensor.user_name
+      desired_block_list.append(SystemBlock(username, sensorname))
+      desired_lblock_list.append(LayoutBlock(username, sensorname))
+
 
 def GetMaxSystemId(parent_element, strip_letters = 'IBL'):
   """Computes the largest number seen in the numbering of system names.
@@ -315,7 +444,7 @@ def GetMaxSystemId(parent_element, strip_letters = 'IBL'):
     if next_num > max_id: max_id = next_num
   return max_id + 1
 
-def MergeEntries(parent_element, desired_list):
+def MergeEntries(parent_element, desired_list, purge = False):
   """Merges a list of desired objects with an existing XML collection subtree.
 
   parent_element: an XML Element whose children are the XML representation of our objects.
@@ -365,6 +494,8 @@ def MergeEntries(parent_element, desired_list):
   for key in seen_entries.keys():
     if key not in desired_map:
       print("Undesired in %s: '%s'" % (parent_element.tag, key))
+      if purge:
+        parent_element.remove(seen_entries[key])
 
 def RenderSystemBlocks(output_tree_root):
   desired_block_list = []
@@ -438,6 +569,17 @@ class LayoutIndex:
         self.block_map[blockname].append(entry.get('ident'))
     print("block map: ", self.block_map)
 
+  def GetNeighbors(self, ident):
+    """Takes a string referring to a layout element, returns the set of directly connected elements"""
+    if ident not in self.ident_map:
+      raise Exception("Entry %s not found in ident_map" % ident)
+    e = self.ident_map[ident]
+    ret = set()
+    for (name, value) in e.attrib.items():
+      if re.match("connect.name", name):
+        ret.add(value)
+    return ret
+
   def GetMarginCoordinate(self, dest, source):
     """returns the coordinates of the point between source and dest"""
     dnode = self.ident_map[dest]
@@ -464,10 +606,11 @@ class LayoutIndex:
     coord_b = self.GetMarginCoordinate(segment.get('connect2name'), segment.get('ident'))
     return ((coord_a[0] + coord_b[0]) / 2, (coord_a[1] + coord_b[1]) / 2)
 
-def GetLocationCoordinates(all_location, tree_root, editor_name):
+
+
+def GetLocationCoordinates(all_location, tree_root, index):
   """Returns a dict from location string to x,y,orientation tuples"""
   ret = {}
-  index = LayoutIndex(tree_root, editor_name)
   for loc in all_location:
     segments = tree_root.findall('LayoutEditor/tracksegment[@blockname=\'' + loc + '\']')
     if not segments: raise Exception("Cound not find track segment for block " + loc)
@@ -475,6 +618,15 @@ def GetLocationCoordinates(all_location, tree_root, editor_name):
     ret[loc] = LocationInfo()
     ret[loc].center = index.FindCenterLocation(segment)
   return ret
+
+def RenderSignalHeads(output_tree_root):
+  desired_signalhead_list = []
+  for location in all_locations:
+    desired_signalhead_list.append(SignalHead('Sig.' + location))
+  all_signalhead_node = output_tree_root.find('signalheads')
+  SignalHead.SetMaxId(GetMaxSystemId(all_signalhead_node, strip_letters='LMH'))
+  print("Number of signal heads:", len(desired_signalhead_list))
+  MergeEntries(all_signalhead_node, desired_signalhead_list, purge = True)
 
 def RenderMemoryVariables(output_tree_root):
   desired_memory_list = []
@@ -536,6 +688,85 @@ def PrintBlockLine(layout, block, x0, y):
   x0 += 40
   layout.append(CreateMemoryLabel(x0, y, "loc." + block))
 
+def GetRotationFromVector(v):
+  """Returns 0-3 for the best-matching orientation for the given vector, expressed as a tuple of floats.
+  rotation 0: train going left
+  rotation 1: train going down
+  rotation 2: train going right
+  rotation 3: train going up
+  """
+  if abs(v[1]) < abs(v[0]):
+    # left or right
+    if v[0] < 0: return 0
+    return 2
+  else:
+    if v[1] < 0: return 3
+    return 1
+
+def CreateRGSignalIcon(x, y, head_name, rotation):
+  return ET.XML('    <signalheadicon signalhead="'+head_name+'" x="'+str(x)+'" y="'+str(y)+'" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" clickmode="3" litmode="false" class="jmri.jmrit.display.configurexml.SignalHeadIconXml"><tooltip>'+head_name+'</tooltip><icons><held url="program:resources/icons/smallschematics/searchlights/left-held-short.gif" degrees="0" scale="1.0"><rotation>'+str(rotation)+'</rotation></held>        <dark url="program:resources/icons/smallschematics/searchlights/left-dark-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </dark>        <red url="program:resources/icons/smallschematics/searchlights/left-red-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </red>        <green url="program:resources/icons/smallschematics/searchlights/left-green-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </green>      </icons>      <iconmaps />    </signalheadicon>')
+
+# this many pixels behind the head point should the signals start
+g_back = 5
+# this many pixels away from the track should the signals start
+g_away = 10
+
+# gives the vector offset of where the signal should be from the head point
+# given the orientation
+g_signal_offset_by_rotation = [
+  (g_back, g_away),
+  (g_away, -g_back),
+  (-g_back, -g_away),
+  (-g_away, g_back)
+]
+
+def PrintLocationControls(layout, block, index):
+  """Adds signal heads to the layout editor right where the tracks are
+  arguments:
+    layout is the XML tree root for the panel
+    block is a string like "WW.B14"
+    index is the LayoutIndex object for this panel
+  """
+  # First let's find out the XY location of the head of the block to see where
+  # to add the signal heads.
+  if block not in index.block_map:
+    print("Cannot find block", block)
+    return
+  bodyblock = block + ".body"
+  if bodyblock not in index.block_map:
+    print("Cannot find block", bodyblock)
+    return
+  head_neighbors = set()
+  body_neighbors = set()
+  for h in index.block_map[block]:
+    head_neighbors |= index.GetNeighbors(h)
+  for b in index.block_map[bodyblock]:
+    body_neighbors |= index.GetNeighbors(b)
+  connect = head_neighbors & body_neighbors
+  if len(connect) != 1:
+    print("Cannot find connection point between %s and %s" %(block, bodyblock))
+    return
+  for h in index.block_map[block]:
+    neighbors = index.GetNeighbors(h)
+    if connect & neighbors:
+      # This is the first segment in head.
+      head_segment = h
+      connection_point = (connect & neighbors).pop()
+      neighbors.remove(connection_point);
+      far_point = neighbors.pop()
+      break
+  if index.ident_map[head_segment].tag != "tracksegment":
+    raise Exception("Unexpected head segment  %s of type %s" % (head_segment, index.ident_map[head_segment].tag))
+  # Now: we have head_segment, connection_point and far_point.
+  far_xy = index.GetMarginCoordinate(far_point, head_segment)
+  near_xy = index.GetMarginCoordinate(connection_point, head_segment)
+  dir_vect = (far_xy[0] - near_xy[0], far_xy[1] - near_xy[1])
+  rotation = GetRotationFromVector(dir_vect)
+  signal_vect = g_signal_offset_by_rotation[rotation]
+  signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
+  layout.append(CreateRGSignalIcon(int(signal_xy[0] - 8), int(signal_xy[1] - 8), "Sig." + block, rotation))
+
+
 def CreateLocoIcon(x, y, text):
   return ET.XML('    <locoicon x="'+str(x)+'" y="' + str(y) + '" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="'+ text + '" size="12" style="0" red="51" green="51" blue="51" redBack="238" greenBack="238" blueBack="238" justification="centre" orientation="horizontal" icon="yes" dockX="967" dockY="153" class="jmri.jmrit.display.configurexml.LocoIconXml">\n      <icon url="program:resources/icons/markers/loco-white.gif" degrees="0" scale="1.0">\n        <rotation>0</rotation>\n      </icon>\n    </locoicon>\n');
 
@@ -549,7 +780,7 @@ def PrintTrainLine(layout, train, x0, y):
   x0 += 80
   layout.append(CreateLocoIcon(x0, y, train))
 
-def RenderPanelLocationTable(output_tree_root):
+def RenderPanelLocationTable(output_tree_root, index):
   layout = output_tree_root.find('./LayoutEditor[@name=\'3H layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
@@ -559,10 +790,13 @@ def RenderPanelLocationTable(output_tree_root):
     layout.remove(entry)
   for entry in layout.findall('./locoicon[@level=\'9\']'):
     layout.remove(entry)
+  for entry in layout.findall('./signalheadicon[@level=\'9\']'):
+    layout.remove(entry)
   y = 190;
   x0 = 250;
   for block in all_locations:
     PrintBlockLine(layout, block, x0, y)
+    PrintLocationControls(layout, block, index)
     y += 40
   y = 190
   x0 = 700
@@ -583,13 +817,17 @@ def main():
   global all_trains, all_locations, all_location_coordinates
   all_trains = GetAllTrainList()
   all_locations = GetAllLocationList()
-  all_location_coordinates = GetLocationCoordinates(all_locations, root, "3H layout")
+  index = LayoutIndex(root, "3H layout")
+  all_location_coordinates = GetLocationCoordinates(all_locations, root, index)
   print (len(all_trains), " trains, ", len(all_locations), " locations found (", len(all_location_coordinates), " with coord)")
   RenderSensors(root)
+  CreateTurnouts()
+  RenderTurnouts(root)
+  RenderSignalHeads(root)
   RenderSystemBlocks(root)
   RenderMemoryVariables(root)
   RenderLogixConditionals(root)
-  RenderPanelLocationTable(root)
+  RenderPanelLocationTable(root, index)
   print("number of sensors: %d" % len(all_sensors))
   xml_tree.write(sys.argv[2])
 
