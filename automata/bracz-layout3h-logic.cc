@@ -407,7 +407,7 @@ StandardFixedTurnout Turnout_WWW2(&brd, EventBlock::Allocator(logic.allocator(),
 StandardFixedTurnout Turnout_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "WW.W3", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
-MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueGrey, &bc.ActBlueBrown);
+MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueBrown, &bc.ActBlueGrey);
 StandardMovableDKW DKW_WWW4(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "WW.W4", 64),
                             &Magnet_WWW4);
@@ -446,8 +446,8 @@ StandardMovableTurnout Turnout_ZZW1(
 StandardFixedTurnout Turnout_ZZW2(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "ZZ.W2", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueGrey,
-                      &bb.ActBlueBrown);
+MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
+                      &bb.ActBlueGrey);
 StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "ZZ.W3", 64),
                             &Magnet_ZZW3);
@@ -762,7 +762,7 @@ class LayoutSchedule : public TrainSchedule {
   void RunLoopWW(Automata* aut) {
     AddEagerBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
-    SwitchTurnout(DKW_WWW4.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), false);
     AddEagerBlockTransition(&Block_WWA11, &Block_WWB14, &g_not_paused_condition);
 
     AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
@@ -777,14 +777,14 @@ class LayoutSchedule : public TrainSchedule {
 
     AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
-    SwitchTurnout(DKW_WWW4.b.magnet(), false);
+    SwitchTurnout(DKW_WWW4.b.magnet(), true);
     StopAndReverseAtStub(&Block_WWB2);
 
     AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
                                &g_wwb3_entry_free);
     AddBlockTransitionOnPermit(&Block_WWB2.b_, &Block_B421, &ww_from2,
                                &g_wwb2_exit_free);
-    SwitchTurnout(DKW_WWW4.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), false);
   }
 
   // In WW, run through the stub track, changing direction.
@@ -807,12 +807,12 @@ class LayoutSchedule : public TrainSchedule {
   // Runs in ZZ into the stub track and reverses direction.
   void RunStubZZ(Automata* aut) {
     AddEagerBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     StopAndReverseAtStub(&Block_ZZA2);
 
     AddEagerBlockTransition(&Block_ZZA2.b_, &Block_A360, &g_zzw3_free);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
   }
 
   void RunStub2ZZ(Automata* aut) {
@@ -849,11 +849,11 @@ class LayoutSchedule : public TrainSchedule {
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), true);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
 
     AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);

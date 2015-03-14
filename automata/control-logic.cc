@@ -645,7 +645,7 @@ void DKW::ProxyDetectors(Automata* aut) {
   auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
   for (auto& r : routes_) {
     ProxyDetector(
-        aut, r.state == DKW_STRAIGHT ? &closed_condition : &thrown_condition,
+        aut, r.state == DKW_STRAIGHT ? &thrown_condition : &closed_condition,
         points_[r.from].detector_next.get(),
         points_[r.from].detector_far.get(),
         points_[r.to].interface->binding());
@@ -705,10 +705,10 @@ void DKW::DKWRoute(Automata* aut) {
     OpCallback* cb = nullptr;
     switch (d.state) {
       case DKW_STRAIGHT:
-        cb = &closed_condition;
+        cb = &thrown_condition;
         break;
       case DKW_CURVED:
-        cb = &thrown_condition;
+        cb = &closed_condition;
         break;
     }
     SimulateRoute(aut, cb, points_[d.from].interface.get(),
