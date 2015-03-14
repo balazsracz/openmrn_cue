@@ -478,20 +478,24 @@ class StandardBlock : public StraightTrackInterface {
  public:
   StandardBlock(Board *brd, PhysicalSignal *physical,
                 EventBlock::Allocator *parent_alloc, const string &base_name,
-                int num_to_allocate = 80)
+                int num_to_allocate = 104)
       : alloc_(parent_alloc->Allocate(base_name, num_to_allocate, 8)),
         base_name_(base_name),
         request_green_(alloc_.Allocate("request_green")),
+        rrequest_green_(alloc_.Allocate("rev_request_green")),
         body_(alloc_.Allocate("body", 24, 8)),
         body_det_(alloc_.Allocate("body_det", 24, 8),
                   physical->sensor_raw),
         signal_(alloc_.Allocate("signal", 24, 8),
                 request_green_.get(), physical->signal_raw),
+        rsignal_(alloc_.Allocate("rsignal", 24, 8),
+                 rrequest_green_.get(), nullptr),
         physical_(physical),
         aut_body_(name() + ".body", brd, &body_),
         aut_body_det_(name() + ".body_det", brd, &body_det_),
-        aut_signal_(name() + ".signal", brd, &signal_) {
-    BindSequence({&body_, &body_det_, &signal_});
+        aut_signal_(name() + ".signal", brd, &signal_),
+        aut_rsignal_(name() + ".rsignal", brd, &rsignal_) {
+    BindSequence(rsignal_.side_a(), {&body_, &body_det_, &signal_});
   }
 
  protected:
@@ -500,7 +504,7 @@ class StandardBlock : public StraightTrackInterface {
   friend class StubBlock;
 
  public:
-  virtual CtrlTrackInterface *side_a() { return body_.side_a(); }
+  virtual CtrlTrackInterface *side_a() { return rsignal_.side_b(); }
   virtual CtrlTrackInterface *side_b() { return signal_.side_b(); }
 
   GlobalVariable *request_green() { return request_green_.get(); }
@@ -522,11 +526,13 @@ class StandardBlock : public StraightTrackInterface {
 
  private:
   std::unique_ptr<GlobalVariable> request_green_;
+  std::unique_ptr<GlobalVariable> rrequest_green_;
 
  public:
   StraightTrackLong body_;
   StraightTrackWithRawDetector body_det_;
   SignalPiece signal_;
+  SignalPiece rsignal_;
 
  private:
   PhysicalSignal *physical_;
@@ -534,6 +540,7 @@ class StandardBlock : public StraightTrackInterface {
   StandardPluginAutomata aut_body_;
   StandardPluginAutomata aut_body_det_;
   StandardPluginAutomata aut_signal_;
+  StandardPluginAutomata aut_rsignal_;
 
   DISALLOW_COPY_AND_ASSIGN(StandardBlock);
 };
@@ -970,7 +977,7 @@ class StubBlock {
   StubBlock(Board *brd, PhysicalSignal *physical,
             GlobalVariable *entry_sensor_raw,
             EventBlock::Allocator *parent_alloc, const string &base_name,
-            int num_to_allocate = 160)
+            int num_to_allocate = 184)
       : b_(brd, physical, parent_alloc, base_name, num_to_allocate),
         fake_turnout_(FixedTurnout::TURNOUT_THROWN, b_.alloc_.Allocate("fake_turnout", 40, 8)),
         entry_det_(b_.alloc_.Allocate("entry_det", 24, 8), entry_sensor_raw),

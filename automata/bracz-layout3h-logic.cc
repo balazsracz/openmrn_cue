@@ -451,8 +451,8 @@ MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
 StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "ZZ.W3", 64),
                             &Magnet_ZZW3);
-StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic.allocator(), "ZZ.A2");
-StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic.allocator(), "ZZ.A3");
+StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic2.allocator(), "ZZ.A2");
+StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic2.allocator(), "ZZ.A3");
 
 StandardMiddleDetector Det_380(&brd, &bb.InGreenYellow,
                                EventBlock::Allocator(logic2.allocator(),

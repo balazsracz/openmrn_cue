@@ -177,6 +177,13 @@ public:
         return *this;
     }
 
+    Op& MaybeActReg(bool enabled, Automata::LocalVariable* var, bool value) {
+        if (!enabled) {
+            return *this;
+        }
+        return ActReg(var, value);
+    }
+
     Op& ActState(const StateRef state) {
       HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
       acts_.push_back(_ACT_STATE | state.state);

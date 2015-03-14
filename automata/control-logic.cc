@@ -214,14 +214,14 @@ void SignalPiece::SignalOccupancy(Automata* aut) {
   const LocalVariable& prev_detector =
       aut->ImportVariable(*side_a()->binding()->LookupNextDetector());
   LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
-  LocalVariable* signal = aut->ImportVariable(signal_);
   LocalVariable* route = aut->ImportVariable(route_set_ab_.get());
   LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
+  LocalVariable* signal = signal_ ? aut->ImportVariable(signal_) : nullptr;
   Def().IfReg1(prev_detector).ActReg1(occ);
   Def()
       .IfReg0(prev_detector)
       .IfReg1(*occ)
-      .ActReg0(signal)
+      .MaybeActReg(signal_, signal, 0)
       .ActReg0(route)
       .ActReg0(route2)
       .ActReg0(occ);
@@ -324,7 +324,7 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
       aut->ImportVariable(after->out_try_set_route.get());
   const ConstVarList& const_current_route =
       reinterpret_cast<const ConstVarList&>(current_route);
-  LocalVariable* signal = aut->ImportVariable(go_signal);
+  LocalVariable* signal = go_signal ? aut->ImportVariable(go_signal) : nullptr;
 
   // Initialization
   Def()
@@ -360,7 +360,7 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
       .Rept(&Automata::Op::IfReg0, conflicting_routes)
       // then we accept the incoming route
       // For safety, we set the signal to red if we accepted a route.
-      .ActReg0(signal)
+      .MaybeActReg(go_signal, signal, 0)
       .ActReg0(in_try_set_route)
       .ActReg0(in_route_set_failure)
       .ActReg1(in_route_set_success);
@@ -391,14 +391,14 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
       .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
       .Rept(&Automata::Op::ActReg1, current_route)
-      .ActReg1(signal);
+      .MaybeActReg(go_signal, signal, 1);
 
   Def()
       .IfReg1(*out_route_set_failure)
       .ActReg0(out_route_set_failure)
       .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
-      .ActReg0(signal);
+      .MaybeActReg(go_signal, signal, 0);
 }
 
 void SignalPiece::SignalRoute(Automata* aut) {
@@ -409,10 +409,14 @@ void SignalPiece::SignalRoute(Automata* aut) {
       .ActReg1(aut->ImportVariable(route_set_ab_.get()))
       .ActReg0(aut->ImportVariable(route_set_ab_.get()))
       .ActReg0(aut->ImportVariable(route_set_ba_.get()))
-      .ActReg1(aut->ImportVariable(signal_))  // ensures signals are zero
-      .ActReg0(aut->ImportVariable(signal_))
       .ActReg0(aut->ImportVariable(route_pending_ab_.get()))
       .ActReg0(aut->ImportVariable(route_pending_ba_.get()));
+  if (signal_) {
+    Def()
+        .IfState(StInit)
+        .ActReg1(aut->ImportVariable(signal_))  // ensures signals are zero
+        .ActReg0(aut->ImportVariable(signal_));
+  }
 
   // In direction b->a the signal track is completely normal.
   SimulateRoute(aut, nullptr, side_b(), side_a(), any_route_setting_in_progress,
@@ -430,10 +434,12 @@ void SignalPiece::SignalRoute(Automata* aut) {
   // the track-power bit should be treated separately.
   const auto& route_set_ab = aut->ImportVariable(*route_set_ab_);
   const auto& route_set_ba = aut->ImportVariable(*route_set_ba_);
-  auto* signal = aut->ImportVariable(signal_);
-  Def().IfReg0(route_set_ab).IfReg0(route_set_ba).ActReg0(signal);
-  Def().IfReg1(route_set_ab).ActReg1(signal);
-  Def().IfReg1(route_set_ba).ActReg1(signal);
+  if (signal_) {
+    auto* signal = aut->ImportVariable(signal_);
+    Def().IfReg0(route_set_ab).IfReg0(route_set_ba).ActReg0(signal);
+    Def().IfReg1(route_set_ab).ActReg1(signal);
+    Def().IfReg1(route_set_ba).ActReg1(signal);
+  }
 }
 
 const CtrlTrackInterface* StraightTrack::FindOtherSide(
