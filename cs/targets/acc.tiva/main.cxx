@@ -53,6 +53,8 @@
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/EventBitProducer.hxx"
 #include "nmranet/RefreshLoop.hxx"
+#include "nmranet/MemoryConfig.hxx"
+#include "nmranet/DatagramCan.hxx"
 #include "utils/Debouncer.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "driverlib/gpio.h"
@@ -61,6 +63,7 @@
 #define ENABLE_TIVA_SIGNAL_DRIVER
 #include "custom/TivaSignalPacket.hxx"
 #include "custom/SignalLoop.hxx"
+#include "custom/SignalServer.hxx"
 
 NO_THREAD nt;
 Executor<1> g_executor(nt);
@@ -79,8 +82,13 @@ nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
+nmranet::CanDatagramService g_datagram_service(&g_if_can, 2, 2);
+nmranet::MemoryConfigHandler g_memory_config_handler(&g_datagram_service,
+                                                     &g_node, 1);
 
-bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625, UART1_BASE,
+bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
+                                                 SYSCTL_PERIPH_UART1,
+                                                 UART1_BASE,
                                                  INT_RESOLVE(INT_UART1_, 0));
 
 static const uint64_t R_EVENT_ID =
@@ -222,6 +230,8 @@ bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
                                      (R_EVENT_ID & ~0xffffff) |
                                          ((R_EVENT_ID & 0xff00) << 8),
                                      NUM_SIGNALS);
+bracz_custom::SignalServer signal_server(&g_datagram_service, &g_node,
+                                         &g_signalbus);
 
 /** Entry point to application.
  * @param argc number of command line arguments
