@@ -1,1 +1,1 @@
-../acc.tiva/memory_map.ld
+../acc.tiva.3/memory_map.ld

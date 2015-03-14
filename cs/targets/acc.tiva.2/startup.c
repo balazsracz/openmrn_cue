@@ -1,1 +1,1 @@
-../acc.tiva/startup.c
+../acc.tiva.3/startup.c
