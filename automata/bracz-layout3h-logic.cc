@@ -598,13 +598,16 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
              aut->ImportVariable(block->p()->in_adv_sgn));
   }
   if (block->p()->r_main_sgn) {
-    RedSignal(aut, aut->ImportVariable(block->p()->r_main_sgn));
+    RgSignal(aut, aut->ImportVariable(block->rev_route_out()),
+             aut->ImportVariable(block->p()->r_main_sgn));
   }
   if (block->p()->r_adv_sgn) {
-    RedSignal(aut, aut->ImportVariable(block->p()->r_adv_sgn));
+    RgSignal(aut, aut->ImportVariable(block->rev_route_out()),
+             aut->ImportVariable(block->p()->r_adv_sgn));
   }
   if (block->p()->r_in_adv_sgn) {
-    RedSignal(aut, aut->ImportVariable(block->p()->r_in_adv_sgn));
+    RgSignal(aut, aut->ImportVariable(block->rev_route_out()),
+             aut->ImportVariable(block->p()->r_in_adv_sgn));
   }
 }
 

@@ -510,6 +510,7 @@ class StandardBlock : public StraightTrackInterface {
   GlobalVariable *request_green() { return request_green_.get(); }
   const GlobalVariable &route_in() const { return *body_det_.route_set_ab_; }
   const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
+  const GlobalVariable &rev_route_out() const { return *rsignal_.route_set_ab_; }
   const GlobalVariable &detector() const { return *body_det_.simulated_occupancy_; }
 
   PhysicalSignal *p() { return physical_; }
