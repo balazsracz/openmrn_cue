@@ -53,7 +53,7 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
                             BRACZ_LAYOUT | 0x0012, BRACZ_LAYOUT | 0x0013, 7,
                             30, 4);
 
-I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
+//I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n8(0x28);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
 
@@ -71,8 +71,8 @@ LPC11C lpc11_back;
 I2CSignal signal_XXB2_main(&ba, 8, "XX.B2.main"); // 143 (0x8F)
 I2CSignal signal_XXB2_adv(&ba, 9, "XX.B2.adv");
 
-I2CSignal signal_A301_main(&b5, 72, "A301.main");
-I2CSignal signal_A301_adv(&b5, 73, "A301.adv");
+I2CSignal signal_A301_main(&bc, 72, "A301.main");
+I2CSignal signal_A301_adv(&bc, 73, "A301.adv");
 
 I2CSignal signal_A321_main(&bd, 36, "A321.main");  // 166 0xA6
 I2CSignal signal_A321_adv(&bd, 37, "A321.adv");
@@ -115,8 +115,8 @@ I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
 I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main"); // 141 (0x8D)
 I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
-I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main"); // ?? DUP ADDR
-I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
+I2CSignal signal_WWB14_main(&bc, 22, "WW.B14.main"); // ?? DUP ADDR
+I2CSignal signal_WWB14_adv(&bc, 23, "WW.B14.adv");
 
 
 /* More signals
@@ -164,21 +164,22 @@ PhysicalSignal A347(&bd.In3, &bd.Rel1,
 PhysicalSignal A321(&bd.In5, &bd.Rel3,
                     &signal_A321_main.signal, &signal_A321_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen,
+PhysicalSignal A301(&bc.InBrownBrown, &bc.LedYellow,
                     &signal_A301_main.signal, &signal_A301_adv.signal,
                     &signal_B321_main.signal, &signal_B321_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen,
+PhysicalSignal WWB14(&bc.InBrownGrey, &bc.Rel0,
                      &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB3(&b6.InOraGreen, &b6.RelBlue,
+PhysicalSignal WWB3(&bc.InGreenYellow, &bc.Rel1,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB2(&b6.InOraRed, &b5.RelBlue,
+PhysicalSignal WWB2(&bc.InGreenGreen, &bc.Rel2,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWA11(&b6.InBrownBrown, &b6.LedGreen,
-                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
+PhysicalSignal WWA11(&bc.InOraGreen, &bc.Rel3,
+                     nullptr, nullptr,
+                     //                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
 PhysicalSignal B421(&bd.In4, &bd.Rel2,
@@ -319,10 +320,7 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&bc.LedBlueSw));
   DefCopy(*rep, ImportVariable(&bd.LedBlueSw));
   DefCopy(*rep, ImportVariable(&be.LedBlueSw));
-  DefCopy(*rep, ImportVariable(&b5.LedRed));
-  DefCopy(*rep, ImportVariable(&b6.LedRed));
   DefCopy(*rep, ImportVariable(&lpc11_back.l0));
-  DefCopy(ImportVariable(b5.InBrownGrey), ImportVariable(&b5.LedGreen));
 });
 
 /*DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
@@ -399,7 +397,7 @@ MagnetCommandAutomata g_magnet_aut(&brd, *logic2.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 
-MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &b6.ActGreenGreen, &b6.ActGreenRed);
+MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &bc.ActOraGreen, &bc.ActOraRed);
 StandardMovableTurnout Turnout_WWW1(
     &brd, EventBlock::Allocator(logic.allocator(), "WW.W1", 40), &Magnet_WWW1);
 
@@ -409,7 +407,7 @@ StandardFixedTurnout Turnout_WWW2(&brd, EventBlock::Allocator(logic.allocator(),
 StandardFixedTurnout Turnout_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "WW.W3", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
-MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &b5.ActOraGreen, &b5.ActOraRed);
+MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueGrey, &bc.ActBlueBrown);
 StandardMovableDKW DKW_WWW4(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "WW.W4", 64),
                             &Magnet_WWW4);
@@ -418,8 +416,9 @@ StandardFixedTurnout Turnout_WWW5(&brd, EventBlock::Allocator(logic.allocator(),
                                   FixedTurnout::TURNOUT_CLOSED);
 
 StandardBlock Block_WWA11(&brd, &WWA11, logic.allocator(), "WW.A11");
-StubBlock Block_WWB2(&brd, &WWB2, &b6.InOraRed, logic.allocator(), "WW.B2");
-StubBlock Block_WWB3(&brd, &WWB3, &b6.InOraGreen, logic.allocator(), "WW.B3");
+StubBlock Block_WWB2(&brd, &WWB2, &bc.InGreenGreen, logic.allocator(), "WW.B2");
+StubBlock Block_WWB3(&brd, &WWB3, &bc.InGreenYellow, logic.allocator(),
+                     "WW.B3");
 StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
 
 StandardBlock Block_A301(&brd, &A301, logic.allocator(), "A301");
