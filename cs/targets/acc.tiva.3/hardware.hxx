@@ -15,7 +15,36 @@ GPIO_PIN(LED_YELLOW, LedPin, B, 0);
 GPIO_PIN(LED_BLUE_SW, LedPin, B, 6);
 GPIO_PIN(LED_GOLD_SW, LedPin, B, 7);
 
-GPIO_PIN(DBG_SIGNAL, GpioOutputSafeLow, B, 1);
+//GPIO_PIN(DBG_SIGNAL, GpioOutputSafeLow, B, 1);
+
+GPIO_PIN(REL0, GpioOutputSafeLow, F, 2);
+GPIO_PIN(REL1, GpioOutputSafeLow, F, 1);
+GPIO_PIN(REL2, GpioOutputSafeLow, G, 5);
+GPIO_PIN(REL3, GpioOutputSafeLow, F, 3);
+
+GPIO_PIN(OUT0, GpioOutputSafeLow, E, 4);
+GPIO_PIN(OUT1, GpioOutputSafeLow, E, 5);
+GPIO_PIN(OUT2, GpioOutputSafeLow, D, 0);
+GPIO_PIN(OUT3, GpioOutputSafeLow, D, 1);
+GPIO_PIN(OUT4, GpioOutputSafeLow, D, 2);
+GPIO_PIN(OUT5, GpioOutputSafeLow, D, 3);
+GPIO_PIN(OUT6, GpioOutputSafeLow, E, 3);
+GPIO_PIN(OUT7, GpioOutputSafeLow, E, 2);
+
+GPIO_PIN(IN0, GpioInputNP, A, 0);
+GPIO_PIN(IN1, GpioInputNP, A, 1);
+GPIO_PIN(IN2, GpioInputNP, A, 2);
+GPIO_PIN(IN3, GpioInputNP, A, 3);
+GPIO_PIN(IN4, GpioInputNP, A, 4);
+GPIO_PIN(IN5, GpioInputNP, A, 5);
+GPIO_PIN(IN6, GpioInputNP, A, 6);
+GPIO_PIN(IN7, GpioInputNP, A, 7);
+
+GPIO_PIN(BUT_BLUE, GpioInputPU, C, 6);
+GPIO_PIN(BUT_GOLD, GpioInputPU, C, 7);
+
+GPIO_PIN(RC4_SHADOW, GpioInputNP, F, 0);
+
 
 typedef LED_RED_Pin BlinkerLed;
 
@@ -28,12 +57,12 @@ struct Debug {
   typedef DummyPin DccPacketDelay;
 
   // High between start_cutout and end_cutout from the TivaRailcom driver.
-  typedef DBG_SIGNAL_Pin RailcomDriverCutout;
-  //typedef DummyPin/*LED_GREEN_Pin*/ RailcomDriverCutout;
+  //typedef DBG_SIGNAL_Pin RailcomDriverCutout;
+  typedef DummyPin RailcomDriverCutout;
 
   // Flips every timer capture interrupt from the dcc deocder flow.
-  typedef LED_BLUE_SW_Pin DccDecodeInterrupts;
-  //typedef DummyPin DccDecodeInterrupts;
+  //typedef LED_BLUE_SW_Pin DccDecodeInterrupts;
+  typedef DummyPin DccDecodeInterrupts;
  
   // Flips every timer capture interrupt from the dcc deocder flow.
   //typedef DBG_SIGNAL_Pin RailcomE0;
@@ -43,7 +72,12 @@ struct Debug {
   typedef DummyPin RailcomError;
   //typedef LED_BLUE_SW_Pin RailcomError;
 
+    typedef DummyPin RailcomDataReceived;
+    typedef DummyPin RailcomAnyData;
+    typedef DummyPin RailcomPackets;
 
+
+  typedef LED_GOLD_SW_Pin DetectRepeat;
 };
 
 struct DCCDecode
@@ -66,6 +100,8 @@ struct DCCDecode
 
     static const int Q_SIZE = 32;
 };
+
+#define HAVE_RAILCOM
 
 struct RailcomHw
 {

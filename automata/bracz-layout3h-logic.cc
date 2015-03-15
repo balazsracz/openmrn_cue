@@ -53,9 +53,9 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
                             BRACZ_LAYOUT | 0x0012, BRACZ_LAYOUT | 0x0013, 7,
                             30, 4);
 
-I2CBoard b5(0x25), b6(0x26), b7(0x27), b1(0x21), b2(0x22);
-NativeIO n8(0x28);
-AccBoard ba(0x2a), bb(0x2b), bc(0x2c), be(0x2e);
+//I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
+//NativeIO n8(0x28);
+AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -68,55 +68,87 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-I2CSignal signal_XXB2_main(&b1, 8, "XX.B2.main");  // was: b3
-I2CSignal signal_XXB2_adv(&b1, 9, "XX.B2.adv");  // was: b3
+I2CSignal signal_XXB2_main(&ba, 31, "XX.B2.main"); // 159 (0x9F)
+I2CSignal signal_XXB2_adv(&ba, 32, "XX.B2.adv");
 
-I2CSignal signal_A301_main(&b5, 72, "A301.main");
-I2CSignal signal_A301_adv(&b5, 73, "A301.adv");
+I2CSignal signal_A301_main(&bc, 72, "A301.main");
+I2CSignal signal_A301_adv(&bc, 73, "A301.adv");
 
-I2CSignal signal_A321_main(&bb, 36, "A321.main");
-I2CSignal signal_A321_adv(&bb, 37, "A321.adv");
-I2CSignal signal_A421_main(&bb, 42, "A421.main");
-I2CSignal signal_A421_adv(&bb, 43, "A421.adv");
+I2CSignal signal_A321_main(&bd, 36, "A321.main");  // 166 0xA6
+I2CSignal signal_A321_adv(&bd, 37, "A321.adv");
+I2CSignal signal_A421_main(&bd, 42, "A421.main");  // 134 (0x86)
+I2CSignal signal_A421_adv(&bd, 43, "A421.adv");
 
-I2CSignal signal_B321_main(&bb, 38, "B321.main");
-I2CSignal signal_B321_adv(&bb, 39, "B321.adv");
-I2CSignal signal_B421_main(&bb, 40, "B421.main");
-I2CSignal signal_B421_adv(&bb, 41, "B421.adv");
+I2CSignal signal_B321_main(&bd, 38, "B321.main");  // 172 0xAC
+I2CSignal signal_B321_adv(&bd, 39, "B321.adv");
+I2CSignal signal_B421_main(&bd, 40, "B421.main");  // 176 (0xB0)
+I2CSignal signal_B421_adv(&bd, 41, "B421.adv");
 
-I2CSignal signal_A347_main(&bb, 20, "A347.main");
-I2CSignal signal_A347_adv(&bb, 21, "A347.adv");
+I2CSignal signal_A347_main(&bd, 22, "A347.main");  // 157 (0x9D)
+I2CSignal signal_A347_adv(&bd, 23, "A347.adv");
 
-I2CSignal signal_B447_main(&bb, 10, "B447.main");
-I2CSignal signal_B447_adv(&bb, 11, "B447.adv");
+I2CSignal signal_B447_main(&bd, 10, "B447.main");  // 131 0x83
+I2CSignal signal_B447_adv(&bd, 11, "B447.adv");
 
-I2CSignal signal_A360_main(&bb, /*12*/142, "A360.main");
+I2CSignal signal_A360_main(&bb, 12, "A360.main"); // 142 (0x8E)
 I2CSignal signal_A360_adv(&bb, 13, "A360.adv");
-I2CSignal signal_A460_main(&bb, /*14*/139, "A460.main");
+I2CSignal signal_A460_main(&bb, 14, "A460.main");  // 139 (0x8B)
 I2CSignal signal_A460_adv(&bb, 15, "A460.adv");
 
-I2CSignal signal_B360_adv(&bb, 17, "B360.adv");
-I2CSignal signal_B460_adv(&bb, 19, "B460.adv");
+I2CSignal signal_B360_adv(&bb, 17, "B360.adv");  // 138 (0x8A)
+I2CSignal signal_B460_adv(&bb, 19, "B460.adv");  // 144 0x90
 
-I2CSignal signal_A375_adv(&bb, 75, "A375.adv");
-I2CSignal signal_A475_adv(&bb, 74, "A475.adv");
+I2CSignal signal_A375_adv(&bb, 75, "A375.adv");  // 149 0x95
+I2CSignal signal_A475_adv(&bb, 74, "A475.adv");  // 129 0x81
 
-I2CSignal signal_B375_main(&bb, 32, "B375.main");
+I2CSignal signal_B375_main(&bb, 32, "B375.main");  // 145 0x91
 I2CSignal signal_B375_adv(&bb, 33, "B375.adv");
-I2CSignal signal_B475_main(&bb, 6, "B475.main");
+I2CSignal signal_B475_main(&bb, 6, "B475.main"); // 155 0x9B
 I2CSignal signal_B475_adv(&bb, 7, "B475.adv");
 
-I2CSignal signal_XXB1_main(&b1, 25, "XX.B1.main");
-I2CSignal signal_XXB3_main(&b1, 24, "XX.B3.main");
+I2CSignal signal_XXB1_main(&ba, 25, "XX.B1.main"); // 147 (0x93)
+I2CSignal signal_XXB3_main(&ba, 24, "XX.B3.main"); // 140 (0x8C)
 
-I2CSignal signal_YYC23_main(&b1, 26, "YY.C23.main"); // was: b3
-I2CSignal signal_YYC23_adv(&b1, 27, "YY.C23.adv");  // was: b3
+I2CSignal signal_YYC23_main(&ba, 26, "YY.C23.main"); //  158 (0x9E)
+I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
 
-I2CSignal signal_YYB2_main(&b7, 4, "YY.B2.main");
-I2CSignal signal_YYB2_adv(&b7, 5, "YY.B2.adv");
+I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main"); // 141 (0x8D)
+I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
-I2CSignal signal_WWB14_main(&b5, 22, "WW.B14.main");
-I2CSignal signal_WWB14_adv(&b5, 23, "WW.B14.adv");
+I2CSignal signal_WWB14_main(&bc, 22, "WW.B14.main"); // ?? DUP ADDR
+I2CSignal signal_WWB14_adv(&bc, 23, "WW.B14.adv");
+
+
+/* More signals
+
+address 158 (0x9E) main 26 adv 27  reflashed in YYC23
+GONE address 143 (0x8F) main 8 adv 9 reflashed in XXB2
+address 155 (0x9B) main 6 adv 7   reflashed in B475
+address 145 (0x91) main 32 adv 33 reflashed in B375
+
+address 129 (0x81) adv 74 reflashed in A475
+address 149 (0x95) adv 75 reflashed in A375
+
+address 142 (0x8E) main 12 adv 13 reflashed in A460
+address 139 (0x8B) main 14 adv 15 reflashed in A360
+address 144 (0x90) adv 19 reflashed in B460
+address 138 (0x8A) adv 17 reflashed in B360
+address 131 (0x83) main 10 adv 11 reflashed in B447
+
+
+address 166 (0xA6) main 36 adv 37 reflashed in A321
+address 172 (0xAC) main 38 adv 39 reflashed in B321
+address 176 (0xB0) main 40 adv 41 reflashed in B421
+address 134 (0x86) main 42 adv 43 reflashed in A421
+
+address 147 (0x93) main 25 reflashed in XX.B1
+address 140 (0x8C) main 24 reflashed in XX.B3
+
+address 141 (0x8D) main 4 adv 5 reflashed in YY.B2
+
+address 157 (0x9D) main 22 adv 23 reflashed in A347
+address 159 (0x9F) main 31 adv 32 reflashed in XX.B2
+*/
 
 //I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
 //I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
@@ -126,33 +158,34 @@ PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0,
                     &signal_A360_main.signal, &signal_A360_adv.signal,
                     &signal_B375_main.signal, &signal_B375_adv.signal,
                     &signal_A375_adv.signal, &signal_B360_adv.signal);
-PhysicalSignal A347(&n8.d1, &n8.r1,
+PhysicalSignal A347(&bd.In3, &bd.Rel1,
                     &signal_A347_main.signal, &signal_A347_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal A321(&n8.d3, &n8.r3,
+PhysicalSignal A321(&bd.In5, &bd.Rel3,
                     &signal_A321_main.signal, &signal_A321_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal A301(&b6.InBrownGrey, &b6.RelGreen,
+PhysicalSignal A301(&bc.InBrownBrown, &bc.LedYellow,
                     &signal_A301_main.signal, &signal_A301_adv.signal,
                     &signal_B321_main.signal, &signal_B321_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal WWB14(&b5.InBrownBrown, &b5.RelGreen,
+PhysicalSignal WWB14(&bc.InBrownGrey, &bc.Rel0,
                      &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB3(&b6.InOraGreen, &b6.RelBlue,
+PhysicalSignal WWB3(&bc.InGreenYellow, &bc.Rel1,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB2(&b6.InOraRed, &b5.RelBlue,
+PhysicalSignal WWB2(&bc.InGreenGreen, &bc.Rel2,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWA11(&b6.InBrownBrown, &b6.LedGreen,
-                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
+PhysicalSignal WWA11(&bc.InOraGreen, &bc.Rel3,
+                     nullptr, nullptr,
+                     //                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal B421(&n8.d2, &n8.r2,
+PhysicalSignal B421(&bd.In4, &bd.Rel2,
                     &signal_B421_main.signal, &signal_B421_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal B447(&n8.d0, &n8.r0,
+PhysicalSignal B447(&bd.In2, &bd.Rel0,
                     &signal_B447_main.signal, &signal_B447_adv.signal,
                     &signal_A421_main.signal, &signal_A421_adv.signal,
                     nullptr, nullptr);
@@ -171,7 +204,7 @@ PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYA3(&be.InGreenYellow, &b1.LedGreen,
+PhysicalSignal YYA3(&be.InGreenYellow, &be.Rel0,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -179,17 +212,17 @@ PhysicalSignal YYC23(&ba.In0, &ba.Rel3,
                      &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal XXB1(&be.InBrownBrown, &b1.RelGreen,
+PhysicalSignal XXB1(&be.InBrownBrown, &be.Rel1,
                     &signal_XXB1_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal XXB2(&ba.In3, &ba.Rel2,
                     &signal_XXB2_main.signal, &signal_XXB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal XXB3(&be.InBrownGrey, &b1.RelBlue,
+PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel2,
                     &signal_XXB3_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB2(&be.InOraGreen, &b7.RelGreen,
+PhysicalSignal YYB2(&be.InOraGreen, &be.Rel3,
                     &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -208,6 +241,7 @@ GlobalVariable* NewTempVariable(Board* board) {
 }
 
 unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
+unique_ptr<GlobalVariable> acc_off_tmp(NewTempVariable(&brd));
 
 EventBasedVariable led(&brd, "led", 0x0502010202650012ULL,
                        0x0502010202650013ULL, 7, 31, 1);
@@ -238,6 +272,26 @@ DefAut(watchdog, brd, {
     LocalVariable* w = ImportVariable(&watchdog);
     Def().IfState(StInit).ActReg1(ImportVariable(&is_paused)).ActState(StBase);
     Def().IfTimerDone().ActReg1(w).ActReg0(w).ActTimer(1);
+
+    auto* signal_off_tmp = ImportVariable(acc_off_tmp.get());
+    auto* signal_on = ImportVariable(&power_acc);
+    const auto& signal_short = ImportVariable(short_det);
+    const auto& signal_over = ImportVariable(overcur);
+    Def().IfReg1(*signal_on).ActReg0(signal_off_tmp);
+    Def().IfReg1(signal_short).ActReg0(signal_off_tmp);
+    Def().IfReg1(signal_over).ActReg0(signal_off_tmp);
+
+    // If the signal power is off but no short and no overcurrent detected,
+    // turn it back on.
+    Def().IfReg0(*signal_on).IfReg1(*signal_off_tmp).ActReg1(signal_on);
+
+    // But do this only after waiting for one cycle for any overcurrent event
+    // to come in.
+    Def()
+        .IfReg0(*signal_on)
+        .IfReg0(signal_short)
+        .IfReg0(signal_over)
+        .ActReg1(signal_off_tmp);
   });
 
 DefAut(blinkaut, brd, {
@@ -261,17 +315,12 @@ DefAut(blinkaut, brd, {
       .ActState(StUser1)
       .ActReg1(rep);
 
-  DefCopy(*rep, ImportVariable(&b1.LedRed));
-  DefCopy(*rep, ImportVariable(&bb.LedGoldSw));
-  DefCopy(*rep, ImportVariable(&ba.LedGoldSw));
-  DefCopy(*rep, ImportVariable(&bc.LedGoldSw));
-  DefCopy(*rep, ImportVariable(&b5.LedRed));
-  DefCopy(*rep, ImportVariable(&b6.LedRed));
-  DefCopy(*rep, ImportVariable(&b7.LedRed));
-  DefCopy(*rep, ImportVariable(&panda_bridge.l4));
+  DefCopy(*rep, ImportVariable(&ba.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&bb.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&bc.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&bd.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&be.LedBlueSw));
   DefCopy(*rep, ImportVariable(&lpc11_back.l0));
-  DefCopy(*rep, ImportVariable(&n8.l0));
-  DefCopy(ImportVariable(b5.InBrownGrey), ImportVariable(&b5.LedGreen));
 });
 
 /*DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
@@ -348,7 +397,7 @@ MagnetCommandAutomata g_magnet_aut(&brd, *logic2.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 
-MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &b6.ActGreenGreen, &b6.ActGreenRed);
+MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &bc.ActOraGreen, &bc.ActOraRed);
 StandardMovableTurnout Turnout_WWW1(
     &brd, EventBlock::Allocator(logic.allocator(), "WW.W1", 40), &Magnet_WWW1);
 
@@ -358,7 +407,7 @@ StandardFixedTurnout Turnout_WWW2(&brd, EventBlock::Allocator(logic.allocator(),
 StandardFixedTurnout Turnout_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "WW.W3", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
-MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &b5.ActOraGreen, &b5.ActOraRed);
+MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueBrown, &bc.ActBlueGrey);
 StandardMovableDKW DKW_WWW4(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "WW.W4", 64),
                             &Magnet_WWW4);
@@ -367,8 +416,9 @@ StandardFixedTurnout Turnout_WWW5(&brd, EventBlock::Allocator(logic.allocator(),
                                   FixedTurnout::TURNOUT_CLOSED);
 
 StandardBlock Block_WWA11(&brd, &WWA11, logic.allocator(), "WW.A11");
-StubBlock Block_WWB2(&brd, &WWB2, &b6.InOraRed, logic.allocator(), "WW.B2");
-StubBlock Block_WWB3(&brd, &WWB3, &b6.InOraGreen, logic.allocator(), "WW.B3");
+StubBlock Block_WWB2(&brd, &WWB2, &bc.InGreenGreen, logic.allocator(), "WW.B2");
+StubBlock Block_WWB3(&brd, &WWB3, &bc.InGreenYellow, logic.allocator(),
+                     "WW.B3");
 StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
 
 StandardBlock Block_A301(&brd, &A301, logic.allocator(), "A301");
@@ -396,13 +446,13 @@ StandardMovableTurnout Turnout_ZZW1(
 StandardFixedTurnout Turnout_ZZW2(&brd, EventBlock::Allocator(logic.allocator(),
                                                               "ZZ.W2", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueGrey,
-                      &bb.ActBlueBrown);
+MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
+                      &bb.ActBlueGrey);
 StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "ZZ.W3", 64),
                             &Magnet_ZZW3);
-StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic.allocator(), "ZZ.A2");
-StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic.allocator(), "ZZ.A3");
+StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic2.allocator(), "ZZ.A2");
+StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic2.allocator(), "ZZ.A3");
 
 StandardMiddleDetector Det_380(&brd, &bb.InGreenYellow,
                                EventBlock::Allocator(logic2.allocator(),
@@ -548,13 +598,16 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
              aut->ImportVariable(block->p()->in_adv_sgn));
   }
   if (block->p()->r_main_sgn) {
-    RedSignal(aut, aut->ImportVariable(block->p()->r_main_sgn));
+    RgSignal(aut, aut->ImportVariable(block->rev_route_out()),
+             aut->ImportVariable(block->p()->r_main_sgn));
   }
   if (block->p()->r_adv_sgn) {
-    RedSignal(aut, aut->ImportVariable(block->p()->r_adv_sgn));
+    RgSignal(aut, aut->ImportVariable(block->rev_route_out()),
+             aut->ImportVariable(block->p()->r_adv_sgn));
   }
   if (block->p()->r_in_adv_sgn) {
-    RedSignal(aut, aut->ImportVariable(block->p()->r_in_adv_sgn));
+    RgSignal(aut, aut->ImportVariable(block->rev_route_out()),
+             aut->ImportVariable(block->p()->r_in_adv_sgn));
   }
 }
 
@@ -712,7 +765,7 @@ class LayoutSchedule : public TrainSchedule {
   void RunLoopWW(Automata* aut) {
     AddEagerBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
-    SwitchTurnout(DKW_WWW4.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), false);
     AddEagerBlockTransition(&Block_WWA11, &Block_WWB14, &g_not_paused_condition);
 
     AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
@@ -727,14 +780,14 @@ class LayoutSchedule : public TrainSchedule {
 
     AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
-    SwitchTurnout(DKW_WWW4.b.magnet(), false);
+    SwitchTurnout(DKW_WWW4.b.magnet(), true);
     StopAndReverseAtStub(&Block_WWB2);
 
     AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
                                &g_wwb3_entry_free);
     AddBlockTransitionOnPermit(&Block_WWB2.b_, &Block_B421, &ww_from2,
                                &g_wwb2_exit_free);
-    SwitchTurnout(DKW_WWW4.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), false);
   }
 
   // In WW, run through the stub track, changing direction.
@@ -757,12 +810,12 @@ class LayoutSchedule : public TrainSchedule {
   // Runs in ZZ into the stub track and reverses direction.
   void RunStubZZ(Automata* aut) {
     AddEagerBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     StopAndReverseAtStub(&Block_ZZA2);
 
     AddEagerBlockTransition(&Block_ZZA2.b_, &Block_A360, &g_zzw3_free);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
   }
 
   void RunStub2ZZ(Automata* aut) {
@@ -799,11 +852,11 @@ class LayoutSchedule : public TrainSchedule {
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
     SwitchTurnout(Turnout_W481.b.magnet(), true);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
 
     AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);

@@ -1,1 +1,1 @@
-../acc.tiva/target.ld
+../acc.tiva.3/target.ld

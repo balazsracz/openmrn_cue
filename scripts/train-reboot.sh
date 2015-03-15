@@ -4,4 +4,4 @@ source $(dirname $0)/train-base.sh
 
 export DST=$1
 
-sendpkt ":X1A${DST}575N20A9;"
+train-send-datagram -n 0x0501010114$DST  -g 20A9

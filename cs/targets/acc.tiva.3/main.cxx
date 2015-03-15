@@ -65,6 +65,7 @@
 #define ENABLE_TIVA_SIGNAL_DRIVER
 #include "custom/TivaSignalPacket.hxx"
 #include "custom/SignalLoop.hxx"
+#include "custom/SignalServer.hxx"
 #include "dcc/RailCom.hxx"
 #include "dcc/Packet.hxx"
 #include "hardware.hxx"
@@ -97,10 +98,10 @@ namespace nmranet {
 Pool* const g_incoming_datagram_allocator = mainBufferPool;
 }
 
-/*bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
-   UART1_BASE,
+bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
+                                                 SYSCTL_PERIPH_UART1,
+                                                 UART1_BASE,
                                                  INT_RESOLVE(INT_UART1_, 0));
-*/
 
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
@@ -154,55 +155,55 @@ class LoggingBit : public nmranet::BitEventInterface {
 
 LoggingBit led_red_bit(R_EVENT_ID + 0, R_EVENT_ID + 1, nullptr);
 nmranet::BitEventConsumer red_consumer(&led_red_bit);
-TivaGPIOConsumer led_yellow(R_EVENT_ID + 2, R_EVENT_ID + 3, GPIO_PORTB_BASE,
-                            GPIO_PIN_0);
-TivaGPIOConsumer led_green(R_EVENT_ID + 4, R_EVENT_ID + 5, GPIO_PORTD_BASE,
-                           GPIO_PIN_5);
-TivaGPIOConsumer led_blue(R_EVENT_ID + 6, R_EVENT_ID + 7, GPIO_PORTG_BASE,
-                          GPIO_PIN_1);
-TivaGPIOConsumer led_bluesw(R_EVENT_ID + 8, R_EVENT_ID + 9, GPIO_PORTB_BASE,
-                            GPIO_PIN_6);
-TivaGPIOConsumer led_goldsw(R_EVENT_ID + 10, R_EVENT_ID + 11, GPIO_PORTB_BASE,
-                            GPIO_PIN_7);
+TivaGPIOConsumer led_yellow(R_EVENT_ID + 2, R_EVENT_ID + 3,
+                            LED_YELLOW_Pin::GPIO_BASE,
+                            LED_YELLOW_Pin::GPIO_PIN);
+TivaGPIOConsumer led_green(R_EVENT_ID + 4, R_EVENT_ID + 5,
+                           LED_GREEN_Pin::GPIO_BASE, LED_GREEN_Pin::GPIO_PIN);
+TivaGPIOConsumer led_blue(R_EVENT_ID + 6, R_EVENT_ID + 7,
+                          LED_BLUE_Pin::GPIO_BASE, LED_BLUE_Pin::GPIO_PIN);
+TivaGPIOConsumer led_bluesw(R_EVENT_ID + 8, R_EVENT_ID + 9,
+                            LED_BLUE_SW_Pin::GPIO_BASE,
+                            LED_BLUE_SW_Pin::GPIO_PIN);
+TivaGPIOConsumer led_goldsw(R_EVENT_ID + 10, R_EVENT_ID + 11,
+                            LED_GOLD_SW_Pin::GPIO_BASE,
+                            LED_GOLD_SW_Pin::GPIO_PIN);
 
-/* TODO: check the pin numbers here
+#ifdef HAVE_RELAYS
+TivaGPIOConsumer rel1(R_EVENT_ID + 17, R_EVENT_ID + 16, REL0_Pin::GPIO_BASE, REL0_Pin::GPIO_PIN);
+TivaGPIOConsumer rel2(R_EVENT_ID + 19, R_EVENT_ID + 18, REL1_Pin::GPIO_BASE, REL1_Pin::GPIO_PIN);
+TivaGPIOConsumer rel3(R_EVENT_ID + 21, R_EVENT_ID + 20, REL2_Pin::GPIO_BASE, REL2_Pin::GPIO_PIN);
+TivaGPIOConsumer rel4(R_EVENT_ID + 23, R_EVENT_ID + 22, REL3_Pin::GPIO_BASE, REL3_Pin::GPIO_PIN);
+#endif
 
-TivaGPIOConsumer rel1(R_EVENT_ID + 17, R_EVENT_ID + 16, GPIO_PORTC_BASE,
-                      GPIO_PIN_4);
-TivaGPIOConsumer rel2(R_EVENT_ID + 19, R_EVENT_ID + 18, GPIO_PORTC_BASE,
-                      GPIO_PIN_5);
-TivaGPIOConsumer rel3(R_EVENT_ID + 21, R_EVENT_ID + 20, GPIO_PORTG_BASE,
-                      GPIO_PIN_5);
-TivaGPIOConsumer rel4(R_EVENT_ID + 23, R_EVENT_ID + 22, GPIO_PORTF_BASE,
-                      GPIO_PIN_3);
-*/
-
-TivaGPIOConsumer out0(R_EVENT_ID + 32 + 0, R_EVENT_ID + 33 + 0, GPIO_PORTE_BASE,
-                      GPIO_PIN_4);  // Out0
-TivaGPIOConsumer out1(R_EVENT_ID + 32 + 2, R_EVENT_ID + 33 + 2, GPIO_PORTE_BASE,
-                      GPIO_PIN_5);  // Out1
-TivaGPIOConsumer out2(R_EVENT_ID + 32 + 4, R_EVENT_ID + 33 + 4, GPIO_PORTD_BASE,
-                      GPIO_PIN_0);  // Out2
-TivaGPIOConsumer out3(R_EVENT_ID + 32 + 6, R_EVENT_ID + 33 + 6, GPIO_PORTD_BASE,
-                      GPIO_PIN_1);  // Out3
-TivaGPIOConsumer out4(R_EVENT_ID + 32 + 8, R_EVENT_ID + 33 + 8, GPIO_PORTD_BASE,
-                      GPIO_PIN_2);  // Out4
+TivaGPIOConsumer out0(R_EVENT_ID + 32 + 0, R_EVENT_ID + 33 + 0, OUT0_Pin::GPIO_BASE, OUT0_Pin::GPIO_PIN);
+TivaGPIOConsumer out1(R_EVENT_ID + 32 + 2, R_EVENT_ID + 33 + 2, OUT1_Pin::GPIO_BASE, OUT1_Pin::GPIO_PIN);
+TivaGPIOConsumer out2(R_EVENT_ID + 32 + 4, R_EVENT_ID + 33 + 4, OUT2_Pin::GPIO_BASE, OUT2_Pin::GPIO_PIN);
+TivaGPIOConsumer out3(R_EVENT_ID + 32 + 6, R_EVENT_ID + 33 + 6, OUT3_Pin::GPIO_BASE, OUT3_Pin::GPIO_PIN);
+TivaGPIOConsumer out4(R_EVENT_ID + 32 + 8, R_EVENT_ID + 33 + 8, OUT4_Pin::GPIO_BASE, OUT4_Pin::GPIO_PIN);
 TivaGPIOConsumer out5(R_EVENT_ID + 32 + 10, R_EVENT_ID + 33 + 10,
-                      GPIO_PORTD_BASE, GPIO_PIN_3);  // Out5
+                      OUT5_Pin::GPIO_BASE, OUT5_Pin::GPIO_PIN);
 TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12,
-                      GPIO_PORTE_BASE, GPIO_PIN_3);  // Out6
+                      OUT6_Pin::GPIO_BASE, OUT6_Pin::GPIO_PIN);
 TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14,
-                      GPIO_PORTE_BASE, GPIO_PIN_2);  // Out7
+                      OUT7_Pin::GPIO_BASE, OUT7_Pin::GPIO_PIN);
 
 class TivaGPIOProducerBit : public nmranet::BitEventInterface {
  public:
   TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
-                      uint8_t port_bit)
+                      uint8_t port_bit, bool display = false)
       : BitEventInterface(event_on, event_off),
         ptr_(reinterpret_cast<const uint8_t*>(port_base +
-                                              (((unsigned)port_bit) << 2))) {}
+                                              (((unsigned)port_bit) << 2))),
+        display_(display) {}
 
-  bool GetCurrentState() OVERRIDE { return *ptr_; }
+  bool GetCurrentState() OVERRIDE {
+    bool result = *ptr_;
+    if (display_) {
+      Debug::DetectRepeat::set(result);
+    }
+    return result;
+  }
 
   void SetState(bool new_value) OVERRIDE {
     DIE("cannot set state of input producer");
@@ -212,38 +213,43 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
 
  private:
   const uint8_t* ptr_;
+  bool display_;
 };
 
 typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
-QuiesceDebouncer::Options opts(8);
+QuiesceDebouncer::Options opts(15);
 
 TivaGPIOProducer in0(opts, R_EVENT_ID + 48 + 0, R_EVENT_ID + 49 + 0,
-                     GPIO_PORTA_BASE, GPIO_PIN_0);
+                     IN0_Pin::GPIO_BASE, IN0_Pin::GPIO_PIN);
 TivaGPIOProducer in1(opts, R_EVENT_ID + 48 + 2, R_EVENT_ID + 49 + 2,
-                     GPIO_PORTA_BASE, GPIO_PIN_1);
+                     IN1_Pin::GPIO_BASE, IN1_Pin::GPIO_PIN);
 TivaGPIOProducer in2(opts, R_EVENT_ID + 48 + 4, R_EVENT_ID + 49 + 4,
-                     GPIO_PORTA_BASE, GPIO_PIN_2);
+                     IN2_Pin::GPIO_BASE, IN2_Pin::GPIO_PIN);
 TivaGPIOProducer in3(opts, R_EVENT_ID + 48 + 6, R_EVENT_ID + 49 + 6,
-                     GPIO_PORTA_BASE, GPIO_PIN_3);
+                     IN3_Pin::GPIO_BASE, IN3_Pin::GPIO_PIN);
 TivaGPIOProducer in4(opts, R_EVENT_ID + 48 + 8, R_EVENT_ID + 49 + 8,
-                     GPIO_PORTA_BASE, GPIO_PIN_4);
+                     IN4_Pin::GPIO_BASE, IN4_Pin::GPIO_PIN);
 TivaGPIOProducer in5(opts, R_EVENT_ID + 48 + 10, R_EVENT_ID + 49 + 10,
-                     GPIO_PORTA_BASE, GPIO_PIN_5);
+                     IN5_Pin::GPIO_BASE, IN5_Pin::GPIO_PIN);
 TivaGPIOProducer in6(opts, R_EVENT_ID + 48 + 12, R_EVENT_ID + 49 + 12,
-                     GPIO_PORTA_BASE, GPIO_PIN_6);
+                     IN6_Pin::GPIO_BASE, IN6_Pin::GPIO_PIN);
 TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14,
-                     GPIO_PORTA_BASE, GPIO_PIN_7);
+                     IN7_Pin::GPIO_BASE, IN7_Pin::GPIO_PIN);
 
 nmranet::RefreshLoop loop(&g_node,
                           {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
 #define NUM_SIGNALS 32
 
-/*bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
+bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
                                      (R_EVENT_ID & ~0xffffff) |
-                                         ((R_EVENT_ID & 0xff00) << 8),
-                                         NUM_SIGNALS);*/
+                                     ((R_EVENT_ID & 0xff00) << 8),
+                                     NUM_SIGNALS);
+
+bracz_custom::SignalServer signal_server(&g_datagram_service, &g_node,
+                                         &g_signalbus);
+
 struct RailcomReaderParams {
   const char* file_path;
   uint32_t base;
@@ -580,15 +586,16 @@ int appl_main(int argc, char* argv[]) {
   LED_GREEN_Pin::set(false);
   LED_YELLOW_Pin::set(false);
   LED_BLUE_Pin::set(false);
+  HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+#ifdef HAVE_RAILCOM
   // we need to enable the dcc receiving driver.
   ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
-  HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
   HubDeviceNonBlock<RailcomHubFlow> railcom_port(&railcom_hub, "/dev/railcom");
-  // Bootstraps the alias allocation process.
-  g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
-
   // os_thread_create(nullptr, "railcom_reader", 1, 800, &railcom_uart_thread,
   //                 &r1);
+#endif
+  // Bootstraps the alias allocation process.
+  g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
   // g_decode_flow = new DccDecodeFlow();
   g_executor.thread_body();
