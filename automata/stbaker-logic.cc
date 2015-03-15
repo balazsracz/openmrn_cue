@@ -81,7 +81,7 @@ DefAut(watchdog, brd, {
 
 DefAut(blinkaut, brd, {
   const int kBlinkSpeed = 3;
-  LocalVariable* rep(ImportVariable(blink_variable.get()));
+  LocalVariable* rep(ImportVariable(&bd.LedGoldSw));
   const LocalVariable& lblink_off(ImportVariable(blink_off));
   Def().IfState(StInit).ActState(StUser1);
   Def()
@@ -99,7 +99,7 @@ DefAut(blinkaut, brd, {
       .ActState(StUser1)
       .ActReg1(rep);
 
-  DefCopy(*rep, ImportVariable(&bd.LedGoldSw));
+  //DefCopy(*rep, ImportVariable(&bd.LedGoldSw));
 });
 
 int main(int argc, char** argv) {
