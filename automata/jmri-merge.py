@@ -773,6 +773,15 @@ def PrintLocationControls(layout, block, index):
   signal_vect = g_signal_offset_by_rotation[rotation]
   signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
   layout.append(CreateRGSignalIcon(int(signal_xy[0] - 8), int(signal_xy[1] - 8), "Sig." + block, rotation))
+  body_pt_map = {}
+  for b in index.block_map[bodyblock]:
+    neighbors = index.GetNeighbors(b)
+    for n in neighbors:
+      if n not in body_pt_map:
+        body_pt_map[n] = []
+      body_pt_map[n].append(b)
+  multi = [(name, listord) for (name, listord) in body_pt_map.items() if len(listord) > 1]
+  print("singles: ", multi, "conneciton", connection_point)
 
 
 def CreateLocoIcon(x, y, text):
