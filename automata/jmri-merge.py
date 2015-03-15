@@ -404,11 +404,18 @@ def CreateTurnouts():
       # rename system_name to have the right prefix
       systemname = 'MT' + systemname[2:]
       all_turnouts.append(Turnout(systemname, username, sensorname))
-    m = re.match('logic.(.*).signal.route_set_ab', sensor.user_name)
+    m = re.match('logic.(.*)[.]signal.route_set_ab', sensor.user_name)
     if m:
       blockname = m.group(1)
       systemname = 'MT' + sensor.system_name[2:]
       username = 'Sig.' + blockname
+      sensorname = sensor.user_name
+      all_turnouts.append(Turnout(systemname, username, sensorname))
+    m = re.match('logic.(.*)[.]rsignal.route_set_ab', sensor.user_name)
+    if m:
+      blockname = m.group(1)
+      systemname = 'MT' + sensor.system_name[2:]
+      username = 'Sig.R' + blockname
       sensorname = sensor.user_name
       all_turnouts.append(Turnout(systemname, username, sensorname))
     continue
@@ -623,6 +630,7 @@ def RenderSignalHeads(output_tree_root):
   desired_signalhead_list = []
   for location in all_locations:
     desired_signalhead_list.append(SignalHead('Sig.' + location))
+    desired_signalhead_list.append(SignalHead('Sig.R' + location))
   all_signalhead_node = output_tree_root.find('signalheads')
   SignalHead.SetMaxId(GetMaxSystemId(all_signalhead_node, strip_letters='LMH'))
   print("Number of signal heads:", len(desired_signalhead_list))
