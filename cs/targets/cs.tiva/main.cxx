@@ -346,13 +346,13 @@ class RailcomDebugFlow : public StateFlowBase {
     dcc::Feedback fb;
     int ret = ::read(fd_, &fb, sizeof(fb));
     HASSERT(ret == sizeof(fb));
-    if (fb.ch1Size) {
+    if (fb.ch1Size && fb.channel != 0xff) {
       LOG(INFO, "Railcom %x CH1 data(%" PRIu32 "): %s",
           fb.channel,
           fb.feedbackKey,
           display_railcom_data(fb.ch1Data, fb.ch1Size).c_str());
     }
-    if (fb.ch2Size) {
+    if (fb.ch2Size && fb.channel != 0xff) {
       LOG(INFO, "Railcom %x CH2 data(%" PRIu32 "): %s",
           fb.channel,
           fb.feedbackKey,
