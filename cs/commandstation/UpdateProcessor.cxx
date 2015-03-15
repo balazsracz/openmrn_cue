@@ -42,9 +42,6 @@
 
 namespace commandstation {
 
-// We have only one instance allowed from this class.
-static UpdateProcessor* instance_ = nullptr;
-
 // Urgent updates will take BufferBase from this pool to add stuff to the
 // priorityUpdates qlist.
 static Pool* urgent_update_buffer_pool() { return mainBufferPool; }
@@ -64,14 +61,9 @@ UpdateProcessor::UpdateProcessor(Service* service,
       trackSend_(track_send),
       nextRefreshIndex_(0),
       hasRefreshSource_(0) {
-  HASSERT(!instance_);
-  instance_ = this;
 }
 
-UpdateProcessor::~UpdateProcessor() {
-  HASSERT(instance_ == this);
-  instance_ = nullptr;
-}
+UpdateProcessor::~UpdateProcessor() {}
 
 void UpdateProcessor::notify_update(dcc::PacketSource* source, unsigned code) {
   Buffer<PriorityUpdate>* b;
@@ -147,26 +139,3 @@ StateFlowBase::Action UpdateProcessor::entry() {
 }
 
 }  // namespace commandstation
-
-namespace dcc {
-
-// Implementation of the update loop interface.
-
-void packet_processor_notify_update(PacketSource* source, unsigned code) {
-  HASSERT(commandstation::instance_);
-  commandstation::instance_->notify_update(source, code);
-}
-
-/** Adds a new refresh source to the background refresh loop. */
-void packet_processor_add_refresh_source(PacketSource* source) {
-  HASSERT(commandstation::instance_);
-  commandstation::instance_->register_refresh_source(source);
-}
-
-/** Removes a refresh source from the background refresh loop. */
-void packet_processor_remove_refresh_source(PacketSource* source) {
-  HASSERT(commandstation::instance_);
-  commandstation::instance_->unregister_refresh_source(source);
-}
-
-}  // namespace dcc

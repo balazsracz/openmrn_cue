@@ -52,19 +52,20 @@ namespace commandstation {
  * throttler on its input, fills these packets by calling into the packet
  * sources (aka train implementations), and sends the full packets to the track
  * interface for actually rendering them . */
-class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
+class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
+                        private dcc::UpdateLoopBase {
  public:
   UpdateProcessor(Service* service, PacketFlowInterface* track_send);
   ~UpdateProcessor();
 
   /** Adds a new refresh source to the background refresh packets. */
-  void register_refresh_source(dcc::PacketSource* source) {
+  void add_refresh_source(dcc::PacketSource* source) OVERRIDE {
     AtomicHolder h(this);
     refreshSources_.push_back(source);
     hasRefreshSource_ = 1;
   }
   /** Deletes a packet refresh source. */
-  void unregister_refresh_source(dcc::PacketSource* source) {
+  void remove_refresh_source(dcc::PacketSource* source) OVERRIDE {
     AtomicHolder h(this);
     refreshSources_.erase(
         remove(refreshSources_.begin(), refreshSources_.end(), source),
@@ -75,7 +76,7 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
   }
 
   /** Notifies that a packet source has an urgent packet. */
-  void notify_update(dcc::PacketSource* source, unsigned code);
+  void notify_update(dcc::PacketSource* source, unsigned code) OVERRIDE;
 
   // Entry to the state flow -- when a new packet needs to be sent.
   Action entry() OVERRIDE;
@@ -98,33 +99,6 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> > {
   // Which is the next guy on the refresh source list to add.
   unsigned nextRefreshIndex_ : 16;
   unsigned hasRefreshSource_ : 1;
-};
-
-/** This flow can be used to take all entries that show up in a FixedPool and
- * send them (empty) to a flow like the updateloop above. */
-template<class T>
-class PoolToQueueFlow : public StateFlowBase {
- public:
-  PoolToQueueFlow(Service* service, FixedPool* source, FlowInterface<T>* dest)
-      : StateFlowBase(service),
-        source_(source),
-        dest_(dest) {
-    get_next_entry();
-  }
-
- private:
-  Action get_next_entry() {
-    return allocate_and_call(dest_, STATE(got_entry), source_);
-  }
-
-  Action got_entry() {
-    auto* b = get_allocation_result(dest_);
-    dest_->send(b);
-    return get_next_entry();
-  }
-
-  FixedPool* source_;
-  FlowInterface<T>* dest_;
 };
 
 }  // namespace commandstation

@@ -44,6 +44,7 @@
 #include "utils/HubDeviceNonBlock.hxx"
 #include "utils/GridConnectHub.hxx"
 #include "executor/Executor.hxx"
+#include "executor/PoolToQueueFlow.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
 #include "os/watchdog.h"
@@ -256,7 +257,7 @@ private:
 
 dcc::LocalTrackIf track_if(&g_service, 2);
 commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
-commandstation::PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(&g_service, track_if.pool(), &cs_loop);
+PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(&g_service, track_if.pool(), &cs_loop);
 TivaTrackPowerOnOffBit on_off(nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                               nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
 nmranet::BitEventConsumer powerbit(&on_off);
@@ -291,8 +292,6 @@ void adc0_seq3_interrupt_handler(void) {
   g_short_detector.interrupt_handler();
 }
 }
-
-extern TivaDCC<DccHwDefs> dcc_hw;
 
 class RailcomDebugFlow : public StateFlowBase {
  public:
