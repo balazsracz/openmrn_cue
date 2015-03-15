@@ -311,7 +311,7 @@ TivaTrackPowerOnOffBit on_off(nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
 nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(&g_if_can);
 
-TivaAccPowerOnOffBit acc_on_off(BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
+TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
 nmranet::BitEventConsumer accpowerbit(&acc_on_off);
 
 typedef nmranet::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
