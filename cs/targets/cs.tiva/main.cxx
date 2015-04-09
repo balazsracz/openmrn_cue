@@ -53,7 +53,7 @@
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/EventBitProducer.hxx"
+#include "nmranet/PolledProducer.hxx"
 #include "nmranet/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 #include "utils/Debouncer.hxx"
@@ -75,6 +75,7 @@
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/UpdateProcessor.hxx"
 #include "nmranet/TractionTrain.hxx"
+#include "nmranet/NodeInitializeFlow.hxx"
 #include "dcc/Loco.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "dcc/LocalTrackIf.hxx"
@@ -180,6 +181,7 @@ void send_host_log_event(HostLogEvent e) {
 static const int kLocalNodesCount = 30;
 nmranet::IfCan g_if_can(&g_executor, &can_hub0, kLocalNodesCount, 3,
                         kLocalNodesCount);
+nmranet::InitializeFlow g_init_flow{&g_service};
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
