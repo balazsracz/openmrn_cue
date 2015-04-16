@@ -712,7 +712,7 @@ def GetRotationFromVector(v):
     return 1
 
 def CreateRGSignalIcon(x, y, head_name, rotation):
-  return ET.XML('    <signalheadicon signalhead="'+head_name+'" x="'+str(x)+'" y="'+str(y)+'" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" clickmode="3" litmode="false" class="jmri.jmrit.display.configurexml.SignalHeadIconXml"><tooltip>'+head_name+'</tooltip><icons><held url="program:resources/icons/smallschematics/searchlights/left-held-short.gif" degrees="0" scale="1.0"><rotation>'+str(rotation)+'</rotation></held>        <dark url="program:resources/icons/smallschematics/searchlights/left-dark-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </dark>        <red url="program:resources/icons/smallschematics/searchlights/left-red-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </red>        <green url="program:resources/icons/smallschematics/searchlights/left-green-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </green>      </icons>      <iconmaps />    </signalheadicon>')
+  return ET.XML('    <signalheadicon signalhead="'+head_name+'" x="'+str(x)+'" y="'+str(y)+'" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" clickmode="3" litmode="false" class="jmri.jmrit.display.configurexml.SignalHeadIconXml"><tooltip>'+head_name+'</tooltip><icons><held url="program:resources/icons/smallschematics/searchlights/left-held-short.gif" degrees="0" scale="1.0"><rotation>'+str(rotation)+'</rotation></held>        <dark url="program:resources/icons/smallschematics/searchlights/left-dark-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </dark>        <red url="program:resources/icons/smallschematics/searchlights/left-red-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </red>        <green url="program:resources/icons/smallschematics/searchlights/left-green-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </green>      </icons>      <iconmaps />    </signalheadicon>\n')
 
 # this many pixels behind the head point should the signals start
 g_back = 5
@@ -773,6 +773,7 @@ def PrintLocationControls(layout, block, index):
   signal_vect = g_signal_offset_by_rotation[rotation]
   signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
   layout.append(CreateRGSignalIcon(int(signal_xy[0] - 8), int(signal_xy[1] - 8), "Sig." + block, rotation))
+  # Computes the other end of the body segments.
   body_pt_map = {}
   for b in index.block_map[bodyblock]:
     neighbors = index.GetNeighbors(b)
@@ -780,9 +781,28 @@ def PrintLocationControls(layout, block, index):
       if n not in body_pt_map:
         body_pt_map[n] = []
       body_pt_map[n].append(b)
-  multi = [(name, listord) for (name, listord) in body_pt_map.items() if len(listord) > 1]
-  print("singles: ", multi, "conneciton", connection_point)
-
+  multi = [name for (name, listord) in body_pt_map.items() if len(listord) > 1]
+  for name in multi: del body_pt_map[name]
+  if connection_point not in body_pt_map:
+    raise Exception(("Connection point %s not found in " % connection_point) + str(singles))
+  del body_pt_map[connection_point]
+  print("singles: ", body_pt_map, "connection", connection_point)
+  if len(body_pt_map) != 1:
+    raise Exception("Cannot find unique body endpoint for block " + block)
+  far_tuple = body_pt_map.popitem()
+  far_point = far_tuple[0]
+  head_segment = far_tuple[1][0]
+  head_neighbors = index.GetNeighbors(head_segment)
+  head_neighbors.remove(far_point)
+  connection_point = head_neighbors.pop()
+  far_xy = index.GetMarginCoordinate(far_point, head_segment)
+  near_xy = index.GetMarginCoordinate(connection_point, head_segment)
+  dir_vect = (far_xy[0] - near_xy[0], far_xy[1] - near_xy[1])
+  rotation = GetRotationFromVector(dir_vect)
+  signal_vect = g_signal_offset_by_rotation[rotation]
+  signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
+  layout.append(CreateRGSignalIcon(int(signal_xy[0] - 8), int(signal_xy[1] - 8), "Sig.R" + block, rotation))
+  
 
 def CreateLocoIcon(x, y, text):
   return ET.XML('    <locoicon x="'+str(x)+'" y="' + str(y) + '" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="'+ text + '" size="12" style="0" red="51" green="51" blue="51" redBack="238" greenBack="238" blueBack="238" justification="centre" orientation="horizontal" icon="yes" dockX="967" dockY="153" class="jmri.jmrit.display.configurexml.LocoIconXml">\n      <icon url="program:resources/icons/markers/loco-white.gif" degrees="0" scale="1.0">\n        <rotation>0</rotation>\n      </icon>\n    </locoicon>\n');

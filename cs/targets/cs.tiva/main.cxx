@@ -44,6 +44,7 @@
 #include "utils/HubDeviceNonBlock.hxx"
 #include "utils/GridConnectHub.hxx"
 #include "executor/Executor.hxx"
+#include "executor/PoolToQueueFlow.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
 #include "os/watchdog.h"
@@ -306,13 +307,13 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
 
 dcc::LocalTrackIf track_if(&g_service, 2);
 commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
-commandstation::PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(&g_service, track_if.pool(), &cs_loop);
+PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(&g_service, track_if.pool(), &cs_loop);
 TivaTrackPowerOnOffBit on_off(nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                               nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
 nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(&g_if_can);
 
-TivaAccPowerOnOffBit acc_on_off(BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
+TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
 nmranet::BitEventConsumer accpowerbit(&acc_on_off);
 
 typedef nmranet::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
@@ -376,8 +377,6 @@ void adc0_seq2_interrupt_handler(void) {
 }
 }
 
-extern TivaDCC<DccHwDefs> dcc_hw;
-
 class RailcomDebugFlow : public StateFlowBase {
  public:
   RailcomDebugFlow(int fd) : StateFlowBase(&g_service), fd_(fd) {
@@ -430,13 +429,15 @@ class RailcomDebugFlow : public StateFlowBase {
     dcc::Feedback fb;
     int ret = ::read(fd_, &fb, sizeof(fb));
     HASSERT(ret == sizeof(fb));
-    if (fb.ch1Size) {
-      LOG(INFO, "Railcom CH1 data(%" PRIu32 "): %s",
+    if (fb.ch1Size && fb.channel != 0xff) {
+      LOG(INFO, "Railcom %x CH1 data(%" PRIu32 "): %s",
+          fb.channel,
           fb.feedbackKey,
           display_railcom_data(fb.ch1Data, fb.ch1Size).c_str());
     }
-    if (fb.ch2Size) {
-      LOG(INFO, "Railcom CH2 data(%" PRIu32 "): %s",
+    if (fb.ch2Size && fb.channel != 0xff) {
+      LOG(INFO, "Railcom %x CH2 data(%" PRIu32 "): %s",
+          fb.channel,
           fb.feedbackKey,
           display_railcom_data(fb.ch2Data, fb.ch2Size).c_str());
     }

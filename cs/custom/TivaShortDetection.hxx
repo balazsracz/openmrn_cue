@@ -212,7 +212,7 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
   AccessoryOvercurrentMeasurement(Service* s, nmranet::Node* node)
       : ADCFlowBase<HW>(s, MSEC_TO_NSEC(10)), num_short_(0), node_(node) {
     last_time_not_overcurrent_ = os_get_time_monotonic();
-    AccHwDefs::VOLTAGE_Pin::hw_init();
+    HW::VOLTAGE_Pin::hw_init();
     is_voltage_ = 0;
     num_uv_ = 0;
   }
@@ -373,27 +373,28 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
   }
 };
 
+template<class HW>
 class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
  public:
   TivaAccPowerOnOffBit(uint64_t event_on, uint64_t event_off)
       : BitEventInterface(event_on, event_off) {}
 
-  virtual bool GetCurrentState() { return AccHwDefs::ACC_ENABLE_Pin::get(); }
+  virtual bool GetCurrentState() { return HW::ACC_ENABLE_Pin::get(); }
   virtual void SetState(bool new_value) {
-    if (!AccHwDefs::ACC_ENABLE_Pin::get() && new_value) {
+    if (!HW::ACC_ENABLE_Pin::get() && new_value) {
       // We are turning power on.
       // sends some event reports to clear off the shorted and overcurrent bits.
       auto* b = node()->interface()->global_message_write_flow()->alloc();
       b->data()->reset(
           nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
-          nmranet::eventid_to_buffer(AccHwDefs::EVENT_OVERCURRENT ^ 1));
+          nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT ^ 1));
       node()->interface()->global_message_write_flow()->send(b);
       b = node()->interface()->global_message_write_flow()->alloc();
       b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
-                       nmranet::eventid_to_buffer(AccHwDefs::EVENT_SHORT ^ 1));
+                       nmranet::eventid_to_buffer(HW::EVENT_SHORT ^ 1));
       node()->interface()->global_message_write_flow()->send(b);
     }
-    AccHwDefs::ACC_ENABLE_Pin::set(new_value);
+    HW::ACC_ENABLE_Pin::set(new_value);
   }
 
   virtual nmranet::Node* node() {
