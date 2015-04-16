@@ -443,9 +443,10 @@ MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &bb.ActGreenGreen,
 StandardMovableTurnout Turnout_ZZW1(
     &brd, EventBlock::Allocator(logic.allocator(), "ZZ.W1", 40), &Magnet_ZZW1);
 
-StandardFixedTurnout Turnout_ZZW2(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "ZZ.W2", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_ZZW2(&g_magnet_aut, "ZZ.W2", &bb.ActOraGreen, &bb.ActOraRed);
+StandardMovableTurnout Turnout_ZZW2(
+    &brd, EventBlock::Allocator(logic.allocator(), "ZZ.W2", 40), &Magnet_ZZW2);
+
 MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
                       &bb.ActBlueGrey);
 StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
@@ -462,10 +463,9 @@ StandardFixedTurnout Turnout_W381(&brd,
                                   EventBlock::Allocator(logic2.allocator(),
                                                         "W381", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-StandardFixedTurnout Turnout_W382(&brd,
-                                  EventBlock::Allocator(logic2.allocator(),
-                                                        "W382", 40),
-                                  FixedTurnout::TURNOUT_CLOSED);
+MagnetDef Magnet_W382(&g_magnet_aut, "W382", &be.ActBrownGrey, &be.ActBrownBrown);
+StandardMovableTurnout Turnout_W382(
+    &brd, EventBlock::Allocator(logic2.allocator(), "W382", 40), &Magnet_W382);
 
 StandardMiddleDetector Det_500(&brd, &be.InOraRed,
                                EventBlock::Allocator(logic2.allocator(),
@@ -475,6 +475,14 @@ MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBlueGrey, &be.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic2.allocator(), "W481", 40), &Magnet_W481);
 
+MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &be.ActGreenGreen, &be.ActGreenRed);
+StandardMovableTurnout Turnout_YYW1(
+    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W1", 40), &Magnet_YYW1);
+StandardFixedTurnout Turnout_YYW3(&brd,
+                                  EventBlock::Allocator(logic2.allocator(),
+                                                        "YY.W3", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+
 StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
 StandardBlock Block_YYA3(&brd, &YYA3, logic2.allocator(), "YY.A3");
 StandardBlock Block_YYC23(&brd, &YYC23, logic2.allocator(), "YY.C23");
@@ -482,9 +490,10 @@ StandardMiddleDetector Det_YYC22(&brd, &ba.In1,
                                  EventBlock::Allocator(logic2.allocator(),
                                                        "YY.C22", 24, 8));
 
-StandardFixedTurnout Turnout_YYW6(&brd, EventBlock::Allocator(logic2.allocator(),
-                                                              "YY.W6", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen,
+                      &ba.ActOraRed);
+StandardMovableTurnout Turnout_YYW6(
+    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W6", 40), &Magnet_YYW6);
 
 StandardFixedTurnout Turnout_XXW1(&brd,
                                   EventBlock::Allocator(logic2.allocator(),
@@ -494,11 +503,13 @@ StandardFixedTurnout Turnout_XXW2(&brd,
                                   EventBlock::Allocator(logic2.allocator(),
                                                         "XX.W2", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-//MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &b3.ActBlueGrey,
-//                      &b3.ActBlueBrown);
-StandardFixedTurnout Turnout_XXW7(
+
+MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &ba.ActBrownGrey,
+                      &ba.ActBrownBrown);
+StandardMovableTurnout Turnout_XXW7(
     &brd, EventBlock::Allocator(logic2.allocator(), "XX.W7", 40),
-    FixedTurnout::TURNOUT_CLOSED);  // we ignore the magnets here
+    &Magnet_XXW7);
+
 MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActBlueGrey, &ba.ActBlueBrown);
 StandardMovableTurnout Turnout_XXW8(
     &brd, EventBlock::Allocator(logic2.allocator(), "XX.W8", 40), &Magnet_XXW8);
@@ -516,53 +527,56 @@ bool ignored5 = Block_A301.side_a()->Bind(Turnout_XXW1.b.side_points());
 bool ignored6 = Block_XXB1.side_b()->Bind(Turnout_XXW1.b.side_closed());
 bool ignored7 = Block_XXB3.side_b()->Bind(Turnout_XXW1.b.side_thrown());*/
 
-bool ign =
-    BindPairs({{Block_YYC23.side_b(), Turnout_YYW6.b.side_closed()},
-               {Det_YYC22.side_b(), Turnout_YYW6.b.side_thrown()},
-               {Block_YYB2.side_a(), Det_YYC22.side_a()},
-               {Turnout_YYW6.b.side_points(), Turnout_XXW8.b.side_points()},
-               {Block_XXB1.side_a(), Turnout_XXW8.b.side_closed()},
-               {Turnout_XXW7.b.side_points(), Turnout_XXW8.b.side_thrown()},
-               {Block_XXB2.side_b(), Turnout_XXW7.b.side_thrown()},
-               {Block_XXB3.side_a(), Turnout_XXW7.b.side_closed()},
-               {Block_XXB1.side_b(), Turnout_XXW1.b.side_closed()},
-               {Block_XXB2.side_a(), Turnout_XXW2.b.side_thrown()},
-               {Block_XXB3.side_b(), Turnout_XXW2.b.side_closed()},
-               {Turnout_XXW1.b.side_thrown(), Turnout_XXW2.b.side_points()},
-               {Turnout_XXW1.b.side_points(), Det_500.side_a()},
-               {Det_500.side_b(), Turnout_W382.b.side_closed()},
-               {Turnout_W382.b.side_thrown(), Block_YYB2.side_b()},
-               {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
-               {Turnout_W381.b.side_thrown(), Det_380.side_a()},
-               {Det_380.side_b(), Turnout_ZZW2.b.side_thrown()},
-               {Turnout_ZZW2.b.side_points(), Block_A360.side_a()},
-               {Turnout_ZZW2.b.side_closed(), DKW_ZZW3.b.point_a2()},
-               {DKW_ZZW3.b.point_b2(), Block_ZZA2.entry()},
-               {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
-               {Block_YYC23.side_a(), Block_YYA3.side_b()},
-               {Block_YYA3.side_a(), Turnout_W481.b.side_closed()},
-               {Block_B460.side_b(), Turnout_W459.b.side_closed()},
-               {Turnout_W459.b.side_points(), Block_B475.side_a()},
-               {Turnout_W459.b.side_thrown(), Turnout_W359.b.side_closed()},
-               {Turnout_W359.b.side_thrown(), Block_A360.side_b()},
-               {Turnout_W359.b.side_points(), Block_A347.side_a()},
-               {Block_B475.side_b(), Turnout_ZZW1.b.side_points()},
-               {Turnout_ZZW1.b.side_thrown(), DKW_ZZW3.b.point_a1()},
-               {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
-               {DKW_ZZW3.b.point_b1(), Turnout_W481.b.side_points()},
-               {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
-               {Block_WWB14.side_a(), Block_WWA11.side_b()},
-               {Block_WWA11.side_a(), DKW_WWW4.b.point_b1()},
-               {DKW_WWW4.b.point_b2(), Block_WWB2.entry()},
-               {DKW_WWW4.b.point_a2(), Turnout_WWW1.b.side_thrown()},
-               {Turnout_WWW3.b.side_thrown(), DKW_WWW4.b.point_a1()},
-               {Turnout_WWW2.b.side_thrown(), Turnout_WWW1.b.side_closed()},
-               {Turnout_WWW2.b.side_closed(), Block_B421.side_a()},
-               {Turnout_WWW2.b.side_points(), Turnout_WWW3.b.side_points()},
-               {Turnout_WWW3.b.side_closed(), Turnout_WWW5.b.side_points()},
-               {Turnout_WWW5.b.side_closed(), Block_WWB3.entry()},
-               {Turnout_WWW5.b.side_thrown(), Block_WWB14.side_b()},
-                   });
+bool ign = BindPairs({
+    {Block_YYC23.side_b(), Turnout_YYW6.b.side_closed()},
+    {Det_YYC22.side_b(), Turnout_YYW6.b.side_thrown()},
+    {Block_YYB2.side_a(), Det_YYC22.side_a()},
+    {Turnout_YYW6.b.side_points(), Turnout_XXW8.b.side_points()},
+    {Block_XXB1.side_a(), Turnout_XXW8.b.side_closed()},
+    {Turnout_XXW7.b.side_points(), Turnout_XXW8.b.side_thrown()},
+    {Block_XXB2.side_b(), Turnout_XXW7.b.side_thrown()},
+    {Block_XXB3.side_a(), Turnout_XXW7.b.side_closed()},
+    {Block_XXB1.side_b(), Turnout_XXW1.b.side_closed()},
+    {Block_XXB2.side_a(), Turnout_XXW2.b.side_thrown()},
+    {Block_XXB3.side_b(), Turnout_XXW2.b.side_closed()},
+    {Turnout_XXW1.b.side_thrown(), Turnout_XXW2.b.side_points()},
+    {Turnout_XXW1.b.side_points(), Det_500.side_a()},
+    {Det_500.side_b(), Turnout_W382.b.side_closed()},
+    {Turnout_W382.b.side_thrown(), Turnout_YYW3.b.side_thrown()},
+    {Turnout_YYW3.b.side_points(), Block_YYB2.side_b()},
+    {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
+    {Turnout_W381.b.side_thrown(), Det_380.side_a()},
+    {Det_380.side_b(), Turnout_ZZW2.b.side_thrown()},
+    {Turnout_ZZW2.b.side_points(), Block_A360.side_a()},
+    {Turnout_ZZW2.b.side_closed(), DKW_ZZW3.b.point_a2()},
+    {DKW_ZZW3.b.point_b2(), Block_ZZA2.entry()},
+    {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
+    {Block_YYC23.side_a(), Block_YYA3.side_b()},
+    {Block_YYA3.side_a(), Turnout_YYW1.b.side_closed()},
+    {Turnout_YYW3.b.side_closed(), Turnout_YYW1.b.side_thrown()},
+    {Turnout_YYW1.b.side_points(), Turnout_W481.b.side_closed()},
+    {Block_B460.side_b(), Turnout_W459.b.side_closed()},
+    {Turnout_W459.b.side_points(), Block_B475.side_a()},
+    {Turnout_W459.b.side_thrown(), Turnout_W359.b.side_closed()},
+    {Turnout_W359.b.side_thrown(), Block_A360.side_b()},
+    {Turnout_W359.b.side_points(), Block_A347.side_a()},
+    {Block_B475.side_b(), Turnout_ZZW1.b.side_points()},
+    {Turnout_ZZW1.b.side_thrown(), DKW_ZZW3.b.point_a1()},
+    {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
+    {DKW_ZZW3.b.point_b1(), Turnout_W481.b.side_points()},
+    {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
+    {Block_WWB14.side_a(), Block_WWA11.side_b()},
+    {Block_WWA11.side_a(), DKW_WWW4.b.point_b1()},
+    {DKW_WWW4.b.point_b2(), Block_WWB2.entry()},
+    {DKW_WWW4.b.point_a2(), Turnout_WWW1.b.side_thrown()},
+    {Turnout_WWW3.b.side_thrown(), DKW_WWW4.b.point_a1()},
+    {Turnout_WWW2.b.side_thrown(), Turnout_WWW1.b.side_closed()},
+    {Turnout_WWW2.b.side_closed(), Block_B421.side_a()},
+    {Turnout_WWW2.b.side_points(), Turnout_WWW3.b.side_points()},
+    {Turnout_WWW3.b.side_closed(), Turnout_WWW5.b.side_points()},
+    {Turnout_WWW5.b.side_closed(), Block_WWB3.entry()},
+    {Turnout_WWW5.b.side_thrown(), Block_WWB14.side_b()},
+});
 
 DefAut(display, brd, {
   DefCopy(ImportVariable(Block_XXB1.detector()),
