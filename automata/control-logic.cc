@@ -731,6 +731,7 @@ void ClearAutomataVariables(Automata* aut) {
 
 void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
   HASSERT(def->aut_state.state != 0);
+  aut->ClearUsedVariables();
   LocalVariable* current_state = aut->ImportVariable(def->current_state.get());
   const LocalVariable& command = aut->ImportVariable(*def->command);
   LocalVariable* set_0 = aut->ImportVariable(def->set_0);
