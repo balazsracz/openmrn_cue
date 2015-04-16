@@ -879,6 +879,7 @@ class LayoutSchedule : public TrainSchedule {
     AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
                                &g_loop_condition);
     SwitchTurnout(Turnout_XXW8.b.magnet(), true);
+    SwitchTurnout(Turnout_XXW7.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
                                &g_loop_condition);
     SwitchTurnout(Turnout_XXW8.b.magnet(), false);
@@ -886,8 +887,10 @@ class LayoutSchedule : public TrainSchedule {
     // front->back
     AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1,
                                &g_loop_condition);
+    SwitchTurnout(Turnout_YYW6.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1x,
                                &g_loop_condition);
+    SwitchTurnout(Turnout_YYW6.b.magnet(), true);
 
     // out
     AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
