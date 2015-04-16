@@ -36,12 +36,9 @@
 #include "custom/SignalLoop.hxx"
 #include "src/base.h"
 
-using nmranet::Node;
-using nmranet::DatagramService;
-
 namespace bracz_custom {
 
-SignalServer::SignalServer(DatagramService* if_dg, nmranet::Node* node,
+SignalServer::SignalServer(nmranet::DatagramService* if_dg, nmranet::Node* node,
                            SignalPacketBaseInterface* signalbus)
     : DefaultDatagramHandler(if_dg), node_(node), signalbus_(signalbus) {
   dg_service()->registry()->insert(node_, DATAGRAM_ID, this);
