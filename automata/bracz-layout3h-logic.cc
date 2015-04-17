@@ -894,8 +894,11 @@ class LayoutSchedule : public TrainSchedule {
 
     // out
     AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
+    SwitchTurnout(Turnout_W481.b.magnet(), false);
   }
 
   ByteImportVariable stored_speed_;
