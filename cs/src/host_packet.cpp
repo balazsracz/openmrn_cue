@@ -119,8 +119,7 @@ typedef Buffer<PacketBase> PacketQEntry;
 class DefaultPacketQueue::TxFlow : public StateFlowBase {
  public:
   TxFlow(DefaultPacketQueue* s)
-      : StateFlowBase(s),
-        writeFinished_(wait()) {
+      : StateFlowBase(s) {
     start_flow(STATE(send_sync_packet));
   }
 
@@ -132,64 +131,38 @@ class DefaultPacketQueue::TxFlow : public StateFlowBase {
     if (service()->synced()) {
       return call_immediately(STATE(get_next_packet));
     }
-    buf_ = syncpacket;
-    len_ = sizeof(syncpacket);
-    writeFinished_ = call_immediately(STATE(send_sync_packet));
-    return call_immediately(STATE(write_buf));
+    return write_repeated(&selectHelper_, service()->fd(), syncpacket,
+                          sizeof(syncpacket), STATE(send_sync_packet), 0);
   }
 
   Action get_next_packet() {
-    return allocate_and_call(STATE(send_next_packet), service()->outgoing_packet_queue());
+    return allocate_and_call(STATE(send_next_packet),
+                             service()->outgoing_packet_queue());
   }
 
   Action send_next_packet() {
     cast_allocation_result(&currentPacket_);
     sizeBuf_ = currentPacket_->data()->size();
-    buf_ = &sizeBuf_;
-    len_ = 1;
-    writeFinished_ = call_immediately(STATE(send_packet_data));
-    return call_immediately(STATE(write_buf));
+    return write_repeated(&selectHelper_, service()->fd(), &sizeBuf_, 1,
+                          STATE(send_packet_data), 0);
   }
 
   Action send_packet_data() {
-    buf_ = currentPacket_->data()->buf();
-    len_ = currentPacket_->data()->size();
-    writeFinished_ = call_immediately(STATE(send_finished));
-    return call_immediately(STATE(write_buf));
+    HASSERT(!selectHelper_.remaining_);
+    return write_repeated(
+        &selectHelper_, service()->fd(), currentPacket_->data()->buf(),
+        currentPacket_->data()->size(), STATE(send_finished), 0);
   }
 
   Action send_finished() {
+    HASSERT(!selectHelper_.remaining_);
     currentPacket_->unref();
     return call_immediately(STATE(get_next_packet));
   }
 
-  Action write_buf() {
-    ssize_t res = ::write(service()->fd(), buf_, len_);
-    if (res == 0) {
-      HASSERT(0 == ioctl(service()->fd(), CAN_IOC_WRITE_ACTIVE, this));
-      return wait();
-    }
-    else if (res > 0) {
-      len_ -= res;
-      buf_ += res;
-      if (!len_) {
-        return writeFinished_;
-      } else {
-        return again();
-      }
-    } else {
-      DIE("error writing");
-    }
-  }
-
  private:
   PacketQEntry* currentPacket_;
-  //! Buffer pointer for asynchronous write calls.
-  const uint8_t* buf_;
-  //! Length of asynchronous write left.
-  size_t len_;
-  //! We will continue at this state after the async write is complete.
-  Action writeFinished_;
+  StateFlowSelectHelper selectHelper_{this};
   //! 1-byte buffer for writing packet length.
   uint8_t sizeBuf_;
 };
