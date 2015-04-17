@@ -186,7 +186,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     reset_all_state();
     current_program_.clear();
     brd->Render(&current_program_);
-    fprintf(stderr, "program size: %d\n", current_program_.size());
+    fprintf(stderr, "program size: %zd\n", current_program_.size());
     memcpy(program_area_, current_program_.data(), current_program_.size());
     runner_ = new AutomataRunner(node_, program_area_, false);
     for (auto bit : mock_bits_) {
@@ -287,7 +287,7 @@ protected:
   }
 
   void ProduceEvent(uint64_t event_id) {
-    fprintf(stderr, "Producing event %016llx on node %p\n", event_id, node_);
+    fprintf(stderr, "Producing event %016" PRIx64 " on node %p\n", event_id, node_);
     SyncNotifiable n;
     writeHelper_.WriteAsync(
         node_, nmranet::Defs::MTI_EVENT_REPORT, nmranet::WriteHelper::global(),
@@ -306,7 +306,7 @@ protected:
       int t_on = event_last_seen_[var.event_on()];
       int t_off = event_last_seen_[var.event_off()];
       if (!t_on && !t_off) {
-        fprintf(stderr,"tick %d, not seen: %llx and %llx (bit %llx)\n", tick_, var.event_on(), var.event_off(), (var.event_on() - BRACZ_LAYOUT - 0xc000)/2);
+        fprintf(stderr,"tick %d, not seen: %" PRIx64 " and %" PRIx64 " (bit %" PRIx64 ")\n", tick_, var.event_on(), var.event_off(), (var.event_on() - BRACZ_LAYOUT - 0xc000)/2);
       }
       HASSERT(t_on || t_off);
       return t_on > t_off;

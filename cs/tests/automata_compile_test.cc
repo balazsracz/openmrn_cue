@@ -207,7 +207,7 @@ TEST(BlockTest, AllocatorTest) {
   EXPECT_EQ(18, resv2.Reserve(1));
   EXPECT_EQ(4, resv2.remaining());
 
-  EXPECT_DEATH(resv2.Reserve(5), "next_entry_");
+  EXPECT_DEATH(resv2.Reserve(5), "'blk' block overrun");
   BlockVariable bv(&resv1, "blockvar");
   EXPECT_EQ("blk.r1.blockvar", bv.name());
   block1.SetId(354);

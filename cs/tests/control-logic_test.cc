@@ -1840,7 +1840,7 @@ TEST_F(LogicTest, FlipFlopSimple) {
     FlipFlopClient* t = &cla;
     FlipFlopClient* o = &clb;
     if (i&1) {
-      swap(t, o);
+      std::swap(t, o);
     }
     LOG(INFO, "num %d t %p o %p", i, t, o);
     SetVar(*t->request(), true);
@@ -1880,8 +1880,8 @@ TEST_F(LogicTest, FlipFlopTriple) {
     SetVar(*o1->request(), false);
     SetVar(*o2->request(), false);
     Run(10);
-    swap(t, o1);
-    swap(o1, o2);
+    std::swap(t, o1);
+    std::swap(o1, o2);
   }
 }
 
@@ -1896,7 +1896,7 @@ TEST_F(LogicTest, FlipFlopRedacted) {
     FlipFlopClient* t = &cla;
     FlipFlopClient* o = &clb;
     if (i&1) {
-      swap(t, o);
+      std::swap(t, o);
     }
 
     LOG(INFO, "num %d t %p o %p", i, t, o);
@@ -1940,7 +1940,7 @@ TEST_F(LogicTest, FlipFlopSteal) {
     // We purposefully take the same client twice in a row so that we will
     // surely be stealing once in a while.
     if (i&2) {
-      swap(t, o);
+      std::swap(t, o);
     }
     LOG(INFO, "num %d t %p o %p", i, t, o);
     SetVar(*t->request(), true);
