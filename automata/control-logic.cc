@@ -893,6 +893,12 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
       .IfReg1(*magnets_ready)
       .ActState(StRequestGreen);
 
+  if (reset_routes) {
+    Def().IfState(StTurnout)
+        .IfReg1(aut->ImportVariable(*reset_routes))
+        .ActState(StWaiting);
+  }
+
   // If we haven't transitioned out of StTurnout state previously, then we
   // reset the "todo" bit and go for another round of magnet setting.
   Def().IfState(StTurnout)
