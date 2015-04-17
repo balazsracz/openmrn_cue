@@ -135,12 +135,31 @@ struct MagnetDef {
   string name_;
 };
 
+struct CoupledMagnetDef {
+  CoupledMagnetDef(MagnetCommandAutomata *aut, const string &name,
+                   MagnetDef* original, bool invert);
+  MagnetDef* original;
+  bool invert;
+
+  // Shadows the curent state of the remote turnout.
+  std::unique_ptr<GlobalVariable> current_state;
+  // This variable sets and tracks the commanded state.
+  std::unique_ptr<GlobalVariable> command;
+  // This variable shadows the remote command to determine the direction of
+  // command propagation. In a steady state this should be == command.
+  std::unique_ptr<GlobalVariable> remote_command;
+  string name_;
+};
+
 class MagnetCommandAutomata : public virtual AutomataPlugin {
  public:
   MagnetCommandAutomata(Board *brd, const EventBlock::Allocator &alloc);
 
   // Adds a magnet to this automata.
   void AddMagnet(MagnetDef *def);
+
+  // Adds a coupled magnet to this automata.
+  void AddCoupledMagnet(CoupledMagnetDef* def);
 
   int NewUserState() {
     return aut_.NewUserState();

@@ -791,6 +791,37 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
       .ActReg0(set_1);
 }
 
+void MagnetAutomataCouple(CoupledMagnetDef* def, Automata* aut) {
+  aut->ClearUsedVariables();
+  LocalVariable* current_state = aut->ImportVariable(def->current_state.get());
+  const LocalVariable& remote_state = aut->ImportVariable(*def->original->current_state);
+  LocalVariable* command = aut->ImportVariable(def->command.get());
+  LocalVariable* remote_command = aut->ImportVariable(def->remote_command.get());
+  LocalVariable* real_remote_command = aut->ImportVariable(def->original->command.get());
+
+  bool remote_1 = !def->invert;
+  bool remote_0 = def->invert;
+
+  // Propagates remote command changes to the local shadowed state and local
+  // command.
+  Def().IfReg(*real_remote_command, remote_1).IfReg0(*remote_command)
+      .ActReg1(remote_command).ActReg1(command);
+  Def().IfReg(*real_remote_command, remote_0).IfReg1(*remote_command)
+      .ActReg0(remote_command).ActReg0(command);
+
+  // Propagates local command changes to the remote command.
+  Def().IfReg1(*command).IfReg0(*remote_command)
+      .ActReg1(remote_command).ActReg(real_remote_command, remote_1);
+  Def().IfReg0(*command).IfReg1(*remote_command)
+      .ActReg0(remote_command).ActReg(real_remote_command, remote_0);
+
+  // Propagates remote state to local state.
+  Def().IfReg(remote_state, remote_1).IfReg0(*current_state)
+      .ActReg1(current_state);
+  Def().IfReg(remote_state, remote_0).IfReg1(*current_state)
+      .ActReg0(current_state);
+}
+
 void MagnetAutomataFinal(Automata* aut) {
   // This will make magnets only be pulled at tick times.
   Def().IfState(StBase).IfTimerDone().ActTimer(1);
@@ -808,6 +839,14 @@ void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
   // TODO(balazs.racz): Locked is ignored at the moment.
   def->locked.reset(alloc_.Allocate(def->name_ + ".locked"));
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
+}
+
+void MagnetCommandAutomata::AddCoupledMagnet(CoupledMagnetDef* def) {
+  def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
+  def->command.reset(alloc_.Allocate(def->name_ + ".command"));
+  // TODO(balazs.racz): Locked is ignored at the moment.
+  def->remote_command.reset(alloc_.Allocate(def->name_ + ".remote_command"));
+  AddAutomataPlugin(2, NewCallbackPtr(&MagnetAutomataCouple, def));
 }
 
 MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVariable* closed, GlobalVariable* thrown)
