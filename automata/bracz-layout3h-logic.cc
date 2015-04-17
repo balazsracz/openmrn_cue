@@ -292,6 +292,11 @@ DefAut(watchdog, brd, {
         .IfReg0(signal_short)
         .IfReg0(signal_over)
         .ActReg1(signal_off_tmp);
+
+    // Turns on is_paused when the accessory bus turned off due to short etc.
+    auto* lis_paused = ImportVariable(&is_paused);
+    Def().IfReg1(signal_short).ActReg1(lis_paused);
+    Def().IfReg1(signal_over).ActReg1(lis_paused);
   });
 
 DefAut(blinkaut, brd, {
