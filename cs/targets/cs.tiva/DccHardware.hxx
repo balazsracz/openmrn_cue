@@ -198,7 +198,7 @@ struct AccHwDefs {
   static const unsigned SHORT_LIMIT = 0x846;  // ~1.5 amps
 
   static const long long OVERCURRENT_TIME = SEC_TO_NSEC(10);
-  static const unsigned SHORT_COUNT = 5;
+  static const unsigned SHORT_COUNT = 10;
 
   static const uint64_t EVENT_SHORT = BRACZ_LAYOUT | 0x0006;
   static const uint64_t EVENT_OVERCURRENT = BRACZ_LAYOUT | 0x0008;
