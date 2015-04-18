@@ -508,14 +508,16 @@ MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen,
 StandardMovableTurnout Turnout_YYW6(
     &brd, EventBlock::Allocator(logic2.allocator(), "YY.W6", 40), &Magnet_YYW6);
 
-StandardFixedTurnout Turnout_XXW1(&brd,
-                                  EventBlock::Allocator(logic2.allocator(),
-                                                        "XX.W1", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
-StandardFixedTurnout Turnout_XXW2(&brd,
-                                  EventBlock::Allocator(logic2.allocator(),
-                                                        "XX.W2", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen, &be.ActOraRed);
+StandardMovableTurnout Turnout_XXW1(
+    &brd, EventBlock::Allocator(logic2.allocator(), "XX.W1", 40), &Magnet_XXW1);
+
+MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActGreenGreen,
+                      &ba.ActGreenRed);
+StandardMovableTurnout Turnout_XXW2(&brd,
+                                    EventBlock::Allocator(logic2.allocator(),
+                                                          "XX.W2", 40),
+                                    &Magnet_XXW2);
 
 MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &ba.ActBrownGrey,
                       &ba.ActBrownBrown);
