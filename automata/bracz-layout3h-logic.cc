@@ -406,12 +406,11 @@ MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &bc.ActOraGreen, &bc.ActOraRed);
 StandardMovableTurnout Turnout_WWW1(
     &brd, EventBlock::Allocator(logic.allocator(), "WW.W1", 40), &Magnet_WWW1);
 
-StandardFixedTurnout Turnout_WWW2(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "WW.W2", 40),
-                                  FixedTurnout::TURNOUT_CLOSED);
-StandardFixedTurnout Turnout_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "WW.W3", 40),
-                                  FixedTurnout::TURNOUT_CLOSED);
+MagnetDef Magnet_WWW3(&g_magnet_aut, "WW.W3", &bc.ActGreenGreen, &bc.ActGreenRed);
+StandardMovableDKW DKW_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
+                                                        "WW.W3", 64),
+                            &Magnet_WWW3);
+
 MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueBrown, &bc.ActBlueGrey);
 StandardMovableDKW DKW_WWW4(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "WW.W4", 64),
@@ -430,6 +429,15 @@ StandardBlock Block_A301(&brd, &A301, logic.allocator(), "A301");
 StandardBlock Block_A321(&brd, &A321, logic.allocator(), "A321");
 StandardBlock Block_A347(&brd, &A347, logic.allocator(), "A347");
 StandardBlock Block_A360(&brd, &A360, logic.allocator(), "A360");
+
+MagnetDef Magnet_W447(&g_magnet_aut, "W447", &bd.ActGreenGreen, &bd.ActGreenRed);
+StandardMovableTurnout Turnout_W447(
+    &brd, EventBlock::Allocator(logic.allocator(), "W447", 40), &Magnet_W447);
+CoupledMagnetDef Magnet_W347(&g_magnet_aut, "W347", &Magnet_W447, false);
+StandardMovableTurnout Turnout_W347(
+    &brd, EventBlock::Allocator(logic.allocator(), "W347", 40), &Magnet_W347);
+TurnoutWrap TW447(&Turnout_W447.b, kPointToClosed);
+TurnoutWrap TW347(&Turnout_W347.b, kPointToClosed);
 
 StandardBlock Block_B421(&brd, &B421, logic.allocator(), "B421");
 StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
@@ -523,8 +531,8 @@ StandardBlock Block_XXB1(&brd, &XXB1, logic2.allocator(), "XX.B1");
 StandardBlock Block_XXB2(&brd, &XXB2, logic2.allocator(), "XX.B2");
 StandardBlock Block_XXB3(&brd, &XXB3, logic2.allocator(), "XX.B3");
 
-bool ignored1 = BindSequence({&Block_A347, &Block_A321, &Block_A301});
-bool ignored2 = BindSequence({&Block_B421, &Block_B447, &Block_B460});
+bool ignored1 = BindSequence({&Block_A347, &TW347, &Block_A321, &Block_A301});
+bool ignored2 = BindSequence({&Block_B421, &Block_B447, &TW447, &Block_B460});
 /*bool ignored2 = Block_YYC23.side_b()->Bind(Turnout_XXW8.b.side_points());
 bool ignored3 = Block_XXB1.side_a()->Bind(Turnout_XXW8.b.side_closed());
 bool ignored4 = Block_XXB3.side_a()->Bind(Turnout_XXW8.b.side_thrown());
@@ -533,6 +541,7 @@ bool ignored6 = Block_XXB1.side_b()->Bind(Turnout_XXW1.b.side_closed());
 bool ignored7 = Block_XXB3.side_b()->Bind(Turnout_XXW1.b.side_thrown());*/
 
 bool ign = BindPairs({
+    {Turnout_W347.b.side_thrown(), Turnout_W447.b.side_thrown()},
     {Block_YYC23.side_b(), Turnout_YYW6.b.side_closed()},
     {Det_YYC22.side_b(), Turnout_YYW6.b.side_thrown()},
     {Block_YYB2.side_a(), Det_YYC22.side_a()},
@@ -574,11 +583,10 @@ bool ign = BindPairs({
     {Block_WWA11.side_a(), DKW_WWW4.b.point_b1()},
     {DKW_WWW4.b.point_b2(), Block_WWB2.entry()},
     {DKW_WWW4.b.point_a2(), Turnout_WWW1.b.side_thrown()},
-    {Turnout_WWW3.b.side_thrown(), DKW_WWW4.b.point_a1()},
-    {Turnout_WWW2.b.side_thrown(), Turnout_WWW1.b.side_closed()},
-    {Turnout_WWW2.b.side_closed(), Block_B421.side_a()},
-    {Turnout_WWW2.b.side_points(), Turnout_WWW3.b.side_points()},
-    {Turnout_WWW3.b.side_closed(), Turnout_WWW5.b.side_points()},
+    {DKW_WWW3.b.point_b1(), DKW_WWW4.b.point_a1()},
+    {DKW_WWW3.b.point_a2(), Turnout_WWW1.b.side_closed()},
+    {DKW_WWW3.b.point_a1(), Block_B421.side_a()},
+    {DKW_WWW3.b.point_b2(), Turnout_WWW5.b.side_points()},
     {Turnout_WWW5.b.side_closed(), Block_WWB3.entry()},
     {Turnout_WWW5.b.side_thrown(), Block_WWB14.side_b()},
 });
@@ -725,7 +733,7 @@ void IfZZ2OutFree(Automata::Op* op) {
 
 void IfWWB3EntryFree(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*DKW_WWW3.b.any_route()));
 }
 
 void IfWWB2EntryFree(Automata::Op* op) {
@@ -736,7 +744,7 @@ void IfWWB2EntryFree(Automata::Op* op) {
 void IfWWB2ExitFree(Automata::Op* op) {
   IfNotPaused(op);
   op->IfReg0(op->parent()->ImportVariable(*DKW_WWW4.b.any_route()))
-      .IfReg0(op->parent()->ImportVariable(*Turnout_WWW2.b.any_route()));
+      .IfReg0(op->parent()->ImportVariable(*DKW_WWW3.b.any_route()));
 }
 
 void IfB460OutNotBlocked(Automata::Op* op) {
@@ -776,7 +784,9 @@ class LayoutSchedule : public TrainSchedule {
   // Runs down from ZZ to WW on track 300.
   void Run360_to_301(Automata* aut) {
     AddEagerBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked);
-    AddEagerBlockSequence({&Block_A347, &Block_A321, &Block_A301},
+    AddEagerBlockTransition(&Block_A347, &Block_A321, &g_not_paused_condition);
+    SwitchTurnout(Turnout_W347.b.magnet(), false);
+    AddEagerBlockSequence({&Block_A321, &Block_A301},
                           &g_not_paused_condition);
   }
 
@@ -784,45 +794,52 @@ class LayoutSchedule : public TrainSchedule {
   void RunLoopWW(Automata* aut) {
     AddEagerBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
-    SwitchTurnout(DKW_WWW4.b.magnet(), false);
+    SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
     AddEagerBlockTransition(&Block_WWA11, &Block_WWB14, &g_not_paused_condition);
 
     AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
                                &g_wwb3_entry_free);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
   }
 
   // In WW, run through the stub track, changing direction.
   void RunStubWW(Automata* aut) {
     AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB3);
 
     AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
-    SwitchTurnout(DKW_WWW4.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB2);
 
     AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
                                &g_wwb3_entry_free);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
     AddBlockTransitionOnPermit(&Block_WWB2.b_, &Block_B421, &ww_from2,
                                &g_wwb2_exit_free);
-    SwitchTurnout(DKW_WWW4.b.magnet(), false);
+    SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
   }
 
   // In WW, run through the stub track, changing direction.
   void RunStubWWB3(Automata* aut) {
     AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB3);
 
     AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
                                &g_wwb3_entry_free);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
   }
 
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
     AddEagerBlockTransition(&Block_B421, &Block_B447, &g_not_paused_condition);
     AddEagerBlockTransition(&Block_B447, &Block_B460, &g_not_paused_condition);
+    SwitchTurnout(Turnout_W447.b.magnet(), false);
     AddEagerBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked);
   }
 
