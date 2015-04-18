@@ -52,10 +52,11 @@
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/EventBitProducer.hxx"
+#include "nmranet/PolledProducer.hxx"
 #include "nmranet/RefreshLoop.hxx"
 #include "nmranet/DatagramCan.hxx"
 #include "nmranet/MemoryConfig.hxx"
+#include "nmranet/NodeInitializeFlow.hxx"
 #include "nmranet/TractionDefs.hxx"
 #include "utils/Debouncer.hxx"
 #include "nmranet/DefaultNode.hxx"
@@ -87,6 +88,7 @@ extern const nmranet::NodeID NODE_ID;
 OVERRIDE_CONST(main_thread_stack_size, 2048);
 
 nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+nmranet::InitializeFlow g_init_flow{&g_service};
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
