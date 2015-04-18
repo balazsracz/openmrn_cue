@@ -444,12 +444,13 @@ StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
 StandardBlock Block_B460(&brd, &B460, logic.allocator(), "B460");
 StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
 
-StandardFixedTurnout Turnout_W359(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "W359", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
-StandardFixedTurnout Turnout_W459(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "W459", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_W359(&g_magnet_aut, "W359", &bb.ActBrownGrey,
+                      &bb.ActBrownBrown);
+StandardMovableTurnout Turnout_W359(
+    &brd, EventBlock::Allocator(logic.allocator(), "W359", 40), &Magnet_W359);
+CoupledMagnetDef Magnet_W459(&g_magnet_aut, "W459", &Magnet_W359, false);
+StandardMovableTurnout Turnout_W459(
+    &brd, EventBlock::Allocator(logic.allocator(), "W459", 40), &Magnet_W459);
 
 MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &bb.ActGreenGreen,
                       &bb.ActGreenRed);
