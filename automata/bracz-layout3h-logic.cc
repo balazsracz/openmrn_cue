@@ -472,11 +472,13 @@ StandardMiddleDetector Det_380(&brd, &bb.InGreenYellow,
                                EventBlock::Allocator(logic2.allocator(),
                                                      "Det380", 24, 8));
 
-StandardFixedTurnout Turnout_W381(&brd,
-                                  EventBlock::Allocator(logic2.allocator(),
-                                                        "W381", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBlueGrey, &be.ActBlueBrown);
+CoupledMagnetDef Magnet_W381(&g_magnet_aut, "W381", &Magnet_W481, true);
 MagnetDef Magnet_W382(&g_magnet_aut, "W382", &be.ActBrownGrey, &be.ActBrownBrown);
+StandardMovableTurnout Turnout_W381(&brd,
+                                    EventBlock::Allocator(logic2.allocator(),
+                                                          "W381", 40),
+                                    &Magnet_W381);
 StandardMovableTurnout Turnout_W382(
     &brd, EventBlock::Allocator(logic2.allocator(), "W382", 40), &Magnet_W382);
 
@@ -484,17 +486,15 @@ StandardMiddleDetector Det_500(&brd, &be.InOraRed,
                                EventBlock::Allocator(logic2.allocator(),
                                                      "Det500", 24, 8));
 
-MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBlueGrey, &be.ActBlueBrown);
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic2.allocator(), "W481", 40), &Magnet_W481);
 
 MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &be.ActGreenGreen, &be.ActGreenRed);
 StandardMovableTurnout Turnout_YYW1(
     &brd, EventBlock::Allocator(logic2.allocator(), "YY.W1", 40), &Magnet_YYW1);
-StandardFixedTurnout Turnout_YYW3(&brd,
-                                  EventBlock::Allocator(logic2.allocator(),
-                                                        "YY.W3", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+CoupledMagnetDef Magnet_YYW3(&g_magnet_aut, "YY.W3", &Magnet_YYW1, true);
+StandardMovableTurnout Turnout_YYW3(
+    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W3", 40), &Magnet_YYW3);
 
 StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
 StandardBlock Block_YYA3(&brd, &YYA3, logic2.allocator(), "YY.A3");
@@ -916,11 +916,12 @@ class LayoutSchedule : public TrainSchedule {
 
     // out
     AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
-    SwitchTurnout(Turnout_W481.b.magnet(), false);
+    SwitchTurnout(Turnout_W381.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
-    SwitchTurnout(Turnout_W481.b.magnet(), false);
+    SwitchTurnout(Turnout_W381.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
-    SwitchTurnout(Turnout_W481.b.magnet(), false);
+    SwitchTurnout(Turnout_YYW3.b.magnet(), true);
+    SwitchTurnout(Turnout_W381.b.magnet(), true);
   }
 
   ByteImportVariable stored_speed_;
