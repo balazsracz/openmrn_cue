@@ -114,7 +114,18 @@ class StandardPluginAutomata : public automata::Automata {
 
 class MagnetCommandAutomata;
 
-struct MagnetDef {
+struct MagnetBase {
+  // These variables are allocated by the magnetcommandautomata.
+
+  // This variable sets the commanded state.
+  std::unique_ptr<GlobalVariable> command;
+  // This variable tracks the current state.
+  std::unique_ptr<GlobalVariable> current_state;
+
+  GlobalVariable* locked;
+};
+
+struct MagnetDef : public MagnetBase {
   MagnetDef(MagnetCommandAutomata *aut, const string &name,
             GlobalVariable *closed, GlobalVariable *thrown);
   // This variable will be pulled when the command is zero (closed).
@@ -122,29 +133,19 @@ struct MagnetDef {
   // This variable will be pulled when the command is one (thrown).
   GlobalVariable *set_1;
 
-  // Thnese variables are allocated by the magnetcommandautomata.
-
-  // This variable sets the commanded state.
-  std::unique_ptr<GlobalVariable> command;
-  // This variable tracks the current state.
-  std::unique_ptr<GlobalVariable> current_state;
   // True if the current state must not be changed
-  std::unique_ptr<GlobalVariable> locked;
+  std::unique_ptr<GlobalVariable> owned_locked;
   // Initialized by the magnetcommandautomata.
   StateRef aut_state;
   string name_;
 };
 
-struct CoupledMagnetDef {
+struct CoupledMagnetDef : public MagnetBase {
   CoupledMagnetDef(MagnetCommandAutomata *aut, const string &name,
                    MagnetDef* original, bool invert);
   MagnetDef* original;
   bool invert;
 
-  // Shadows the curent state of the remote turnout.
-  std::unique_ptr<GlobalVariable> current_state;
-  // This variable sets and tracks the commanded state.
-  std::unique_ptr<GlobalVariable> command;
   // This variable shadows the remote command to determine the direction of
   // command propagation. In a steady state this should be == command.
   std::unique_ptr<GlobalVariable> remote_command;
@@ -574,6 +575,26 @@ class TurnoutInterface {
   virtual CtrlTrackInterface *side_thrown() = 0;
 };
 
+class TurnoutWrap : public StraightTrackInterface {
+ public:
+  struct PointToClosed {};
+  struct PointToThrown {};
+  struct ClosedToPoint {};
+  struct ThrownToPoint {};
+
+  TurnoutWrap(TurnoutInterface* t, const PointToClosed&)
+      : side_a_(t->side_points()), side_b_(t->side_closed()) {}
+
+  CtrlTrackInterface *side_a() OVERRIDE { return side_a_; }
+  CtrlTrackInterface *side_b() OVERRIDE { return side_b_; }
+
+ private:
+  CtrlTrackInterface* side_a_;
+  CtrlTrackInterface* side_b_;
+};
+
+static TurnoutWrap::PointToClosed kPointToClosed;
+
 void ClearAutomataVariables(Automata *aut);
 
 class TurnoutBase : public TurnoutInterface,
@@ -708,18 +729,18 @@ class TurnoutBase : public TurnoutInterface,
 
 class MovableTurnout : public TurnoutBase {
  public:
-  MovableTurnout(const EventBlock::Allocator &allocator, MagnetDef *def)
+  MovableTurnout(const EventBlock::Allocator &allocator, MagnetBase *def)
       : TurnoutBase(allocator), magnet_(def) {
     AddAutomataPlugin(110, NewCallbackPtr(this, &MovableTurnout::CopyState));
   }
 
-  MagnetDef *magnet() { return magnet_; }
+  MagnetBase *magnet() { return magnet_; }
 
  private:
   // Copies the turnout state from the physical turnout's actual state.
   void CopyState(Automata *aut);
 
-  MagnetDef *magnet_;
+  MagnetBase *magnet_;
 };
 
 class FixedTurnout : public TurnoutBase {
@@ -762,6 +783,9 @@ class DKW : private OccupancyLookupInterface,
             public virtual AutomataPlugin {
  public:
   enum State { DKW_STRAIGHT, DKW_CURVED };
+
+  static const bool kDKWStateCross = true;
+  static const bool kDKWStateCurved = false;
 
   // The connections are as follows: if DKW_STRAIGHT, POINT_A1--POINT_B1 and
   // POINT_A2--POINT_B2. If DKW_CURVED, then A1--B2 and A2--B1.
@@ -943,12 +967,12 @@ public:
 
 class MovableDKW : public DKW {
  public:
-  MovableDKW(const EventBlock::Allocator &allocator, MagnetDef *def)
+  MovableDKW(const EventBlock::Allocator &allocator, MagnetBase *def)
       : DKW(allocator), magnet_(def) {
     AddAutomataPlugin(110, NewCallbackPtr(this, &MovableDKW::CopyState));
   }
 
-  MagnetDef *magnet() { return magnet_; }
+  MagnetBase *magnet() { return magnet_; }
 
  private:
   // Copies the turnout state from the physical turnout's actual state.
@@ -961,13 +985,13 @@ class MovableDKW : public DKW {
     Def().IfReg0(any_route_set).IfReg0(physical_state).ActReg0(turnoutstate);
   }
 
-  MagnetDef *magnet_;
+  MagnetBase *magnet_;
 };
 
 class StandardMovableDKW {
  public:
   StandardMovableDKW(Board *brd, const EventBlock::Allocator &alloc,
-                     MagnetDef *magnet)
+                     MagnetBase *magnet)
       : b(alloc, magnet), aut_(alloc.name(), brd, &b) {}
 
   GlobalVariable *command() { return b.magnet()->command.get(); }
@@ -1032,7 +1056,7 @@ class StubBlock {
 class StandardMovableTurnout {
  public:
   StandardMovableTurnout(Board *brd, const EventBlock::Allocator &alloc,
-                         MagnetDef *magnet)
+                         MagnetBase *magnet)
       : b(alloc, magnet), aut_(alloc.name(), brd, &b) {}
 
   GlobalVariable *command() { return b.magnet()->command.get(); }
@@ -1322,7 +1346,7 @@ class TrainSchedule : public virtual AutomataPlugin {
   // @param magnet is the turnout to set.
   // @param desired_state if true, the turnout will be thrown, if false, will
   // be set to closed.
-  void SwitchTurnout(MagnetDef* magnet, bool desired_state);
+  void SwitchTurnout(MagnetBase* magnet, bool desired_state);
 
  private:
   // Handles state == StInit. Sets the train into a known state at startup,

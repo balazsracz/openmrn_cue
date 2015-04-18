@@ -839,7 +839,8 @@ void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
   def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
   def->command.reset(alloc_.Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
-  def->locked.reset(alloc_.Allocate(def->name_ + ".locked"));
+  def->owned_locked.reset(alloc_.Allocate(def->name_ + ".locked"));
+  def->locked = def->owned_locked.get();
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
 }
 
@@ -848,12 +849,20 @@ void MagnetCommandAutomata::AddCoupledMagnet(CoupledMagnetDef* def) {
   def->command.reset(alloc_.Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
   def->remote_command.reset(alloc_.Allocate(def->name_ + ".remote_command"));
+  def->locked = def->original->owned_locked.get();
   AddAutomataPlugin(2, NewCallbackPtr(&MagnetAutomataCouple, def));
 }
 
 MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVariable* closed, GlobalVariable* thrown)
-    : set_0(closed), set_1(thrown), command(nullptr), aut_state(aut->NewUserState()), name_(name) {
+    : set_0(closed), set_1(thrown), aut_state(aut->NewUserState()), name_(name) {
   aut->AddMagnet(this);
+}
+
+CoupledMagnetDef::CoupledMagnetDef(MagnetCommandAutomata* aut,
+                                   const string& name, MagnetDef* orig,
+                                   bool inv)
+    : original(orig), invert(inv), name_(name) {
+  aut->AddCoupledMagnet(this);
 }
 
 void TrainSchedule::HandleInit(Automata* aut) {
@@ -1195,7 +1204,7 @@ void TrainSchedule::AddCurrentOutgoingConditions(Automata::Op* op) {
   }
 }
 
-void TrainSchedule::SwitchTurnout(MagnetDef* magnet, bool desired_state) {
+void TrainSchedule::SwitchTurnout(MagnetBase* magnet, bool desired_state) {
   auto* magnets_ready = aut->ImportVariable(magnets_ready_.get());
   Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
       .ActImportVariable(*magnet->command, magnet_command_)
