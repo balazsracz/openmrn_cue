@@ -207,7 +207,7 @@ class OccupancyLookupInterface {
   // Returns the first (real) occupancy detector within train length from the
   // interface `from'. Returns NULL if no such detector was found. The interface
   // is interpreted by
-  virtual const GlobalVariable *LookupCloseDetector(
+  virtual const GlobalVariable *LookupNextDetector(
       const CtrlTrackInterface *from) const = 0;
 
   // Returns the first occupancy detector outside of train length from the
@@ -235,24 +235,12 @@ class CtrlTrackInterface {
 
   // Occupancy value of the current block, or the neighboring block less than a
   // train-length away.
-  virtual const GlobalVariable *LookupCloseDetector() const {
-    return lookup_if_->LookupCloseDetector(this);
+  virtual const GlobalVariable *LookupNextDetector() const {
+    return lookup_if_->LookupNextDetector(this);
   }
   // Occupancy value of the block that is more than train-length away.
   virtual const GlobalVariable *LookupFarDetector() const {
     return lookup_if_->LookupFarDetector(this);
-  }
-
-  const GlobalVariable *LookupNextDetector() const {
-    const GlobalVariable *ret = LookupCloseDetector();
-    if (ret != nullptr) {
-      return ret;
-    }
-    ret = LookupFarDetector();
-    if (ret != nullptr) {
-      return ret;
-    }
-    HASSERT(0 && "could not retrieve next occupancy variable");
   }
 
   CtrlTrackInterface *binding() const { return binding_; }
@@ -360,7 +348,7 @@ class StraightTrackWithDetector : public StraightTrack {
         30, NewCallbackPtr(this, &StraightTrackWithDetector::DetectorRoute));
   }
 
-  const GlobalVariable *LookupCloseDetector(
+  const GlobalVariable *LookupNextDetector(
       const CtrlTrackInterface *from) const OVERRIDE {
     return detector_;
   }
@@ -411,10 +399,10 @@ class StraightTrackShort : public StraightTrack {
                                          &StraightTrack::SimulateAllRoutes));
   }
 
-  const GlobalVariable *LookupCloseDetector(
+  const GlobalVariable *LookupNextDetector(
       const CtrlTrackInterface *from) const OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
-    return FindOtherSide(from)->binding()->LookupCloseDetector();
+    return FindOtherSide(from)->binding()->LookupNextDetector();
   }
 
   // Returns the first occupancy detector outside of train length from the
@@ -434,9 +422,9 @@ class StraightTrackLong : public StraightTrack {
                       NewCallbackPtr(this, &StraightTrack::SimulateAllRoutes));
   }
 
-  const GlobalVariable *LookupCloseDetector(
+  const GlobalVariable *LookupNextDetector(
       const CtrlTrackInterface *from) const OVERRIDE {
-    return nullptr;
+    return LookupFarDetector(from);
   }
 
   // Returns the first occupancy detector outside of train length from the
@@ -466,10 +454,10 @@ class SignalPiece : public StraightTrackShort {
     AddAutomataPlugin(30, NewCallbackPtr(this, &SignalPiece::SignalRoute));
   }
 
-  const GlobalVariable *LookupCloseDetector(
+  const GlobalVariable *LookupNextDetector(
       const CtrlTrackInterface *from) const OVERRIDE {
     if (!FindOtherSide(from)->binding()) return nullptr;
-    return FindOtherSide(from)->binding()->LookupCloseDetector();
+    return FindOtherSide(from)->binding()->LookupNextDetector();
   }
 
   // Returns the first occupancy detector outside of train length from the
@@ -527,6 +515,7 @@ class StandardBlock : public StraightTrackInterface {
   virtual CtrlTrackInterface *side_b() { return signal_.side_b(); }
 
   GlobalVariable *request_green() { return request_green_.get(); }
+  GlobalVariable *rrequest_green() { return rrequest_green_.get(); }
   const GlobalVariable &route_in() const { return *body_det_.route_set_ab_; }
   const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
   const GlobalVariable &rev_route_out() const { return *rsignal_.route_set_ab_; }
@@ -693,12 +682,12 @@ class TurnoutBase : public TurnoutInterface,
   std::unique_ptr<GlobalVariable> detector_far_;
 
  private:
-  const GlobalVariable *LookupCloseDetector(
+  const GlobalVariable *LookupNextDetector(
       const CtrlTrackInterface *from) const OVERRIDE {
     if (from == &side_points_) {
       return detector_next_.get();
     } else {
-      return side_points_.binding()->LookupCloseDetector();
+      return side_points_.binding()->LookupNextDetector();
     }
   }
 
@@ -867,7 +856,7 @@ class DKW : private OccupancyLookupInterface,
 
   const GlobalVariable *any_route() const { return any_route_set_.get(); }
 
-  const GlobalVariable *LookupCloseDetector(
+  const GlobalVariable *LookupNextDetector(
       const CtrlTrackInterface *from) const OVERRIDE {
     auto* info = &points_[FindPoint(from)];
     return info->detector_next.get();

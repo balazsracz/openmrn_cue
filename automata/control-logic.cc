@@ -474,10 +474,12 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
       .ActReg1(sim_occ)
       .ActReg0(tmp_seen_train_in_next);
 
-  if (next_if->binding()->LookupFarDetector()) {
+  auto* far_detector = next_if->binding()->LookupFarDetector();
+  auto* next_detector = next_if->binding()->LookupNextDetector();
+  if (far_detector) {
     // printf("Have far detector\n");
     const LocalVariable& next_trainlength_occ =
-        aut->ImportVariable(*next_if->binding()->LookupFarDetector());
+        aut->ImportVariable(*far_detector);
     // If the train has shown up in a far-away block, it has surely passed
     // through us.
     Def()
@@ -487,10 +489,10 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
         .RunCallback(release_cb);
   }
 
-  if (next_if->binding()->LookupCloseDetector()) {
+  if (next_detector && (next_detector != far_detector)) {
     // printf("Have close detector\n");
     const LocalVariable& next_close_occ =
-        aut->ImportVariable(*next_if->binding()->LookupCloseDetector());
+        aut->ImportVariable(*next_detector);
     // We save a bit when a train has shown up in the next block.
     Def().IfReg1(route_set).IfReg1(*sim_occ).IfReg1(next_close_occ).ActReg1(
         tmp_seen_train_in_next);
