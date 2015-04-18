@@ -362,13 +362,12 @@ TEST_F(LogicTest, SimulatedOccupancy_ShortAndLongPieces) {
 
   EXPECT_EQ(&next_detector, piece4.side_b()->binding()->LookupNextDetector());
   EXPECT_EQ(&next_detector, piece3.side_b()->binding()->LookupNextDetector());
-  EXPECT_EQ(&next_detector, piece3.side_b()->binding()->LookupCloseDetector());
   EXPECT_EQ(&next_detector, piece2.side_b()->binding()->LookupFarDetector());
 
   EXPECT_EQ(&previous_detector,
             piece4.side_a()->binding()->LookupFarDetector());
   EXPECT_EQ(&previous_detector,
-            piece3.side_a()->binding()->LookupCloseDetector());
+            piece3.side_a()->binding()->LookupNextDetector());
 
   // Now run the train forwards.
   SetVar(*piece.route_set_ab_, true);
@@ -938,10 +937,10 @@ TEST_F(LogicTest, Signal) {
   LOG(INFO, "Setting route to first signal.");
   before.detector.Set(true);
   SetVar(*before.b.side_b()->out_try_set_route, true);
-  Run(5);
+  Run(10);
   EXPECT_FALSE(QueryVar(*before.b.side_b()->out_try_set_route));
-  EXPECT_TRUE(QueryVar(*first.b()->body_.side_a()->in_route_set_success));
-  EXPECT_FALSE(QueryVar(*first.b()->body_.side_a()->in_route_set_failure));
+  EXPECT_TRUE(QueryVar(*first.b()->side_a()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(*first.b()->side_a()->in_route_set_failure));
 
   EXPECT_TRUE(QueryVar(*first.b()->body_det_.route_set_ab_));
   // the route is not yet beyond the signal
@@ -1172,7 +1171,7 @@ TEST_F(LogicTest, FixedTurnout) {
   EXPECT_TRUE(QueryVar(*turnout_l.b.turnout_state_));
   EXPECT_FALSE(QueryVar(*turnout_r.b.turnout_state_));
   SetVar(*left.b()->request_green(), true);
-  Run(5);
+  Run(10);
   EXPECT_TRUE(left.signal_green()->Get());
   EXPECT_TRUE(QueryVar(*left.b()->signal_.route_set_ab_));
   EXPECT_FALSE(QueryVar(*right.b()->signal_.route_set_ab_));
@@ -1205,7 +1204,7 @@ TEST_F(LogicTest, FixedTurnout) {
 
   // Right train comes in.
   SetVar(*right.b()->request_green(), true);
-  Run(5);
+  Run(10);
   EXPECT_TRUE(QueryVar(*right.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.route_set_PC_));
@@ -1219,10 +1218,14 @@ TEST_F(LogicTest, FixedTurnout) {
 
   // Left->Right train goes out.
   SetVar(*station_lr.b()->request_green(), true);
-  Run(10);
+  Run(15);
   EXPECT_TRUE(QueryVar(*station_lr.b()->signal_.route_set_ab_));
-  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
   EXPECT_TRUE(QueryVar(*right.b()->body_.route_set_ba_));
+  // another green is needed beyond the right.
+  SetVar(*right.b()->rrequest_green(), true);
+  Run(15);
+  EXPECT_TRUE(QueryVar(*right.b()->rsignal_.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*mid_right.b.route_set_ba_));
 
   right.inverted_detector()->Set(false);
   Run(15);
@@ -1322,7 +1325,7 @@ TEST_F(LogicTest, MovableTurnout) {
 
   LOG(INFO, "Giving green to first train");
   SetVar(*right.b()->request_green(), true);
-  Run(5);
+  Run(6);
   EXPECT_FALSE(QueryVar(*right.b()->request_green()));
   EXPECT_TRUE(QueryVar(*right.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
@@ -1374,7 +1377,7 @@ TEST_F(LogicTest, MovableTurnout) {
 
   // Give green again, this time it works.
   SetVar(*right.b()->request_green(), true);
-  Run(5);
+  Run(6);
   EXPECT_FALSE(QueryVar(*right.b()->request_green()));
   EXPECT_TRUE(QueryVar(*right.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_r.b.any_route_set_));
@@ -1393,7 +1396,7 @@ TEST_F(LogicTest, MovableTurnout) {
 
   // Get train 1 out.
   SetVar(*station_1.b()->request_green(), true);
-  Run(5);
+  Run(6);
   EXPECT_TRUE(QueryVar(*station_1.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*left.b()->body_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
@@ -1403,7 +1406,7 @@ TEST_F(LogicTest, MovableTurnout) {
   EXPECT_FALSE(QueryVar(*turnout_l.b.any_route_set_));
 
   SetVar(*station_2.b()->request_green(), true);
-  Run(5);
+  Run(6);
   EXPECT_TRUE(QueryVar(*left.b()->body_.route_set_ab_));
   EXPECT_FALSE(QueryVar(*station_2.b()->signal_.route_set_ab_));
 
@@ -1414,7 +1417,7 @@ TEST_F(LogicTest, MovableTurnout) {
 
   // So that train 2 can leave too
   SetVar(*station_2.b()->request_green(), true);
-  Run(5);
+  Run(6);
   EXPECT_TRUE(QueryVar(*left.b()->body_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*station_2.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*turnout_l.b.any_route_set_));
@@ -1485,8 +1488,12 @@ TEST_F(LogicTest, FixedDKW) {
     EXPECT_TRUE(QueryVar(*dkw.simulated_occupancy_));
     EXPECT_TRUE(QueryVar(
         *dkw.get_route(DKW::POINT_A1, DKW::POINT_B1)->route_set.get()));
+
+    SetVar(*l.in_b1.b()->rrequest_green(), true);
+    Run(20);
+
     EXPECT_TRUE(QueryVar(l.in_b2.b()->route_in()));
-    
+
     l.in_b1.inverted_detector()->Set(false);
     Run(20);
     l.in_a1.inverted_detector()->Set(true);
@@ -1506,8 +1513,12 @@ TEST_F(LogicTest, FixedDKW) {
     EXPECT_TRUE(QueryVar(*dkw.any_route()));
     EXPECT_TRUE(QueryVar(
         *dkw.get_route(DKW::POINT_B2, DKW::POINT_A2)->route_set.get()));
+
+    SetVar(*l.in_a2.b()->rrequest_green(), true);
+    Run(20);
+
     EXPECT_TRUE(QueryVar(l.in_a1.b()->route_in()));
-    
+
     l.in_a2.inverted_detector()->Set(false);
     Run(20);
     l.in_b2.inverted_detector()->Set(true);
@@ -1542,6 +1553,10 @@ TEST_F(LogicTest, MovableDKW) {
 
     EXPECT_TRUE(QueryVar(*dkw.get_route(l.BlockToPoint(from),
                                         l.BlockToPoint(via))->route_set.get()));
+
+    SetVar(*via->b()->rrequest_green(), true);
+    Run(20);
+
     EXPECT_TRUE(QueryVar(to->b()->route_in()));
 
     via->inverted_detector()->Set(false);
@@ -1559,8 +1574,8 @@ TEST_F(LogicTest, MovableDKW) {
     Run(20);
   };
 
-  SetVar(*magnet.command, false);
-  SetVar(*magnet.current_state, false);
+  SetVar(*magnet.command, true);
+  SetVar(*magnet.current_state, true);
   l.in_a1.inverted_detector()->Set(false);
   Run(30);
 
@@ -1574,7 +1589,7 @@ TEST_F(LogicTest, MovableDKW) {
     move(&l.in_a1, &l.in_b1, &l.in_b2);
     fprintf(stderr, "round %d step 2b\n", i);
     move(&l.in_b2, &l.in_a2, &l.in_a1);
-    SetVar(*magnet.command, true);
+    SetVar(*magnet.command, false);
     Run(20);
     // A1->B2; B1->A2
     fprintf(stderr, "round %d step 3\n", i);
@@ -1588,7 +1603,7 @@ TEST_F(LogicTest, MovableDKW) {
 
     fprintf(stderr, "round %d step 5\n", i);
     move(&l.in_a1, &l.in_b2, &l.in_b1);
-    SetVar(*magnet.command, false);
+    SetVar(*magnet.command, true);
     Run(20);
     // A2->B2; B1->A1;
     fprintf(stderr, "round %d step 6\n", i);
@@ -1602,7 +1617,7 @@ TEST_F(LogicTest, MovableDKW) {
 
     fprintf(stderr, "round %d step 8\n", i);
     move(&l.in_b1, &l.in_a1, &l.in_a2);
-    SetVar(*magnet.command, true);
+    SetVar(*magnet.command, false);
     Run(20);
     // A2->B1; B2->A1
     fprintf(stderr, "round %d step 9\n", i);
@@ -1616,7 +1631,7 @@ TEST_F(LogicTest, MovableDKW) {
     // Let's get back to a1 for another round.
     fprintf(stderr, "round %d step b\n", i);
     move(&l.in_a2, &l.in_b1, &l.in_b2);
-    SetVar(*magnet.command, false);
+    SetVar(*magnet.command, true);
     Run(20);
     fprintf(stderr, "round %d step c\n", i);
     move(&l.in_b2, &l.in_a2, &l.in_a1);
