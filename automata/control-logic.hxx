@@ -943,9 +943,9 @@ public:
   void FixDKWState(Automata *aut) {
     auto *turnoutstate = aut->ImportVariable(turnout_state_.get());
     if (fixed_state_ == DKW_STRAIGHT) {
-      Def().ActReg0(turnoutstate);
-    } else {
       Def().ActReg1(turnoutstate);
+    } else {
+      Def().ActReg0(turnoutstate);
     }
   }
 
