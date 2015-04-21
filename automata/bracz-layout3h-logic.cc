@@ -890,13 +890,16 @@ class LayoutSchedule : public TrainSchedule {
   void RunLoopXXYY(Automata* aut) {
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
-    SwitchTurnout(Turnout_W481.b.magnet(), true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+    SwitchTurnout(Turnout_W481.b.magnet(), true);
+    SwitchTurnout(Turnout_W382.b.magnet(), false);
+    SwitchTurnout(Turnout_XXW1.b.magnet(), true);
+    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
 
     AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
 
