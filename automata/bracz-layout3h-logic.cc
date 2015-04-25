@@ -68,6 +68,7 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
+
 I2CSignal signal_XXB2_main(&ba, 31, "XX.B2.main"); // 159 (0x9F)
 I2CSignal signal_XXB2_adv(&ba, 32, "XX.B2.adv");
 
@@ -89,11 +90,16 @@ I2CSignal signal_A347_adv(&bd, 23, "A347.adv");
 
 I2CSignal signal_B447_main(&bd, 10, "B447.main");  // 131 0x83
 I2CSignal signal_B447_adv(&bd, 11, "B447.adv");
+I2CSignal signal_A447_main(&bd, 44, "A447.main");  // 151 0x97
+I2CSignal signal_A447_adv(&bd, 45, "A447.adv");
 
 I2CSignal signal_A360_main(&bb, 12, "A360.main"); // 142 (0x8E)
 I2CSignal signal_A360_adv(&bb, 13, "A360.adv");
 I2CSignal signal_A460_main(&bb, 14, "A460.main");  // 139 (0x8B)
 I2CSignal signal_A460_adv(&bb, 15, "A460.adv");
+
+I2CSignal signal_B460_main(&bb, 63, "B460.main");  // 191 (0xBF)
+I2CSignal signal_B360_main(&bb, 62, "B360.main");  // 174 (0xAE)
 
 I2CSignal signal_B360_adv(&bb, 17, "B360.adv");  // 138 (0x8A)
 I2CSignal signal_B460_adv(&bb, 19, "B460.adv");  // 144 0x90
@@ -106,8 +112,8 @@ I2CSignal signal_B375_adv(&bb, 33, "B375.adv");
 I2CSignal signal_B475_main(&bb, 6, "B475.main"); // 155 0x9B
 I2CSignal signal_B475_adv(&bb, 7, "B475.adv");
 
-I2CSignal signal_XXB1_main(&ba, 25, "XX.B1.main"); // 147 (0x93)
-I2CSignal signal_XXB3_main(&ba, 24, "XX.B3.main"); // 140 (0x8C)
+I2CSignal signal_XXB1_main(&be, 25, "XX.B1.main"); // 147 (0x93)
+I2CSignal signal_XXB3_main(&be, 24, "XX.B3.main"); // 140 (0x8C)
 
 I2CSignal signal_YYC23_main(&ba, 26, "YY.C23.main"); //  158 (0x9E)
 I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
@@ -115,8 +121,8 @@ I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
 I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main"); // 141 (0x8D)
 I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
-I2CSignal signal_WWB14_main(&bc, 22, "WW.B14.main"); // ?? DUP ADDR
-I2CSignal signal_WWB14_adv(&bc, 23, "WW.B14.adv");
+I2CSignal signal_WWB14_main(&bc, 34, "WW.B14.main"); // NOT REFLASHED
+I2CSignal signal_WWB14_adv(&bc, 35, "WW.B14.adv");
 
 
 /* More signals
@@ -148,6 +154,13 @@ address 141 (0x8D) main 4 adv 5 reflashed in YY.B2
 
 address 157 (0x9D) main 22 adv 23 reflashed in A347
 address 159 (0x9F) main 31 adv 32 reflashed in XX.B2
+
+address 151 (0x97) main 44 adv 45 reflshed in A447
+address 140 main 34 adv 25 in WW.B14 NOT REFLASHED
+
+address 191 (0xBF) main 63 in B460-main reflashed
+address 174 (0xAE) main 62 in B360-main reflashed
+
 */
 
 //I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
@@ -160,7 +173,7 @@ PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0,
                     &signal_A375_adv.signal, &signal_B360_adv.signal);
 PhysicalSignal A347(&bd.In3, &bd.Rel1,
                     &signal_A347_main.signal, &signal_A347_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
+                    &signal_B360_main.signal, nullptr, nullptr, nullptr);
 PhysicalSignal A321(&bd.In5, &bd.Rel3,
                     &signal_A321_main.signal, &signal_A321_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
@@ -189,8 +202,9 @@ PhysicalSignal B447(&bd.In2, &bd.Rel0,
                     &signal_B447_main.signal, &signal_B447_adv.signal,
                     &signal_A421_main.signal, &signal_A421_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal B460(&bb.InGreenGreen, &bb.Rel2, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
+PhysicalSignal B460(&bb.InGreenGreen, &bb.Rel2, &signal_B460_main.signal,
+                    nullptr, &signal_A447_main.signal, &signal_A447_adv.signal,
+                    nullptr, nullptr);
 PhysicalSignal B475(&bb.InBrownGrey, &bb.Rel1,
                     &signal_B475_main.signal, &signal_B475_adv.signal,
                     &signal_A460_main.signal, &signal_A460_adv.signal,
@@ -660,6 +674,7 @@ DefAut(signalaut1, brd, {
 DefAut(signalaut2, brd, {
     BlockSignal(this, &Block_B421);
     BlockSignal(this, &Block_B447);
+    BlockSignal(this, &Block_B460);
     BlockSignal(this, &Block_B475);
   });
 
