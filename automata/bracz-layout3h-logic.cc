@@ -74,6 +74,8 @@ I2CSignal signal_XXB2_adv(&ba, 32, "XX.B2.adv");
 
 I2CSignal signal_A301_main(&bc, 72, "A301.main");
 I2CSignal signal_A301_adv(&bc, 73, "A301.adv");
+I2CSignal signal_A401_main(&bc, 34, "A401.main");
+I2CSignal signal_A401_adv(&bc, 35, "A401.adv");
 
 I2CSignal signal_A321_main(&bd, 36, "A321.main");  // 166 0xA6
 I2CSignal signal_A321_adv(&bd, 37, "A321.adv");
@@ -87,6 +89,8 @@ I2CSignal signal_B421_adv(&bd, 41, "B421.adv");
 
 I2CSignal signal_A347_main(&bd, 22, "A347.main");  // 157 (0x9D)
 I2CSignal signal_A347_adv(&bd, 23, "A347.adv");
+I2CSignal signal_B347_main(&bd, 8, "B347.main");  // 143 (0x8F)
+I2CSignal signal_B347_adv(&bd, 9, "B347.adv");
 
 I2CSignal signal_B447_main(&bd, 10, "B447.main");  // 131 0x83
 I2CSignal signal_B447_adv(&bd, 11, "B447.adv");
@@ -121,14 +125,22 @@ I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
 I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main"); // 141 (0x8D)
 I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
-I2CSignal signal_WWB14_main(&bc, 34, "WW.B14.main"); // NOT REFLASHED
-I2CSignal signal_WWB14_adv(&bc, 35, "WW.B14.adv");
+//I2CSignal signal_WWB14_main(&bc, 34, "WW.B14.main"); // NOT REFLASHED
+//I2CSignal signal_WWB14_adv(&bc, 35, "WW.B14.adv");
+
+I2CSignal signal_WWB14_main(&bc, 69, "WW.B14.main");  // 173
+I2CSignal signal_WWB14_adv(&bc, 70, "WW.B14.adv");
+I2CSignal signal_WWB3_main(&bc, 67, "WW.B3.main");  // 167
+I2CSignal signal_WWB3_adv(&bc, 68, "WW.B3.adv");
+I2CSignal signal_WWB2_main(&bc, 51, "WW.B3.main");  // 171
+I2CSignal signal_WWB2_adv(&bc, 52, "WW.B3.adv");
+I2CSignal signal_WWB11_main(&bc, 49, "WW.B11.main");  // 164
+I2CSignal signal_WWB11_adv(&bc, 50, "WW.B11.adv");
 
 
 /* More signals
 
 address 158 (0x9E) main 26 adv 27  reflashed in YYC23
-GONE address 143 (0x8F) main 8 adv 9 reflashed in XXB2
 address 155 (0x9B) main 6 adv 7   reflashed in B475
 address 145 (0x91) main 32 adv 33 reflashed in B375
 
@@ -156,10 +168,16 @@ address 157 (0x9D) main 22 adv 23 reflashed in A347
 address 159 (0x9F) main 31 adv 32 reflashed in XX.B2
 
 address 151 (0x97) main 44 adv 45 reflshed in A447
-address 140 main 34 adv 25 in WW.B14 NOT REFLASHED
+address 140 main 34 adv 35 in A401 reflashed
 
 address 191 (0xBF) main 63 in B460-main reflashed
 address 174 (0xAE) main 62 in B360-main reflashed
+address 143 (0x8F) main 8 adv 9 reflashed in B347
+
+address 173  main 69 adv 70 in WW.B14 reflashed
+address 167  main 67 adv 68 in WW.B3 reflashed
+address 171  main 51 adv 52 in WW.B2 reflashed
+address 164  main 49 adv 50 in WW.B11 reflashed
 
 */
 
@@ -174,9 +192,9 @@ PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0,
 PhysicalSignal A347(&bd.In3, &bd.Rel1,
                     &signal_A347_main.signal, &signal_A347_adv.signal,
                     &signal_B360_main.signal, nullptr, nullptr, nullptr);
-PhysicalSignal A321(&bd.In5, &bd.Rel3,
-                    &signal_A321_main.signal, &signal_A321_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal A321(&bd.In5, &bd.Rel3, &signal_A321_main.signal,
+                    &signal_A321_adv.signal, &signal_B347_main.signal,
+                    &signal_B347_adv.signal, nullptr, nullptr);
 PhysicalSignal A301(&bc.InBrownBrown, &bc.LedYellow,
                     &signal_A301_main.signal, &signal_A301_adv.signal,
                     &signal_B321_main.signal, &signal_B321_adv.signal,
@@ -185,19 +203,20 @@ PhysicalSignal WWB14(&bc.InBrownGrey, &bc.Rel0,
                      &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal WWB3(&bc.InGreenYellow, &bc.Rel1,
-                    nullptr, nullptr,
+                    &signal_WWB3_main.signal, &signal_WWB3_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal WWB2(&bc.InGreenGreen, &bc.Rel2,
-                    nullptr, nullptr,
+                    &signal_WWB2_main.signal, &signal_WWB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal WWA11(&bc.InOraGreen, &bc.Rel3,
                      nullptr, nullptr,
+                     &signal_WWB11_main.signal, &signal_WWB11_adv.signal,
                      //                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
-                     nullptr, nullptr, nullptr, nullptr);
+                     nullptr, nullptr);
 
-PhysicalSignal B421(&bd.In4, &bd.Rel2,
-                    &signal_B421_main.signal, &signal_B421_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal B421(&bd.In4, &bd.Rel2, &signal_B421_main.signal,
+                    &signal_B421_adv.signal, &signal_A401_main.signal,
+                    &signal_A401_adv.signal, nullptr, nullptr);
 PhysicalSignal B447(&bd.In2, &bd.Rel0,
                     &signal_B447_main.signal, &signal_B447_adv.signal,
                     &signal_A421_main.signal, &signal_A421_adv.signal,
@@ -669,6 +688,8 @@ DefAut(signalaut1, brd, {
     BlockSignal(this, &Block_A347);
     BlockSignal(this, &Block_A321);
     BlockSignal(this, &Block_A301);
+    BlockSignal(this, &Block_WWB2.b_);
+    BlockSignal(this, &Block_WWB3.b_);
   });
 
 DefAut(signalaut2, brd, {
@@ -676,6 +697,7 @@ DefAut(signalaut2, brd, {
     BlockSignal(this, &Block_B447);
     BlockSignal(this, &Block_B460);
     BlockSignal(this, &Block_B475);
+    BlockSignal(this, &Block_WWA11);
   });
 
 FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", *logic.allocator(), 32);
