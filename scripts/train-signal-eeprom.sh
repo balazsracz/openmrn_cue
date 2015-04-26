@@ -4,7 +4,7 @@
 
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
   echo usage: $0 controller-address-base signal-address eepromaddress value
-  echo example $0 4D 00 00 1F
+  echo example $0 4D 131 7 63
   exit 1
 fi
 

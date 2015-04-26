@@ -13,16 +13,20 @@ export A=$1
 LO=$2
 HI=$3
 
+BASE_ASPECT=4
+FOUND_ASPECT=3
+EXIT_ASPECT=5
+
 train signal-pause $A
 
 function aspect() {
   train signal-packet $A $(printf %02x $1)0303$(printf %02x $2)
 }
 
-aspect 0 1
+aspect 0 $BASE_ASPECT
 
 while [ $LO -lt $HI ] ; do 
-  aspect 0 1
+  aspect 0 $BASE_ASPECT
 
   sleep 0.5
 
@@ -32,7 +36,7 @@ while [ $LO -lt $HI ] ; do
 
   DGOPTS=
   for i in $(seq $LO $MI) ; do
-    DGOPTS+=" -g 2F10$(printf %02x $i)030303"
+    DGOPTS+=" -g 2F10$(printf %02x $i)0303$(printf %02x $FOUND_ASPECT)"
   done
 
   train-send-datagram -n 0x0501010114$A  $DGOPTS
@@ -51,4 +55,4 @@ done
 
 echo lo $LO hi $HI  hex 0x$(printf %02x $LO)
 
-aspect $LO 5
+aspect $LO $EXIT_ASPECT

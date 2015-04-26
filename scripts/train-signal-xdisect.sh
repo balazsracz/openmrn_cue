@@ -24,7 +24,7 @@ function reinit() {
 }
 
 
-reinint
+reinit
 
 while [ $LO -lt $HI ] ; do 
   reinit
