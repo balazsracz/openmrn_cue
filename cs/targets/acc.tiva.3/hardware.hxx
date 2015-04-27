@@ -1,6 +1,8 @@
 #ifndef _ACC_TIVA_3_HARDWARE_HXX_
 #define _ACC_TIVA_3_HARDWARE_HXX_
 
+#define USE_WII_CHUCK
+
 #include "TivaGPIO.hxx"
 
 #include "inc/hw_memmap.h"

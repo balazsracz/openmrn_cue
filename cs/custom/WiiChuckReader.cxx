@@ -1,5 +1,8 @@
 #include "custom/WiiChuckReader.hxx"
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
 #include "i2c.h"
 #include "i2c-dev.h"
 

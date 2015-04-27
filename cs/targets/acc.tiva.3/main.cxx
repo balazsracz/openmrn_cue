@@ -73,6 +73,8 @@
 #include "TivaNRZ.hxx"
 #include "dcc/Receiver.hxx"
 #include "SimpleLog.hxx"
+#include "custom/WiiChuckThrottle.hxx"
+#include "custom/WiiChuckReader.hxx"
 
 NO_THREAD nt;
 Executor<5> g_executor(nt);
@@ -95,6 +97,10 @@ nmranet::EventService g_event_service(&g_if_can);
 nmranet::CanDatagramService g_datagram_service(&g_if_can, 2, 2);
 nmranet::MemoryConfigHandler g_memory_config_handler(&g_datagram_service,
                                                      &g_node, 1);
+
+#ifdef USE_WII_CHUCK
+bracz_custom::WiiChuckThrottle wii_throttle(&g_node, 0x060100000000ULL | 51);
+#endif
 
 namespace nmranet {
 Pool* const g_incoming_datagram_allocator = mainBufferPool;
@@ -595,6 +601,9 @@ int appl_main(int argc, char* argv[]) {
   HubDeviceNonBlock<RailcomHubFlow> railcom_port(&railcom_hub, "/dev/railcom");
   // os_thread_create(nullptr, "railcom_reader", 1, 800, &railcom_uart_thread,
   //                 &r1);
+#endif
+#ifdef USE_WII_CHUCK
+  bracz_custom::WiiChuckReader wii_reader("/dev/i2c3", &wii_throttle);
 #endif
   // Bootstraps the alias allocation process.
   g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
