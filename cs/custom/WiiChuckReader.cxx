@@ -1,10 +1,17 @@
+#define LOGLEVEL INFO
+
 #include "custom/WiiChuckReader.hxx"
 
 #include <fcntl.h>
+#ifdef __linux__
 #include <sys/ioctl.h>
+#else
+
+#endif
 
 #include "i2c.h"
 #include "i2c-dev.h"
+#include "utils/logging.h"
 
 namespace bracz_custom {
 
