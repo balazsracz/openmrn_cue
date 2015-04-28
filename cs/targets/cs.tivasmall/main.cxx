@@ -54,7 +54,9 @@
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/NodeInitializeFlow.hxx"
 #include "nmranet/DefaultNode.hxx"
+#include "nmranet/TractionTestTrain.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
 // for logging implementation
@@ -79,6 +81,8 @@
 #include "mobilestation/AllTrainNodes.hxx"
 
 #include "custom/TivaShortDetection.hxx"
+#include "custom/WiiChuckThrottle.hxx"
+#include "custom/WiiChuckReader.hxx"
 
 #include "inc/hw_types.h"
 #include "inc/hw_memmap.h"
@@ -87,6 +91,7 @@
 #include "DccHardware.hxx"
 #include "TivaDCC.hxx"
 #include "dcc/RailCom.hxx"
+#include "hardware.hxx"
 
 //#define STANDALONE
 
@@ -182,12 +187,17 @@ void send_host_log_event(HostLogEvent e) {
 static const int kLocalNodesCount = 30;
 nmranet::IfCan g_if_can(&g_executor, &can_hub0, kLocalNodesCount, 3,
                         kLocalNodesCount);
+nmranet::InitializeFlow g_init_flow{&g_service};
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 0;
+
+#ifdef USE_WII_CHUCK
+bracz_custom::WiiChuckThrottle wii_throttle(&g_node, 0x060100000000ULL | 51);
+#endif
 
 extern "C" { void resetblink(uint32_t pattern); }
 
@@ -327,13 +337,12 @@ nmranet::TrainService traction_service(&g_if_can);
 //dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
 //nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
 
-
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 mobilestation::TrainDb train_db;
 CanIf can1_interface(&g_service, &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
 
-mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
+//mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
 
 
 void mydisable()
@@ -371,10 +380,18 @@ int appl_main(int argc, char* argv[])
     PacketQueue::initialize("/dev/serUSB0", true);
 #endif
     setblink(0);
-    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+    //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
     //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
+
+    nmranet::LoggingTrain train_log(51);
+    nmranet::TrainNode train_log_node(&traction_service, &train_log);
+
+#ifdef USE_WII_CHUCK
+    bracz_custom::WiiChuckReader wii_reader("/dev/i2c1", &wii_throttle);
+    wii_reader.start();
+#endif
 
     int mainline = open("/dev/mainline", O_RDWR);
     HASSERT(mainline > 0);
