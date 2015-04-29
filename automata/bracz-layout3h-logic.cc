@@ -255,7 +255,7 @@ PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel2,
                     &signal_XXB3_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB2(&be.InOraGreen, &be.Rel3,
+PhysicalSignal YYB2(&be.InGreenGreen, &be.Rel3,
                     &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -929,12 +929,14 @@ class LayoutSchedule : public TrainSchedule {
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+    SwitchTurnout(Turnout_YYW3.b.magnet(), false); // crossover from left to right track
     SwitchTurnout(Turnout_W481.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     SwitchTurnout(Turnout_W481.b.magnet(), true);
     SwitchTurnout(Turnout_W382.b.magnet(), false);
+    SwitchTurnout(Turnout_YYW3.b.magnet(), true); // crossover from left to right track
     SwitchTurnout(Turnout_XXW1.b.magnet(), true);
     SwitchTurnout(Turnout_XXW2.b.magnet(), true);
 
