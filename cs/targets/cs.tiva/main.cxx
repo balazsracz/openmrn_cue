@@ -51,6 +51,7 @@
 
 #include "nmranet/IfCan.hxx"
 #include "nmranet/If.hxx"
+#include "nmranet/DatagramCan.hxx"
 #include "nmranet/AliasAllocator.hxx"
 #include "nmranet/EventService.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
@@ -71,6 +72,7 @@
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/TrackInterface.hxx"
 #include "custom/HostLogging.hxx"
+#include "custom/AutomataControl.hxx"
 #include "mobilestation/MobileStationSlave.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
@@ -138,7 +140,7 @@ CanHubFlow can_hub1(&g_service);  // this CANbus will have no hardware.
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
 
 extern "C" {
-extern insn_t automata_code[];
+extern insn_t __automata_start[];
 }
 
 
@@ -186,6 +188,7 @@ nmranet::InitializeFlow g_init_flow{&g_service};
 static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
 nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
 nmranet::EventService g_event_service(&g_if_can);
+nmranet::CanDatagramService g_dg_service(&g_if_can, 5, 2);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2B08ULL;
 const int main_priority = 0;
@@ -313,6 +316,11 @@ TivaTrackPowerOnOffBit on_off(nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
 nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(&g_if_can);
 
+namespace nmranet {
+extern Pool *const g_incoming_datagram_allocator =
+    mainBufferPool;
+}
+
 TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
 nmranet::BitEventConsumer accpowerbit(&acc_on_off);
 
@@ -332,6 +340,8 @@ TivaGPIOConsumer led_acc(BRACZ_LAYOUT | 4, BRACZ_LAYOUT | 5, io::AccPwrLed::GPIO
 TivaGPIOConsumer led_go(BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,  io::GoPausedLed::GPIO_BASE, io::GoPausedLed::GPIO_PIN);
 
 nmranet::RefreshLoop loop(&g_node, {&sw1, &sw2});
+
+bracz_custom::AutomataControl automatas(&g_node, &g_dg_service, __automata_start);
 
 /*TivaSwitchProducer sw2(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                        nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
@@ -494,9 +504,6 @@ int appl_main(int argc, char* argv[])
         new nmranet::AliasAllocator(NODE_ID, &g_if_can));
     // Bootstraps the alias allocation process.
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
-
-    AutomataRunner runner(&g_node, automata_code);
-    resume_all_automata();
 
 #ifdef STANDALONE
     // Start dcc output
