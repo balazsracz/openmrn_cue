@@ -46,6 +46,7 @@
 #include "inc/hw_memmap.h"
 
 #include "executor/StateFlow.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
 #include "utils/logging.h"
 #include "dcc_control.hxx"
 #include "DccHardware.hxx"
@@ -353,8 +354,9 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
 
 class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
  public:
-  TivaTrackPowerOnOffBit(uint64_t event_on, uint64_t event_off)
-      : BitEventInterface(event_on, event_off) {}
+  TivaTrackPowerOnOffBit(nmranet::Node* node, uint64_t event_on,
+                         uint64_t event_off)
+      : BitEventInterface(event_on, event_off), node_(node) {}
 
   virtual bool GetCurrentState() { return query_dcc(); }
   virtual void SetState(bool new_value) {
@@ -367,17 +369,18 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
     }
   }
 
-  virtual nmranet::Node* node() {
-    extern nmranet::DefaultNode g_node;
-    return &g_node;
-  }
+  virtual nmranet::Node* node() { return node_; }
+
+ private:
+  nmranet::Node* node_;
 };
 
-template<class HW>
+template <class HW>
 class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
  public:
-  TivaAccPowerOnOffBit(uint64_t event_on, uint64_t event_off)
-      : BitEventInterface(event_on, event_off) {}
+  TivaAccPowerOnOffBit(nmranet::Node* node, uint64_t event_on,
+                       uint64_t event_off)
+      : BitEventInterface(event_on, event_off), node_(node) {}
 
   virtual bool GetCurrentState() { return HW::ACC_ENABLE_Pin::get(); }
   virtual void SetState(bool new_value) {
@@ -385,9 +388,8 @@ class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
       // We are turning power on.
       // sends some event reports to clear off the shorted and overcurrent bits.
       auto* b = node()->interface()->global_message_write_flow()->alloc();
-      b->data()->reset(
-          nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
-          nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT ^ 1));
+      b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
+                       nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT ^ 1));
       node()->interface()->global_message_write_flow()->send(b);
       b = node()->interface()->global_message_write_flow()->alloc();
       b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
@@ -397,10 +399,10 @@ class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
     HW::ACC_ENABLE_Pin::set(new_value);
   }
 
-  virtual nmranet::Node* node() {
-    extern nmranet::DefaultNode g_node;
-    return &g_node;
-  }
+  virtual nmranet::Node* node() { return node_; }
+
+ private:
+  nmranet::Node* node_;
 };
 
 #endif  // _TIVA_SHORTDETECTION_HXX_

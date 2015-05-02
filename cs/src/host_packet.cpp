@@ -62,11 +62,8 @@
 
  */
 
-extern Service g_service;
 //Executor<1> vcom_executor("vcom_thread", 0, 900);
 //Service vcom_service(&vcom_executor);
-HubFlow usb_vcom_pipe0(&g_service);
-extern CanHubFlow can_hub0;
 
 //! Class to handle data that comes from the virtual COM pipe and is to be sent
 //! on to the USB handler.
@@ -93,8 +90,8 @@ extern "C" { void start(void); }
 
 PacketQueue* PacketQueue::instance_ = NULL;
 
-void PacketQueue::initialize(const char* serial_device, bool force_sync) {
-  instance_ = new DefaultPacketQueue(serial_device, force_sync);
+void PacketQueue::initialize(CanHubFlow* openlcb_can, const char* serial_device, bool force_sync) {
+  instance_ = new DefaultPacketQueue(openlcb_can, serial_device, force_sync);
 }
 
 void* rx_thread(void* p) {
@@ -167,7 +164,7 @@ class DefaultPacketQueue::TxFlow : public StateFlowBase {
   uint8_t sizeBuf_;
 };
 
-DefaultPacketQueue::DefaultPacketQueue(const char* dev, bool force_sync) : Service(g_service.executor()), synced_(false) {
+DefaultPacketQueue::DefaultPacketQueue(CanHubFlow* openlcb_can, const char* dev, bool force_sync) : Service(openlcb_can->service()->executor()), synced_(false), usb_vcom_pipe0_(this) {
     async_fd_ = open(dev, O_RDWR | O_NONBLOCK);
     sync_fd_ = open(dev, O_RDWR);
     if (force_sync) ForceInitialSync();
@@ -176,16 +173,16 @@ DefaultPacketQueue::DefaultPacketQueue(const char* dev, bool force_sync) : Servi
     sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
     os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(1000));
     // Wires up packet receive from vcom0 to the USB host.
-    usb_vcom0_recv_ = new VCOMPipeMember(&g_service, CMD_VCOM0);
-    usb_vcom_pipe0.register_port(usb_vcom0_recv_);
-    gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0, &can_hub0, false);
+    usb_vcom0_recv_ = new VCOMPipeMember(this, CMD_VCOM0);
+    usb_vcom_pipe0_.register_port(usb_vcom0_recv_);
+    gc_adapter_ = GCAdapterBase::CreateGridConnectAdapter(&usb_vcom_pipe0_, openlcb_can, false);
     tx_flow_ = new TxFlow(this);
 }
 
 DefaultPacketQueue::~DefaultPacketQueue() {
     delete tx_flow_;
     delete gc_adapter_;
-    usb_vcom_pipe0.unregister_port(usb_vcom0_recv_);
+    usb_vcom_pipe0_.unregister_port(usb_vcom0_recv_);
     delete usb_vcom0_recv_;
     os_timer_delete(sync_packet_timer_);
     // There is no way to destroy an os_mq_t.
@@ -382,10 +379,10 @@ void DefaultPacketQueue::ProcessPacket(PacketBase* pkt) {
 	break;
     }
     case CMD_VCOM0: {
-      auto* b = usb_vcom_pipe0.alloc();
+      auto* b = usb_vcom_pipe0_.alloc();
       b->data()->assign((const char*)(in_pkt.buf() + 1), in_pkt.size() - 1);
       b->data()->skipMember_ = usb_vcom0_recv_;
-      usb_vcom_pipe0.send(b);
+      usb_vcom_pipe0_.send(b);
       break;
     }
     } // switch
