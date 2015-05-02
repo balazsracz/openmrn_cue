@@ -38,6 +38,11 @@
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "custom/AutomataControl.hxx"
+#include "utils/Ewma.hxx"
+
+using nmranet::MemoryConfigDefs;
+using nmranet::DatagramDefs;
+using nmranet::DatagramClient;
 
 static const nmranet::NodeID NODE_ID = 0x050101011403ULL;
 
@@ -138,7 +143,16 @@ string read_file_to_string(const char *filename) {
   }
 }
 
-void send_datagram(nmranet::DatagramPayload p) {
+double get_time() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    long long t = ts.tv_sec;
+    t *= 1000000000;
+    t += ts.tv_nsec;
+    return t * 1.0 / 1e9;
+}
+
+uint8_t send_datagram(nmranet::DatagramPayload p) {
   SyncNotifiable n;
   BarrierNotifiable bn;
 
@@ -155,16 +169,58 @@ void send_datagram(nmranet::DatagramPayload p) {
                    std::move(p));
   b->set_done(bn.reset(&n));
 
+  LOG(INFO, "before write: %.6lf", get_time());
   client->write_datagram(b);
   n.wait_for_notification();
+  LOG(INFO, "after write notify: %.6lf", get_time());
 
-  if (client->result() != nmranet::DatagramClient::OPERATION_SUCCESS) {
-    LOG(FATAL, "Datagram send result: %04x\n", client->result());
+  if ((client->result() & nmranet::DatagramClient::RESPONSE_CODE_MASK) !=
+      nmranet::DatagramClient::OPERATION_SUCCESS) {
+    LOG(FATAL, "Datagram send failed: %04x\n", client->result());
     exit(1);
   }
+  uint8_t result_code =
+      client->result() >> nmranet::DatagramClient::RESPONSE_FLAGS_SHIFT;
 
   stack.dg_service()->client_allocator()->typed_insert(client);
+  return result_code;
 }
+
+class WriteResponseHandler : public nmranet::DefaultDatagramHandler {
+ public:
+    WriteResponseHandler()
+      : DefaultDatagramHandler(stack.dg_service()) {
+    dst_.alias = destination_alias;
+    dst_.id = destination_nodeid;
+    dg_service()->registry()->insert(stack.node(), DatagramDefs::CONFIGURATION, this);
+  }
+
+  Action entry() override {
+      nmranet::IncomingDatagram *datagram = message()->data();
+    LOG(INFO, "response handler: %.6lf", get_time());
+
+    if (datagram->dst != stack.node() ||
+        !stack.node()->interface()->matching_node(dst_, datagram->src) ||
+        datagram->payload.size() < 6 ||
+        datagram->payload[0] != DatagramDefs::CONFIGURATION ||
+        ((datagram->payload[1] & MemoryConfigDefs::COMMAND_MASK) !=
+         MemoryConfigDefs::COMMAND_WRITE_REPLY)) {
+      // Uninteresting datagram.
+      return respond_reject(DatagramDefs::PERMANENT_ERROR);
+    }
+    return respond_ok(DatagramDefs::FLAGS_NONE);
+  }
+
+  Action ok_response_sent() override {
+    n.notify();
+    return release_and_exit();
+  }
+
+  SyncNotifiable n;
+
+ private:
+    nmranet::NodeHandle dst_;
+};
 
 int appl_main(int argc, char *argv[]) {
   parse_args(argc, argv);
@@ -185,12 +241,22 @@ int appl_main(int argc, char *argv[]) {
   p.push_back(bracz_custom::AutomataDefs::STOP_AUTOMATA);
   send_datagram(std::move(p));
 
-  for (unsigned ofs = 0; ofs < file_data.size(); ofs += 64) {
+  WriteResponseHandler response_handler;
+  Ewma ewma(0.8);
+
+  static const uint32_t buflen = 64;
+  for (unsigned ofs = 0; ofs < file_data.size(); ofs += buflen) {
     nmranet::DatagramPayload p =
         nmranet::MemoryConfigDefs::write_datagram(space_id, ofs);
-    p.append(file_data.substr(ofs, 64));
+    p.append(file_data.substr(ofs, buflen));
 
-    send_datagram(std::move(p));
+    uint8_t flag = send_datagram(std::move(p));
+    if (flag & nmranet::DatagramClient::REPLY_PENDING) {
+        response_handler.n.wait_for_notification();
+        LOG(INFO, "response handler notify done: %.6lf", get_time());
+    }
+    ewma.add_diff(buflen);
+    LOG(INFO, "ofs %u speed %.0f bytes/sec", ofs, ewma.avg());
   }
 
   p.clear();

@@ -171,6 +171,11 @@ nmranet::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
 const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
 
+extern char __automata_start[];
+extern char __automata_end[];
+
+nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
+
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
 extern "C" {
@@ -356,11 +361,7 @@ TivaGPIOConsumer led_go(BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,  io::GoPausedLed::GP
 
 nmranet::RefreshLoop loop(stack.node(), {&sw1, &sw2});
 
-extern "C" {
-extern insn_t __automata_start[];
-}
-
-bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), __automata_start);
+bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const insn_t*) __automata_start);
 
 /*TivaSwitchProducer sw2(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                        nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
@@ -516,6 +517,8 @@ int appl_main(int argc, char* argv[])
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     nmranet::BitEventConsumer consumer(&logger);
+
+    stack.memory_config_handler()->registry()->insert(stack.node(), 0xA0, &automata_space);
 
 #ifdef STANDALONE
     // Start dcc output
