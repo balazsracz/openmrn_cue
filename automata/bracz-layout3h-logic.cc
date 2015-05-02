@@ -1098,7 +1098,7 @@ int main(int argc, char** argv) {
   fclose(f);
 
   f = fopen("bracz-layout3h-logic.cout", "wb");
-  fprintf(f, "const char automata_code[] = {\n  ");
+  fprintf(f, "const char automata_code[] __attribute__((section(\"automata\"))) = {\n  ");
   int c = 0;
   for (char t : output) {
     fprintf(f, "0x%02x, ", (uint8_t)t);
