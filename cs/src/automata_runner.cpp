@@ -762,6 +762,7 @@ void AutomataRunner::InitializeState() {
       usleep(config_automata_init_backoff());
     } while (nmranet::EventService::instance->event_processing_pending());
   }
+  pending_ticks_ = 0;
 }
 
 static long long automata_tick_callback(void* runner, void*) {
