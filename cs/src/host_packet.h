@@ -88,7 +88,7 @@ public:
 
     /// Initializes the static instance of PacketQueue. Must be called before any call to instance().
     /// @param serial_device is the filepath of the device to communicate packets through.
-  static void initialize(const char* serial_device, bool force_sync = false);
+  static void initialize(CanHubFlow* openlcb_can, const char* serial_device, bool force_sync = false);
 
     //! Takes ownership of packet. Deletes it when done.
     void TransmitPacket(PacketBase* packet) {
@@ -130,7 +130,7 @@ class DefaultPacketQueue : public PacketQueue, public Service {
  private:
   friend class PacketQueue;
   class TxFlow;
-  DefaultPacketQueue(const char* dev, bool force_sync);
+  DefaultPacketQueue(CanHubFlow* openlcb_can, const char* dev, bool force_sync);
     ~DefaultPacketQueue();
 
   //! Blocks the caller until a sync packet has been received.
@@ -165,6 +165,7 @@ class DefaultPacketQueue : public PacketQueue, public Service {
     //! protocol that runs over the specific USB packets.
     GCAdapterBase* gc_adapter_;
 
+    HubFlow usb_vcom_pipe0_;
     HubPortInterface* usb_vcom0_recv_;
     TxFlow* tx_flow_;
 };

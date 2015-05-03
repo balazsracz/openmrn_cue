@@ -18,26 +18,60 @@ namespace bracz_custom {
 static const uint8_t INIT_DATA[] = {0xF0, 0x55};
 static const uint8_t MEASURE_DATA[] = {0x00};
 
+volatile int WiiChuckReader::saved_errno = 0;
+
 void* WiiChuckReader::entry() {
-  usleep(500000);
-  // Initialize wii chuck
-  ERRNOCHECK("init_set_slave", ::ioctl(fd_, I2C_SLAVE, WIICHUCK_ADDRESS));
-  ERRNOCHECK("init_write", ::write(fd_, INIT_DATA, sizeof(INIT_DATA)));
+  int fd = -1;
   while (true) {
-    usleep(config_wiichuck_poll_usec());
-    ERRNOCHECK("measure_write",
-               ::write(fd_, MEASURE_DATA, sizeof(MEASURE_DATA)));
-    auto* b = target_->alloc();
+    if (fd >= 0) ::close(fd);
+    saved_errno = 0;
+    usleep(500000);
+    int fd = ::open(device_, O_RDWR);
+    HASSERT(fd >= 0);
+    int ret;
+    // Initialize wii chuck
+    ret = ::ioctl(fd, I2C_SLAVE, WIICHUCK_ADDRESS);
+    if (ret < 0) {
+      saved_errno = errno;
+      continue;
+    }
+    ret = ::write(fd, INIT_DATA, sizeof(INIT_DATA));
+    if (ret < 0) {
+      saved_errno = errno;
+      continue;
+    }
+    if (ret < (int)sizeof(INIT_DATA)) {
+      saved_errno = errno;
+      continue;
+    }
     usleep(2000);
-    ERRNOCHECK("measure_read", ::read(fd_, b->data()->data, 6));
+    while (true) {
+      usleep(config_wiichuck_poll_usec());
+      ret = ::write(fd, MEASURE_DATA, sizeof(MEASURE_DATA));
+      if (ret < (int)sizeof(MEASURE_DATA)) {
+        saved_errno = errno;
+        break;
+      }
+      auto* b = target_->alloc();
+      usleep(2000);
+      ret = ::read(fd, b->data()->data, 6);
+      if (ret < 6) {
+        saved_errno = errno;
+        b->unref();
+        break;
+      }
+      target_->send(b);
+    }
+    auto* b = target_->alloc();
+    memset(b->data()->data, 0x80, 6);
     target_->send(b);
   }
   return nullptr;
 }
 
 void WiiChuckReader::start() {
-  OSThread::start("wiichuck_read", (int) config_wiichuck_thread_prio(),
-        (size_t) config_wiichuck_thread_stack_size());
+  OSThread::start("wiichuck_read", (int)config_wiichuck_thread_prio(),
+                  (size_t)config_wiichuck_thread_stack_size());
 }
 
 }  // namespace bracz_custom

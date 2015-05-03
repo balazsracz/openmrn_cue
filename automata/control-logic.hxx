@@ -288,6 +288,9 @@ class StraightTrack : public StraightTrackInterface,
   virtual CtrlTrackInterface *side_a() { return &side_a_; }
   virtual CtrlTrackInterface *side_b() { return &side_b_; }
 
+  const GlobalVariable& route_set_ab() { return *route_set_ab_; }
+  const GlobalVariable& route_set_ba() { return *route_set_ba_; }
+
   void SimulateAllOccupancy(Automata *aut);
   void SimulateAllRoutes(Automata *aut);
 

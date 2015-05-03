@@ -137,6 +137,16 @@ I2CSignal signal_WWB2_adv(&bc, 52, "WW.B3.adv");
 I2CSignal signal_WWB11_main(&bc, 49, "WW.B11.main");  // 164
 I2CSignal signal_WWB11_adv(&bc, 50, "WW.B11.adv");
 
+I2CSignal signal_A380_main(&bb, 53, "A380.main");  // 133
+I2CSignal signal_A380_adv(&bb, 54, "A380.adv");
+I2CSignal signal_A480_main(&bb, 55, "A480.main");  // 130
+I2CSignal signal_A480_adv(&bb, 56, "A480.adv");
+I2CSignal signal_ZZA2_main(&bb, 57, "ZZ.A2.main");  // 153
+I2CSignal signal_ZZA2_adv(&bb, 58, "ZZ.A2.adv");
+I2CSignal signal_ZZA3_main(&bb, 65, "ZZ.A3.main");  // 136
+I2CSignal signal_ZZA3_adv(&bb, 66, "ZZ.A3.adv");
+
+
 
 /* More signals
 
@@ -179,6 +189,10 @@ address 167  main 67 adv 68 in WW.B3 reflashed
 address 171  main 51 adv 52 in WW.B2 reflashed
 address 164  main 49 adv 50 in WW.B11 reflashed
 
+address 133 0x85 main 53 adv 54 reflashed in A380
+address 130 0x82 main 55 adv 56 reflashed in A480
+address 153 0x99 main 57 adv 58 reflashed in ZZA2
+address 136 0x86 main 65 adv 66 reflashed in ZZA3
 */
 
 //I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
@@ -230,11 +244,11 @@ PhysicalSignal B475(&bb.InBrownGrey, &bb.Rel1,
                     &signal_B460_adv.signal, &signal_A475_adv.signal);
 
 PhysicalSignal ZZA2(&bb.InOraGreen, &bb.LedGreen,
-                    nullptr, nullptr,
+                    &signal_ZZA2_main.signal, &signal_ZZA2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
 PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow,
-                    nullptr, nullptr,
+                    &signal_ZZA3_main.signal, &signal_ZZA3_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
 PhysicalSignal YYA3(&be.InGreenYellow, &be.Rel0,
@@ -255,7 +269,7 @@ PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel2,
                     &signal_XXB3_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB2(&be.InOraGreen, &be.Rel3,
+PhysicalSignal YYB2(&be.InGreenGreen, &be.Rel3,
                     &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -499,6 +513,15 @@ MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
 StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
                                                         "ZZ.W3", 64),
                             &Magnet_ZZW3);
+
+MagnetDef Magnet_ZZW6(&g_magnet_aut, "ZZ.W6", &be.ActGreenGreen,
+                      &be.ActGreenRed);
+CoupledMagnetDef Magnet_ZZW5(&g_magnet_aut, "ZZ.W5", &Magnet_ZZW6, true);
+StandardMovableTurnout Turnout_ZZW5(
+    &brd, EventBlock::Allocator(logic2.allocator(), "ZZ.W5", 40), &Magnet_ZZW5);
+StandardMovableTurnout Turnout_ZZW6(
+    &brd, EventBlock::Allocator(logic2.allocator(), "ZZ.W6", 40), &Magnet_ZZW6);
+
 StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic2.allocator(), "ZZ.A2");
 StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic2.allocator(), "ZZ.A3");
 
@@ -506,15 +529,16 @@ StandardMiddleDetector Det_380(&brd, &bb.InGreenYellow,
                                EventBlock::Allocator(logic2.allocator(),
                                                      "Det380", 24, 8));
 
-MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBlueGrey, &be.ActBlueBrown);
+MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBrownGrey,
+                      &be.ActBrownBrown);
 CoupledMagnetDef Magnet_W381(&g_magnet_aut, "W381", &Magnet_W481, true);
-MagnetDef Magnet_W382(&g_magnet_aut, "W382", &be.ActBrownGrey, &be.ActBrownBrown);
+MagnetDef Magnet_W380(&g_magnet_aut, "W380", &be.ActBlueGrey, &be.ActBlueBrown);
 StandardMovableTurnout Turnout_W381(&brd,
                                     EventBlock::Allocator(logic2.allocator(),
                                                           "W381", 40),
                                     &Magnet_W381);
-StandardMovableTurnout Turnout_W382(
-    &brd, EventBlock::Allocator(logic2.allocator(), "W382", 40), &Magnet_W382);
+StandardMovableTurnout Turnout_W380(
+    &brd, EventBlock::Allocator(logic2.allocator(), "W380", 40), &Magnet_W380);
 
 StandardMiddleDetector Det_500(&brd, &be.InOraRed,
                                EventBlock::Allocator(logic2.allocator(),
@@ -523,12 +547,12 @@ StandardMiddleDetector Det_500(&brd, &be.InOraRed,
 StandardMovableTurnout Turnout_W481(
     &brd, EventBlock::Allocator(logic2.allocator(), "W481", 40), &Magnet_W481);
 
-MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &be.ActGreenGreen, &be.ActGreenRed);
-StandardMovableTurnout Turnout_YYW1(
-    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W1", 40), &Magnet_YYW1);
-CoupledMagnetDef Magnet_YYW3(&g_magnet_aut, "YY.W3", &Magnet_YYW1, true);
-StandardMovableTurnout Turnout_YYW3(
-    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W3", 40), &Magnet_YYW3);
+//MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &be.ActGreenGreen, &be.ActGreenRed);
+//StandardMovableTurnout Turnout_YYW1(
+//    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W1", 40), &Magnet_YYW1);
+//CoupledMagnetDef Magnet_YYW3(&g_magnet_aut, "YY.W3", &Magnet_YYW1, true);
+//StandardMovableTurnout Turnout_YYW3(
+//    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W3", 40), &Magnet_YYW3);
 
 StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
 StandardBlock Block_YYA3(&brd, &YYA3, logic2.allocator(), "YY.A3");
@@ -591,20 +615,18 @@ bool ign = BindPairs({
     {Block_XXB3.side_b(), Turnout_XXW2.b.side_closed()},
     {Turnout_XXW1.b.side_thrown(), Turnout_XXW2.b.side_points()},
     {Turnout_XXW1.b.side_points(), Det_500.side_a()},
-    {Det_500.side_b(), Turnout_W382.b.side_closed()},
-    {Turnout_W382.b.side_thrown(), Turnout_YYW3.b.side_thrown()},
-    {Turnout_YYW3.b.side_points(), Block_YYB2.side_b()},
-    {Turnout_W382.b.side_points(), Turnout_W381.b.side_points()},
-    {Turnout_W381.b.side_thrown(), Det_380.side_a()},
-    {Det_380.side_b(), Turnout_ZZW2.b.side_thrown()},
+    {Det_500.side_b(), Turnout_W380.b.side_thrown()},
+    {Turnout_W381.b.side_points(), Block_YYB2.side_b()},
+    {Turnout_W381.b.side_thrown(), Turnout_W380.b.side_closed()},
+    {Turnout_W380.b.side_points(), Det_380.side_a()},
+    {Det_380.side_b(), Turnout_ZZW6.b.side_points()},
+    {Turnout_ZZW6.b.side_closed(), Turnout_ZZW2.b.side_thrown()},
     {Turnout_ZZW2.b.side_points(), Block_A360.side_a()},
     {Turnout_ZZW2.b.side_closed(), DKW_ZZW3.b.point_a2()},
     {DKW_ZZW3.b.point_b2(), Block_ZZA2.entry()},
     {Turnout_W381.b.side_closed(), Turnout_W481.b.side_thrown()},
     {Block_YYC23.side_a(), Block_YYA3.side_b()},
-    {Block_YYA3.side_a(), Turnout_YYW1.b.side_closed()},
-    {Turnout_YYW3.b.side_closed(), Turnout_YYW1.b.side_thrown()},
-    {Turnout_YYW1.b.side_points(), Turnout_W481.b.side_closed()},
+    {Block_YYA3.side_a(), Turnout_W481.b.side_closed()},
     {Block_B460.side_b(), Turnout_W459.b.side_closed()},
     {Turnout_W459.b.side_points(), Block_B475.side_a()},
     {Turnout_W459.b.side_thrown(), Turnout_W359.b.side_closed()},
@@ -613,7 +635,9 @@ bool ign = BindPairs({
     {Block_B475.side_b(), Turnout_ZZW1.b.side_points()},
     {Turnout_ZZW1.b.side_thrown(), DKW_ZZW3.b.point_a1()},
     {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
-    {DKW_ZZW3.b.point_b1(), Turnout_W481.b.side_points()},
+    {DKW_ZZW3.b.point_b1(), Turnout_ZZW5.b.side_points()},
+    {Turnout_ZZW5.b.side_thrown(), Turnout_W481.b.side_points()},
+    {Turnout_ZZW5.b.side_closed(), Turnout_ZZW6.b.side_thrown()},
     {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
     {Block_WWB14.side_a(), Block_WWA11.side_b()},
     {Block_WWA11.side_a(), DKW_WWW4.b.point_b1()},
@@ -698,6 +722,12 @@ DefAut(signalaut2, brd, {
     BlockSignal(this, &Block_B460);
     BlockSignal(this, &Block_B475);
     BlockSignal(this, &Block_WWA11);
+  });
+
+DefAut(signalaut3, brd, {
+    BlockSignal(this, &Block_ZZA2.b_);
+    BlockSignal(this, &Block_ZZA3.b_);
+    RgSignal(this, ImportVariable(Det_380.route_set_ab()), ImportVariable(&signal_A380_main.signal));
   });
 
 FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", *logic.allocator(), 32);
@@ -927,14 +957,15 @@ class LayoutSchedule : public TrainSchedule {
   void RunLoopXXYY(Automata* aut) {
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-    SwitchTurnout(Turnout_W481.b.magnet(), true);
-    SwitchTurnout(Turnout_W382.b.magnet(), false);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW5.b.magnet(), false);
+    SwitchTurnout(Turnout_W380.b.magnet(), true);
     SwitchTurnout(Turnout_XXW1.b.magnet(), true);
     SwitchTurnout(Turnout_XXW2.b.magnet(), true);
 
@@ -959,12 +990,14 @@ class LayoutSchedule : public TrainSchedule {
 
     // out
     AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
-    SwitchTurnout(Turnout_W381.b.magnet(), true);
+    SwitchTurnout(Turnout_W380.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
-    SwitchTurnout(Turnout_W381.b.magnet(), true);
+    SwitchTurnout(Turnout_W380.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
     AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
-    SwitchTurnout(Turnout_YYW3.b.magnet(), true);
     SwitchTurnout(Turnout_W381.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
   }
 
   ByteImportVariable stored_speed_;
@@ -1065,7 +1098,7 @@ int main(int argc, char** argv) {
   fclose(f);
 
   f = fopen("bracz-layout3h-logic.cout", "wb");
-  fprintf(f, "const char automata_code[] = {\n  ");
+  fprintf(f, "const char automata_code[] __attribute__((section(\"automata\"))) = {\n  ");
   int c = 0;
   for (char t : output) {
     fprintf(f, "0x%02x, ", (uint8_t)t);

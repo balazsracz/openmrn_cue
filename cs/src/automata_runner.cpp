@@ -762,6 +762,7 @@ void AutomataRunner::InitializeState() {
       usleep(config_automata_init_backoff());
     } while (nmranet::EventService::instance->event_processing_pending());
   }
+  pending_ticks_ = 0;
 }
 
 static long long automata_tick_callback(void* runner, void*) {
@@ -777,20 +778,34 @@ static long long automata_tick_callback(void* runner, void*) {
 
 void* automata_thread(void* arg) {
   AutomataRunner* runner = (AutomataRunner*)arg;
-  runner->InitializeState();
   runner->automata_timer_ =
       os_timer_create(&automata_tick_callback, runner, NULL);
   os_timer_start(runner->automata_timer_, MSEC_TO_NSEC(100));  // 10 HZ
   while (1) {
-    runner->WaitForWakeup();
-    if (runner->request_thread_exit_) {
-      runner->thread_exited_ = true;
-      return NULL;
+    AutomataRunner::RunState state;
+    Notifiable* n = nullptr;
+    {
+      OSMutexLock l(&runner->control_lock_);
+      state = runner->run_state_;
+      if (runner->stop_notification_) {
+        std::swap(n, runner->stop_notification_);
+      }
     }
-    if (automata_running()) {
+    if (state == AutomataRunner::RunState::INIT) {
+      runner->InitializeState();
+      runner->run_state_ = AutomataRunner::RunState::RUN;
+    }
+    if (n) {
+      n->notify();
+    }
+    if (state == AutomataRunner::RunState::EXIT) {
+      return nullptr;
+    }
+    if (state == AutomataRunner::RunState::RUN) {
       runner->RunAllAutomata();
       UpdateSlaves();
     }
+    runner->WaitForWakeup();
   }
   return NULL;
 }
@@ -810,8 +825,7 @@ AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
       openmrn_node_(node),
       traction_(node ? new Traction(node) : nullptr),
       pending_ticks_(0),
-      request_thread_exit_(false),
-      thread_exited_(false) {
+      run_state_(RunState::INIT) {
   automata_write_helper.set_wait_for_local_loopback(true);
   memset(imported_bits_, 0, sizeof(imported_bits_));
   os_sem_init(&automata_sem_, 0);
@@ -828,22 +842,46 @@ AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
 
 AutomataRunner::~AutomataRunner() {
   if (0) fprintf(stderr, "Destroying automata runner.\n");
-  request_thread_exit_ = true;
-  TriggerRun();
-  // NOTE(balazs.racz) This should call os_thread_join except that API does not
-  // exist.
-  while (!thread_exited_) {
-    // Do nothing.
-    usleep(100);
-  }
+  SyncNotifiable n;
+  Stop(&n, true);
+  n.wait_for_notification();
+
   if (automata_timer_) {
     os_timer_delete(automata_timer_);
   }
-  for (auto i : all_automata_) {
-    delete i;
-  }
-  for (auto& i : declared_bits_) {
-    delete i.second;
-  }
   os_sem_destroy(&automata_sem_);
+}
+
+void AutomataRunner::Start() {
+  OSMutexLock l(&control_lock_);
+  run_state_ = RunState::INIT;
+}
+
+void AutomataRunner::Stop(Notifiable* n, bool request_exit) {
+  Notifiable* nn = nullptr;
+  {
+    OSMutexLock l(&control_lock_);
+    stop_notification_ = new TempNotifiable([this, n]() {
+      for (auto i : all_automata_) {
+        delete i;
+      }
+      all_automata_.clear();
+      for (auto& i : declared_bits_) {
+        delete i.second;
+      }
+      declared_bits_.clear();
+      n->notify();
+    });
+    if (request_exit) {
+      run_state_ = RunState::EXIT;
+    } else {
+      run_state_ = RunState::STOP;
+    }
+    if (thread_exited_) {
+      // maybe we are running without thread?
+      std::swap(nn, stop_notification_);
+    }
+  }
+  if (nn) nn->notify();
+  TriggerRun();
 }

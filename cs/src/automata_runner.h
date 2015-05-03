@@ -19,6 +19,7 @@ using std::vector;
 #include "nmranet/Velocity.hxx"
 #include "nmranet/TractionClient.hxx"
 #include "executor/Timer.hxx"
+#include "os/OS.hxx"
 
 typedef unsigned aut_offset_t;
 typedef uint8_t insn_t;
@@ -124,6 +125,14 @@ public:
                  bool with_thread = true);
     ~AutomataRunner();
 
+  nmranet::Node* node() { return openmrn_node_; }
+
+  // Starts the automata runner from the beginning.
+  void Start();
+  // Stops and clears all automata runner internal state. if request_exit, also
+  // stops the runner thread. Triggers notifiable when done.
+    void Stop(Notifiable* n, bool request_exit = false);
+
     AutomataRunner& ResetForAutomata(Automata* aut);
 
     //! Simulates the current automata until EOF.
@@ -175,6 +184,13 @@ public:
   uint8_t GetTrainId() { return aut_trainid_; }
   uint8_t GetSignalAspect() { return aut_signal_aspect_; }
   uint64_t GetEventId(int idx) { return aut_eventids_[idx]; }
+
+  enum class RunState {
+    INIT = 0,
+    RUN,
+    STOP,
+    EXIT,
+  };
 
 private:
     ReadWriteBit* GetBit(int offset) {
@@ -253,8 +269,11 @@ private:
     os_timer_t automata_timer_;
     //! Semaphore used for waking up the automata thread.
     os_sem_t automata_sem_;
-    //! Requests the automata runner thread to exit.
-    bool request_thread_exit_;
+    //! Mutex to control access to request_thread_exit_, stop_notification_ and is_running_.
+    OSMutex control_lock_;
+    RunState run_state_;
+    //! Notified once when the Stop command completes.
+    Notifiable* stop_notification_ = nullptr;
     //! This thread will normally execute the automata code as triggered by
     //! timers.
     os_thread_t automata_thread_handle_;

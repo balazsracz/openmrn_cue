@@ -158,4 +158,8 @@ const uint32_t RailcomHw::UART_BASE[] __attribute__((weak)) = {UART4_BASE, UART3
 const uint32_t RailcomHw::UART_PERIPH[]
 __attribute__((weak)) = {SYSCTL_PERIPH_UART4, SYSCTL_PERIPH_UART3, SYSCTL_PERIPH_UART2, SYSCTL_PERIPH_UART7};
 
+#if NODEID_LOW_BITS == 0x4E
+#define USE_WII_CHUCK
+#endif
+
 #endif // _ACC_TIVA_3_HARDWARE_HXX_

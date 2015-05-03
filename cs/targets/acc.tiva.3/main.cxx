@@ -581,9 +581,10 @@ class FeedbackBasedOccupancy : public RailcomHubPort {
 }
 nmranet::FeedbackBasedOccupancy railcom_occupancy(&g_node, R_EVENT_ID + 24, 4);
 nmranet::RailcomProxy railcom_proxy(&railcom_hub, &g_node, &railcom_occupancy);
-nmranet::RailcomBroadcastFlow railcom_broadcast(&railcom_hub, &g_node,
-                                                &railcom_occupancy,
-                                                &railcom_proxy, 4);
+// TODO(balazs.racz) reenable this
+//nmranet::RailcomBroadcastFlow railcom_broadcast(&railcom_hub, &g_node,
+//                                                &railcom_occupancy,
+//                                                &railcom_proxy, 4);
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -603,7 +604,8 @@ int appl_main(int argc, char* argv[]) {
   //                 &r1);
 #endif
 #ifdef USE_WII_CHUCK
-  bracz_custom::WiiChuckReader wii_reader("/dev/i2c3", &wii_throttle);
+  bracz_custom::WiiChuckReader wii_reader("/dev/i2c4", &wii_throttle);
+  wii_reader.start();
 #endif
   // Bootstraps the alias allocation process.
   g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());

@@ -15,27 +15,23 @@ DECLARE_CONST(wiichuck_poll_usec);
 namespace bracz_custom {
 
 class WiiChuckReader : private OSThread {
-public:
+ public:
+  // the string of device must be alive so long as *this is used.
   WiiChuckReader(const char* device, WiiChuckConsumerFlowInterface* target)
-    : fd_(::open(device, O_RDWR)),
-      target_(target) {
-    HASSERT(fd_ >= 0);
-  }
-
-  WiiChuckReader(int fd, WiiChuckConsumerFlowInterface* target)
-    : fd_(fd), target_(target) {}
+      : device_(device), target_(target) {}
 
   void start();
 
-private:
+ private:
   static const uint8_t WIICHUCK_ADDRESS = 0x52;
 
   void* entry() OVERRIDE;
 
-  int fd_;
+  static volatile int saved_errno;
+  const char* device_;
   WiiChuckConsumerFlowInterface* target_;
 };
 
 }  // namespace bracz_custom
 
-#endif // _BRACZ_CUSTOM_WIICHUCKREADER_HXX_
+#endif  // _BRACZ_CUSTOM_WIICHUCKREADER_HXX_
