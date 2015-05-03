@@ -3,7 +3,7 @@
 #include "utils/Buffer.hxx"
 #include "dcc/Packet.hxx"
 #include "custom/TrackInterface.hxx"
-#include "mock_packet_handler.hxx"
+#include "tests/mock_packet_handler.hxx"
 
 #include "src/usb_proto.h"
 #include "custom/HostLogging.hxx"
