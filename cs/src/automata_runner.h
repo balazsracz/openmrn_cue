@@ -190,6 +190,7 @@ public:
     RUN,
     STOP,
     EXIT,
+    NO_THREAD,
   };
 
 private:
@@ -277,8 +278,6 @@ private:
     //! This thread will normally execute the automata code as triggered by
     //! timers.
     os_thread_t automata_thread_handle_;
-    // Set to true by the runner thread exiting.
-    volatile bool thread_exited_;
 
     friend void* automata_thread(void*);
 };

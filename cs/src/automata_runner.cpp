@@ -836,7 +836,7 @@ AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
     CreateVarzAndAutomatas();
     automata_thread_handle_ = 0;
     automata_timer_ = 0;
-    thread_exited_ = true;
+    run_state_ = RunState::NO_THREAD;
   }
 }
 
@@ -872,14 +872,14 @@ void AutomataRunner::Stop(Notifiable* n, bool request_exit) {
       declared_bits_.clear();
       n->notify();
     });
+    if (run_state_ == RunState::NO_THREAD) {
+      // maybe we are running without thread?
+      std::swap(nn, stop_notification_);
+    }
     if (request_exit) {
       run_state_ = RunState::EXIT;
     } else {
       run_state_ = RunState::STOP;
-    }
-    if (thread_exited_) {
-      // maybe we are running without thread?
-      std::swap(nn, stop_notification_);
     }
   }
   if (nn) nn->notify();
