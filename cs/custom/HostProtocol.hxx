@@ -36,6 +36,9 @@
 #define _BRACZ_CUSTOM_HOSTPROTOCOL_HXX_
 
 #include "nmranet/DatagramHandlerDefault.hxx"
+#include "utils/Hub.hxx"
+#include "utils/Singleton.hxx"
+#include "custom/HostLogging.hxx"
 
 namespace bracz_custom {
 
@@ -45,35 +48,115 @@ struct HostProtocolDefs {
   };
 };
 
-/** A datagram handler that allows transmitting the host protocol packets over
-    OpenLCB bus with datagrams. */
-class HostClientHandler : public nmranet::DefaultDatagramHandler {
+class HostClientSend;
+
+void TEST_clear_host_address();
+
+class HostClient;
+
+class HostClient : public Service, public Singleton<HostClient> {
  public:
-  HostClientHandler(nmranet::DatagramService* dg_s, nmranet::Node* node)
-      : DefaultDatagramHandler(dg_s), node_(node) {
-    dg_service()->registry()->insert(node_, HostProtocolDefs::DATAGRAM_ID,
-                                     this);
-  }
+  HostClient(nmranet::DatagramService* dg_service, nmranet::Node* node,
+             CanHubFlow* can_hub1)
+      : Service(dg_service->executor()),
+        dg_service_(dg_service),
+        node_(node),
+        can_hub1_(can_hub1),
+        client_handler_(this),
+        bridge_port_(this),
+        sender_(this) {}
+  ~HostClient();
 
-  ~HostClientHandler() {
-    dg_service()->registry()->erase(node_, HostProtocolDefs::DATAGRAM_ID, this);
-  }
+  nmranet::DatagramService* dg_service() { return dg_service_; }
+  nmranet::Node* node() { return node_; }
+  CanHubFlow* can_hub1() { return can_hub1_; }
 
+  // These functions can be called from any thread.
+  void send_host_log_event(HostLogEvent e) { log_output((char*)&e, 1); }
+  void log_output(char* buf, int size);
 
-protected:
-  Action entry() override;
-  Action ok_response_sent() override;
+  HubPort* send_client() { return &sender_; }
+  CanHubPortInterface* can1_bridge_port() { return &bridge_port_; }
 
-  Action dg_client_ready();
-  Action response_buf_ready();
-  Action response_send_complete();
+  /** A datagram handler that allows transmitting the host protocol packets over
+      OpenLCB bus with datagrams. */
+  class HostClientHandler : public nmranet::DefaultDatagramHandler {
+   public:
+    HostClientHandler(HostClient* parent)
+        : DefaultDatagramHandler(parent->dg_service()), parent_(parent) {
+      dg_service()->registry()->insert(parent_->node(), HostProtocolDefs::DATAGRAM_ID,
+                                       this);
+    }
+
+    ~HostClientHandler() {
+      dg_service()->registry()->erase(parent_->node(), HostProtocolDefs::DATAGRAM_ID,
+                                      this);
+    }
+
+   protected:
+    Action entry() override;
+    Action ok_response_sent() override;
+
+    Action translate_inbound_can();
+
+    Action dg_client_ready();
+    Action response_buf_ready();
+    Action response_send_complete();
+
+   private:
+    HostClient* parent_;
+    nmranet::DatagramClient* dg_client_{nullptr};
+    nmranet::DatagramPayload response_payload_;
+    BarrierNotifiable n_;
+  };
+
+  class HostPacketBridge : public CanHubPort {
+  public:
+    HostPacketBridge(HostClient* parent) : CanHubPort(parent) {
+      device()->register_port(this);
+    }
+
+    ~HostPacketBridge() { device()->unregister_port(this); }
+
+    HostClient* parent() { return static_cast<HostClient*>(service()); }
+
+    CanHubFlow* device() { return parent()->can_hub1(); }
+
+    Action entry() OVERRIDE {
+      return allocate_and_call(parent()->send_client(), STATE(format_send));
+    };
+
+    Action format_send();
+  };  // class hostpacketcanbridge
+
+  class HostClientSend : public Singleton<HostClientSend>, public HubPort {
+   public:
+    HostClientSend(HostClient* parent);
+    ~HostClientSend();
+
+   protected:
+    nmranet::DatagramService* dg_service() { return parent()->dg_service(); }
+    HostClient* parent() { return static_cast<HostClient*>(service()); }
+
+   private:
+    Action entry() override;
+    Action dg_client_ready();
+    Action response_buf_ready();
+    Action response_send_complete();
+
+    nmranet::DatagramClient* dg_client_{nullptr};
+    BarrierNotifiable n_;
+  };  // class hostclientsend
 
  private:
+  nmranet::DatagramService* dg_service_;
   nmranet::Node* node_;
-  nmranet::DatagramClient* dg_client_{nullptr};
-  nmranet::DatagramPayload response_payload_;
-  BarrierNotifiable n_;
-};
+  CanHubFlow* can_hub1_;
+  HostClientHandler client_handler_;
+  HostPacketBridge bridge_port_;
+  HostClientSend sender_;
+
+};  // HostClient
 
 }  // namespce bracz_custom
 

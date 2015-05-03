@@ -56,7 +56,6 @@ class HostClientTest : public AsyncDatagramTest {
     nmranet::AsyncNodeTest::SetUpTestCase();
     g_gc_adapter1 =
         GCAdapterBase::CreateGridConnectAdapter(&gc_hub1, &can_hub1, false);
-    bracz_custom::init_host_packet_can_bridge(&can_hub1);
   }
 
   static void TearDownTestCase() {
@@ -70,7 +69,7 @@ class HostClientTest : public AsyncDatagramTest {
   /// Helper object for setting expectations on the packets sent on the bus.
   NiceMock<MockSend> canBus1_;
 
-  HostClientHandler client_{&datagram_support_, node_};
+  HostClient client_{&datagram_support_, node_, &can_hub1};
 };
 
 TEST_F(HostClientTest, TestPingPong) {
@@ -86,6 +85,12 @@ TEST_F(HostClientTest, TestCanPacket) {
   send_packet(":X1B22A77CNF11AE008007E0355;");
   send_packet(":X1D22A77CNAA55;");
 }
+
+
+
+
+
+
 
 }  // namespace
 }  // namespace bracz_custom
