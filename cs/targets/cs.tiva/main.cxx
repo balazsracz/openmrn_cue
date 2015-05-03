@@ -201,7 +201,7 @@ void log_output(char* buf, int size) {
 }
 
 #endif
-}
+} // extern c
 
 #ifdef STANDALONE
 namespace bracz_custom {
