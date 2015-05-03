@@ -2108,6 +2108,7 @@ class SampleLayoutLogicTrainTest : public LogicTrainTest {
 
 TEST_F(SampleLayoutLogicTrainTest, Construct) {}
 
+/*
 TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   class MyTrain : public TrainSchedule {
    public:
@@ -2555,5 +2556,6 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
     Run(20);
   }
 }
+*/
 
 }  // namespace automata
