@@ -1,5 +1,5 @@
 /** \copyright
- * Copyright (c) 2014, Balazs Racz
+ * Copyright (c) 2015, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,30 +24,57 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file HostPacketCanPort.hxx
+ * \file HostProtocol.hxx
  *
- * Provides a bridge between host_packet sending / receiving CMD_CAN_PACKET
- * messages and a CanHubFlow.
+ * Encapsulates the host protocol over an OpenLCB bus.
  *
  * @author Balazs Racz
- * @date 15 May 2014
+ * @date 3 May 2015
  */
 
-#ifndef _BRACZ_CUSTOM_HOSTPACKETCANPORT_HXX_
-#define _BRACZ_CUSTOM_HOSTPACKETCANPORT_HXX_
+#ifndef _BRACZ_CUSTOM_HOSTPROTOCOL_HXX_
+#define _BRACZ_CUSTOM_HOSTPROTOCOL_HXX_
 
-#include "utils/Hub.hxx"
+#include "nmranet/DatagramHandlerDefault.hxx"
 
 namespace bracz_custom {
 
-/** Creates the necessary objects and registers the singletons for the
- * host_packet bridge.
- * @param device is the CANbus for which to register the host packet port. */
-void init_host_packet_can_bridge(CanHubFlow* device);
+struct HostProtocolDefs {
+  enum {
+    DATAGRAM_ID = 0xF1,
+  };
+};
 
-/** Takes a CAN packet in MCP2515 format and sends it to the track CANbus. */
-void handle_can_packet_from_host(const uint8_t*, unsigned);
+/** A datagram handler that allows transmitting the host protocol packets over
+    OpenLCB bus with datagrams. */
+class HostClientHandler : public nmranet::DefaultDatagramHandler {
+ public:
+  HostClientHandler(nmranet::DatagramService* dg_s, nmranet::Node* node)
+      : DefaultDatagramHandler(dg_s), node_(node) {
+    dg_service()->registry()->insert(node_, HostProtocolDefs::DATAGRAM_ID,
+                                     this);
+  }
 
-}  // namespace bracz_custom
+  ~HostClientHandler() {
+    dg_service()->registry()->erase(node_, HostProtocolDefs::DATAGRAM_ID, this);
+  }
 
-#endif // _BRACZ_CUSTOM_HOSTPACKETCANPORT_HXX_
+
+protected:
+  Action entry() override;
+  Action ok_response_sent() override;
+
+  Action dg_client_ready();
+  Action response_buf_ready();
+  Action response_send_complete();
+
+ private:
+  nmranet::Node* node_;
+  nmranet::DatagramClient* dg_client_{nullptr};
+  nmranet::DatagramPayload response_payload_;
+  BarrierNotifiable n_;
+};
+
+}  // namespce bracz_custom
+
+#endif  // _BRACZ_CUSTOM_HOSTPROTOCOL_HXX_
