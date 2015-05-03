@@ -142,7 +142,7 @@ StateFlowBase::Action HostClient::HostPacketBridge::format_send() {
     return release_and_exit();
   }
 
-  b->data()->resize(f.can_dlc + 5 + 1);
+  b->data()->resize(f.can_dlc + 5 + 2);
   frame_to_mcp(f, (uint8_t*) &b->data()->data()[2]);
   b->data()->at(0) = HostProtocolDefs::DATAGRAM_ID;
   b->data()->at(1) = CMD_CAN_PKT;
