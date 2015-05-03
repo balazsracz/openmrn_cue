@@ -596,7 +596,7 @@ class TurnoutWrap : public StraightTrackInterface {
   CtrlTrackInterface* side_b_;
 };
 
-static TurnoutWrap::PointToClosed kPointToClosed;
+constexpr TurnoutWrap::PointToClosed kPointToClosed;
 
 void ClearAutomataVariables(Automata *aut);
 
