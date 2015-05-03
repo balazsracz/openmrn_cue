@@ -57,10 +57,12 @@ StateFlowBase::Action HostClientHandler::entry() {
     return respond_ok(DatagramClient::REPLY_PENDING);
   }
   case CMD_SYNC: {
+    return respond_ok(0);
     break;
   }
   case CMD_CAN_PKT: {
     handle_can_packet_from_host(payload() + 2, size() - 2);
+    return respond_ok(0);
     break;
   }
   } // switch

@@ -1,0 +1,91 @@
+/** \copyright
+ * Copyright (c) 2015, Balazs Racz
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are  permitted provided that the following conditions are met:
+ *
+ *  - Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ *  - Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * \file HostProtocol.cxxtest
+ *
+ * Unit tests for the host protocol datagram handler
+ *
+ * @author Balazs Racz
+ * @date 3 May 2015
+ */
+
+#include "utils/async_datagram_test_helper.hxx"
+#include "custom/HostProtocol.hxx"
+#include "custom/HostPacketCanPort.hxx"
+
+using namespace nmranet;
+
+namespace bracz_custom {
+namespace {
+
+class HostClientTest : public AsyncDatagramTest {
+ public:
+  void AckResponse() { send_packet(":X19A2877CN022A00;"); }
+
+ protected:
+  HostClientTest() { gc_hub1.register_port(&canBus1_); }
+  ~HostClientTest() {
+    wait();
+    gc_hub1.unregister_port(&canBus1_);
+  }
+
+  static void SetUpTestCase() {
+    nmranet::AsyncNodeTest::SetUpTestCase();
+    g_gc_adapter1 =
+        GCAdapterBase::CreateGridConnectAdapter(&gc_hub1, &can_hub1, false);
+    bracz_custom::init_host_packet_can_bridge(&can_hub1);
+  }
+
+  static void TearDownTestCase() {
+    nmranet::AsyncNodeTest::TearDownTestCase();
+    delete g_gc_adapter1;
+  }
+
+#define expect_packet1(gc_packet) \
+  EXPECT_CALL(canBus1_, mwrite(StrCaseEq(gc_packet)))
+
+  /// Helper object for setting expectations on the packets sent on the bus.
+  NiceMock<MockSend> canBus1_;
+
+  HostClientHandler client_{&datagram_support_, node_};
+};
+
+TEST_F(HostClientTest, TestPingPong) {
+  expect_packet(":X19A2822AN077C80;");  // received ok, response pending
+  expect_packet(":X1A77C22ANF11456;")
+      .WillOnce(InvokeWithoutArgs(this, &HostClientTest::AckResponse));
+  send_packet(":X1A22A77CNF11355;");
+}
+
+TEST_F(HostClientTest, TestCanPacket) {
+  expect_packet(":X19A2822AN077C00;");  // received ok, no response
+  expect_packet1(":X1C00007EN55AA55;"); // the translated packet
+  send_packet(":X1B22A77CNF11AE008007E0355;");
+  send_packet(":X1D22A77CNAA55;");
+}
+
+}  // namespace
+}  // namespace bracz_custom
