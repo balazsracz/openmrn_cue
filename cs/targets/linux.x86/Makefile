@@ -2,6 +2,7 @@ APP_PATH ?= $(realpath ../..)
 include $(APP_PATH)/config.mk
 
 TEST_EXTRA_OBJS += error.o
+TESTOBJSEXTRA += error.o 
 
 include $(OPENMRNPATH)/etc/prog.mk
 
