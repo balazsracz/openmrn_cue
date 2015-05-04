@@ -36,6 +36,7 @@
 #define _SERVER_PACKETSTREAMSENDER_HXX_
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include "executor/StateFlow.hxx"
 
 namespace server {
