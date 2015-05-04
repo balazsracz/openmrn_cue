@@ -7,5 +7,5 @@ SUBDIRS ?= \
 
 ifeq ($(strip $(TARGET)),linux.x86)
 SUBDIRS += automata server
-
+SYSLIBRARIESEXTRA += -lprotobuf
 endif
