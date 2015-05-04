@@ -1,0 +1,104 @@
+#include "utils/test_main.hxx"
+#include "server/PacketStreamSender.hxx"
+
+using ::testing::StrictMock;
+
+namespace server {
+namespace {
+
+class PipeTest : public ::testing::Test {
+protected:
+  PipeTest() {
+    ::pipe(pipe_fds_);
+  }
+
+  ~PipeTest() {
+    ::close(pipe_fds_[0]);
+    ::close(pipe_fds_[1]);
+  }
+
+  int pipe_fds_[2];
+};
+
+class PacketStreamSendTest : public PipeTest {
+ protected:
+  PacketStreamSendTest() : sender_(&g_service, pipe_fds_[1]) {}
+
+  string repeated_read(int fd, size_t length) {
+    string ret;
+    ret.resize(length);
+    for (unsigned i = 0; i < length; ++i) {
+      HASSERT(::read(fd, &ret[i], 1) == 1);
+    }
+    return ret;
+  }
+
+  PacketStreamSender sender_;
+};
+
+static const char kGoldenData[] = {
+    0, 0, 0, 7, '1', '2', '3', '4', '5', '6', '7',            //
+    0, 0, 0, 9, '9', '8', '7', '6', '5', '4', '3', '2', '1',  //
+    0, 0, 0, 0, //
+    0, 0, 0, 6, '1', '9', '1', '9', '1', '9'};
+
+TEST_F(PacketStreamSendTest, TestSend) {
+  auto* b = sender_.alloc();
+  b->data()->assign("1234567");
+  sender_.send(b);
+
+  b = sender_.alloc();
+  b->data()->assign("987654321");
+  sender_.send(b);
+
+  b = sender_.alloc();
+  sender_.send(b);
+
+  b = sender_.alloc();
+  b->data()->assign("191919");
+  sender_.send(b);
+
+  string received_data = repeated_read(pipe_fds_[0], sizeof(kGoldenData));
+  string expected_data(kGoldenData, sizeof(kGoldenData));
+  EXPECT_EQ(expected_data, received_data);
+}
+
+class MockPacketFlow : public PacketFlowInterface {
+public:
+  MOCK_METHOD1(received_packet, void(const string&));
+
+  void send(Buffer<string>* b, unsigned priority) override {
+    received_packet(*b->data());
+    b->unref();
+  }
+};
+
+class PacketStreamReceiveTest : public PipeTest {
+ protected:
+  PacketStreamReceiveTest() : receiver_(&g_service, &handler_, pipe_fds_[0]) {}
+
+  void repeated_write(int fd, string data) {
+    for (char c : data) {
+      HASSERT(::write(fd, &c, 1) == 1);
+    }
+  }
+
+  StrictMock<MockPacketFlow> handler_;
+  PacketStreamReceiver receiver_;
+};
+
+TEST_F(PacketStreamReceiveTest, CreateDestroy) {}
+
+TEST_F(PacketStreamReceiveTest, TestGolden) {
+  string expected_data(kGoldenData, sizeof(kGoldenData));
+  ::testing::InSequence seq;
+  EXPECT_CALL(handler_, received_packet("1234567"));
+  EXPECT_CALL(handler_, received_packet("987654321"));
+  EXPECT_CALL(handler_, received_packet(""));
+  EXPECT_CALL(handler_, received_packet("191919"));
+  repeated_write(pipe_fds_[1], expected_data);
+  wait_for_main_executor();
+}
+
+}  // namespace
+}  // namespace server

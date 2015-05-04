@@ -6,6 +6,6 @@ SUBDIRS ?= \
 
 
 ifeq ($(strip $(TARGET)),linux.x86)
-SUBDIRS += automata
+SUBDIRS += automata server
 
 endif
