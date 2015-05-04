@@ -1,0 +1,253 @@
+syntax = "proto2";
+
+package server;
+
+message LokStateProto {
+  required int32 id = 1;
+  optional int32 dir = 2 [default = 1];
+  optional int32 speed = 3;
+  // timestamp in usecs since epoch of the last layout change of the speed/dir
+  // value.
+  optional int64 speed_ts = 9;
+  repeated group Function = 4 {
+    // Functions are numbered from 2 onwards. id=2 is typically the light.
+    required int32 id = 5;
+    // Binary functions allow a value of 0 and 1 for off and on, respectively.
+    optional int32 value = 6;
+    // timestamp in usecs since epoch of the last layout change of this value.
+    optional int64 ts = 8;
+  };
+  // timestamp in usecs since epoch.
+  optional int64 ts = 7;
+};
+
+// next tag: 62
+message TrainControlRequest {
+  // Sets the speed of a given train.
+  optional group DoSetSpeed = 1 {
+    // Train id is an integer in [0..9].
+    required int32 id = 2;
+    // Set to -1 for reverse.
+    optional int32 dir = 36 [default = 1];
+    // Max speed is 127. If not specified, returns current speed value.
+    optional int32 speed = 3;
+  };
+
+  optional group DoSetAccessory = 4 {
+    required int32 train_id = 5;
+    required int32 accessory_id = 6;
+    // Proper values are 0 to 255, most usually only 0 and 1 are effective.
+    // If not specified, returns current value.
+    optional int32 value = 7;
+  };
+
+  optional group DoSetEmergencyStop = 8 {
+    // If not specified, requests state of emergency stop.
+    // Stop=true is emergency stop, stop=false is resume.
+    optional bool stop = 9;
+  };
+
+  // Calls an RPC on the serial bus of the train controllers.
+  optional group DoRpc = 16 {
+    // OneWire address of destination. Usually byte 0x50 of the autdef_xx.as
+    required int32 destination_address = 17;
+    // RPC command (see //experimental/users/bracz/train/picv2/rpchandler.c)
+    required int32 command = 18;
+    required int32 arg1 = 19;
+    required int32 arg2 = 20;
+    repeated int32 payload = 60;
+  };
+
+  optional group DoPing = 21 {
+    // This value will be sent as the ping argument (to be returned
+    // incremented). Valid: 0<=value<=255.
+    optional int32 value = 22 [default = 0];
+  };
+
+  optional group DoGetOrSetAddress = 23 {
+    // If not specified, address will be queried but not changed.
+    optional int32 new_address = 24;
+  };
+
+  // Drops all state in the USB controller. Useful as part of a reset sequence.
+  optional group DoDropState = 25 {
+  };
+
+  // Changes the saved state stored in the usb controller.
+  optional group DoChangeSavedState = 26 {
+    // Usually the address of the responsiblecontroller.
+    required int32 client_id = 27;
+    // 0 to 31, the byte to change.
+    required int32 offset = 28;
+    // Specify either new_value (0 to 255).
+    optional int32 new_value = 29;
+    // Or a mask for bits_to_set and/or bits_to_clear.
+    optional int32 bits_to_set = 30 [default = 0];
+    optional int32 bits_to_clear = 31 [default = 0];
+  };
+
+  // Sends a CANbus packet.
+  optional group DoSendRawCanPacket = 32 {
+    // Set to true if you want to wait for the next incoming CAN packet as
+    // response.
+    optional bool wait = 33 [default = false];
+    // Specify either a sequence of bytes or a string as the CAN packet
+    // payload. 'data' takes precedence.
+    repeated int32 d = 34;
+    optional string data = 35;
+  };
+
+  optional group DoReflashAutomata = 40 {
+    // OneWire address of destination. Usually byte 0x50 of the autdef_xx.as
+    required int32 destination_address = 37;
+    // If specified, reflashes a signal controller on the signal bus of the
+    // above destination_address.
+    optional int32 signal_address = 61;
+    // Offset within the flash of the controller. Automata starts at
+    // 0xd00. Must be aligned at 64 bytes.
+    optional int32 offset = 38 [default = 3328];  // 0xd00
+    // The bytes to flash (ont per value). Will be padded with zeros to the
+    // next multiple of 16.
+    repeated int32 data = 39;
+  };
+
+  optional group DoGetLokDb = 41 {
+  };
+
+  optional group DoGetLokState = 42 {
+    // If not specified, all loks will be queried.
+    optional int32 id = 43;
+  };
+
+  optional LokStateProto DoSetLokState = 44;
+
+  optional group DoEStopLoco = 45 {
+    required int32 id = 46;
+  };
+
+  optional group DoPicMisc = 47 {
+    required int32 cmd = 48;
+    repeated int32 arg = 49;
+  };
+
+  optional group DoReflashPic = 50 {
+    // The bytes to flash (one per value). A block of only 0xff will be
+    // ignored.
+    repeated int32 data = 51;
+  };
+
+  optional group DoGetOrSetCV = 52 {
+    optional int32 train_id = 53 [default = 63];  // 0x3f
+    // The first CV is 1, typically the address. (These are user-visible CV
+    // numbers)
+    required int32 cv = 54;
+    // If set, write, otherwise read.
+    optional int32 value = 55;
+  };
+
+  optional group DoWaitForChange = 56 {
+    // Waits until the last modified timestamp of the given train (or the
+    // entire layoutstate) exceeds this timestamp.
+    required uint64 timestamp = 57;
+    optional int32 id = 58;
+    // or if this much time elapses.
+    //optional int32 deadline_msec = 59 [default = 50000];
+  };
+}
+
+// next tag: 55
+message TrainControlResponse {
+  optional group Speed = 1 {
+    required int32 id = 2;
+    // +1: forward, -1: backward.
+    optional int32 dir = 25 [default = 1];
+    // Scale: 0..127.
+    required int32 speed = 3;
+    optional uint64 timestamp = 50;
+  };
+  optional group Accessory = 4 {
+    required int32 train_id = 5;
+    required int32 accessory_id = 6;
+    required int32 value = 7;
+    optional uint64 timestamp = 51;
+  };
+  optional group EmergencyStop = 8 {
+    required bool stop = 9;
+  };
+  optional group RpcResponse = 16 {
+    required bool success = 17;
+    required int32 response = 18;
+  };
+  optional group Pong = 19 {
+    required int32 value = 20;
+  };
+  optional group CurrentAddress = 21 {
+    required int32 address = 22;
+  };
+  optional group RawCanPacket = 23 {
+    repeated int32 data = 24;
+  };
+  optional group ReflashAutomata = 27 {
+    // Empty if reflash was successful.
+    optional string error = 26; 
+  };
+  optional group LokDb = 28 {
+    repeated group Lok = 29 {
+      required int32 id = 30;
+      optional string name = 31;
+      optional int32 address = 32;
+      repeated group Function = 33 {
+        required int32 id = 34;
+        optional int32 type = 35;
+      }
+    }
+  };
+  repeated LokStateProto lokstate = 36;
+  optional group PicMisc = 37 {
+    required int32 cmd = 38;
+    required int32 status = 39;
+    required int32 arg1 = 40;
+    required int32 arg2 = 41;
+    repeated int32 more_arg = 42;
+  };
+  optional group ReflashPic = 43 {
+    // Empty if reflash was successful.
+    optional string error = 44; 
+  };
+  optional group Cv = 45 {
+    // train id.
+    required int32 train_id = 46;
+    required int32 cv = 47;
+    // If exists and non-zero, an error occured.
+    optional int32 error_code = 48; 
+    // The value read from the CV.
+    optional int32 value = 49; 
+  };
+
+  optional group WaitForChangeResponse = 52 {
+    // New last-modified timestamp in usec.
+    required uint64 timestamp = 53;
+    optional int32 id = 54;
+  };
+}
+
+message TinyRpcRequest {
+  required int32 id = 1;
+  required TrainControlRequest request = 2;
+}
+
+message TinyRpcResponse {
+  required int32 id = 1;
+  optional TrainControlResponse response = 4;
+  optional bool failed = 2 [default = false];
+  optional string error_detail = 3;
+}
+
+
+service TrainControlService {
+  rpc TrainControl(TrainControlRequest) returns(TrainControlResponse) {
+//    option protocol = TCP;
+//    option security_level = NONE;
+  }
+}
+
