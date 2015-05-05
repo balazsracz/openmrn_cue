@@ -45,22 +45,26 @@ namespace server {
 class RpcService : public Service {
  public:
   RpcService(ExecutorBase* executor, RpcServiceInterface* impl)
-    : Service(executor), impl_(impl), parser_(this) {}
+      : Service(executor), impl_(impl), parser_(this) {}
 
   void set_channel(int fd_read, int fd_write) {
-    HASSERT(!sender_.get()); // or else: set_channel was called twice.
+    HASSERT(!sender_.get());  // or else: set_channel was called twice.
     sender_.reset(new PacketStreamSender(this, fd_write));
     receiver_.reset(new PacketStreamReceiver(this, &parser_, fd_read));
   }
 
   RpcServiceInterface* impl() { return impl_; }
-  PacketFlowInterface* reply_target() {
-    return sender_.get();
+  PacketFlowInterface* reply_target() { return sender_.get(); }
+
+  bool is_busy() {
+    return !sender_->is_waiting() ||
+           !parser_.is_waiting();
   }
 
   class ImplFlowBase : public StateFlowBase {
-  public:
-    ImplFlowBase(Service* s, Buffer<TinyRpc>* b) : StateFlowBase(s), message_(b) {
+   public:
+    ImplFlowBase(Service* s, Buffer<TinyRpc>* b)
+        : StateFlowBase(s), message_(b) {
       start_flow(STATE(entry));
     }
 
@@ -68,7 +72,7 @@ class RpcService : public Service {
         logic must eventually transition to STATE(reply). */
     virtual Action entry() = 0;
 
-  protected:
+   protected:
     Buffer<TinyRpc>* message() { return message_; }
     RpcService* service() {
       return static_cast<RpcService*>(StateFlowBase::service());
@@ -80,7 +84,7 @@ class RpcService : public Service {
       return allocate_and_call(service()->reply_target(), STATE(render_reply));
     }
 
-  private:
+   private:
     Action render_reply() {
       auto* b = get_allocation_result(service()->reply_target());
       message()->data()->response.SerializeToString(b->data());

@@ -34,16 +34,130 @@
 
 #include "server/RpcService.hxx"
 #include "utils/test_main.hxx"
+#include "google/protobuf/text_format.h"
+
+using ::testing::StrictMock;
+using ::testing::Mock;
 
 namespace server {
 namespace {
 
-class RpcServiceTest : public ::testing::Test {
+class DemoFlow : public RpcService::ImplFlowBase {
+ public:
+  DemoFlow(Service* service, Buffer<TinyRpc>* b) : ImplFlowBase(service, b) {}
+
+ private:
+  Action entry() OVERRIDE {
+    if (message()->data()->request.request().has_doping()) {
+      message()->data()->response.mutable_response()->mutable_pong()->set_value(
+          message()->data()->request.request().doping().value() + 1);
+    }
+    return reply();
+  }
+};
+
+class DemoRpcService : public RpcService {
+ public:
+  DemoRpcService() : RpcService(&g_executor, &flow_factory_) {}
+
+ private:
+  RpcServiceFlowFactory<DemoFlow> flow_factory_{this};
+};
+
+class RpcServiceNullTest : public ::testing::Test {
  protected:
   RpcService s{&g_executor, nullptr};
 };
 
+TEST_F(RpcServiceNullTest, Create) {}
+
+class MockResponsePacket : public PacketFlowInterface {
+ public:
+  MOCK_METHOD1(received_packet, void(const string&));
+
+  void send(Buffer<string>* b, unsigned priority) override {
+    TinyRpcResponse resp;
+    resp.ParseFromString(*b->data());
+    string text;
+    HASSERT(::google::protobuf::TextFormat::PrintToString(resp, &text));
+    received_packet(text);
+    b->unref();
+  }
+};
+
+string CanonicalizeProto(const string& text_pb) {
+  TinyRpcResponse resp;
+  HASSERT(::google::protobuf::TextFormat::ParseFromString(text_pb, &resp));
+  string canon;
+  HASSERT(::google::protobuf::TextFormat::PrintToString(resp, &canon));
+  return canon;
+}
+
+class RpcServiceTest : public ::testing::Test {
+ protected:
+  RpcServiceTest() {
+    ::pipe(down_pipe_);
+    ::pipe(up_pipe_);
+
+    send_.reset(new PacketStreamSender(&s_, down_pipe_[1]));
+    recv_.reset(new PacketStreamReceiver(&s_, &response_handler_, up_pipe_[0]));
+    s_.set_channel(down_pipe_[0], up_pipe_[1]);
+  }
+
+  ~RpcServiceTest() {
+    wait();
+    ::close(down_pipe_[0]);
+    ::close(down_pipe_[1]);
+    ::close(up_pipe_[0]);
+    ::close(up_pipe_[1]);
+  }
+
+  void wait() {
+    do {
+      usleep(1000);
+      wait_for_main_executor();
+    } while (!send_->is_waiting() || s_.is_busy());
+  }
+
+  void send_request(const TinyRpcRequest& r) {
+    auto* b = send_->alloc();
+    r.SerializeToString(b->data());
+    send_->send(b);
+  }
+
+  DemoRpcService s_;
+
+  int down_pipe_[2];
+  int up_pipe_[2];
+  std::unique_ptr<PacketStreamSender> send_;
+  std::unique_ptr<PacketStreamReceiver> recv_;
+  StrictMock<MockResponsePacket> response_handler_;
+};
+
 TEST_F(RpcServiceTest, Create) {}
+
+TEST_F(RpcServiceTest, SendEmpty) {
+  TinyRpcRequest req;
+  req.set_id(37);
+  req.mutable_request()->mutable_dosetemergencystop()->set_stop(true);
+  const char kResponse[] = "id: 37 failed: false";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+  send_request(req);
+  wait();
+}
+
+TEST_F(RpcServiceTest, SendPing) {
+  const char kRequest[] = "id: 42 request { DoPing { value: 31 } }";
+  TinyRpcRequest req;
+  ASSERT_TRUE(::google::protobuf::TextFormat::ParseFromString(kRequest, &req));
+
+  const char kResponse[] =
+      "id: 42 failed: false response { Pong { value : 32 }}";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+
+  send_request(req);
+  wait();
+}
 
 }  // namespace
 }  // namespace server
