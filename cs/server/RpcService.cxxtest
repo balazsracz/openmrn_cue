@@ -39,7 +39,7 @@ namespace server {
 namespace {
 
 class RpcServiceTest : public ::testing::Test {
-protected:
+ protected:
   RpcService s{&g_executor, nullptr};
 };
 
@@ -47,6 +47,3 @@ TEST_F(RpcServiceTest, Create) {}
 
 }  // namespace
 }  // namespace server
-
-
-

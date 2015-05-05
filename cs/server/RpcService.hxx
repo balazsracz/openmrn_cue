@@ -35,6 +35,8 @@
 #ifndef _SERVER_RPCSERVICE_HXX_
 #define _SERVER_RPCSERVICE_HXX_
 
+#include <memory>
+
 #include "server/RpcDefs.hxx"
 #include "server/PacketStreamSender.hxx"
 
@@ -45,7 +47,50 @@ class RpcService : public Service {
   RpcService(ExecutorBase* executor, RpcServiceInterface* impl)
     : Service(executor), impl_(impl), parser_(this) {}
 
+  void set_channel(int fd_read, int fd_write) {
+    HASSERT(!sender_.get()); // or else: set_channel was called twice.
+    sender_.reset(new PacketStreamSender(this, fd_write));
+    receiver_.reset(new PacketStreamReceiver(this, &parser_, fd_read));
+  }
+
   RpcServiceInterface* impl() { return impl_; }
+  PacketFlowInterface* reply_target() {
+    return sender_.get();
+  }
+
+  class ImplFlowBase : public StateFlowBase {
+  public:
+    ImplFlowBase(Service* s, Buffer<TinyRpc>* b) : StateFlowBase(s), message_(b) {
+      start_flow(STATE(entry));
+    }
+
+    /** Customer entry point for processing the data. The customer handling
+        logic must eventually transition to STATE(reply). */
+    virtual Action entry() = 0;
+
+  protected:
+    Buffer<TinyRpc>* message() { return message_; }
+    RpcService* service() {
+      return static_cast<RpcService*>(StateFlowBase::service());
+    }
+
+    /** Sends back the response to the caller, and then deletes *this. */
+    Action reply() {
+      message()->data()->response.set_id(message()->data()->request.id());
+      return allocate_and_call(service()->reply_target(), STATE(render_reply));
+    }
+
+  private:
+    Action render_reply() {
+      auto* b = get_allocation_result(service()->reply_target());
+      message()->data()->response.SerializeToString(b->data());
+      service()->reply_target()->send(b);
+      message_->unref();
+      return delete_this();
+    }
+
+    Buffer<TinyRpc>* message_;
+  };
 
  private:
   class ParserFlow : public PacketFlow {
@@ -59,6 +104,8 @@ class RpcService : public Service {
     Action have_buffer() {
       auto* b = get_allocation_result(service()->impl());
       b->data()->request.ParseFromString(*message()->data());
+      b->data()->response.set_failed(false);
+      b->data()->response.clear_error_detail();
       service()->impl()->send(b);
       return release_and_exit();
     }
@@ -71,6 +118,8 @@ class RpcService : public Service {
 
   RpcServiceInterface* impl_;
   ParserFlow parser_;
+  std::unique_ptr<PacketStreamSender> sender_;
+  std::unique_ptr<PacketStreamReceiver> receiver_;
 };
 
 }  // namespace server
