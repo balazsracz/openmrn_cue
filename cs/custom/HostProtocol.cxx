@@ -63,7 +63,7 @@ StateFlowBase::Action HostClient::HostClientHandler::entry() {
   switch (cmd) {
     case CMD_PING: {
       response_payload_.reserve(3);
-      response_payload_.push_back(HostProtocolDefs::DATAGRAM_ID);
+      response_payload_.push_back(HostProtocolDefs::SERVER_DATAGRAM_ID);
       response_payload_.push_back(CMD_PONG);
       response_payload_.push_back(payload()[2] + 1);
       return respond_ok(DatagramClient::REPLY_PENDING);
@@ -144,7 +144,7 @@ StateFlowBase::Action HostClient::HostPacketBridge::format_send() {
 
   b->data()->resize(f.can_dlc + 5 + 2);
   frame_to_mcp(f, (uint8_t*) &b->data()->data()[2]);
-  b->data()->at(0) = HostProtocolDefs::DATAGRAM_ID;
+  b->data()->at(0) = HostProtocolDefs::SERVER_DATAGRAM_ID;
   b->data()->at(1) = CMD_CAN_PKT;
   parent()->send_client()->send(b);
   return release_and_exit();
@@ -157,7 +157,7 @@ void HostClient::log_output(char* buf, int size) {
   if (size <= 0) return;
   auto* b = send_client()->alloc();
   b->data()->reserve(size + 2);
-  b->data()->push_back(HostProtocolDefs::DATAGRAM_ID);
+  b->data()->push_back(HostProtocolDefs::SERVER_DATAGRAM_ID);
   b->data()->push_back(CMD_VCOM1);
   b->data()->append(buf, size);
   send_client()->send(b);

@@ -44,7 +44,8 @@ namespace bracz_custom {
 
 struct HostProtocolDefs {
   enum {
-    DATAGRAM_ID = 0xF1,
+    CLIENT_DATAGRAM_ID = 0xF1,
+    SERVER_DATAGRAM_ID = 0xF2,
   };
 };
 
@@ -84,12 +85,12 @@ class HostClient : public Service, public Singleton<HostClient> {
    public:
     HostClientHandler(HostClient* parent)
         : DefaultDatagramHandler(parent->dg_service()), parent_(parent) {
-      dg_service()->registry()->insert(parent_->node(), HostProtocolDefs::DATAGRAM_ID,
+      dg_service()->registry()->insert(parent_->node(), HostProtocolDefs::CLIENT_DATAGRAM_ID,
                                        this);
     }
 
     ~HostClientHandler() {
-      dg_service()->registry()->erase(parent_->node(), HostProtocolDefs::DATAGRAM_ID,
+      dg_service()->registry()->erase(parent_->node(), HostProtocolDefs::CLIENT_DATAGRAM_ID,
                                       this);
     }
 
