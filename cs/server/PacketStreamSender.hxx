@@ -44,13 +44,23 @@ namespace server {
 typedef FlowInterface<Buffer<string> > PacketFlowInterface;
 typedef StateFlow<Buffer<string>, QList<1> > PacketFlow;
 
+static constexpr uint32_t kStreamMagic = 0x3d82c6e1;
+
 class PacketStreamSender : public PacketFlow {
  public:
   PacketStreamSender(Service* s, int fd) : PacketFlow(s), fd_(fd) {
     ::fcntl(fd_, F_SETFL, O_NONBLOCK);
+    // We have to do something before we start pending on the queue.
+    reset_flow(STATE(send_magic));
   }
 
  private:
+  Action send_magic() {
+    length_ = htonl(kStreamMagic);
+    return this->write_repeated(&selectHelper_, fd_, &length_, 4,
+                                exit().next_state());
+  }
+
   Action entry() OVERRIDE {
     length_ = htonl(message()->data()->size());
     return this->write_repeated(&selectHelper_, fd_, &length_, 4,
@@ -91,6 +101,10 @@ class PacketStreamReceiver : public StateFlowBase {
 
   Action length_done() {
     length_ = ntohl(length_);
+    if (length_ == kStreamMagic) {
+      // Ignores the magic bytes.
+      return call_immediately(STATE(read_length));
+    }
     return allocate_and_call(handler_, STATE(alloc_done));
   }
 
