@@ -35,15 +35,14 @@
 #include "server/PacketStreamSender.hxx"
 
 using ::testing::StrictMock;
+using ::testing::Mock;
 
 namespace server {
 namespace {
 
 class PipeTest : public ::testing::Test {
-protected:
-  PipeTest() {
-    ::pipe(pipe_fds_);
-  }
+ protected:
+  PipeTest() { ::pipe(pipe_fds_); }
 
   ~PipeTest() {
     ::close(pipe_fds_[0]);
@@ -53,18 +52,18 @@ protected:
   int pipe_fds_[2];
 };
 
+string repeated_read(int fd, size_t length) {
+  string ret;
+  ret.resize(length);
+  for (unsigned i = 0; i < length; ++i) {
+    HASSERT(::read(fd, &ret[i], 1) == 1);
+  }
+  return ret;
+}
+
 class PacketStreamSendTest : public PipeTest {
  protected:
   PacketStreamSendTest() : sender_(&g_service, pipe_fds_[1]) {}
-
-  string repeated_read(int fd, size_t length) {
-    string ret;
-    ret.resize(length);
-    for (unsigned i = 0; i < length; ++i) {
-      HASSERT(::read(fd, &ret[i], 1) == 1);
-    }
-    return ret;
-  }
 
   PacketStreamSender sender_;
 };
@@ -72,7 +71,7 @@ class PacketStreamSendTest : public PipeTest {
 static const char kGoldenData[] = {
     0, 0, 0, 7, '1', '2', '3', '4', '5', '6', '7',            //
     0, 0, 0, 9, '9', '8', '7', '6', '5', '4', '3', '2', '1',  //
-    0, 0, 0, 0, //
+    0, 0, 0, 0,                                               //
     0, 0, 0, 6, '1', '9', '1', '9', '1', '9'};
 
 TEST_F(PacketStreamSendTest, TestSend) {
@@ -97,7 +96,7 @@ TEST_F(PacketStreamSendTest, TestSend) {
 }
 
 class MockPacketFlow : public PacketFlowInterface {
-public:
+ public:
   MOCK_METHOD1(received_packet, void(const string&));
 
   void send(Buffer<string>* b, unsigned priority) override {
@@ -131,6 +130,53 @@ TEST_F(PacketStreamReceiveTest, TestGolden) {
   EXPECT_CALL(handler_, received_packet("191919"));
   repeated_write(pipe_fds_[1], expected_data);
   wait_for_main_executor();
+}
+
+class PacketStreamSRTest : public PacketStreamReceiveTest {
+ protected:
+  PacketStreamSRTest() : sender_(&g_service, pipe_fds_[1]) {}
+
+  void send_packet(string s) {
+    auto* b = sender_.alloc();
+    b->data()->assign(s);
+    sender_.send(b);
+  }
+
+  void wait() {
+    while (!sender_.is_waiting()) wait_for_main_executor();
+    wait_for_main_executor();
+  }
+
+  PacketStreamSender sender_;
+};
+
+TEST_F(PacketStreamSRTest, SendSingle) {
+  EXPECT_CALL(handler_, received_packet("1234567"));
+  send_packet("1234567");
+  wait();
+}
+
+TEST_F(PacketStreamSRTest, SendMultiple) {
+  EXPECT_CALL(handler_, received_packet("1234567"));
+  send_packet("1234567");
+  wait();
+  Mock::VerifyAndClear(&handler_);
+
+  EXPECT_CALL(handler_, received_packet("123"));
+  send_packet("123");
+  EXPECT_CALL(handler_, received_packet(""));
+  send_packet("");
+  wait();
+  Mock::VerifyAndClear(&handler_);
+
+  string s;
+  for (int i = 0; i < 127000; ++i) {
+    s.push_back(i % 250);
+  }
+  EXPECT_CALL(handler_, received_packet(s));
+  send_packet(s);
+  wait();
+  Mock::VerifyAndClear(&handler_);
 }
 
 }  // namespace
