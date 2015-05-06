@@ -52,11 +52,68 @@ using mobilestation::MobileStationTraction;
 namespace server {
 namespace {
 
+static const char kStaticLokDb[] = R"proto(
+LokDb {
+  Lok {
+    id: 0
+    name: "Am 843 093-6"
+    address: 1
+    Function {
+      id: 2
+      type: 1
+    }
+    Function {
+      id: 3
+      type: 6
+    }
+    Function {
+      id: 4
+      type: 11
+    }
+    Function {
+      id: 5
+      type: 8
+    }
+    Function {
+      id: 32
+      type: 160
+    }
+    Function {
+      id: 33
+      type: 161
+    }
+  }
+  Lok {
+    id: 1
+    name: "Re 460 TSR"
+    address: 1
+    Function {
+      id: 2
+      type: 1
+    }
+    Function {
+      id: 3
+      type: 8
+    }
+    Function {
+      id: 32
+      type: 160
+    }
+    Function {
+      id: 33
+      type: 161
+    }
+  }
+}
+)proto";
+
+
 class TrainControlServiceTestBase : public AsyncDatagramTest {
  protected:
   TrainControlServiceTestBase() {
     train_control_.initialize(&datagram_support_, node_,
-                              NodeHandle(node_->node_id()));
+                              NodeHandle(node_->node_id()),
+                              kStaticLokDb);
   }
   ~TrainControlServiceTestBase() { wait(); }
 
@@ -92,7 +149,7 @@ TEST_F(TrainControlServiceTest, SendPing) {
 
 TEST_F(TrainControlServiceTest, SendUnknown) {
   const char kResponse[] =
-      "id: 45 failed: true error_detail: \"unimplemented command\"";
+      "id: 45 failed: true error_detail: \"unimplemented command\" response {}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
   const char kRequest[] = "id: 45 request { }";
@@ -117,7 +174,7 @@ class TrainControlServiceCanTest : public TrainControlServiceTest,
 };
 
 TEST_F(TrainControlServiceCanTest, SendCanPacket) {
-  const char kResponse[] = "id: 45 failed: false ";
+  const char kResponse[] = "id: 45 failed: false  response {}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
   const char kRequest[] =
@@ -212,6 +269,7 @@ TEST_F(TrainControlServiceTrainTest, SetSpeedTwo) {
   send_request("id: 51 request { DoSetSpeed { id: 0 dir: 1 speed: 32 } }");
   send_request("id: 47 request { DoSetSpeed { id: 1 dir: -1 speed: 23 } }");
   wait();
+  wait();
 }
 
 TEST_F(TrainControlServiceTrainTest, GetSpeed0) {
@@ -219,14 +277,86 @@ TEST_F(TrainControlServiceTrainTest, GetSpeed0) {
       "id: 51  failed: false response { Speed { id : 0 dir : -1 speed : 32 }}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
-  const char kRequest[] =
-      "id: 51 request { DoSetSpeed { id: 0 } }";
+  const char kRequest[] = "id: 51 request { DoSetSpeed { id: 0 } }";
   EXPECT_CALL(m1_, get_speed()).WillOnce(Return(mph_to_velocity(33, false)));
-  EXPECT_CALL(m1_, get_commanded_speed()).WillRepeatedly(Return(nmranet::Velocity()));
-  EXPECT_CALL(m1_, get_actual_speed()).WillRepeatedly(Return(nmranet::Velocity()));
+  EXPECT_CALL(m1_, get_commanded_speed())
+      .WillRepeatedly(Return(nmranet::Velocity()));
+  EXPECT_CALL(m1_, get_actual_speed())
+      .WillRepeatedly(Return(nmranet::Velocity()));
   send_request(kRequest);
   wait();
 }
+
+TEST_F(TrainControlServiceTrainTest, SetFn) {
+  const char kResponse[] =
+      "id: 51  failed: false response { Accessory { train_id : 1 accessory_id: "
+      "6 value : 1 }}";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+
+  const char kRequest[] =
+      "id: 51 request { DoSetAccessory { train_id: 1 accessory_id: 6 value : 1 "
+      "} }";
+  // accessory 6 is mapped to fn 2
+  EXPECT_CALL(m2_, set_fn(2, 1));
+  send_request(kRequest);
+  wait();
+}
+
+TEST_F(TrainControlServiceTrainTest, GetFn) {
+  const char kResponse[] =
+      "id: 51  failed: false response { Accessory { train_id : 1 accessory_id: "
+      "6 value : 1 }}";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+
+  const char kRequest[] =
+      "id: 51 request { DoSetAccessory { train_id: 1 accessory_id: 6 } }";
+  // accessory 6 is mapped to fn 2
+  EXPECT_CALL(m2_, get_fn(2)).WillOnce(Return(1));
+  send_request(kRequest);
+  wait();
+}
+
+TEST_F(TrainControlServiceTrainTest, SetEmergencyStop) {
+  send_request_and_expect_response(
+      "id : 103 request { DoSetEmergencyStop { stop : false }}",
+      "id: 103 failed:false response{ EmergencyStop { stop: false } }");
+  wait();
+}
+
+TEST_F(TrainControlServiceTrainTest, SetAndGetEmergencyStop) {
+  send_request_and_expect_response(
+      "id : 103 request { DoSetEmergencyStop { stop : false }}",
+      "id: 103 failed:false response{ EmergencyStop { stop: false } }");
+  wait();
+
+  /*  get emergency stop is not supported by mostatraction.cxx
+  send_request_and_expect_response(
+      "id : 103 request { DoSetEmergencyStop { }}",
+      "id: 103 failed:false response{ EmergencyStop { stop: false } }");
+      wait();*/
+
+  send_request_and_expect_response(
+      "id : 103 request { DoSetEmergencyStop { stop : true }}",
+      "id: 103 failed:false response{ EmergencyStop { stop: true } }");
+  wait();
+
+  /*send_request_and_expect_response(
+      "id : 103 request { DoSetEmergencyStop { }}",
+      "id: 103 failed:false response{ EmergencyStop { stop: true } }");
+      wait();*/
+}
+
+
+TEST_F(TrainControlServiceTest, GetLokDb) {
+  string response =
+    string("id: 42  failed: false response {")  + kStaticLokDb +  " }";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(response)));
+
+  const char kRequest[] = "id: 42 request { DoGetLokDb { } }";
+  send_request(kRequest);
+  wait();
+}
+
 
 }  // namespace
 }  // namespace server

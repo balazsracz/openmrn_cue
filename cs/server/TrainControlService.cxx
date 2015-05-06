@@ -36,6 +36,7 @@
 
 #include <set>
 #include <functional>
+#include <google/protobuf/text_format.h>
 
 #include "custom/HostProtocol.hxx"
 #include "nmranet/Datagram.hxx"
@@ -69,6 +70,7 @@ struct TrainControlService::Impl {
   HostServer* datagram_handler() { return datagram_handler_.get(); }
   PacketQueueFlow* host_queue() { return host_queue_.get(); }
 
+  TrainControlResponse lokdb_response_;
   NodeHandle client_dst_;
   DatagramService* dg_service_;
   Node* node_;
@@ -211,10 +213,8 @@ class ResponseCanPacketFn {
 
 class SpeedFn {
  public:
-  static const int kAcceptResponseCode = CMD_CAN_PKT;
-  static void FillResponse(
-      const Packet& packet,
-      TrainControlResponse* response) {
+  static void FillResponse(const Packet& packet,
+                           TrainControlResponse* response) {
     TrainControlResponse::Speed* speed = response->mutable_speed();
     speed->set_speed(packet[8] & 0x7f);
     if (packet[8] & 0x80) {
@@ -222,7 +222,30 @@ class SpeedFn {
     }
     speed->set_id(packet[3] >> 2);
     /// @TODO(balazs.racz) port layout state handling
-    //speed->set_timestamp(GetLayoutState()->ts_usec);
+    // speed->set_timestamp(GetLayoutState()->ts_usec);
+  }
+};
+
+class AccessoryFn {
+ public:
+  static void FillResponse(const Packet& packet,
+                           TrainControlResponse* response) {
+    TrainControlResponse::Accessory* acc = response->mutable_accessory();
+    acc->set_train_id(packet[3] >> 2);
+    acc->set_accessory_id(packet[6]);
+    acc->set_value(packet[8]);
+    /// @TODO(balazs.racz) port layout state handling
+    // acc->set_timestamp(GetLayoutState()->ts_usec);
+  }
+};
+
+class EmergencyStopFn {
+ public:
+  static void FillResponse(const Packet& packet,
+                           TrainControlResponse* response) {
+    TrainControlResponse::EmergencyStop* args =
+        response->mutable_emergencystop();
+    args->set_stop(packet[8]);
   }
 };
 
@@ -310,8 +333,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
 
   Action entry() OVERRIDE {
     const TrainControlRequest* request = &message()->data()->request.request();
-    // TrainControlResponse* response =
-    //    message()->data()->response.mutable_response();
+    TrainControlResponse* response =
+        message()->data()->response.mutable_response();
     if (request->has_doping()) {
       add_callback<PingResponseFn>();
 
@@ -368,8 +391,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
       add_cancallback<SpeedFn>(pkt, 2);
       send_packet(std::move(pkt));
       return wait_and_call(STATE(response_arrived));
-    } /*else if (request->has_dosetaccessory()) {
-      Packet* pkt = new Packet;
+    } else if (request->has_dosetaccessory()) {
+      Packet pkt;
       const TrainControlRequest::DoSetAccessory& args =
           request->dosetaccessory();
       pkt.push_back(CMD_CAN_PKT);
@@ -382,19 +405,20 @@ class ServerFlow : public RpcService::ImplFlowBase,
         pkt.push_back(args.accessory_id());
         pkt.push_back(0);  // unknown;
         pkt.push_back(args.value());
-        LOG(INFO) << "Setting train " << args.train_id() << " accessory "
-                  << args.accessory_id() << " to " << args.value();
+        LOG(INFO, "Setting train %d  accessory %d to %d", args.train_id(),
+            args.accessory_id(), args.value());
       } else {
         pkt.push_back(2);  // Len;
         pkt.push_back(args.accessory_id());
         pkt.push_back(0);  // unknown;
-        LOG(INFO) << "Getting train " << args.train_id() << " accessory "
-                  << args.accessory_id();
+        LOG(INFO, "Getting train %d accessory %d", args.train_id(),
+            args.accessory_id());
       }
-      ADD_CANCALLBACK(AccessoryFn, *pkt, 2);
-      can_io_->SendPacket(pkt);
+      add_cancallback<AccessoryFn>(pkt, 2);
+      send_packet(std::move(pkt));
+      return wait_and_call(STATE(response_arrived));
     } else if (request->has_dosetemergencystop()) {
-      Packet* pkt = new Packet;
+      Packet pkt;
       const TrainControlRequest::DoSetEmergencyStop& args =
           request->dosetemergencystop();
       pkt.push_back(CMD_CAN_PKT);
@@ -407,21 +431,23 @@ class ServerFlow : public RpcService::ImplFlowBase,
         pkt.push_back(1);
         pkt.push_back(0);  // unknown;
         pkt.push_back(args.stop() ? 1 : 0);
-        LOG(INFO) << "Emergency " << (args.stop() ? "stop." : "start.");
+        LOG(INFO, "Emergency %s", (args.stop() ? "stop." : "start."));
         response->mutable_emergencystop()->set_stop(args.stop());
-        done->Run();
+        send_packet(std::move(pkt));
+        return reply();
       } else {
         pkt.push_back(2);  // Len;
         pkt.push_back(1);
         pkt.push_back(0);  // unknown;
-        LOG(INFO) << "Getting emergency stop status.";
-        ADD_CANCALLBACK(EmergencyStopFn, *pkt, 2);
+        LOG(INFO, "Getting emergency stop status.");
+        add_cancallback<EmergencyStopFn>(pkt, 2);
+        send_packet(std::move(pkt));
+        return wait_and_call(STATE(response_arrived));
       }
-      can_io_->SendPacket(pkt);
     } else if (request->has_dogetlokdb()) {
-      PopulateLokDb(response->mutable_lokdb());
-      done->Run();
-    } else if (request->has_dogetlokstate()) {
+      *response = impl()->lokdb_response_;
+      return reply();
+    } /*else if (request->has_dogetlokstate()) {
       LOG(WARNING) << request->DebugString();
       if (request->dogetlokstate().has_id()) {
         PopulateLokState(request->dogetlokstate().id(), response);
@@ -471,13 +497,18 @@ class ServerFlow : public RpcService::ImplFlowBase,
 
 void TrainControlService::initialize(nmranet::DatagramService* dg_service,
                                      nmranet::Node* node,
-                                     nmranet::NodeHandle client) {
+                                     nmranet::NodeHandle client,
+                                     const string& lokdb_ascii) {
   impl_.reset(new Impl());
   impl_->client_dst_ = client;
   impl_->dg_service_ = dg_service;
   impl_->node_ = node;
   impl_->datagram_handler_.reset(new HostServer(this));
   impl_->host_queue_.reset(new HostPacketQueue(this));
+
+  // Parse lokdb.
+  HASSERT(::google::protobuf::TextFormat::ParseFromString(
+      lokdb_ascii, &impl_->lokdb_response_));
 
   // Login
   auto* b = impl()->host_queue()->alloc();

@@ -49,7 +49,7 @@ class TrainControlService : public RpcService {
   Impl* impl() { return impl_.get(); }
 
   void initialize(nmranet::DatagramService* dg_service, nmranet::Node* node,
-                  nmranet::NodeHandle client);
+                  nmranet::NodeHandle client, const string& lokdb_ascii);
 
  private:
   // Initializes handler_factory_ and returns the resulting pointer. This is a
