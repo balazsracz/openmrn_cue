@@ -111,7 +111,7 @@ class HostServer : public DefaultDatagramHandler {
   Action entry() OVERRIDE {
     Buffer<string>* b;
     pool()->alloc(&b);
-b->data()->assign((const char*)(payload() + 1), size() - 1);
+    b->data()->assign((const char*)(payload() + 1), size() - 1);
     std::set<HostPacketHandlerInterface*> packet_handlers;
     {
       AtomicHolder l(&lock_);
@@ -173,7 +173,7 @@ class HostPacketQueue : public PacketQueueFlow {
 
   Action send_complete() {
     if ((dg_client_->result() & DatagramClient::RESPONSE_CODE_MASK) !=
-                                   DatagramClient::OPERATION_SUCCESS) {
+        DatagramClient::OPERATION_SUCCESS) {
       LOG(ERROR, "Failed to send datagram via host channel. Error 0x%x",
           dg_client_->result());
     }
@@ -233,8 +233,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
   //  - static void FillResponse(const Packet&, TrainControlResponse*);
   template <class C>
   void add_callback() {
-    packet_filter_ =
-      std::bind(&ServerFlow::PacketTypeFilter, C::kAcceptResponseCode, std::placeholders::_1);
+    packet_filter_ = std::bind(&ServerFlow::PacketTypeFilter,
+                               C::kAcceptResponseCode, std::placeholders::_1);
     fill_response_ = &C::FillResponse;
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
@@ -254,7 +254,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
 
   Action entry() OVERRIDE {
     const TrainControlRequest* request = &message()->data()->request.request();
-    //TrainControlResponse* response =
+    // TrainControlResponse* response =
     //    message()->data()->response.mutable_response();
     if (request->has_doping()) {
       add_callback<PingResponseFn>();
