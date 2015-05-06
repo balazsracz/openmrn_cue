@@ -36,6 +36,7 @@
 #define _SERVER_TRAINCONTROLSERVICE_HXX_
 
 #include "server/RpcService.hxx"
+#include "nmranet/Datagram.hxx"
 
 namespace server {
 
@@ -46,6 +47,9 @@ class TrainControlService : public RpcService {
 
   class Impl;
   Impl* impl() { return impl_.get(); }
+
+  void initialize(nmranet::DatagramService* dg_service, nmranet::Node* node,
+                  nmranet::NodeHandle client);
 
  private:
   // Initializes handler_factory_ and returns the resulting pointer. This is a

@@ -23,7 +23,8 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- * * \file TrainControlService.cxxtest
+ *
+ * \file TrainControlService.cxx
  *
  * Implementation of the protocol described in train_control.proto
  *
@@ -54,7 +55,8 @@ typedef Payload Packet;
 namespace server {
 
 TrainControlService::TrainControlService(ExecutorBase* e)
-    : RpcService(e, create_handler_factory()) {}
+    : RpcService(e, create_handler_factory()),
+      handler_factory_(RpcService::impl()) {}
 
 TrainControlService::~TrainControlService() {}
 
@@ -64,15 +66,16 @@ typedef StateFlow<Buffer<string>, QList<1> > PacketQueueFlow;
 struct TrainControlService::Impl {
   DatagramService* dg_service() { return dg_service_; }
   Node* node() { return node_; }
-  HostServer* datagram_handler() { return datagram_handler_; }
-  PacketQueueFlow* host_queue() { return host_queue_; }
+  HostServer* datagram_handler() { return datagram_handler_.get(); }
+  PacketQueueFlow* host_queue() { return host_queue_.get(); }
 
   NodeHandle client_dst_;
   DatagramService* dg_service_;
   Node* node_;
-  HostServer* datagram_handler_;
-  PacketQueueFlow* host_queue_;  // todo: this should be owned i think
+  std::unique_ptr<HostServer> datagram_handler_;
+  std::unique_ptr<PacketQueueFlow> host_queue_;  // todo: this should be owned i think
 };
+
 
 class HostPacketHandlerInterface {
  public:
@@ -188,7 +191,7 @@ class HostPacketQueue : public PacketQueueFlow {
 
 class PingResponseFn {
  public:
-  static const int kAcceptResponseCode = CMD_PONG;
+  typedef std::integral_constant<uint8_t, CMD_PONG> accept_response_type;
   static void FillResponse(const Packet& packet,
                            TrainControlResponse* response) {
     response->mutable_pong()->set_value(packet[1]);
@@ -198,7 +201,7 @@ class PingResponseFn {
 class ServerFlow : public RpcService::ImplFlowBase,
                    private HostPacketHandlerInterface {
  public:
-  ServerFlow(TrainControlService* service, Buffer<TinyRpc>* b)
+  ServerFlow(Service* service, Buffer<TinyRpc>* b)
       : ImplFlowBase(service, b) {}
 
   TrainControlService* service() {
@@ -234,7 +237,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
   template <class C>
   void add_callback() {
     packet_filter_ = std::bind(&ServerFlow::PacketTypeFilter,
-                               C::kAcceptResponseCode, std::placeholders::_1);
+                               C::accept_response_type::value, std::placeholders::_1);
     fill_response_ = &C::FillResponse;
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
@@ -411,4 +414,18 @@ class ServerFlow : public RpcService::ImplFlowBase,
   Buffer<string>* response_packet_;
   DatagramClient* dg_client_;
 };
+
+void TrainControlService::initialize(nmranet::DatagramService* dg_service, nmranet::Node* node, nmranet::NodeHandle client) {
+  impl_.reset(new Impl());
+  impl_->client_dst_ = client;
+  impl_->dg_service_ = dg_service;
+  impl_->node_ = node;
+  impl_->datagram_handler_.reset(new HostServer(this));
+  impl_->host_queue_.reset(new HostPacketQueue(this));
+}
+
+RpcServiceInterface* TrainControlService::create_handler_factory() {
+  return new RpcServiceFlowFactory<ServerFlow>(this);
+}
+
 }  // namespace server
