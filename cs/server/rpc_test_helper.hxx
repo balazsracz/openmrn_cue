@@ -62,6 +62,12 @@ protected:
     r.SerializeToString(b->data());
     send_->send(b);
   }
+
+  void send_request(const string& ascii_request) {
+    TinyRpcRequest req;
+    ASSERT_TRUE(::google::protobuf::TextFormat::ParseFromString(ascii_request, &req));
+    send_request(req);
+  }
   
 protected:
   StrictMock<MockResponsePacket> response_handler_;

@@ -95,15 +95,12 @@ TEST_F(RpcServiceTest, SendEmpty) {
 }
 
 TEST_F(RpcServiceTest, SendPing) {
-  const char kRequest[] = "id: 42 request { DoPing { value: 31 } }";
-  TinyRpcRequest req;
-  ASSERT_TRUE(::google::protobuf::TextFormat::ParseFromString(kRequest, &req));
-
   const char kResponse[] =
       "id: 42 failed: false response { Pong { value : 32 }}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
-  send_request(req);
+  const char kRequest[] = "id: 42 request { DoPing { value: 31 } }";
+  send_request(kRequest);
   wait();
 }
 
