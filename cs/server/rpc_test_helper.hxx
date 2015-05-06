@@ -32,7 +32,7 @@ string CanonicalizeProto(const string& text_pb) {
 }
 
 class RpcServiceTestHelper {
-protected:
+ protected:
   RpcServiceTestHelper(RpcService* s) : s_(s) {
     ::pipe(down_pipe_);
     ::pipe(up_pipe_);
@@ -65,14 +65,22 @@ protected:
 
   void send_request(const string& ascii_request) {
     TinyRpcRequest req;
-    ASSERT_TRUE(::google::protobuf::TextFormat::ParseFromString(ascii_request, &req));
+    ASSERT_TRUE(
+        ::google::protobuf::TextFormat::ParseFromString(ascii_request, &req));
     send_request(req);
   }
-  
-protected:
+
+  void send_request_and_expect_response(const string& request,
+                                        const string& response) {
+    EXPECT_CALL(response_handler_,
+                received_packet(CanonicalizeProto(response)));
+    send_request(request);
+  }
+
+ protected:
   StrictMock<MockResponsePacket> response_handler_;
 
-private:
+ private:
   RpcService* s_;
   int down_pipe_[2];
   int up_pipe_[2];
@@ -80,8 +88,7 @@ private:
   std::unique_ptr<PacketStreamReceiver> recv_;
 };
 
-
 }  // namespace
 }  // namespace server
 
-#endif // _SERVER_RPC_TEST_HELPER_HXX_
+#endif  // _SERVER_RPC_TEST_HELPER_HXX_
