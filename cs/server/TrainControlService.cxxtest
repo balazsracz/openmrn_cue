@@ -214,6 +214,20 @@ TEST_F(TrainControlServiceTrainTest, SetSpeedTwo) {
   wait();
 }
 
+TEST_F(TrainControlServiceTrainTest, GetSpeed0) {
+  const char kResponse[] =
+      "id: 51  failed: false response { Speed { id : 0 dir : -1 speed : 32 }}";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+
+  const char kRequest[] =
+      "id: 51 request { DoSetSpeed { id: 0 } }";
+  EXPECT_CALL(m1_, get_speed()).WillOnce(Return(mph_to_velocity(33, false)));
+  EXPECT_CALL(m1_, get_commanded_speed()).WillRepeatedly(Return(nmranet::Velocity()));
+  EXPECT_CALL(m1_, get_actual_speed()).WillRepeatedly(Return(nmranet::Velocity()));
+  send_request(kRequest);
+  wait();
+}
+
 }  // namespace
 }  // namespace server
 
