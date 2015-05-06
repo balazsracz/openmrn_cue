@@ -73,9 +73,9 @@ struct TrainControlService::Impl {
   DatagramService* dg_service_;
   Node* node_;
   std::unique_ptr<HostServer> datagram_handler_;
-  std::unique_ptr<PacketQueueFlow> host_queue_;  // todo: this should be owned i think
+  std::unique_ptr<PacketQueueFlow> host_queue_;  // todo: this should be owned i
+                                                 // think
 };
-
 
 class HostPacketHandlerInterface {
  public:
@@ -198,11 +198,21 @@ class PingResponseFn {
   }
 };
 
+class ResponseCanPacketFn {
+ public:
+  typedef std::integral_constant<uint8_t, CMD_CAN_PKT> accept_response_type;
+  static void FillResponse(const Packet& packet,
+                           TrainControlResponse* response) {
+    for (unsigned i = 1; i < packet.size(); ++i) {
+      response->mutable_rawcanpacket()->add_data(packet[i]);
+    }
+  }
+};
+
 class ServerFlow : public RpcService::ImplFlowBase,
                    private HostPacketHandlerInterface {
  public:
-  ServerFlow(Service* service, Buffer<TinyRpc>* b)
-      : ImplFlowBase(service, b) {}
+  ServerFlow(Service* service, Buffer<TinyRpc>* b) : ImplFlowBase(service, b) {}
 
   TrainControlService* service() {
     return static_cast<TrainControlService*>(ImplFlowBase::service());
@@ -236,8 +246,34 @@ class ServerFlow : public RpcService::ImplFlowBase,
   //  - static void FillResponse(const Packet&, TrainControlResponse*);
   template <class C>
   void add_callback() {
-    packet_filter_ = std::bind(&ServerFlow::PacketTypeFilter,
-                               C::accept_response_type::value, std::placeholders::_1);
+    packet_filter_ =
+        std::bind(&ServerFlow::PacketTypeFilter, C::accept_response_type::value,
+                  std::placeholders::_1);
+    fill_response_ = &C::FillResponse;
+    response_packet_ = nullptr;
+    service()->impl()->datagram_handler()->add_handler(this);
+  }
+
+  static bool CanPacketFilter(Packet sent, int match_len,
+                              const Packet& received) {
+    if (received.empty() || received[0] != CMD_CAN_PKT) return false;
+    // Compare incoming can received to sent can received.
+    if (received.size() < sent.size()) return false;
+    if (received[1] != sent[1] || received[2] != sent[2] ||
+        received[3] != sent[3] || (received[4] & 0xfe) != (sent[4] & 0xfe))
+      return false;                           // command mismatch
+    if (received[5] < sent[5]) return false;  // len mismatch
+    for (int i = 6; i < 6 + match_len; ++i) {
+      if (received[i] != sent[i]) return false;
+    }
+    return true;
+  }
+
+  template <class C>
+  void add_cancallback(const Packet& sent_packet, int match_len) {
+    HASSERT(sent_packet.size() >= 6);
+    packet_filter_ = std::bind(&ServerFlow::CanPacketFilter, sent_packet,
+                               match_len, std::placeholders::_1);
     fill_response_ = &C::FillResponse;
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
@@ -281,12 +317,14 @@ class ServerFlow : public RpcService::ImplFlowBase,
         pkt += args.data();
       }
       LOG(INFO, "Requested sending CAN packet.");
-      //if (args.wait()) {
-      //  ADD_CANCALLBACK(ResponseCanPacketFn, *pkt, 0);
-      //  can_io_->SendPacket(pkt);
-      //} else {
-      send_packet(std::move(pkt));
-      return reply();
+      if (args.wait()) {
+        add_cancallback<ResponseCanPacketFn>(pkt, 0);
+        send_packet(std::move(pkt));
+        return wait_and_call(STATE(response_arrived));
+      } else {
+        send_packet(std::move(pkt));
+        return reply();
+      }
     } /*else if (request->has_dosetspeed()) {
       Packet* pkt = new Packet;
       const TrainControlRequest::DoSetSpeed& args = request->dosetspeed();
@@ -413,13 +451,20 @@ class ServerFlow : public RpcService::ImplFlowBase,
   DatagramClient* dg_client_;
 };
 
-void TrainControlService::initialize(nmranet::DatagramService* dg_service, nmranet::Node* node, nmranet::NodeHandle client) {
+void TrainControlService::initialize(nmranet::DatagramService* dg_service,
+                                     nmranet::Node* node,
+                                     nmranet::NodeHandle client) {
   impl_.reset(new Impl());
   impl_->client_dst_ = client;
   impl_->dg_service_ = dg_service;
   impl_->node_ = node;
   impl_->datagram_handler_.reset(new HostServer(this));
   impl_->host_queue_.reset(new HostPacketQueue(this));
+
+  // Login
+  auto* b = impl()->host_queue()->alloc();
+  b->data()->push_back(CMD_SYNC);
+  impl()->host_queue()->send(b);
 }
 
 RpcServiceInterface* TrainControlService::create_handler_factory() {

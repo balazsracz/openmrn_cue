@@ -50,6 +50,9 @@ class TrainControlServiceTestBase : public AsyncDatagramTest {
     train_control_.initialize(&datagram_support_, node_,
                               NodeHandle(node_->node_id()));
   }
+  ~TrainControlServiceTestBase() {
+    wait();
+  }
 
   TrainControlService train_control_{&g_executor};
   bracz_custom::HostClient client_{&datagram_support_, node_, &can_hub1};
@@ -60,6 +63,7 @@ TEST_F(TrainControlServiceTestBase, Create) {}
 class TrainControlServiceTest : public TrainControlServiceTestBase, protected RpcServiceTestHelper {
 protected:
   void wait() {
+    TrainControlServiceTestBase::wait();
     RpcServiceTestHelper::wait();
     TrainControlServiceTestBase::wait();
   }
@@ -117,6 +121,24 @@ TEST_F(TrainControlServiceCanTest, SendCanPacket) {
   send_request(kRequest);
   wait();
 }
+
+TEST_F(TrainControlServiceCanTest, SendCanPacketWait) {
+  
+
+  const char kRequest[] = "id: 45 request { DoSendRawCanPacket { d: 0xE0 d:0x08 d:0x00 d:0x7E d:0x03 d:0x55 d:0xaa d:0x55 wait: true }  }";
+  
+  expect_packet1(":X1C00007EN55AA55;"); // the translated packet
+  send_request(kRequest);
+  wait();
+
+  const char kResponse[] =
+      "id: 45 failed: false response { RawCanPacket { data:-32 data:0x08 data:0x00 data:0x7f data:3 data:1 data:2 data:1 }  } ";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+  wait();
+  send_packet1(":X1C00007FN010201;");
+  wait();
+}
+
 
 
 }  // namespace
