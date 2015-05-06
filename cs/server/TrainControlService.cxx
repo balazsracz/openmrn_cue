@@ -209,6 +209,23 @@ class ResponseCanPacketFn {
   }
 };
 
+class SpeedFn {
+ public:
+  static const int kAcceptResponseCode = CMD_CAN_PKT;
+  static void FillResponse(
+      const Packet& packet,
+      TrainControlResponse* response) {
+    TrainControlResponse::Speed* speed = response->mutable_speed();
+    speed->set_speed(packet[8] & 0x7f);
+    if (packet[8] & 0x80) {
+      speed->set_dir(-1);
+    }
+    speed->set_id(packet[3] >> 2);
+    /// @TODO(balazs.racz) port layout state handling
+    //speed->set_timestamp(GetLayoutState()->ts_usec);
+  }
+};
+
 class ServerFlow : public RpcService::ImplFlowBase,
                    private HostPacketHandlerInterface {
  public:
@@ -325,51 +342,52 @@ class ServerFlow : public RpcService::ImplFlowBase,
         send_packet(std::move(pkt));
         return reply();
       }
-    } /*else if (request->has_dosetspeed()) {
-      Packet* pkt = new Packet;
+    } else if (request->has_dosetspeed()) {
+      Packet pkt;
       const TrainControlRequest::DoSetSpeed& args = request->dosetspeed();
-      pkt->push_back(CMD_CAN_PKT);
-      pkt->push_back(0x40);
-      pkt->push_back(0x48);
-      pkt->push_back((args.id() << 2) + 1);
-      pkt->push_back(01);
+      pkt.push_back(CMD_CAN_PKT);
+      pkt.push_back(0x40);
+      pkt.push_back(0x48);
+      pkt.push_back((args.id() << 2) + 1);
+      pkt.push_back(01);
       if (args.has_speed()) {
-        pkt->push_back(3);  // Len;
-        pkt->push_back(1);  // Speed;
-        pkt->push_back(0);  // Speed;
+        pkt.push_back(3);  // Len;
+        pkt.push_back(1);  // Speed;
+        pkt.push_back(0);  // Speed;
         // Value.
         int value = args.speed() & 0x7f;
         if (args.dir() < 0) value += 0x80;
-        pkt->push_back(value);  // Speed;
-        LOG(INFO) << "Setting speed of train " << args.id() << " to " << value;
+        pkt.push_back(value);  // Speed;
+        LOG(INFO, "Setting speed of train %d to %d", args.id(), value);
       } else {
-        pkt->push_back(2);  // Len;
-        pkt->push_back(1);  // Speed;
-        pkt->push_back(0);
-        LOG(INFO) << "Requested speed of train " << args.id() << ".";
+        pkt.push_back(2);  // Len;
+        pkt.push_back(1);  // Speed;
+        pkt.push_back(0);
+        LOG(INFO, "Requested speed of train %d.", args.id());
       }
-      ADD_CANCALLBACK(SpeedFn, *pkt, 2);
-      can_io_->SendPacket(pkt);
-    } else if (request->has_dosetaccessory()) {
+      add_cancallback<SpeedFn>(pkt, 2);
+      send_packet(std::move(pkt));
+      return wait_and_call(STATE(response_arrived));
+    } /*else if (request->has_dosetaccessory()) {
       Packet* pkt = new Packet;
       const TrainControlRequest::DoSetAccessory& args =
           request->dosetaccessory();
-      pkt->push_back(CMD_CAN_PKT);
-      pkt->push_back(0x40);
-      pkt->push_back(0x48);
-      pkt->push_back((args.train_id() << 2) + 1);
-      pkt->push_back(01);
+      pkt.push_back(CMD_CAN_PKT);
+      pkt.push_back(0x40);
+      pkt.push_back(0x48);
+      pkt.push_back((args.train_id() << 2) + 1);
+      pkt.push_back(01);
       if (args.has_value()) {
-        pkt->push_back(3);  // Len;
-        pkt->push_back(args.accessory_id());
-        pkt->push_back(0);  // unknown;
-        pkt->push_back(args.value());
+        pkt.push_back(3);  // Len;
+        pkt.push_back(args.accessory_id());
+        pkt.push_back(0);  // unknown;
+        pkt.push_back(args.value());
         LOG(INFO) << "Setting train " << args.train_id() << " accessory "
                   << args.accessory_id() << " to " << args.value();
       } else {
-        pkt->push_back(2);  // Len;
-        pkt->push_back(args.accessory_id());
-        pkt->push_back(0);  // unknown;
+        pkt.push_back(2);  // Len;
+        pkt.push_back(args.accessory_id());
+        pkt.push_back(0);  // unknown;
         LOG(INFO) << "Getting train " << args.train_id() << " accessory "
                   << args.accessory_id();
       }
@@ -379,23 +397,23 @@ class ServerFlow : public RpcService::ImplFlowBase,
       Packet* pkt = new Packet;
       const TrainControlRequest::DoSetEmergencyStop& args =
           request->dosetemergencystop();
-      pkt->push_back(CMD_CAN_PKT);
-      pkt->push_back(0x40);
-      pkt->push_back(0x08);
-      pkt->push_back(0x09);
-      pkt->push_back(0x01);
+      pkt.push_back(CMD_CAN_PKT);
+      pkt.push_back(0x40);
+      pkt.push_back(0x08);
+      pkt.push_back(0x09);
+      pkt.push_back(0x01);
       if (args.has_stop()) {
-        pkt->push_back(3);  // Len
-        pkt->push_back(1);
-        pkt->push_back(0);  // unknown;
-        pkt->push_back(args.stop() ? 1 : 0);
+        pkt.push_back(3);  // Len
+        pkt.push_back(1);
+        pkt.push_back(0);  // unknown;
+        pkt.push_back(args.stop() ? 1 : 0);
         LOG(INFO) << "Emergency " << (args.stop() ? "stop." : "start.");
         response->mutable_emergencystop()->set_stop(args.stop());
         done->Run();
       } else {
-        pkt->push_back(2);  // Len;
-        pkt->push_back(1);
-        pkt->push_back(0);  // unknown;
+        pkt.push_back(2);  // Len;
+        pkt.push_back(1);
+        pkt.push_back(0);  // unknown;
         LOG(INFO) << "Getting emergency stop status.";
         ADD_CANCALLBACK(EmergencyStopFn, *pkt, 2);
       }
