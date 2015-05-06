@@ -34,7 +34,7 @@
 
 #include "server/RpcService.hxx"
 #include "utils/test_main.hxx"
-#include "google/protobuf/text_format.h"
+#include "server/rpc_test_helper.hxx"
 
 using ::testing::StrictMock;
 using ::testing::Mock;
@@ -71,67 +71,15 @@ class RpcServiceNullTest : public ::testing::Test {
 
 TEST_F(RpcServiceNullTest, Create) {}
 
-class MockResponsePacket : public PacketFlowInterface {
- public:
-  MOCK_METHOD1(received_packet, void(const string&));
-
-  void send(Buffer<string>* b, unsigned priority) override {
-    TinyRpcResponse resp;
-    resp.ParseFromString(*b->data());
-    string text;
-    HASSERT(::google::protobuf::TextFormat::PrintToString(resp, &text));
-    received_packet(text);
-    b->unref();
-  }
+class DemoRpcServiceTestBase : public ::testing::Test {
+ protected:
+  DemoRpcService service_;
 };
 
-string CanonicalizeProto(const string& text_pb) {
-  TinyRpcResponse resp;
-  HASSERT(::google::protobuf::TextFormat::ParseFromString(text_pb, &resp));
-  string canon;
-  HASSERT(::google::protobuf::TextFormat::PrintToString(resp, &canon));
-  return canon;
-}
-
-class RpcServiceTest : public ::testing::Test {
+class RpcServiceTest : public DemoRpcServiceTestBase,
+                       protected RpcServiceTestHelper {
  protected:
-  RpcServiceTest() {
-    ::pipe(down_pipe_);
-    ::pipe(up_pipe_);
-
-    send_.reset(new PacketStreamSender(&s_, down_pipe_[1]));
-    recv_.reset(new PacketStreamReceiver(&s_, &response_handler_, up_pipe_[0]));
-    s_.set_channel(down_pipe_[0], up_pipe_[1]);
-  }
-
-  ~RpcServiceTest() {
-    wait();
-    ::close(down_pipe_[0]);
-    ::close(down_pipe_[1]);
-    ::close(up_pipe_[0]);
-    ::close(up_pipe_[1]);
-  }
-
-  void wait() {
-    do {
-      usleep(1000);
-      wait_for_main_executor();
-    } while (!send_->is_waiting() || s_.is_busy());
-  }
-
-  void send_request(const TinyRpcRequest& r) {
-    auto* b = send_->alloc();
-    r.SerializeToString(b->data());
-    send_->send(b);
-  }
-
-  DemoRpcService s_;
-
-  int down_pipe_[2];
-  int up_pipe_[2];
-  std::unique_ptr<PacketStreamSender> send_;
-  std::unique_ptr<PacketStreamReceiver> recv_;
-  StrictMock<MockResponsePacket> response_handler_;
+  RpcServiceTest() : RpcServiceTestHelper(&service_) {}
 };
 
 TEST_F(RpcServiceTest, Create) {}
