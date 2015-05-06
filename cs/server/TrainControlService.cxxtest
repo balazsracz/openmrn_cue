@@ -79,5 +79,45 @@ TEST_F(TrainControlServiceTest, SendPing) {
   wait();
 }
 
+TEST_F(TrainControlServiceTest, SendUnknown) {
+  const char kResponse[] =
+      "id: 45 failed: true error_detail: \"unimplemented command\"";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+
+  const char kRequest[] = "id: 45 request { }";
+  send_request(kRequest);
+  wait();
+}
+
+class TrainControlServiceCanTest : public TrainControlServiceTest, protected AsyncCan1Test {
+protected:
+  ~TrainControlServiceCanTest() {
+    wait();
+  }
+
+  static void SetUpTestCase() {
+    TrainControlServiceTest::SetUpTestCase();
+    AsyncCan1Test::SetUpTestCase();
+  }
+
+  static void TearDownTestCase() {
+    TrainControlServiceTest::TearDownTestCase();
+    AsyncCan1Test::TearDownTestCase();
+  }
+};
+
+TEST_F(TrainControlServiceCanTest, SendCanPacket) {
+  const char kResponse[] =
+      "id: 45 failed: false ";
+  EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
+
+  const char kRequest[] = "id: 45 request { DoSendRawCanPacket { d: 0xE0 d:0x08 d:0x00 d:0x7E d:0x03 d:0x55 d:0xaa d:0x55 }  }";
+  
+  expect_packet1(":X1C00007EN55AA55;"); // the translated packet
+  send_request(kRequest);
+  wait();
+}
+
+
 }  // namespace
 }  // namespace server

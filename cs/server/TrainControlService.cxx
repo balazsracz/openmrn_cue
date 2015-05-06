@@ -262,34 +262,32 @@ class ServerFlow : public RpcService::ImplFlowBase,
     if (request->has_doping()) {
       add_callback<PingResponseFn>();
 
-      string pkt;
+      Packet pkt;
       pkt.push_back(CMD_PING);
       pkt.push_back(request->doping().value() & 255);
       send_packet(std::move(pkt));
       LOG(INFO, "Sent ping packet value=%d", request->doping().value());
       return wait_and_call(STATE(response_arrived));
-    } /*else if (request->has_dosendrawcanpacket()) {
-      Packet* pkt = new Packet;
+    } else if (request->has_dosendrawcanpacket()) {
+      Packet pkt;
       const TrainControlRequest::DoSendRawCanPacket& args =
           request->dosendrawcanpacket();
-      pkt->push_back(CMD_CAN_PKT);
+      pkt.push_back(CMD_CAN_PKT);
       if (args.d_size() > 0) {
         for (int i = 0; i < args.d_size(); ++i) {
-          pkt->push_back(args.d(i));
+          pkt.push_back(args.d(i));
         }
       } else {
-        *pkt += args.data();
+        pkt += args.data();
       }
-     LOG(INFO) << "Requested sending CAN packet.";
-      if (args.wait()) {
-        ADD_CANCALLBACK(ResponseCanPacketFn, *pkt, 0);
-        can_io_->SendPacket(pkt);
-      } else {
-        can_io_->SendPacket(pkt);
-        done->Run();
-        return;
-      }
-    } else if (request->has_dosetspeed()) {
+      LOG(INFO, "Requested sending CAN packet.");
+      //if (args.wait()) {
+      //  ADD_CANCALLBACK(ResponseCanPacketFn, *pkt, 0);
+      //  can_io_->SendPacket(pkt);
+      //} else {
+      send_packet(std::move(pkt));
+      return reply();
+    } /*else if (request->has_dosetspeed()) {
       Packet* pkt = new Packet;
       const TrainControlRequest::DoSetSpeed& args = request->dosetspeed();
       pkt->push_back(CMD_CAN_PKT);
