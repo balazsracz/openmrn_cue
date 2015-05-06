@@ -39,12 +39,17 @@
 #include "custom/HostProtocol.hxx"
 #include "nmranet/Datagram.hxx"
 #include "nmranet/DatagramHandlerDefault.hxx"
+#include "src/usb_proto.h"
 
 using nmranet::DatagramService;
 using nmranet::DatagramClient;
 using nmranet::DefaultDatagramHandler;
 using nmranet::Node;
+using nmranet::NodeHandle;
+using nmranet::Payload;
 using bracz_custom::HostProtocolDefs;
+
+typedef Payload Packet;
 
 namespace server {
 
@@ -62,6 +67,7 @@ struct TrainControlService::Impl {
   HostServer* datagram_handler() { return datagram_handler_; }
   PacketQueueFlow* host_queue() { return host_queue_; }
 
+  NodeHandle client_dst_;
   DatagramService* dg_service_;
   Node* node_;
   HostServer* datagram_handler_;
@@ -136,7 +142,8 @@ class HostPacketQueue : public PacketQueueFlow {
   }
 
  private:
-  DatagramService* dg_service() { return service()->impl()->dg_service(); }
+  TrainControlService::Impl* impl() { return service()->impl(); }
+  DatagramService* dg_service() { return impl()->dg_service(); }
 
   Action entry() OVERRIDE {
     return allocate_and_call(STATE(dg_client_ready),
@@ -154,7 +161,7 @@ class HostPacketQueue : public PacketQueueFlow {
     auto* b = get_allocation_result(
         dg_service()->interface()->addressed_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_DATAGRAM, impl()->node()->node_id(),
-                     impl()->client_dst, Payload());
+                     impl()->client_dst_, Payload());
     b->data()->payload.reserve(1 + message()->data()->size());
     b->data()->payload.push_back(HostProtocolDefs::CLIENT_DATAGRAM_ID);
     b->data()->payload.append(*message()->data());
@@ -165,7 +172,7 @@ class HostPacketQueue : public PacketQueueFlow {
   }
 
   Action send_complete() {
-    if (dg_client_->result() & DatagramClient::RESPONSE_CODE_MASK !=
+    if ((dg_client_->result() & DatagramClient::RESPONSE_CODE_MASK) !=
                                    DatagramClient::OPERATION_SUCCESS) {
       LOG(ERROR, "Failed to send datagram via host channel. Error 0x%x",
           dg_client_->result());
@@ -176,6 +183,7 @@ class HostPacketQueue : public PacketQueueFlow {
   }
 
   DatagramClient* dg_client_;
+  BarrierNotifiable n_;
 };
 
 class PingResponseFn {
@@ -191,16 +199,17 @@ class ServerFlow : public RpcService::ImplFlowBase,
                    private HostPacketHandlerInterface {
  public:
   ServerFlow(TrainControlService* service, Buffer<TinyRpc>* b)
-      : ImplFlowBase(serivce, b) {}
+      : ImplFlowBase(service, b) {}
 
   TrainControlService* service() {
     return static_cast<TrainControlService*>(ImplFlowBase::service());
   }
 
  private:
-  DatagramService* dg_service() { return service()->impl()->dg_service(); }
+  TrainControlService::Impl* impl() { return service()->impl(); }
+  DatagramService* dg_service() { return impl()->dg_service(); }
 
-  If* interface() { return dg_service()->interface(); }
+  nmranet::If* interface() { return dg_service()->interface(); }
 
   void packet_arrived(Buffer<string>* b) OVERRIDE {
     if (packet_filter_(*b->data())) {
@@ -225,7 +234,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
   template <class C>
   void add_callback() {
     packet_filter_ =
-        std::bind(&ServerFlow::PacketTypeFilter, C::kAcceptResponseCode);
+      std::bind(&ServerFlow::PacketTypeFilter, C::kAcceptResponseCode, std::placeholders::_1);
     fill_response_ = &C::FillResponse;
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
@@ -245,8 +254,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
 
   Action entry() OVERRIDE {
     const TrainControlRequest* request = &message()->data()->request.request();
-    TrainControlResponse* response =
-        &message()->data()->response.mutable_response();
+    //TrainControlResponse* response =
+    //    message()->data()->response.mutable_response();
     if (request->has_doping()) {
       add_callback<PingResponseFn>();
 
@@ -254,7 +263,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
       pkt.push_back(CMD_PING);
       pkt.push_back(request->doping().value() & 255);
       send_packet(std::move(pkt));
-      LOG(INFO) << "Sent ping packet value=" << request->doping().value();
+      LOG(INFO, "Sent ping packet value=%d", request->doping().value());
       return wait_and_call(STATE(response_arrived));
     } /*else if (request->has_dosendrawcanpacket()) {
       Packet* pkt = new Packet;
@@ -268,7 +277,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
       } else {
         *pkt += args.data();
       }
-      LOG(INFO) << "Requested sending CAN packet.";
+     LOG(INFO) << "Requested sending CAN packet.";
       if (args.wait()) {
         ADD_CANCALLBACK(ResponseCanPacketFn, *pkt, 0);
         can_io_->SendPacket(pkt);
