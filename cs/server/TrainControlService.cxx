@@ -38,6 +38,7 @@
 #include <functional>
 #include <google/protobuf/text_format.h>
 
+#include "server/LayoutState.hxx"
 #include "custom/HostProtocol.hxx"
 #include "nmranet/Datagram.hxx"
 #include "nmranet/DatagramHandlerDefault.hxx"
@@ -70,6 +71,7 @@ struct TrainControlService::Impl {
   HostServer* datagram_handler() { return datagram_handler_.get(); }
   PacketQueueFlow* host_queue() { return host_queue_.get(); }
 
+  LayoutState layout_state_;
   TrainControlResponse lokdb_response_;
   NodeHandle client_dst_;
   DatagramService* dg_service_;
