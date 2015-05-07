@@ -43,6 +43,7 @@
 #include "nmranet/Datagram.hxx"
 #include "nmranet/DatagramHandlerDefault.hxx"
 #include "src/usb_proto.h"
+#include "utils/Clock.hxx"
 
 using nmranet::DatagramService;
 using nmranet::DatagramClient;
@@ -70,8 +71,7 @@ class HostPacketHandlerInterface {
   virtual void packet_arrived(Buffer<string>* b) = 0;
 };
 
-static bool PacketMatch(
-    const Packet& packet, int sid, int eid, unsigned len) {
+static bool PacketMatch(const Packet& packet, int sid, int eid, unsigned len) {
   if (packet.size() != len + 6) return false;
   if (packet[5] != (char)len) return false;
   if (packet[0] != CMD_CAN_PKT) return false;
@@ -82,13 +82,8 @@ static bool PacketMatch(
   return true;
 }
 
-static bool PacketMatch(
-    const Packet& packet,
-    int sid,
-    int eid,
-    int len,
-    const uint8_t* d,
-    int dlen) {
+static bool PacketMatch(const Packet& packet, int sid, int eid, int len,
+                        const uint8_t* d, int dlen) {
   if (!PacketMatch(packet, sid, eid, len)) return false;
   HASSERT(dlen <= len);
   for (int i = 6; i < 6 + dlen; ++i) {
@@ -106,7 +101,7 @@ class LayoutStateListener : public HostPacketHandlerInterface {
     LayoutState* state = state_;
     const string& packet = *b->data();
     AutoReleaseBuffer<string> rb(b);
-    uint64_t ts = os_get_time_monotonic() / 1000;
+    uint64_t ts = clock_->get_time_nsec() / 1000;
     if (packet.empty() || packet[0] != CMD_CAN_PKT) return;
 
     const uint8_t kERStopPayload[] = {1, 0};
@@ -153,8 +148,12 @@ class LayoutStateListener : public HostPacketHandlerInterface {
     }
   }
 
+  // Takes ownership of the injected clock.
+  void set_clock(Clock* new_clock) { clock_.reset(new_clock); }
+
  private:
   LayoutState* state_;
+  std::unique_ptr<Clock> clock_{new RealClock};
 };  // LayoutStateListener
 
 struct TrainControlService::Impl {
@@ -174,6 +173,9 @@ struct TrainControlService::Impl {
                                                  // think
 };
 
+void TrainControlService::TEST_inject_clock(Clock* clock) {
+  impl()->state_listener_.set_clock(clock);
+}
 
 /** Datagram handler that listens to incoming response datagrams from the
     MCU. */
@@ -281,7 +283,6 @@ class HostPacketQueue : public PacketQueueFlow {
   DatagramClient* dg_client_;
   BarrierNotifiable n_;
 };
-
 
 class PingResponseFn {
  public:
@@ -541,15 +542,15 @@ class ServerFlow : public RpcService::ImplFlowBase,
     } else if (request->has_dogetlokdb()) {
       *response = impl()->lokdb_response_;
       return reply();
-    } /*else if (request->has_dogetlokstate()) {
-      LOG(WARNING) << request->DebugString();
+    } else if (request->has_dogetlokstate()) {
       if (request->dogetlokstate().has_id()) {
-        PopulateLokState(request->dogetlokstate().id(), response);
+        impl()->layout_state_.PopulateLokState(request->dogetlokstate().id(),
+                                               response);
       } else {
-        PopulateAllLokState(response);
+        impl()->layout_state_.PopulateAllLokState(response);
       }
-      done->Run();
-    } else if (false) {
+      return reply();
+    } /*else if (false) {
       // dosetlokstate?
       // doestoploco?
       // getorsetcv?

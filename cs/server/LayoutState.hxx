@@ -41,6 +41,7 @@
 
 #include "utils/Singleton.hxx"
 #include "utils/Atomic.hxx"
+#include "server/train_control.pb.h"
 
 namespace server {
 
@@ -110,6 +111,9 @@ struct LayoutState : TimestampedState, public Singleton<LayoutState> {
     if (it == loks.end()) return NULL;
     return it->second;
   }
+
+  void PopulateAllLokState(TrainControlResponse* resp);
+  void PopulateLokState(int id, TrainControlResponse* resp);
 };
 
 } // namespace server

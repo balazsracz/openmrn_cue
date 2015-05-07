@@ -38,6 +38,8 @@
 #include "server/RpcService.hxx"
 #include "nmranet/Datagram.hxx"
 
+class Clock;
+
 namespace server {
 
 class TrainControlService : public RpcService {
@@ -50,6 +52,9 @@ class TrainControlService : public RpcService {
 
   void initialize(nmranet::DatagramService* dg_service, nmranet::Node* node,
                   nmranet::NodeHandle client, const string& lokdb_ascii);
+
+  // Takes ownership of the injected object.
+  void TEST_inject_clock(Clock* clock);
 
  private:
   // Initializes handler_factory_ and returns the resulting pointer. This is a

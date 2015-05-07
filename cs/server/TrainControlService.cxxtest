@@ -40,6 +40,7 @@
 #include "mobilestation/MobileStationTraction.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "utils/MockTrain.hxx"
+#include "utils/Clock.hxx"
 
 using nmranet::NodeHandle;
 using nmranet::AsyncDatagramTest;
@@ -107,18 +108,24 @@ LokDb {
 }
 )proto";
 
-
 class TrainControlServiceTestBase : public AsyncDatagramTest {
  protected:
   TrainControlServiceTestBase() {
     train_control_.initialize(&datagram_support_, node_,
-                              NodeHandle(node_->node_id()),
-                              kStaticLokDb);
+                              NodeHandle(node_->node_id()), kStaticLokDb);
+    clock_ = new MockClock(137000);
+    // transfers ownership
+    train_control_.TEST_inject_clock(clock_);
   }
   ~TrainControlServiceTestBase() { wait(); }
 
+  void set_clock(long long ts_usec) {
+    clock_->set_time(ts_usec * 1000);
+  }
+
   TrainControlService train_control_{&g_executor};
   bracz_custom::HostClient client_{&datagram_support_, node_, &can_hub1};
+  MockClock* clock_{nullptr};
 };
 
 TEST_F(TrainControlServiceTestBase, Create) {}
@@ -267,9 +274,16 @@ TEST_F(TrainControlServiceTrainTest, SetSpeedTwo) {
   EXPECT_CALL(m1_, set_speed(VApprox(mph_to_velocity(32, true))));
   EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(23, false))));
   send_request("id: 51 request { DoSetSpeed { id: 0 dir: 1 speed: 32 } }");
+  wait();
+  set_clock(142);
   send_request("id: 47 request { DoSetSpeed { id: 1 dir: -1 speed: 23 } }");
   wait();
-  wait();
+
+  send_request_and_expect_response(
+      "id: 178 request { DoGetLokState {} }",
+      "id: 178 failed: false response { "                             //
+      "  lokstate { id: 0 dir: 1 speed: 32 ts: 137 speed_ts: 137 } "  //
+      "  lokstate { id: 1 dir: -1 speed: 23 ts: 142 speed_ts: 142 } }");
 }
 
 TEST_F(TrainControlServiceTrainTest, GetSpeed0) {
@@ -346,17 +360,15 @@ TEST_F(TrainControlServiceTrainTest, SetAndGetEmergencyStop) {
       wait();*/
 }
 
-
 TEST_F(TrainControlServiceTest, GetLokDb) {
   string response =
-    string("id: 42  failed: false response {")  + kStaticLokDb +  " }";
+      string("id: 42  failed: false response {") + kStaticLokDb + " }";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(response)));
 
   const char kRequest[] = "id: 42 request { DoGetLokDb { } }";
   send_request(kRequest);
   wait();
 }
-
 
 }  // namespace
 }  // namespace server

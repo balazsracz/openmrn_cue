@@ -35,6 +35,7 @@
 
 #include "server/LayoutState.hxx"
 
+#include "utils/logging.h"
 #include "nmranet/Defs.hxx"
 #include "os/os.h"
 
@@ -68,6 +69,37 @@ void TimestampedState::AddListener(uint64_t last_timestamp, Closure done) {
   }
 }
 
+void LayoutState::PopulateLokState(int id, TrainControlResponse* resp) {
+  LayoutState* db = this;
+  LayoutState::loks_t::const_iterator it = db->loks.find(id);
+  if (it == db->loks.end()) {
+    LOG(WARNING, "Requested state of lok %d  which does not exist.", id);
+    return;
+  }
+  LokStateProto* lok = resp->add_lokstate();
+  const LokState& lst = *it->second;
+  lok->set_id(id);
+  lok->set_dir(lst.speed_and_dir.dir);
+  lok->set_speed(lst.speed_and_dir.speed);
+  lok->set_speed_ts(lst.speed_and_dir.ts_usec);
+  lok->set_ts(lst.ts_usec);
+  for (LokState::fn_t::const_iterator it = lst.fn.begin();
+       it != lst.fn.end();
+       ++it) {
+    LokStateProto_Function* fn = lok->add_function();
+    fn->set_id(it->first);
+    fn->set_value(it->second->value);
+    fn->set_ts(it->second->ts_usec);
+  }
+}
 
+void LayoutState::PopulateAllLokState(TrainControlResponse* resp) {
+  LayoutState* db = this;
+  for (LayoutState::loks_t::const_iterator it = db->loks.begin();
+       it != db->loks.end();
+       ++it) {
+    PopulateLokState(it->first, resp);
+  }
+}
 
 }  // namespace server
