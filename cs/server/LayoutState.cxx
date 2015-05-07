@@ -35,6 +35,9 @@
 
 #include "server/LayoutState.hxx"
 
+#include "nmranet/Defs.hxx"
+#include "os/os.h"
+
 namespace server {
 void TimestampedState::Touch(uint64_t new_ts) {
   vector<Closure> listeners_to_call;
@@ -64,5 +67,7 @@ void TimestampedState::AddListener(uint64_t last_timestamp, Closure done) {
     done();
   }
 }
+
+
 
 }  // namespace server

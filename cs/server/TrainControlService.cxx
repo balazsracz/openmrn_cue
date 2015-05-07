@@ -65,6 +65,98 @@ TrainControlService::~TrainControlService() {}
 class HostServer;
 typedef StateFlow<Buffer<string>, QList<1> > PacketQueueFlow;
 
+class HostPacketHandlerInterface {
+ public:
+  virtual void packet_arrived(Buffer<string>* b) = 0;
+};
+
+static bool PacketMatch(
+    const Packet& packet, int sid, int eid, unsigned len) {
+  if (packet.size() != len + 6) return false;
+  if (packet[5] != (char)len) return false;
+  if (packet[0] != CMD_CAN_PKT) return false;
+  if (packet[1] != (sid >> 8)) return false;
+  if (packet[2] != (sid & 0xff)) return false;
+  if (packet[3] != (eid >> 8)) return false;
+  if (packet[4] != (eid & 0xff)) return false;
+  return true;
+}
+
+static bool PacketMatch(
+    const Packet& packet,
+    int sid,
+    int eid,
+    int len,
+    const uint8_t* d,
+    int dlen) {
+  if (!PacketMatch(packet, sid, eid, len)) return false;
+  HASSERT(dlen <= len);
+  for (int i = 6; i < 6 + dlen; ++i) {
+    if (packet[i] != d[i - 6]) return false;
+  }
+  return true;
+}
+
+#define PMATCH(x, y...) PacketMatch(y, x, sizeof(x))
+
+class LayoutStateListener : public HostPacketHandlerInterface {
+ public:
+  LayoutStateListener(LayoutState* state) : state_(state) {}
+  void packet_arrived(Buffer<string>* b) OVERRIDE {
+    LayoutState* state = state_;
+    const string& packet = *b->data();
+    AutoReleaseBuffer<string> rb(b);
+    uint64_t ts = os_get_time_monotonic() / 1000;
+    if (packet.empty() || packet[0] != CMD_CAN_PKT) return;
+
+    const uint8_t kERStopPayload[] = {1, 0};
+    if (PMATCH(kERStopPayload, packet, 0x4008, 0x0900, 3)) {
+      bool value = packet[8];
+      if (value != state->stop) {
+        state->stop = value;
+        state->Touch(ts);
+      }
+      return;
+    }
+
+    // Try to match a train info.
+    if (packet.size() == 9 && packet[0] == CMD_CAN_PKT && packet[1] == 0x40 &&
+        packet[2] == 0x48 && (packet[3] & 1) == 1 && packet[4] == 0 &&
+        packet[5] == 3 && packet[7] == 0) {
+      int lokid = packet[3] >> 2;
+      int fnid = packet[6];
+      int fnvalue = packet[8];
+      LokState*& st = state->loks[lokid];
+      if (!st) st = new LokState;
+      if (fnid == 1) {  // speed set
+        SpeedAndDirState* sst = &st->speed_and_dir;
+        int dir = 1;
+        if (fnvalue & 0x80) dir = -1;
+        int speed = fnvalue & 0x7f;
+        if (dir != sst->dir || speed != sst->speed) {
+          sst->dir = dir;
+          sst->speed = speed;
+          sst->Touch(ts);
+          st->Touch(ts);
+          state->Touch(ts);
+        }
+      } else {
+        FnState*& fst = st->fn[fnid];
+        if (!fst) fst = new FnState;
+        if (fst->value != fnvalue) {
+          fst->value = fnvalue;
+          fst->Touch(ts);
+          st->Touch(ts);
+          state->Touch(ts);
+        }
+      }
+    }
+  }
+
+ private:
+  LayoutState* state_;
+};  // LayoutStateListener
+
 struct TrainControlService::Impl {
   DatagramService* dg_service() { return dg_service_; }
   Node* node() { return node_; }
@@ -72,6 +164,7 @@ struct TrainControlService::Impl {
   PacketQueueFlow* host_queue() { return host_queue_.get(); }
 
   LayoutState layout_state_;
+  LayoutStateListener state_listener_{&layout_state_};
   TrainControlResponse lokdb_response_;
   NodeHandle client_dst_;
   DatagramService* dg_service_;
@@ -81,10 +174,6 @@ struct TrainControlService::Impl {
                                                  // think
 };
 
-class HostPacketHandlerInterface {
- public:
-  virtual void packet_arrived(Buffer<string>* b) = 0;
-};
 
 /** Datagram handler that listens to incoming response datagrams from the
     MCU. */
@@ -192,6 +281,7 @@ class HostPacketQueue : public PacketQueueFlow {
   DatagramClient* dg_client_;
   BarrierNotifiable n_;
 };
+
 
 class PingResponseFn {
  public:
@@ -324,6 +414,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
   Action response_arrived() {
     fill_response_(*response_packet_->data(),
                    message()->data()->response.mutable_response());
+    response_packet_->unref();
+    response_packet_ = nullptr;
     return reply();
   }
 
@@ -506,6 +598,7 @@ void TrainControlService::initialize(nmranet::DatagramService* dg_service,
   impl_->dg_service_ = dg_service;
   impl_->node_ = node;
   impl_->datagram_handler_.reset(new HostServer(this));
+  impl_->datagram_handler_->add_handler(&impl_->state_listener_);
   impl_->host_queue_.reset(new HostPacketQueue(this));
 
   // Parse lokdb.
