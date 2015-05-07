@@ -119,9 +119,7 @@ class TrainControlServiceTestBase : public AsyncDatagramTest {
   }
   ~TrainControlServiceTestBase() { wait(); }
 
-  void set_clock(long long ts_usec) {
-    clock_->set_time(ts_usec * 1000);
-  }
+  void set_clock(long long ts_usec) { clock_->set_time(ts_usec * 1000); }
 
   TrainControlService train_control_{&g_executor};
   bracz_custom::HostClient client_{&datagram_support_, node_, &can_hub1};
@@ -327,6 +325,26 @@ TEST_F(TrainControlServiceTrainTest, GetFn) {
   // accessory 6 is mapped to fn 2
   EXPECT_CALL(m2_, get_fn(2)).WillOnce(Return(1));
   send_request(kRequest);
+  wait();
+}
+
+TEST_F(TrainControlServiceTrainTest, GetSpeedAndFnLokState) {
+  EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(32, true))));
+  send_request_and_expect_response(
+      "id: 35 request { DoSetSpeed { id: 1 dir: 1 speed: 32 } }",
+      "id: 35  failed: false response { Speed { id : 1 speed : 32 }}");
+  wait();
+  set_clock(178);
+  EXPECT_CALL(m2_, get_fn(2)).WillOnce(Return(1));
+  send_request_and_expect_response(
+      "id: 51 request { DoSetAccessory { train_id: 1 accessory_id: 6 } }",
+      "id: 51  failed: false response { Accessory { train_id : 1 accessory_id: "
+      "6 value : 1 }}");
+  wait();
+
+  send_request_and_expect_response(
+      "id: 93 request { DoGetLokState { id: 1 } }",
+      "id: 93  failed: false response { lokstate { id : 1 dir: 1 speed : 32 ts: 178 speed_ts: 137 Function { id: 6 value: 1 ts: 178 } }}");
   wait();
 }
 
