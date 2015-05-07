@@ -344,7 +344,34 @@ TEST_F(TrainControlServiceTrainTest, GetSpeedAndFnLokState) {
 
   send_request_and_expect_response(
       "id: 93 request { DoGetLokState { id: 1 } }",
-      "id: 93  failed: false response { lokstate { id : 1 dir: 1 speed : 32 ts: 178 speed_ts: 137 Function { id: 6 value: 1 ts: 178 } }}");
+      "id: 93  failed: false response { lokstate { id : 1 dir: 1 speed : 32 "
+      "ts: 178 speed_ts: 137 Function { id: 6 value: 1 ts: 178 } }}");
+  wait();
+}
+
+TEST_F(TrainControlServiceTrainTest, WaitForState) {
+  EXPECT_CALL(m1_, set_speed(VApprox(mph_to_velocity(32, true))));
+  EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(23, false))));
+  send_request_and_expect_response(
+      "id: 51 request { DoSetSpeed { id: 0 dir: 1 speed: 32 } }",
+      "id: 51  failed: false response { Speed { id : 0 speed : 32 }}");
+  wait();
+  set_clock(142);
+  send_request_and_expect_response(
+      "id: 47 request { DoSetSpeed { id: 1 dir: -1 speed: 23 } }",
+      "id: 47  failed: false response { Speed { id : 1 dir : -1 speed : 23 }}");
+  wait();
+  // This will return immediately.
+  send_request_and_expect_response("id:53 request { DoWaitForChange { id: 1 timestamp: 99 }}", "id: 53 failed: false response { WaitForChangeResponse { id : 1 timestamp: 142}}");
+  wait();
+  send_request("id:75 request { DoWaitForChange { id: 1 timestamp: 142 }}");
+  wait();  // not return yet
+  set_clock(199);
+  expect_response("id: 75 failed: false response { WaitForChangeResponse { id : 1 timestamp: 199}}");
+  EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(11, false))));
+  send_request_and_expect_response(
+      "id: 60 request { DoSetSpeed { id: 1 dir: -1 speed: 11 } }",
+      "id: 60  failed: false response { Speed { id : 1 dir : -1 speed : 11 }}");
   wait();
 }
 

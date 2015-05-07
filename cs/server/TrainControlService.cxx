@@ -426,6 +426,14 @@ class ServerFlow : public RpcService::ImplFlowBase,
     impl()->host_queue()->send(b);
   }
 
+  Action state_changed() { return reply(); }
+
+  void state_changed_callback(TrainControlResponse::WaitForChangeResponse* r,
+                              TimestampedState* state) {
+    r->set_timestamp(state->ts_usec);
+    this->notify();
+  }
+
   Action entry() OVERRIDE {
     const TrainControlRequest* request = &message()->data()->request.request();
     TrainControlResponse* response =
@@ -550,10 +558,6 @@ class ServerFlow : public RpcService::ImplFlowBase,
         impl()->layout_state_.PopulateAllLokState(response);
       }
       return reply();
-    } /*else if (false) {
-      // dosetlokstate?
-      // doestoploco?
-      // getorsetcv?
     } else if (request->has_dowaitforchange()) {
       const TrainControlRequest::DoWaitForChange& args =
           request->dowaitforchange();
@@ -562,20 +566,49 @@ class ServerFlow : public RpcService::ImplFlowBase,
           response->mutable_waitforchangeresponse();
       if (args.has_id()) {
         r->set_id(args.id());
-        st = GetLayoutState()->GetLok(args.id());
+        st = impl()->layout_state_.GetLok(args.id());
       } else {
-        st = GetLayoutState();
+        st = &impl()->layout_state_;
       }
       if (!st) {
-        LOG(WARNING) << "Requested wait for timestamp but nonexistant state.";
-        rpc->set_status(RPC::APPLICATION_ERROR);
-        rpc->set_error_detail("error: unknown state in wait for change.");
-        done->Run();
-        return;
+        LOG(WARNING, "Requested wait for timestamp but nonexistant state.");
+        message()->data()->response.clear_response();
+        message()->data()->response.set_failed(true);
+        message()->data()->response.set_error_detail(
+            "error: unknown state in wait for change.");
+        return reply();
       }
-      st->AddListener(args.timestamp(),
-                      NewCallback(&StateChangeCallback, st, r, done));
-                      }*/
+      st->AddListener(
+          args.timestamp(),
+          std::bind(&ServerFlow::state_changed_callback, this, r, st));
+      return wait_and_call(STATE(state_changed));
+    } /*else if (false) {
+          // dosetlokstate?
+          // doestoploco?
+          // getorsetcv?
+        } else if (request->has_dowaitforchange()) {
+          const TrainControlRequest::DoWaitForChange& args =
+              request->dowaitforchange();
+          TimestampedState* st;
+          TrainControlResponse::WaitForChangeResponse* r =
+              response->mutable_waitforchangeresponse();
+          if (args.has_id()) {
+            r->set_id(args.id());
+            st = GetLayoutState()->GetLok(args.id());
+          } else {
+            st = GetLayoutState();
+          }
+          if (!st) {
+            LOG(WARNING) << "Requested wait for timestamp but nonexistant
+       state.";
+            rpc->set_status(RPC::APPLICATION_ERROR);
+            rpc->set_error_detail("error: unknown state in wait for change.");
+            done->Run();
+            return;
+          }
+          st->AddListener(args.timestamp(),
+                          NewCallback(&StateChangeCallback, st, r, done));
+                          }*/
 
     message()->data()->response.set_failed(true);
     message()->data()->response.set_error_detail("unimplemented command");

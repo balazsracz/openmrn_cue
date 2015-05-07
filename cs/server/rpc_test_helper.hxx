@@ -70,10 +70,14 @@ class RpcServiceTestHelper {
     send_request(req);
   }
 
-  void send_request_and_expect_response(const string& request,
-                                        const string& response) {
+  void expect_response(const string& response) {
     EXPECT_CALL(response_handler_,
                 received_packet(CanonicalizeProto(response)));
+  }
+
+  void send_request_and_expect_response(const string& request,
+                                        const string& response) {
+    expect_response(response);
     send_request(request);
   }
 
