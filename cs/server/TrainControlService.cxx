@@ -436,6 +436,9 @@ class ServerFlow : public RpcService::ImplFlowBase,
 
   Action entry() OVERRIDE {
     const TrainControlRequest* request = &message()->data()->request.request();
+    string debug_req;
+    ::google::protobuf::TextFormat::PrintToString(message()->data()->request, &debug_req);
+    LOG(INFO, "request come: %s", debug_req.c_str());
     TrainControlResponse* response =
         message()->data()->response.mutable_response();
     if (request->has_doping()) {

@@ -36,6 +36,7 @@
 #define _SERVER_RPCSERVICE_HXX_
 
 #include <memory>
+#include <google/protobuf/text_format.h>
 
 #include "server/RpcDefs.hxx"
 #include "server/PacketStreamSender.hxx"
@@ -81,6 +82,10 @@ class RpcService : public Service {
     /** Sends back the response to the caller, and then deletes *this. */
     Action reply() {
       message()->data()->response.set_id(message()->data()->request.id());
+      string debug_resp;
+      ::google::protobuf::TextFormat::PrintToString(message()->data()->response, &debug_resp);
+      LOG(INFO, "response: %s", debug_resp.c_str());
+
       return allocate_and_call(service()->reply_target(), STATE(render_reply));
     }
 
