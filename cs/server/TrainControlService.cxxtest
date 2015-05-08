@@ -67,42 +67,14 @@ LokDb {
       id: 3
       type: 6
     }
-    Function {
-      id: 4
-      type: 11
-    }
-    Function {
-      id: 5
-      type: 8
-    }
-    Function {
-      id: 32
-      type: 160
-    }
-    Function {
-      id: 33
-      type: 161
-    }
   }
   Lok {
     id: 1
     name: "Re 460 TSR"
     address: 1
     Function {
-      id: 2
-      type: 1
-    }
-    Function {
-      id: 3
-      type: 8
-    }
-    Function {
       id: 32
       type: 160
-    }
-    Function {
-      id: 33
-      type: 161
     }
   }
 }
@@ -249,7 +221,7 @@ nmranet::Velocity mph_to_velocity(float mph, bool is_fwd) {
 
 TEST_F(TrainControlServiceTrainTest, SetSpeed0) {
   const char kResponse[] =
-      "id: 51  failed: false response { Speed { id : 0 speed : 32 }}";
+      "id: 51  failed: false response { Speed { id : 0 speed : 32 timestamp: 137 }}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
   const char kRequest[] =
@@ -263,11 +235,11 @@ TEST_F(TrainControlServiceTrainTest, SetSpeedTwo) {
   EXPECT_CALL(
       response_handler_,
       received_packet(CanonicalizeProto(
-          "id: 51  failed: false response { Speed { id : 0 speed : 32 }}")));
+          "id: 51  failed: false response { Speed { id : 0 speed : 32 timestamp: 137}}")));
 
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(
                                      "id: 47  failed: false response { Speed { "
-                                     "id : 1 dir : -1 speed : 23 }}")));
+                                     "id : 1 dir : -1 speed : 23 timestamp: 142 }}")));
 
   EXPECT_CALL(m1_, set_speed(VApprox(mph_to_velocity(32, true))));
   EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(23, false))));
@@ -280,13 +252,18 @@ TEST_F(TrainControlServiceTrainTest, SetSpeedTwo) {
   send_request_and_expect_response(
       "id: 178 request { DoGetLokState {} }",
       "id: 178 failed: false response { "                             //
-      "  lokstate { id: 0 dir: 1 speed: 32 ts: 137 speed_ts: 137 } "  //
-      "  lokstate { id: 1 dir: -1 speed: 23 ts: 142 speed_ts: 142 } }");
+      "  lokstate { id: 0 dir: 1 speed: 32 ts: 137 speed_ts: 137 " //
+      "    Function { id: 2 value: 0 ts: 0 } " //
+      "    Function { id: 3 value: 0 ts: 0 } " //
+      "} "  //
+      "  lokstate { id: 1 dir: -1 speed: 23 ts: 142 speed_ts: 142 " //
+      "    Function { id: 32 value: 0 ts: 0 } " //
+      "} }");
 }
 
 TEST_F(TrainControlServiceTrainTest, GetSpeed0) {
   const char kResponse[] =
-      "id: 51  failed: false response { Speed { id : 0 dir : -1 speed : 32 }}";
+      "id: 51  failed: false response { Speed { id : 0 dir : -1 speed : 32 timestamp: 137 }}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
   const char kRequest[] = "id: 51 request { DoSetSpeed { id: 0 } }";
@@ -302,7 +279,7 @@ TEST_F(TrainControlServiceTrainTest, GetSpeed0) {
 TEST_F(TrainControlServiceTrainTest, SetFn) {
   const char kResponse[] =
       "id: 51  failed: false response { Accessory { train_id : 1 accessory_id: "
-      "6 value : 1 }}";
+      "6 value : 1 timestamp: 137 }}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
   const char kRequest[] =
@@ -317,7 +294,7 @@ TEST_F(TrainControlServiceTrainTest, SetFn) {
 TEST_F(TrainControlServiceTrainTest, GetFn) {
   const char kResponse[] =
       "id: 51  failed: false response { Accessory { train_id : 1 accessory_id: "
-      "6 value : 1 }}";
+      "6 value : 1 timestamp: 137 }}";
   EXPECT_CALL(response_handler_, received_packet(CanonicalizeProto(kResponse)));
 
   const char kRequest[] =
@@ -332,20 +309,21 @@ TEST_F(TrainControlServiceTrainTest, GetSpeedAndFnLokState) {
   EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(32, true))));
   send_request_and_expect_response(
       "id: 35 request { DoSetSpeed { id: 1 dir: 1 speed: 32 } }",
-      "id: 35  failed: false response { Speed { id : 1 speed : 32 }}");
+      "id: 35  failed: false response { Speed { id : 1 speed : 32 timestamp: 137}}");
   wait();
   set_clock(178);
-  EXPECT_CALL(m2_, get_fn(2)).WillOnce(Return(1));
+  EXPECT_CALL(m2_, get_fn(1)).WillOnce(Return(1));
   send_request_and_expect_response(
-      "id: 51 request { DoSetAccessory { train_id: 1 accessory_id: 6 } }",
+      "id: 51 request { DoSetAccessory { train_id: 1 accessory_id: 3 } }",
       "id: 51  failed: false response { Accessory { train_id : 1 accessory_id: "
-      "6 value : 1 }}");
+      "3 value : 1 timestamp: 178 }}");
   wait();
 
   send_request_and_expect_response(
       "id: 93 request { DoGetLokState { id: 1 } }",
       "id: 93  failed: false response { lokstate { id : 1 dir: 1 speed : 32 "
-      "ts: 178 speed_ts: 137 Function { id: 6 value: 1 ts: 178 } }}");
+      "ts: 178 speed_ts: 137 Function { id: 3 value: 1 ts: 178 } "
+      " Function { id: 32 value: 0 ts: 0 } }}");
   wait();
 }
 
@@ -354,12 +332,12 @@ TEST_F(TrainControlServiceTrainTest, WaitForState) {
   EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(23, false))));
   send_request_and_expect_response(
       "id: 51 request { DoSetSpeed { id: 0 dir: 1 speed: 32 } }",
-      "id: 51  failed: false response { Speed { id : 0 speed : 32 }}");
+      "id: 51  failed: false response { Speed { id : 0 speed : 32 timestamp: 137 }}");
   wait();
   set_clock(142);
   send_request_and_expect_response(
       "id: 47 request { DoSetSpeed { id: 1 dir: -1 speed: 23 } }",
-      "id: 47  failed: false response { Speed { id : 1 dir : -1 speed : 23 }}");
+      "id: 47  failed: false response { Speed { id : 1 dir : -1 speed : 23 timestamp: 142 }}");
   wait();
   // This will return immediately.
   send_request_and_expect_response(
@@ -376,7 +354,7 @@ TEST_F(TrainControlServiceTrainTest, WaitForState) {
   EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(11, false))));
   send_request_and_expect_response(
       "id: 60 request { DoSetSpeed { id: 1 dir: -1 speed: 11 } }",
-      "id: 60  failed: false response { Speed { id : 1 dir : -1 speed : 11 }}");
+      "id: 60  failed: false response { Speed { id : 1 dir : -1 speed : 11 timestamp: 199 }}");
   wait();
 }
 
