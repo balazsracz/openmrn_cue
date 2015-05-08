@@ -102,6 +102,8 @@ class RpcService : public Service {
     ParserFlow(RpcService* s) : PacketFlow(s) {}
 
     Action entry() OVERRIDE {
+      // Empty payload => keepalive.
+      if (message()->data()->empty()) return release_and_exit();
       return allocate_and_call(service()->impl(), STATE(have_buffer));
     }
 
