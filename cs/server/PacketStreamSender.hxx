@@ -128,6 +128,33 @@ class PacketStreamReceiver : public StateFlowBase {
   PacketFlow::message_type* msg_ = nullptr;
   StateFlowSelectHelper selectHelper_{this};
 };
+
+class PacketStreamKeepalive : public StateFlowBase {
+ public:
+  PacketStreamKeepalive(Service* s, PacketFlowInterface* send_if)
+      : StateFlowBase(s), send_if_(send_if) {
+    start_flow(STATE(send_keepalive));
+  }
+
+  ~PacketStreamKeepalive() {
+    //timer_.
+  }
+
+ private:
+  Action send_keepalive() {
+    return allocate_and_call(send_if_, STATE(fill_keepalive));
+  }
+
+  Action fill_keepalive() {
+    auto* b = get_allocation_result(send_if_);
+    b->data()->clear();
+    send_if_->send(b);
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(500), STATE(send_keepalive));
+  }
+
+  PacketFlowInterface* send_if_;
+  StateFlowTimer timer_{this};
+};
 }
 
 #endif  // _SERVER_PACKETSTREAMSENDER_HXX_
