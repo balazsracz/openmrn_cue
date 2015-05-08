@@ -40,65 +40,6 @@
 
 #include "nmranet/SimpleStack.hxx"
 
-/*
-#include "os/os.h"
-#include "utils/Hub.hxx"
-#include "utils/HubDevice.hxx"
-#include "utils/HubDeviceNonBlock.hxx"
-#include "utils/GridConnectHub.hxx"
-#include "executor/Executor.hxx"
-#include "executor/PoolToQueueFlow.hxx"
-#include "can_frame.h"
-#include "nmranet_config.h"
-#include "os/watchdog.h"
-
-#include "nmranet/IfCan.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/DatagramCan.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/PolledProducer.hxx"
-#include "nmranet/DefaultNode.hxx"
-#include "freertos_drivers/nxp/11cxx_async_can.hxx"
-#include "utils/Debouncer.hxx"
-#include "nmranet/RefreshLoop.hxx"
-
-// for logging implementation
-#include "src/host_packet.h"
-#include "src/usb_proto.h"
-#include "src/can-queue.h"
-
-#include "src/mbed_i2c_update.hxx"
-#include "src/automata_runner.h"
-#include "src/automata_control.h"
-#include "custom/HostPacketCanPort.hxx"
-#include "custom/TrackInterface.hxx"
-#include "custom/HostLogging.hxx"
-#include "custom/AutomataControl.hxx"
-#include "mobilestation/MobileStationSlave.hxx"
-#include "mobilestation/TrainDb.hxx"
-#include "mobilestation/MobileStationTraction.hxx"
-#include "commandstation/UpdateProcessor.hxx"
-#include "nmranet/TractionTrain.hxx"
-#include "nmranet/NodeInitializeFlow.hxx"
-#include "dcc/Loco.hxx"
-#include "mobilestation/TrainDb.hxx"
-#include "dcc/LocalTrackIf.hxx"
-#include "mobilestation/AllTrainNodes.hxx"
-
-#include "TivaDCC.hxx"
-#include "hardware.hxx"
-#include "custom/TivaShortDetection.hxx"
-
-#include "inc/hw_types.h"
-#include "inc/hw_memmap.h"
-#include "inc/hw_ints.h"
-#include "dcc_control.hxx"
-
-*/
-
-
 #include "commandstation/UpdateProcessor.hxx"
 #include "custom/AutomataControl.hxx"
 #include "custom/HostPacketCanPort.hxx"
