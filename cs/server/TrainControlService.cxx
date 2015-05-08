@@ -641,6 +641,7 @@ void TrainControlService::initialize(nmranet::DatagramService* dg_service,
   // Parse lokdb.
   HASSERT(::google::protobuf::TextFormat::ParseFromString(
       lokdb_ascii, &impl_->lokdb_response_));
+  impl_->layout_state_.ZeroLayoutState(impl_->lokdb_response_.lokdb());
 
   // Login
   auto* b = impl()->host_queue()->alloc();
