@@ -57,6 +57,7 @@
 #include "nmranet/TractionTrain.hxx"
 #include "os/watchdog.h"
 #include "utils/Debouncer.hxx"
+#include "custom/HostProtocol.hxx"
 
 #include "hardware.hxx"
 
@@ -119,8 +120,10 @@ nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __auto
 
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
+bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
+
 extern "C" {
-#ifdef STANDALONE
+#ifdef STANDALONEXXXXXXX
 
 void log_output(char* buf, int size) {
     if (size <= 0) return;
@@ -135,22 +138,17 @@ void log_output(char* buf, int size) {
 
 void log_output(char* buf, int size) {
     if (size <= 0) return;
-    PacketBase pkt(size + 1);
-    pkt[0] = CMD_VCOM1;
-    memcpy(pkt.buf() + 1, buf, size);
-    PacketQueue::instance()->TransmitPacket(pkt);
+    host_client.log_output(buf, size);
 }
 
 #endif
 } // extern c
 
-#ifdef STANDALONE
 namespace bracz_custom {
 void send_host_log_event(HostLogEvent e) {
-  log_output((char*)&e, 1);
+  host_client.send_host_log_event(e);
 }
 }
-#endif
 
 
 OVERRIDE_CONST(local_nodes_count, 30);
@@ -426,15 +424,10 @@ int appl_main(int argc, char* argv[])
   //  mydisable();
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
-#ifdef STANDALONE
-    PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0");
-#else
-    PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0", true);
-#endif
-    // TODO(balazs.racz) reenable CAN port.
-    //stack.add_can_port_async("/dev/can0");
-    bracz_custom::init_host_packet_can_bridge(&can_hub1);
-    FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
+    stack.add_can_port_async("/dev/can0");
+      // todo: maybve ifdef standalone?
+    stack.add_gridconnect_port("/dev/serUSB0");
+    //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 
     int mainline = open("/dev/mainline", O_RDWR);
     HASSERT(mainline > 0);
