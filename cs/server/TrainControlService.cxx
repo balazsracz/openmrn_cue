@@ -169,8 +169,7 @@ struct TrainControlService::Impl {
   DatagramService* dg_service_;
   Node* node_;
   std::unique_ptr<HostServer> datagram_handler_;
-  std::unique_ptr<PacketQueueFlow> host_queue_;  // todo: this should be owned i
-                                                 // think
+  std::unique_ptr<PacketQueueFlow> host_queue_;
 };
 
 void TrainControlService::TEST_inject_clock(Clock* clock) {
@@ -287,7 +286,8 @@ class HostPacketQueue : public PacketQueueFlow {
 class PingResponseFn {
  public:
   typedef std::integral_constant<uint8_t, CMD_PONG> accept_response_type;
-  static void FillResponse(const Packet& packet,
+  static void FillResponse(LayoutState* st,
+                           const Packet& packet,
                            TrainControlResponse* response) {
     response->mutable_pong()->set_value(packet[1]);
   }
@@ -296,7 +296,8 @@ class PingResponseFn {
 class ResponseCanPacketFn {
  public:
   typedef std::integral_constant<uint8_t, CMD_CAN_PKT> accept_response_type;
-  static void FillResponse(const Packet& packet,
+  static void FillResponse(LayoutState* st,
+                           const Packet& packet,
                            TrainControlResponse* response) {
     for (unsigned i = 1; i < packet.size(); ++i) {
       response->mutable_rawcanpacket()->add_data(packet[i]);
@@ -306,7 +307,8 @@ class ResponseCanPacketFn {
 
 class SpeedFn {
  public:
-  static void FillResponse(const Packet& packet,
+  static void FillResponse(LayoutState* st,
+                           const Packet& packet,
                            TrainControlResponse* response) {
     TrainControlResponse::Speed* speed = response->mutable_speed();
     speed->set_speed(packet[8] & 0x7f);
@@ -314,27 +316,28 @@ class SpeedFn {
       speed->set_dir(-1);
     }
     speed->set_id(packet[3] >> 2);
-    /// @TODO(balazs.racz) port layout state handling
-    // speed->set_timestamp(GetLayoutState()->ts_usec);
+    speed->set_timestamp(st->ts_usec);
   }
 };
 
 class AccessoryFn {
  public:
-  static void FillResponse(const Packet& packet,
+  static void FillResponse(LayoutState* st,
+                           const Packet& packet,
                            TrainControlResponse* response) {
     TrainControlResponse::Accessory* acc = response->mutable_accessory();
     acc->set_train_id(packet[3] >> 2);
     acc->set_accessory_id(packet[6]);
     acc->set_value(packet[8]);
     /// @TODO(balazs.racz) port layout state handling
-    // acc->set_timestamp(GetLayoutState()->ts_usec);
+    acc->set_timestamp(st->ts_usec);
   }
 };
 
 class EmergencyStopFn {
  public:
-  static void FillResponse(const Packet& packet,
+  static void FillResponse(LayoutState* st,
+                           const Packet& packet,
                            TrainControlResponse* response) {
     TrainControlResponse::EmergencyStop* args =
         response->mutable_emergencystop();
@@ -382,7 +385,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
     packet_filter_ =
         std::bind(&ServerFlow::PacketTypeFilter, C::accept_response_type::value,
                   std::placeholders::_1);
-    fill_response_ = &C::FillResponse;
+    fill_response_ = std::bind(&C::FillResponse, &impl()->layout_state_, std::placeholders::_1, std::placeholders::_2);
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
   }
@@ -407,7 +410,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
     HASSERT(sent_packet.size() >= 6);
     packet_filter_ = std::bind(&ServerFlow::CanPacketFilter, sent_packet,
                                match_len, std::placeholders::_1);
-    fill_response_ = &C::FillResponse;
+    fill_response_ = std::bind(&C::FillResponse, &impl()->layout_state_, std::placeholders::_1, std::placeholders::_2);
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
   }
