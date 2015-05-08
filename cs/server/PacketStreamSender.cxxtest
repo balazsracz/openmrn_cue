@@ -145,6 +145,10 @@ class PacketStreamSRTest : public PacketStreamReceiveTest {
   }
 
   void wait() {
+    // We need a bit of time for the sender to pass through the initialization
+    // states.
+    wait_for_main_executor();
+    wait_for_main_executor();
     while (!sender_.is_waiting()) wait_for_main_executor();
     wait_for_main_executor();
   }
