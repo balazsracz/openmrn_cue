@@ -47,6 +47,7 @@
 
 static const nmranet::NodeID NODE_ID = 0x050101011472ULL;
 OVERRIDE_CONST(num_memory_spaces, 4);
+OVERRIDE_CONST(gc_generate_newlines, 1);
 int port = 12021;
 const char *host = "localhost";
 const char *device_path = nullptr;
@@ -75,7 +76,7 @@ server::TrainControlService control_server(stack.executor());
 void usage(const char *e) {
   fprintf(stderr, "Usage: %s", e);
   fprintf(stderr, R"usage(
- [-i destination_host] [-p port] [-d device_path] 
+ [-i destination_host] [-p port] [-d device_path] -l lokdb_path
             (-n nodeid | -a alias) [-R proxy_host] [-P proxy_port]
 
 Host server for android train connections.
@@ -94,6 +95,9 @@ specified, then the two connections will be bridged.
 
         -R host -P port specifies the location of the proxy server for the
            android connections.
+
+        -l lokdb_path specifies the file from which to read the ascii lokdb
+           from.
 )usage");
   exit(1);
 }
@@ -170,14 +174,15 @@ int appl_main(int argc, char *argv[]) {
   if (device_path) {
     stack.add_gridconnect_port(device_path);
   }
+  control_server.initialize(
+      stack.dg_service(), stack.node(),
+      nmranet::NodeHandle(destination_nodeid, destination_alias), lokdb);
   int proxy_fd = ConnectSocket(proxy_host, proxy_port);
   if (proxy_fd < 0) {
     DIE("Could not connect to proxy.");
   }
-  control_server.initialize(
-      stack.dg_service(), stack.node(),
-      nmranet::NodeHandle(destination_nodeid, destination_alias), lokdb);
   control_server.set_channel(proxy_fd, proxy_fd);
+  server::PacketStreamKeepalive keepalive(&control_server, control_server.reply_target());
   LOG(INFO, "Stack initalized.");
 
   stack.loop_executor();
