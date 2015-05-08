@@ -51,7 +51,8 @@ class PacketStreamSender : public PacketFlow {
   PacketStreamSender(Service* s, int fd) : PacketFlow(s), fd_(fd) {
     ::fcntl(fd_, F_SETFL, O_NONBLOCK);
     // We have to do something before we start pending on the queue.
-    reset_flow(STATE(send_magic));
+    start_flow_at_init(STATE(send_magic));
+    LOG(INFO, "started sender");
   }
 
  private:
