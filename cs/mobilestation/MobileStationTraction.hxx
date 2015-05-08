@@ -33,6 +33,9 @@
  * @date 18 May 2014
  */
 
+#ifndef _BRACZ_CUSTOM_MOBILESTATIONTRACTION_HXX_
+#define _BRACZ_CUSTOM_MOBILESTATIONTRACTION_HXX_
+
 #include "executor/Service.hxx"
 
 class CanIf;
@@ -105,3 +108,5 @@ class MobileStationTraction : public Service {
 
 
 }  // namespace mobilestation
+
+#endif // _BRACZ_CUSTOM_MOBILESTATIONTRACTION_HXX_
