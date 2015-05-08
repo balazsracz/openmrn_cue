@@ -102,4 +102,15 @@ void LayoutState::PopulateAllLokState(TrainControlResponse* resp) {
   }
 }
 
+void LayoutState::ZeroLayoutState(const TrainControlResponse_LokDb& lokdb) {
+  for (const auto& lok : lokdb.lok()) {
+    LokState*& st = loks[lok.id()];
+    if (!st) st = new LokState;
+    for (const auto& fn : lok.function()) {
+      st->fn[fn.id()] = new FnState;
+    }
+  }
+}
+
+
 }  // namespace server

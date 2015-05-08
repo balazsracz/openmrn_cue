@@ -112,6 +112,7 @@ struct LayoutState : TimestampedState, public Singleton<LayoutState> {
     return it->second;
   }
 
+  void ZeroLayoutState(const TrainControlResponse_LokDb& lokdb);
   void PopulateAllLokState(TrainControlResponse* resp);
   void PopulateLokState(int id, TrainControlResponse* resp);
 };
