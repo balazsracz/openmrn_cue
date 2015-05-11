@@ -38,3 +38,8 @@ cleangen:
 	rm -f logic-demo.cout
 
 veryclean: cleangen
+
+.PHONY: install
+
+install: $(EXECUTABLE)$(EXTENTION)
+	cp -f $< /home/bracz/bin/train-nhost
