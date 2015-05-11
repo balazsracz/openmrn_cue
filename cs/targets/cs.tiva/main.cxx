@@ -66,7 +66,7 @@
 #include "src/usb_proto.h"
 
 
-//#define STANDALONE
+#define STANDALONE
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -78,6 +78,7 @@ OVERRIDE_CONST(automata_init_backoff, 20000);
 OVERRIDE_CONST(node_init_identify, 0);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
+OVERRIDE_CONST(num_datagram_registry_entries, 3);
 
 
 namespace mobilestation {
@@ -123,7 +124,7 @@ nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __auto
 bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
 
 extern "C" {
-#ifdef STANDALONEXXXXXXX
+#ifdef STANDALONE
 
 void log_output(char* buf, int size) {
     if (size <= 0) return;
@@ -152,6 +153,7 @@ void send_host_log_event(HostLogEvent e) {
 
 
 OVERRIDE_CONST(local_nodes_count, 30);
+OVERRIDE_CONST(local_alias_cache_size, 30);
 OVERRIDE_CONST(num_memory_spaces, 4);
 
 
@@ -424,10 +426,11 @@ int appl_main(int argc, char* argv[])
   //  mydisable();
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
-    stack.add_can_port_async("/dev/can0");
-      // todo: maybve ifdef standalone?
+    //stack.add_can_port_async("/dev/can0");
     stack.add_gridconnect_port("/dev/serUSB0");
-    //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
+#ifdef STANDALONE    
+    FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
+#endif
 
     int mainline = open("/dev/mainline", O_RDWR);
     HASSERT(mainline > 0);
