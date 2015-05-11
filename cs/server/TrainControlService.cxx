@@ -156,6 +156,16 @@ class LayoutStateListener : public HostPacketHandlerInterface {
   std::unique_ptr<Clock> clock_{new RealClock};
 };  // LayoutStateListener
 
+class PrintLogentries : public HostPacketHandlerInterface {
+public:
+  void packet_arrived(Buffer<string>* b) OVERRIDE {
+    AutoReleaseBuffer<string> rb(b);
+    const string& packet = *b->data();
+    if (packet[0] != CMD_VCOM1) return;
+    printf("VCOM1: %s\n", packet.substr(1).c_str());
+  }
+};
+
 struct TrainControlService::Impl {
   DatagramService* dg_service() { return dg_service_; }
   Node* node() { return node_; }
@@ -164,6 +174,7 @@ struct TrainControlService::Impl {
 
   LayoutState layout_state_;
   LayoutStateListener state_listener_{&layout_state_};
+  PrintLogentries log_output_;
   TrainControlResponse lokdb_response_;
   NodeHandle client_dst_;
   DatagramService* dg_service_;
@@ -232,7 +243,9 @@ typedef StateFlow<Buffer<string>, QList<1> > PacketQueueFlow;
  *  ensuring that there is only one datagram pending at any time. */
 class HostPacketQueue : public PacketQueueFlow {
  public:
-  HostPacketQueue(TrainControlService* service) : PacketQueueFlow(service) {}
+  HostPacketQueue(TrainControlService* service) : PacketQueueFlow(service) {
+    start_flow_at_init(STATE(inject_sync_packet));
+  }
 
   TrainControlService* service() {
     return static_cast<TrainControlService*>(PacketQueueFlow::service());
@@ -273,12 +286,30 @@ class HostPacketQueue : public PacketQueueFlow {
         DatagramClient::OPERATION_SUCCESS) {
       LOG(ERROR, "Failed to send datagram via host channel. Error 0x%x",
           dg_client_->result());
+    } else {
+      is_synced_ = true;
     }
     dg_service()->client_allocator()->typed_insert(dg_client_);
     dg_client_ = nullptr;
-    return exit();
+    if (!is_synced_) {
+      return call_immediately(STATE(inject_sync_packet));
+    } else {
+      return exit();
+    }
   }
 
+  Action inject_sync_packet() {
+    return allocate_and_call(this, STATE(sync_packet_allocated));
+  }
+
+  Action sync_packet_allocated() {
+    auto* b = get_allocation_result(this);
+    b->data()->push_back(CMD_SYNC);
+    reset_message(b, -1);
+    return call_immediately(STATE(entry));
+  }
+
+  bool is_synced_{false};
   DatagramClient* dg_client_;
   BarrierNotifiable n_;
 };
@@ -639,6 +670,7 @@ void TrainControlService::initialize(nmranet::DatagramService* dg_service,
   impl_->node_ = node;
   impl_->datagram_handler_.reset(new HostServer(this));
   impl_->datagram_handler_->add_handler(&impl_->state_listener_);
+  impl_->datagram_handler_->add_handler(&impl_->log_output_);
   impl_->host_queue_.reset(new HostPacketQueue(this));
 
   // Parse lokdb.
