@@ -43,6 +43,7 @@
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "utils/socket_listener.hxx"
+#include "utils/StringPrintf.hxx"
 #include "server/TrainControlService.hxx"
 
 static const nmranet::NodeID NODE_ID = 0x050101011472ULL;
@@ -156,6 +157,19 @@ void load_lokdb(const char *filename) {
   lokdb = data;
 }
 
+class CrashExitNotifiable : public Notifiable {
+ public:
+  CrashExitNotifiable(const string &msg) : msg_(msg) {}
+
+  void notify() OVERRIDE {
+    LOG(FATAL, "%s", msg_.c_str());
+    HASSERT(0);
+  }
+
+ private:
+  const string msg_;
+};
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -167,12 +181,14 @@ int appl_main(int argc, char *argv[]) {
     LOG(INFO, "Loading lokdb from %s.", lokdb_path);
     load_lokdb(lokdb_path);
   }
-  stack.print_all_packets();
+  // stack.print_all_packets();
   if (port >= 0) {
     stack.connect_tcp_gridconnect_hub(host, port);
   }
   if (device_path) {
-    stack.add_gridconnect_port(device_path);
+    stack.add_gridconnect_tty(
+        device_path, new CrashExitNotifiable(StringPrintf(
+                         "Connection to device %s terminated.", device_path)));
   }
   control_server.initialize(
       stack.dg_service(), stack.node(),
@@ -182,7 +198,8 @@ int appl_main(int argc, char *argv[]) {
     DIE("Could not connect to proxy.");
   }
   control_server.set_channel(proxy_fd, proxy_fd);
-  server::PacketStreamKeepalive keepalive(&control_server, control_server.reply_target());
+  server::PacketStreamKeepalive keepalive(&control_server,
+                                          control_server.reply_target());
   LOG(INFO, "Stack initalized.");
 
   stack.loop_executor();
