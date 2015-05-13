@@ -9,8 +9,8 @@ PARAMS=" -n 0x050101011432"
 
 PARAMS+=" -l /home/bracz/bin/train-lokdb"
 
-PARAMS+=" -R localhost -P 20001"
-#PARAMS+=" -R 28k.ch -P 50001"
+#PARAMS+=" -R localhost -P 20001"
+PARAMS+=" -R 28k.ch -P 50001"
 PARAMS+=" -d ${DEVICE}"
 
 
