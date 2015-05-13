@@ -334,6 +334,12 @@ void mydisable()
 {
   IntDisable(INT_TIMER5A);
   IntDisable(INT_TIMER0A);
+  IntDisable(DccHwDefs::ADC_INTERRUPT);
+  IntDisable(DccHwDefs::OS_INTERRUPT);
+  IntDisable(DccHwDefs::INTERVAL_INTERRUPT);
+  IntDisable(INT_USB0);
+  IntDisable(INT_CAN0);
+  IntDisable(INT_UART2);
   asm("BKPT 0");
 }
 
