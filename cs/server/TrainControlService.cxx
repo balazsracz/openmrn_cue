@@ -162,7 +162,7 @@ public:
     AutoReleaseBuffer<string> rb(b);
     const string& packet = *b->data();
     if (packet[0] != CMD_VCOM1) return;
-    printf("VCOM1: %s\n", packet.substr(1).c_str());
+    fprintf(stderr, "VCOM1: %s\n", packet.substr(1).c_str());
   }
 };
 
