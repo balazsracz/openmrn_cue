@@ -44,6 +44,7 @@
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "utils/socket_listener.hxx"
 #include "utils/StringPrintf.hxx"
+#include "utils/HubDevice.hxx"
 #include "server/TrainControlService.hxx"
 
 static const nmranet::NodeID NODE_ID = 0x050101011472ULL;
@@ -78,7 +79,7 @@ void usage(const char *e) {
   fprintf(stderr, "Usage: %s", e);
   fprintf(stderr, R"usage(
  [-i destination_host] [-p port] [-d device_path] -l lokdb_path
-            (-n nodeid | -a alias) [-R proxy_host] [-P proxy_port]
+            (-n nodeid | -a alias) [-f debugfd] [-R proxy_host] [-P proxy_port]
 
 Host server for android train connections.
 
@@ -105,7 +106,7 @@ specified, then the two connections will be bridged.
 
 void parse_args(int argc, char *argv[]) {
   int opt;
-  while ((opt = getopt(argc, argv, "hp:i:d:n:a:R:P:l:")) >= 0) {
+  while ((opt = getopt(argc, argv, "hp:i:d:n:a:R:P:l:f:")) >= 0) {
     switch (opt) {
       case 'h':
         usage(argv[0]);
@@ -118,6 +119,9 @@ void parse_args(int argc, char *argv[]) {
         break;
       case 'P':
         proxy_port = atoi(optarg);
+        break;
+      case 'f':
+        g_debug_fd = atoi(optarg);
         break;
       case 'R':
         proxy_host = optarg;
