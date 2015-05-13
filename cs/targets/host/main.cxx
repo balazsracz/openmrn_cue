@@ -121,7 +121,7 @@ void parse_args(int argc, char *argv[]) {
         proxy_port = atoi(optarg);
         break;
       case 'f':
-        g_debug_fd = atoi(optarg);
+        //g_debug_fd = atoi(optarg);
         break;
       case 'R':
         proxy_host = optarg;
