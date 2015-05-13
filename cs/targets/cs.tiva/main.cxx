@@ -426,6 +426,8 @@ class RailcomDebugFlow : public StateFlowBase {
   int fd_;
 };
 
+HubDeviceSelect<HubFlow>* usb_port;
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -437,8 +439,8 @@ int appl_main(int argc, char* argv[])
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
     stack.add_can_port_async("/dev/can0");
-    stack.add_gridconnect_port("/dev/serUSB0");
-    //HubDeviceSelect<HubFlow> usb_port(stack.gridconnect_hub(), "/dev/serUSB0");
+    //stack.add_gridconnect_port("/dev/serUSB0");
+    usb_port = new HubDeviceSelect<HubFlow>(stack.gridconnect_hub(), "/dev/serUSB0");
 #ifdef STANDALONE    
     FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 #endif
