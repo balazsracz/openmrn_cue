@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
 
   //  f = fopen("convention-logic.cout", "wb");
   f = stdout;
-  fprintf(f, "const char automata_code[] = {\n  ");
+  fprintf(f, "const char automata_code[] __attribute__((section(\"automata\"))) = {\n  ");
   int c = 0;
   for (char t : output) {
     fprintf(f, "0x%02x, ", (uint8_t)t);
