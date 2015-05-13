@@ -67,7 +67,7 @@
 #include "src/usb_proto.h"
 
 
-#define STANDALONE
+//#define STANDALONE
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
