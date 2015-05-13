@@ -57,6 +57,7 @@
 #include "nmranet/TractionTrain.hxx"
 #include "os/watchdog.h"
 #include "utils/Debouncer.hxx"
+#include "utils/HubDeviceSelect.hxx"
 #include "custom/HostProtocol.hxx"
 
 #include "hardware.hxx"
@@ -108,7 +109,6 @@ static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
 
 nmranet::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
-HubFlow stdout_hub(stack.service());
 
 nmranet::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
@@ -125,6 +125,10 @@ bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1
 
 extern "C" {
 #ifdef STANDALONE
+
+Executor<1> stdout_exec("logger", 1, 1000);
+Service stdout_service(&stdout_exec);
+HubFlow stdout_hub(&stdout_service);
 
 void log_output(char* buf, int size) {
     if (size <= 0) return;
@@ -426,12 +430,12 @@ int appl_main(int argc, char* argv[])
   //  mydisable();
     start_watchdog(5000);
     add_watchdog_reset_timer(500);
-    //stack.add_can_port_async("/dev/can0");
+    stack.add_can_port_async("/dev/can0");
     stack.add_gridconnect_port("/dev/serUSB0");
+    //HubDeviceSelect<HubFlow> usb_port(stack.gridconnect_hub(), "/dev/serUSB0");
 #ifdef STANDALONE    
     FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 #endif
-
     int mainline = open("/dev/mainline", O_RDWR);
     HASSERT(mainline > 0);
     track_if.set_fd(mainline);
