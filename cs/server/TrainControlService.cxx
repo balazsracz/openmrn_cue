@@ -383,6 +383,9 @@ class EmergencyStopFn {
     TrainControlResponse::EmergencyStop* args =
         response->mutable_emergencystop();
     args->set_stop(packet[8]);
+    TrainControlResponse::WaitForChangeResponse* ts =
+        response->mutable_waitforchangeresponse();
+    ts->set_timestamp(st->ts_usec);
   }
 };
 
@@ -472,9 +475,15 @@ class ServerFlow : public RpcService::ImplFlowBase,
 
   Action state_changed() { return reply(); }
 
-  void state_changed_callback(TrainControlResponse::WaitForChangeResponse* r,
-                              TimestampedState* state) {
-    r->set_timestamp(state->ts_usec);
+  void state_changed_callback(LayoutState* state,
+                              TrainControlResponse* response,
+                              TimestampedState* ts) {
+    TrainControlResponse::WaitForChangeResponse* r =
+          response->mutable_waitforchangeresponse();
+    r->set_timestamp(ts->ts_usec);
+    TrainControlResponse::EmergencyStop* args =
+        response->mutable_emergencystop();
+    args->set_stop(state->stop);
     this->notify();
   }
 
@@ -583,6 +592,12 @@ class ServerFlow : public RpcService::ImplFlowBase,
         pkt.push_back(args.stop() ? 1 : 0);
         LOG(INFO, "Emergency %s", (args.stop() ? "stop." : "start."));
         response->mutable_emergencystop()->set_stop(args.stop());
+        uint64_t ts_usec = impl()->clock_->get_time_nsec() / 1000;
+        impl()->layout_state_.stop = args.stop() ? 1 : 0;
+        impl()->layout_state_.Touch(ts_usec);
+        TrainControlResponse::WaitForChangeResponse* ts =
+            response->mutable_waitforchangeresponse();
+        ts->set_timestamp(ts_usec);
         send_packet(std::move(pkt));
         return reply();
       } else {
