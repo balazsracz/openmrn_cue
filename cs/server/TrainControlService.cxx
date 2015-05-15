@@ -42,6 +42,7 @@
 #include "custom/HostProtocol.hxx"
 #include "nmranet/Datagram.hxx"
 #include "nmranet/DatagramHandlerDefault.hxx"
+#include "mobilestation/PacketDefs.hxx"
 #include "src/usb_proto.h"
 #include "utils/Clock.hxx"
 
@@ -149,7 +150,8 @@ class LayoutStateListener : public HostPacketHandlerInterface {
       }
       return;
     }
-    LOG(INFO, "unknown can packet %02x %02x %02x %02x", packet[1], packet[2], packet[3], packet[4]);
+    LOG(INFO, "unknown can packet %02x %02x %02x %02x", packet[1], packet[2],
+        packet[3], packet[4]);
   }
 
   void set_clock(Clock* clock) { clock_ = clock; }
@@ -160,7 +162,7 @@ class LayoutStateListener : public HostPacketHandlerInterface {
 };  // LayoutStateListener
 
 class PrintLogentries : public HostPacketHandlerInterface {
-public:
+ public:
   void packet_arrived(Buffer<string>* b) OVERRIDE {
     AutoReleaseBuffer<string> rb(b);
     const string& packet = *b->data();
@@ -327,8 +329,7 @@ class HostPacketQueue : public PacketQueueFlow {
 class PingResponseFn {
  public:
   typedef std::integral_constant<uint8_t, CMD_PONG> accept_response_type;
-  static void FillResponse(LayoutState* st,
-                           const Packet& packet,
+  static void FillResponse(LayoutState* st, const Packet& packet,
                            TrainControlResponse* response) {
     response->mutable_pong()->set_value(packet[1]);
   }
@@ -337,8 +338,7 @@ class PingResponseFn {
 class ResponseCanPacketFn {
  public:
   typedef std::integral_constant<uint8_t, CMD_CAN_PKT> accept_response_type;
-  static void FillResponse(LayoutState* st,
-                           const Packet& packet,
+  static void FillResponse(LayoutState* st, const Packet& packet,
                            TrainControlResponse* response) {
     for (unsigned i = 1; i < packet.size(); ++i) {
       response->mutable_rawcanpacket()->add_data(packet[i]);
@@ -348,8 +348,7 @@ class ResponseCanPacketFn {
 
 class SpeedFn {
  public:
-  static void FillResponse(LayoutState* st,
-                           const Packet& packet,
+  static void FillResponse(LayoutState* st, const Packet& packet,
                            TrainControlResponse* response) {
     TrainControlResponse::Speed* speed = response->mutable_speed();
     speed->set_speed(packet[8] & 0x7f);
@@ -363,8 +362,7 @@ class SpeedFn {
 
 class AccessoryFn {
  public:
-  static void FillResponse(LayoutState* st,
-                           const Packet& packet,
+  static void FillResponse(LayoutState* st, const Packet& packet,
                            TrainControlResponse* response) {
     TrainControlResponse::Accessory* acc = response->mutable_accessory();
     acc->set_train_id(packet[3] >> 2);
@@ -377,8 +375,7 @@ class AccessoryFn {
 
 class EmergencyStopFn {
  public:
-  static void FillResponse(LayoutState* st,
-                           const Packet& packet,
+  static void FillResponse(LayoutState* st, const Packet& packet,
                            TrainControlResponse* response) {
     TrainControlResponse::EmergencyStop* args =
         response->mutable_emergencystop();
@@ -429,7 +426,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
     packet_filter_ =
         std::bind(&ServerFlow::PacketTypeFilter, C::accept_response_type::value,
                   std::placeholders::_1);
-    fill_response_ = std::bind(&C::FillResponse, &impl()->layout_state_, std::placeholders::_1, std::placeholders::_2);
+    fill_response_ = std::bind(&C::FillResponse, &impl()->layout_state_,
+                               std::placeholders::_1, std::placeholders::_2);
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
   }
@@ -454,7 +452,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
     HASSERT(sent_packet.size() >= 6);
     packet_filter_ = std::bind(&ServerFlow::CanPacketFilter, sent_packet,
                                match_len, std::placeholders::_1);
-    fill_response_ = std::bind(&C::FillResponse, &impl()->layout_state_, std::placeholders::_1, std::placeholders::_2);
+    fill_response_ = std::bind(&C::FillResponse, &impl()->layout_state_,
+                               std::placeholders::_1, std::placeholders::_2);
     response_packet_ = nullptr;
     service()->impl()->datagram_handler()->add_handler(this);
   }
@@ -479,7 +478,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
                               TrainControlResponse* response,
                               TimestampedState* ts) {
     TrainControlResponse::WaitForChangeResponse* r =
-          response->mutable_waitforchangeresponse();
+        response->mutable_waitforchangeresponse();
     r->set_timestamp(ts->ts_usec);
     TrainControlResponse::EmergencyStop* args =
         response->mutable_emergencystop();
@@ -490,7 +489,8 @@ class ServerFlow : public RpcService::ImplFlowBase,
   Action entry() OVERRIDE {
     const TrainControlRequest* request = &message()->data()->request.request();
     string debug_req;
-    ::google::protobuf::TextFormat::PrintToString(message()->data()->request, &debug_req);
+    ::google::protobuf::TextFormat::PrintToString(message()->data()->request,
+                                                  &debug_req);
     LOG(INFO, "request come: %s", debug_req.c_str());
     TrainControlResponse* response =
         message()->data()->response.mutable_response();
@@ -640,9 +640,9 @@ class ServerFlow : public RpcService::ImplFlowBase,
             "error: unknown state in wait for change.");
         return reply();
       }
-      st->AddListener(
-          args.timestamp(),
-          std::bind(&ServerFlow::state_changed_callback, this, &impl()->layout_state_, response, st));
+      st->AddListener(args.timestamp(),
+                      std::bind(&ServerFlow::state_changed_callback, this,
+                                &impl()->layout_state_, response, st));
       return wait_and_call(STATE(state_changed));
     } /*else if (false) {
           // dosetlokstate?
@@ -685,6 +685,26 @@ class ServerFlow : public RpcService::ImplFlowBase,
   DatagramClient* dg_client_;
 };
 
+void CreateStateInitQueries(PacketQueueFlow* host_queue,
+                            const TrainControlResponse& lokdb) {
+  auto* b = host_queue->alloc();
+  mobilestation::PacketDefs::SetupEStopQueryPacket(b->data());
+  host_queue->send(b);
+
+  for (const auto& lok : lokdb.lokdb().lok()) {
+    int id = lok.id();
+    auto* b = host_queue->alloc();
+    mobilestation::PacketDefs::SetupLokSpeedQueryPacket(b->data(), id);
+    host_queue->send(b);
+
+    for (const auto& fn : lok.function()) {
+      auto* b = host_queue->alloc();
+      mobilestation::PacketDefs::SetupLokFnQueryPacket(b->data(), id, fn.id());
+      host_queue->send(b);
+    }
+  }
+}
+
 void TrainControlService::initialize(nmranet::DatagramService* dg_service,
                                      nmranet::Node* node,
                                      nmranet::NodeHandle client,
@@ -707,6 +727,8 @@ void TrainControlService::initialize(nmranet::DatagramService* dg_service,
   auto* b = impl()->host_queue()->alloc();
   b->data()->push_back(CMD_SYNC);
   impl()->host_queue()->send(b);
+
+  CreateStateInitQueries(impl()->host_queue(), impl_->lokdb_response_);
 }
 
 RpcServiceInterface* TrainControlService::create_handler_factory() {
