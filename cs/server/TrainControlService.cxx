@@ -78,7 +78,7 @@ static bool PacketMatch(const Packet& packet, int sid, int eid, unsigned len) {
   if (packet[1] != (sid >> 8)) return false;
   if (packet[2] != (sid & 0xff)) return false;
   if (packet[3] != (eid >> 8)) return false;
-  if (packet[4] != (eid & 0xff)) return false;
+  if ((packet[4] & 0xfe) != (eid & 0xfe)) return false;
   return true;
 }
 
