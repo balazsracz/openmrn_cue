@@ -96,7 +96,8 @@ static bool PacketMatch(const Packet& packet, int sid, int eid, int len,
 
 class LayoutStateListener : public HostPacketHandlerInterface {
  public:
-  LayoutStateListener(LayoutState* state) : state_(state) {}
+  LayoutStateListener(LayoutState* state, Clock* clock)
+      : state_(state), clock_(clock) {}
   void packet_arrived(Buffer<string>* b) OVERRIDE {
     LayoutState* state = state_;
     const string& packet = *b->data();
@@ -107,9 +108,10 @@ class LayoutStateListener : public HostPacketHandlerInterface {
     const uint8_t kERStopPayload[] = {1, 0};
     if (PMATCH(kERStopPayload, packet, 0x4008, 0x0900, 3)) {
       bool value = packet[8];
+      LOG(INFO, "estop override %d", value);
       if (value != state->stop) {
         state->stop = value;
-        state->Touch(ts);
+        state->TouchAllLoks(ts);
       }
       return;
     }
@@ -145,15 +147,16 @@ class LayoutStateListener : public HostPacketHandlerInterface {
           state->Touch(ts);
         }
       }
+      return;
     }
+    LOG(INFO, "unknown can packet %02x %02x %02x %02x", packet[1], packet[2], packet[3], packet[4]);
   }
 
-  // Takes ownership of the injected clock.
-  void set_clock(Clock* new_clock) { clock_.reset(new_clock); }
+  void set_clock(Clock* clock) { clock_ = clock; }
 
  private:
   LayoutState* state_;
-  std::unique_ptr<Clock> clock_{new RealClock};
+  Clock* clock_;
 };  // LayoutStateListener
 
 class PrintLogentries : public HostPacketHandlerInterface {
@@ -172,8 +175,15 @@ struct TrainControlService::Impl {
   HostServer* datagram_handler() { return datagram_handler_.get(); }
   PacketQueueFlow* host_queue() { return host_queue_.get(); }
 
+  // Takes ownership of the injected clock.
+  void set_clock(Clock* new_clock) {
+    clock_.reset(new_clock);
+    state_listener_.set_clock(clock_.get());
+  }
+
+  std::unique_ptr<Clock> clock_{new RealClock};
   LayoutState layout_state_;
-  LayoutStateListener state_listener_{&layout_state_};
+  LayoutStateListener state_listener_{&layout_state_, clock_.get()};
   PrintLogentries log_output_;
   TrainControlResponse lokdb_response_;
   NodeHandle client_dst_;
