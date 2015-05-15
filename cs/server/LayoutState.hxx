@@ -105,6 +105,13 @@ struct LayoutState : TimestampedState, public Singleton<LayoutState> {
   // true: emergency stopped. false: power on.
   bool stop;
 
+  void TouchAllLoks(uint64_t ts) {
+    for (const auto& e : loks) {
+      e.second->Touch(ts);
+    }
+    Touch(ts);
+  }
+
   // Returns the lok entry for that id, or null if it does not exist.
   LokState* GetLok(int id) const {
     loks_t::const_iterator it = loks.find(id);
