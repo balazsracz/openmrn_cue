@@ -47,6 +47,7 @@
 
 #include "executor/StateFlow.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/TractionDefs.hxx"
 #include "utils/logging.h"
 #include "dcc_control.hxx"
 #include "DccHardware.hxx"
@@ -137,10 +138,11 @@ class ADCFlowBase : public StateFlowBase {
 template <class HW>
 class TivaShortDetectionModule : public ADCFlowBase<HW> {
  public:
-  TivaShortDetectionModule(Service* s)
-      : ADCFlowBase<HW>(s, MSEC_TO_NSEC(1)),
+  TivaShortDetectionModule(nmranet::Node* node)
+      : ADCFlowBase<HW>(node->interface(), MSEC_TO_NSEC(1)),
         num_disable_tries_(0),
-        num_overcurrent_tests_(0) {
+        num_overcurrent_tests_(0),
+        node_(node) {
     next_report_ = 0;
   }
 
@@ -188,7 +190,17 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   Action shorted() {
     num_disable_tries_ = 0;
     LOG(INFO, "short detected");
-    // TODO(balazs.racz): send event telling that we have a short.
+    return this->allocate_and_call(node_->interface()->global_message_write_flow(), STATE(send_short_message));
+  }
+
+  Action send_short_message() {
+    auto* b = this->get_allocation_result(
+        node_->interface()->global_message_write_flow());
+    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     nmranet::eventid_to_buffer(
+                         nmranet::TractionDefs::EMERGENCY_STOP_EVENT));
+    node_->interface()->global_message_write_flow()->send(b);
+
     return call_immediately(STATE(start_timer));
   }
 
@@ -205,6 +217,7 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   uint8_t num_disable_tries_;
   uint8_t num_overcurrent_tests_;
   long long next_report_;
+  nmranet::Node* node_;
 };
 
 template <class HW>

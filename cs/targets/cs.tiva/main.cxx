@@ -343,7 +343,7 @@ void mydisable()
   asm("BKPT 0");
 }
 
-TivaShortDetectionModule<DccHwDefs> g_short_detector(stack.service());
+TivaShortDetectionModule<DccHwDefs> g_short_detector(stack.node());
 
 AccessoryOvercurrentMeasurement<AccHwDefs> g_acc_short_detector(stack.service(), stack.node());
 
