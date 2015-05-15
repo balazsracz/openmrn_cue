@@ -594,7 +594,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
         response->mutable_emergencystop()->set_stop(args.stop());
         uint64_t ts_usec = impl()->clock_->get_time_nsec() / 1000;
         impl()->layout_state_.stop = args.stop() ? 1 : 0;
-        impl()->layout_state_.Touch(ts_usec);
+        impl()->layout_state_.TouchAllLoks(ts_usec);
         TrainControlResponse::WaitForChangeResponse* ts =
             response->mutable_waitforchangeresponse();
         ts->set_timestamp(ts_usec);
