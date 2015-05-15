@@ -1,5 +1,9 @@
 export BOARD := BOARD_BRACZ_CS_TIVA
 
+ifndef HWVER
+export HWVER=HW_V2
+endif
+
 include hardware.mk
 
 ifeq ($(MISSING_DEPS),)
