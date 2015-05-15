@@ -642,7 +642,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
       }
       st->AddListener(
           args.timestamp(),
-          std::bind(&ServerFlow::state_changed_callback, this, r, st));
+          std::bind(&ServerFlow::state_changed_callback, this, &impl()->layout_state_, response, st));
       return wait_and_call(STATE(state_changed));
     } /*else if (false) {
           // dosetlokstate?
