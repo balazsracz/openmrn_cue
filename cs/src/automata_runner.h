@@ -119,6 +119,8 @@ private:
 };
 
 
+class AutomataTick;
+
 class AutomataRunner {
 public:
   AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
@@ -266,8 +268,11 @@ private:
     //! Counts how many ticks we need to apply in the next run of the automatas.
     int pending_ticks_;
 
-    //! Timer used for repeatedly waking up the automata thread.
-    os_timer_t automata_timer_;
+    //! Timer used for repeatedly waking up the automata thread. This pointer
+    //! is self-owned, it is not null iff the automata thread is running, and
+    //! in that case the thread will ask the timer to delete itself before
+    //! exiting.
+    AutomataTick* automata_timer_;
     //! Semaphore used for waking up the automata thread.
     os_sem_t automata_sem_;
     //! Mutex to control access to request_thread_exit_, stop_notification_ and is_running_.

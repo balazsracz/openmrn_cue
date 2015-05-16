@@ -765,22 +765,44 @@ void AutomataRunner::InitializeState() {
   pending_ticks_ = 0;
 }
 
-static long long automata_tick_callback(void* runner, void*) {
-  ASSERT(runner);
-  static int count = 0;
-  if (count++ > 10) {
-    ((AutomataRunner*)runner)->AddPendingTick();
-    count -= 10;
+class AutomataTick : public Timer {
+ public:
+  AutomataTick(AutomataRunner* runner)
+      : Timer(runner->node()->interface()->executor()->active_timers()),
+        runner_(runner), count_(0), exit_(false) {
+    start(MSEC_TO_NSEC(100)); // 10 Hz
   }
-  ((AutomataRunner*)runner)->TriggerRun();
-  return OS_TIMER_RESTART;  // SEC_TO_NSEC(1);
-}
+
+  long long timeout() OVERRIDE {
+    OSMutexLock l(&lock_);
+    if (exit_) {
+      return Timer::DELETE;
+    }
+    if (count_++ > 10) {
+      runner_->AddPendingTick();
+      count_ -= 10;
+    }
+    runner_->TriggerRun();
+    return Timer::RESTART;
+  }
+
+  // After this call returns, it is guaranteed that the timer will not call
+  // into the runner anymore.
+  void request_exit() {
+    OSMutexLock l(&lock_);
+    exit_ = true;
+  }
+
+ private:
+  OSMutex lock_;
+  AutomataRunner* runner_;
+  int count_;
+  bool exit_;
+};
 
 void* automata_thread(void* arg) {
   AutomataRunner* runner = (AutomataRunner*)arg;
-  runner->automata_timer_ =
-      os_timer_create(&automata_tick_callback, runner, NULL);
-  os_timer_start(runner->automata_timer_, MSEC_TO_NSEC(100));  // 10 HZ
+  runner->automata_timer_ = new AutomataTick(runner);
   while (1) {
     AutomataRunner::RunState state;
     Notifiable* n = nullptr;
@@ -799,6 +821,7 @@ void* automata_thread(void* arg) {
       n->notify();
     }
     if (state == AutomataRunner::RunState::EXIT) {
+      runner->automata_timer_->request_exit();
       return nullptr;
     }
     if (state == AutomataRunner::RunState::RUN) {
@@ -835,7 +858,7 @@ AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
   } else {
     CreateVarzAndAutomatas();
     automata_thread_handle_ = 0;
-    automata_timer_ = 0;
+    automata_timer_ = nullptr;
     run_state_ = RunState::NO_THREAD;
   }
 }
@@ -846,9 +869,6 @@ AutomataRunner::~AutomataRunner() {
   Stop(&n, true);
   n.wait_for_notification();
 
-  if (automata_timer_) {
-    os_timer_delete(automata_timer_);
-  }
   os_sem_destroy(&automata_sem_);
 }
 
