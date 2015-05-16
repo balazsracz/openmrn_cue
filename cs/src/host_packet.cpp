@@ -102,15 +102,6 @@ void* rx_thread(void* p) {
 const uint8_t syncpacket[] = {
     CMD_SYNC_LEN, CMD_SYNC, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 
-static long long sync_packet_callback(void*, void*) {
-    PacketQueue::instance()->TransmitConstPacket(syncpacket);
-#ifdef __FreeRTOS__
-    extern char *heap_end;
-    LOG(ERROR, "  sbrk %p totalsize %lu", heap_end, (unsigned long)mainBufferPool->total_size());
-#endif
-    return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
-}
-
 typedef Buffer<PacketBase> PacketQEntry;
 
 class DefaultPacketQueue::TxFlow : public StateFlowBase {
@@ -170,8 +161,6 @@ DefaultPacketQueue::DefaultPacketQueue(CanHubFlow* openlcb_can, const char* dev,
     if (force_sync) ForceInitialSync();
     os_thread_create(NULL, "host_pkt_rx", 3, PACKET_RX_THREAD_STACK_SIZE,
 		     rx_thread, this);
-    sync_packet_timer_ = os_timer_create(&sync_packet_callback, NULL, NULL);
-    os_timer_start(sync_packet_timer_, MSEC_TO_NSEC(1000));
     // Wires up packet receive from vcom0 to the USB host.
     usb_vcom0_recv_ = new VCOMPipeMember(this, CMD_VCOM0);
     usb_vcom_pipe0_.register_port(usb_vcom0_recv_);
@@ -184,7 +173,6 @@ DefaultPacketQueue::~DefaultPacketQueue() {
     delete gc_adapter_;
     usb_vcom_pipe0_.unregister_port(usb_vcom0_recv_);
     delete usb_vcom0_recv_;
-    os_timer_delete(sync_packet_timer_);
     // There is no way to destroy an os_mq_t.
     // There is no way to stop a thread.
     abort();

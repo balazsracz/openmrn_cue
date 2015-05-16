@@ -103,6 +103,7 @@ void* dcc_can_thread(void*) {
 }
 
 
+/* TODO: delete this entire file or do something about this timer.
 static long long dcc_timer_callback(void*, void*) {
     os_mutex_lock(&dcc_mutex);
     DccLoop_Timer();
@@ -111,16 +112,18 @@ static long long dcc_timer_callback(void*, void*) {
     DccLoop_ProcessIO();
     os_mutex_unlock(&dcc_mutex);
     return OS_TIMER_RESTART; //SEC_TO_NSEC(1);
-}
+    }
 
-static os_timer_t dcc_timer;
+    static os_timer_t dcc_timer; */
 
 void dcc_can_init(int devfd) {
     os_mutex_init(&dcc_mutex);
     mostacan_fd = devfd;
     DccLoop_Init();
+    /* TODO: delete this entire file or do something about this timer.
     dcc_timer = os_timer_create(&dcc_timer_callback, NULL, NULL);
     os_timer_start(dcc_timer, MSEC_TO_NSEC(100));
+    */
     os_thread_create(NULL, "dcc_can_rx", 0, DCC_CAN_THREAD_CAN_STACK_SIZE,
 		     dcc_can_thread, NULL);
 }

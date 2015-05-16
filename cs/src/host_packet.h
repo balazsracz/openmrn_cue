@@ -158,9 +158,6 @@ class DefaultPacketQueue : public PacketQueue, public Service {
     int sync_fd_;
     int async_fd_;
 
-    //! Timer used to generate the sync packets towards the host.
-    os_timer_t sync_packet_timer_;
-
     //! The pipe-to-pipe GridConnect converter that processes the virtual GC
     //! protocol that runs over the specific USB packets.
     GCAdapterBase* gc_adapter_;
