@@ -51,7 +51,8 @@ class TrainControlService : public RpcService {
   Impl* impl() { return impl_.get(); }
 
   void initialize(nmranet::DatagramService* dg_service, nmranet::Node* node,
-                  nmranet::NodeHandle client, const string& lokdb_ascii);
+                  nmranet::NodeHandle client, const string& lokdb_ascii,
+                  bool query_state);
 
   // Takes ownership of the injected object.
   void TEST_inject_clock(Clock* clock);

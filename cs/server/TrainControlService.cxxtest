@@ -84,7 +84,8 @@ class TrainControlServiceTestBase : public AsyncDatagramTest {
  protected:
   TrainControlServiceTestBase() {
     train_control_.initialize(&datagram_support_, node_,
-                              NodeHandle(node_->node_id()), kStaticLokDb);
+                              NodeHandle(node_->node_id()), kStaticLokDb,
+                              false);
     clock_ = new MockClock(137000);
     // transfers ownership
     train_control_.TEST_inject_clock(clock_);
@@ -343,14 +344,14 @@ TEST_F(TrainControlServiceTrainTest, WaitForState) {
   send_request_and_expect_response(
       "id:53 request { DoWaitForChange { id: 1 timestamp: 99 }}",
       "id: 53 failed: false response { WaitForChangeResponse { id : 1 "
-      "timestamp: 142}}");
+      "timestamp: 142} EmergencyStop { stop: true } }");
   wait();
   send_request("id:75 request { DoWaitForChange { id: 1 timestamp: 142 }}");
   wait();  // not return yet
   set_clock(199);
   expect_response(
       "id: 75 failed: false response { WaitForChangeResponse { id : 1 "
-      "timestamp: 199}}");
+      "timestamp: 199} EmergencyStop { stop: true } }");
   EXPECT_CALL(m2_, set_speed(VApprox(mph_to_velocity(11, false))));
   send_request_and_expect_response(
       "id: 60 request { DoSetSpeed { id: 1 dir: -1 speed: 11 } }",
@@ -361,14 +362,14 @@ TEST_F(TrainControlServiceTrainTest, WaitForState) {
 TEST_F(TrainControlServiceTrainTest, SetEmergencyStop) {
   send_request_and_expect_response(
       "id : 103 request { DoSetEmergencyStop { stop : false }}",
-      "id: 103 failed:false response{ EmergencyStop { stop: false } }");
+      "id: 103 failed:false response{ EmergencyStop { stop: false } WaitForChangeResponse { timestamp: 137 } }");
   wait();
 }
 
 TEST_F(TrainControlServiceTrainTest, SetAndGetEmergencyStop) {
   send_request_and_expect_response(
       "id : 103 request { DoSetEmergencyStop { stop : false }}",
-      "id: 103 failed:false response{ EmergencyStop { stop: false } }");
+      "id: 103 failed:false response{ EmergencyStop { stop: false } WaitForChangeResponse { timestamp: 137 } }");
   wait();
 
   /*  get emergency stop is not supported by mostatraction.cxx
@@ -377,9 +378,11 @@ TEST_F(TrainControlServiceTrainTest, SetAndGetEmergencyStop) {
       "id: 103 failed:false response{ EmergencyStop { stop: false } }");
       wait();*/
 
+  set_clock(182);
+
   send_request_and_expect_response(
       "id : 103 request { DoSetEmergencyStop { stop : true }}",
-      "id: 103 failed:false response{ EmergencyStop { stop: true } }");
+      "id: 103 failed:false response{ EmergencyStop { stop: true } WaitForChangeResponse { timestamp: 182 } }");
   wait();
 
   /*send_request_and_expect_response(

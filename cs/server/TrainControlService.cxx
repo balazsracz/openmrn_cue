@@ -196,7 +196,7 @@ struct TrainControlService::Impl {
 };
 
 void TrainControlService::TEST_inject_clock(Clock* clock) {
-  impl()->state_listener_.set_clock(clock);
+  impl()->set_clock(clock);
 }
 
 /** Datagram handler that listens to incoming response datagrams from the
@@ -708,7 +708,8 @@ void CreateStateInitQueries(PacketQueueFlow* host_queue,
 void TrainControlService::initialize(nmranet::DatagramService* dg_service,
                                      nmranet::Node* node,
                                      nmranet::NodeHandle client,
-                                     const string& lokdb_ascii) {
+                                     const string& lokdb_ascii,
+                                     bool query_state) {
   impl_.reset(new Impl());
   impl_->client_dst_ = client;
   impl_->dg_service_ = dg_service;
@@ -728,7 +729,9 @@ void TrainControlService::initialize(nmranet::DatagramService* dg_service,
   b->data()->push_back(CMD_SYNC);
   impl()->host_queue()->send(b);
 
-  CreateStateInitQueries(impl()->host_queue(), impl_->lokdb_response_);
+  if (query_state) {
+    CreateStateInitQueries(impl()->host_queue(), impl_->lokdb_response_);
+  }
 }
 
 RpcServiceInterface* TrainControlService::create_handler_factory() {
