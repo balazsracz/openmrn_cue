@@ -196,7 +196,7 @@ int appl_main(int argc, char *argv[]) {
   }
   control_server.initialize(
       stack.dg_service(), stack.node(),
-      nmranet::NodeHandle(destination_nodeid, destination_alias), lokdb);
+      nmranet::NodeHandle(destination_nodeid, destination_alias), lokdb, true);
   int proxy_fd = ConnectSocket(proxy_host, proxy_port);
   if (proxy_fd < 0) {
     DIE("Could not connect to proxy.");
