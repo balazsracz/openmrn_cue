@@ -93,41 +93,48 @@ const insn_t* AD(const string& data) {
   return (const insn_t*)(data.data());
 }
 
-TEST(RunnerTest, TrivialRunnerCreateDestroy) {
+class RunnerTest : public nmranet::AsyncNodeTest {
+ public:
+  ~RunnerTest() {
+    wait();
+  }
+};
+
+TEST_F(RunnerTest, TrivialRunnerCreateDestroy) {
   automata::Board brd;
   string output;
   brd.Render(&output);
   {
-    AutomataRunner (NULL, AD(output), false);
+    AutomataRunner (node_, AD(output), false);
   }
 }
 
-TEST(RunnerTest, ThreadedRunnerCreateDestroy) {
+TEST_F(RunnerTest, ThreadedRunnerCreateDestroy) {
   automata::Board brd;
   string output;
   brd.Render(&output);
   {
-    AutomataRunner (NULL, AD(output), true);
+    AutomataRunner (node_, AD(output), true);
   }
 }
 
-TEST(RunnerTest, TrivialRunnerRun) {
+TEST_F(RunnerTest, TrivialRunnerRun) {
   automata::Board brd;
   string output;
   brd.Render(&output);
   {
-    AutomataRunner r(NULL, AD(output), false);
+    AutomataRunner r(node_, AD(output), false);
     r.RunAllAutomata();
   }
 }
 
-TEST(RunnerTest, SingleEmptyAutomataBoard) {
+TEST_F(RunnerTest, SingleEmptyAutomataBoard) {
   static automata::Board brd;
   DefAut(testaut1, brd, {});
   string output;
   brd.Render(&output);
   {
-    AutomataRunner r(NULL, AD(output), false);
+    AutomataRunner r(node_, AD(output), false);
     const auto& all_automata = r.GetAllAutomatas();
     EXPECT_EQ(1U, all_automata.size());
     EXPECT_EQ(0, all_automata[0]->GetId());

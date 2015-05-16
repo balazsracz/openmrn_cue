@@ -789,8 +789,13 @@ class AutomataTick : public Timer {
   // After this call returns, it is guaranteed that the timer will not call
   // into the runner anymore.
   void request_exit() {
-    OSMutexLock l(&lock_);
-    exit_ = true;
+    {
+      OSMutexLock l(&lock_);
+      exit_ = true;
+    }
+    runner_->node()->interface()->executor()->sync_run([this]() {
+        Timer::trigger();
+      });
   }
 
  private:
@@ -849,6 +854,7 @@ AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
       traction_(node ? new Traction(node) : nullptr),
       pending_ticks_(0),
       run_state_(RunState::INIT) {
+  HASSERT(openmrn_node_);
   automata_write_helper.set_wait_for_local_loopback(true);
   memset(imported_bits_, 0, sizeof(imported_bits_));
   os_sem_init(&automata_sem_, 0);
