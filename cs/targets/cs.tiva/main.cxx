@@ -436,8 +436,9 @@ HubDeviceSelect<HubFlow>* usb_port;
 int appl_main(int argc, char* argv[])
 {
   //  mydisable();
-    start_watchdog(5000);
-    add_watchdog_reset_timer(500);
+  // TODO(balazs.racz): add a workign implementation of watchdog.
+  //start_watchdog(5000);
+  // add_watchdog_reset_timer(500);
     stack.add_can_port_async("/dev/can0");
     //stack.add_gridconnect_port("/dev/serUSB0");
     usb_port = new HubDeviceSelect<HubFlow>(stack.gridconnect_hub(), "/dev/serUSB0");
