@@ -43,9 +43,11 @@
 #include "commandstation/UpdateProcessor.hxx"
 #include "custom/AutomataControl.hxx"
 #include "custom/HostPacketCanPort.hxx"
+#include "custom/HostProtocol.hxx"
 #include "custom/TivaShortDetection.hxx"
 #include "dcc/LocalTrackIf.hxx"
 #include "dcc/RailCom.hxx"
+#include "dcc/RailcomHub.hxx"
 #include "executor/PoolToQueueFlow.hxx"
 #include "mobilestation/AllTrainNodes.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
@@ -58,7 +60,6 @@
 #include "os/watchdog.h"
 #include "utils/Debouncer.hxx"
 #include "utils/HubDeviceSelect.hxx"
-#include "custom/HostProtocol.hxx"
 
 #include "hardware.hxx"
 
@@ -278,6 +279,8 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
   volatile uint8_t* memory_;
 };
 
+dcc::RailcomHubFlow railcom_hub(stack.service());
+HubDeviceNonBlock<dcc::RailcomHubFlow>* railcom_reader_flow;
 dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
@@ -449,8 +452,10 @@ int appl_main(int argc, char* argv[])
     HASSERT(mainline > 0);
     track_if.set_fd(mainline);
     
-    int railcom_fd = open("/dev/railcom", O_RDWR);
-    HASSERT(railcom_fd > 0);
+    railcom_reader_flow =
+        new HubDeviceNonBlock<dcc::RailcomHub>(&railcom_hub, "/dev/railcom");
+    //int railcom_fd = open("/dev/railcom", O_RDWR);
+    //HASSERT(railcom_fd > 0);
     //RailcomDebugFlow railcom_debug(railcom_fd);
 
 
