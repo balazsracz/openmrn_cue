@@ -70,7 +70,7 @@ enum {
  * of urgent packets will be high. */
 DECLARE_CONST(track_processor_packet_buffer_count);
 
-TrackIfReceive::TrackIfReceive(CanIf* interface, PacketFlowInterface* packet_q)
+TrackIfReceive::TrackIfReceive(CanIf* interface, dcc::PacketFlowInterface* packet_q)
     : IncomingFrameFlow(interface->service()),
       pool_(sizeof(Buffer<dcc::Packet>),
             config_track_processor_packet_buffer_count()),

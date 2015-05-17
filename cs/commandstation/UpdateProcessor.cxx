@@ -56,7 +56,7 @@ struct PriorityUpdate {
 };
 
 UpdateProcessor::UpdateProcessor(Service* service,
-                                 PacketFlowInterface* track_send)
+                                 dcc::PacketFlowInterface* track_send)
     : StateFlow<Buffer<dcc::Packet>, QList<1> >(service),
       trackSend_(track_send),
       nextRefreshIndex_(0),

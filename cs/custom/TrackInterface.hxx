@@ -36,6 +36,7 @@
 #define _CUSTOM_TRACKINTERFACE_HXX_
 
 #include "dcc/Packet.hxx"
+#include "dcc/PacketFlowInterface.hxx"
 #include "dcc/UpdateLoop.hxx"
 #include "executor/StateFlow.hxx"
 #include "utils/Hub.hxx"
@@ -69,7 +70,7 @@ enum {
 
 class TrackPowerOnOffBit : public nmranet::BitEventInterface {
  public:
-  TrackPowerOnOffBit(uint64_t event_on, uint64_t event_off, PacketFlowInterface* track)
+  TrackPowerOnOffBit(uint64_t event_on, uint64_t event_off, dcc::PacketFlowInterface* track)
       : BitEventInterface(event_on, event_off), track_(track), state_(false) {}
 
   virtual bool GetCurrentState() { return state_; }
@@ -87,7 +88,7 @@ class TrackPowerOnOffBit : public nmranet::BitEventInterface {
   }
 
  private:
-  PacketFlowInterface* track_;
+  dcc::PacketFlowInterface* track_;
   /// @TODO(balazs.racz): this state should be updated from the alive bit in
   /// the keepalive packets.
   bool state_;
@@ -115,7 +116,7 @@ class TrackIfReceive : public IncomingFrameFlow {
    * @param interface is the CAN bus port to listen on
    * @param packet_q is a flow that will get an empty packet whenever the
    * track processor is ready to receive the next outgoing packet. */
-  TrackIfReceive(CanIf* interface, PacketFlowInterface* packet_q);
+  TrackIfReceive(CanIf* interface, dcc::PacketFlowInterface* packet_q);
   ~TrackIfReceive();
 
   Action entry() OVERRIDE;
@@ -127,7 +128,7 @@ class TrackIfReceive : public IncomingFrameFlow {
   FixedPool pool_;
   /** @TODO(balazs.racz) replace this with a service keeping all objects. */
   CanIf* interface_;
-  PacketFlowInterface* packetQueue_;
+  dcc::PacketFlowInterface* packetQueue_;
 };
 
 }  // namespace bracz_custom

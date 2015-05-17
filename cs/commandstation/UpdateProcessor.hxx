@@ -39,7 +39,8 @@
 
 #include "executor/StateFlow.hxx"
 #include "dcc/Packet.hxx"
-#include "dcc/UpdateLoop.hxx"  // for PacketFlowInterface
+#include "dcc/PacketFlowInterface.hxx"
+#include "dcc/UpdateLoop.hxx"
 
 namespace dcc {
 class PacketSource;
@@ -55,7 +56,7 @@ namespace commandstation {
 class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
                         private dcc::UpdateLoopBase {
  public:
-  UpdateProcessor(Service* service, PacketFlowInterface* track_send);
+  UpdateProcessor(Service* service, dcc::PacketFlowInterface* track_send);
   ~UpdateProcessor();
 
   /** Adds a new refresh source to the background refresh packets. */
@@ -83,7 +84,7 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
 
  private:
   // Place where we forward the packets filled in.
-  PacketFlowInterface* trackSend_;
+  dcc::PacketFlowInterface* trackSend_;
 
   // Holds the list of train nodes that have reported a change. We will always
   // take a train node from this list first before starting background refresh.
