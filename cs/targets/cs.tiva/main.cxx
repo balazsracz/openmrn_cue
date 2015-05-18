@@ -453,7 +453,7 @@ int appl_main(int argc, char* argv[])
     track_if.set_fd(mainline);
     
     railcom_reader_flow =
-        new HubDeviceNonBlock<dcc::RailcomHub>(&railcom_hub, "/dev/railcom");
+        new HubDeviceNonBlock<dcc::RailcomHubFlow>(&railcom_hub, "/dev/railcom");
     //int railcom_fd = open("/dev/railcom", O_RDWR);
     //HASSERT(railcom_fd > 0);
     //RailcomDebugFlow railcom_debug(railcom_fd);
