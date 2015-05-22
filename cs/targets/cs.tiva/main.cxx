@@ -57,6 +57,7 @@
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/TractionTrain.hxx"
+#include "nmranet/TractionCvSpace.hxx"
 #include "os/watchdog.h"
 #include "utils/Debouncer.hxx"
 #include "utils/HubDeviceSelect.hxx"
@@ -68,7 +69,7 @@
 #include "src/usb_proto.h"
 
 
-//#define STANDALONE
+#define STANDALONE
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -159,7 +160,7 @@ void send_host_log_event(HostLogEvent e) {
 
 OVERRIDE_CONST(local_nodes_count, 30);
 OVERRIDE_CONST(local_alias_cache_size, 30);
-OVERRIDE_CONST(num_memory_spaces, 4);
+OVERRIDE_CONST(num_memory_spaces, 5);
 
 
 static const uint64_t EVENT_ID = 0x0501010114FF2B08ULL;
@@ -330,6 +331,8 @@ mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.inter
 
 mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
 
+nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, 0xEF);
+
 typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
 
@@ -359,18 +362,13 @@ void adc0_seq2_interrupt_handler(void) {
 }
 }
 
-class RailcomDebugFlow : public StateFlowBase {
+class RailcomDebugFlow : public dcc::RailcomHubPortInterface {
  public:
-  RailcomDebugFlow(int fd) : StateFlowBase(stack.service()), fd_(fd) {
-    start_flow(STATE(register_and_sleep));
+  RailcomDebugFlow(dcc::RailcomHubFlow* source) {
+    source->register_port(this);
   }
 
  private:
-  Action register_and_sleep() {
-    ::ioctl(fd_, CAN_IOC_READ_ACTIVE, this);
-    return wait_and_call(STATE(railcom_arrived));
-  }
-
   string display_railcom_data(const uint8_t* data, int len) {
     static char buf[200];
     int ofs = 0;
@@ -407,10 +405,10 @@ class RailcomDebugFlow : public StateFlowBase {
     return string(buf, ofs);
   }
 
-  Action railcom_arrived() {
-    dcc::Feedback fb;
-    int ret = ::read(fd_, &fb, sizeof(fb));
-    HASSERT(ret == sizeof(fb));
+  void send(Buffer<dcc::RailcomHubData>* d, unsigned prio) OVERRIDE {
+    AutoReleaseBuffer<dcc::RailcomHubData> rb(d);
+    dcc::Feedback& fb = *d->data();
+    if (fb.feedbackKey <= 1000) return;
     if (fb.ch1Size && fb.channel != 0xff) {
       LOG(INFO, "Railcom %x CH1 data(%" PRIu32 "): %s",
           fb.channel,
@@ -423,10 +421,7 @@ class RailcomDebugFlow : public StateFlowBase {
           fb.feedbackKey,
           display_railcom_data(fb.ch2Data, fb.ch2Size).c_str());
     }
-    return call_immediately(STATE(register_and_sleep));
   }
-
-  int fd_;
 };
 
 HubDeviceSelect<HubFlow>* usb_port;
@@ -456,7 +451,7 @@ int appl_main(int argc, char* argv[])
         new HubDeviceNonBlock<dcc::RailcomHubFlow>(&railcom_hub, "/dev/railcom");
     //int railcom_fd = open("/dev/railcom", O_RDWR);
     //HASSERT(railcom_fd > 0);
-    //RailcomDebugFlow railcom_debug(railcom_fd);
+    RailcomDebugFlow railcom_debug(&railcom_hub);
 
 
     nmranet::Velocity v;
