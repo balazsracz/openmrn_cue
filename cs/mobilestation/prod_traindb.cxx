@@ -78,6 +78,12 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
   // id 24
   { 19, {0, 1, 2, 3, 4, 0xff }, { LIGHT, SMOKE, ENGINE, WHISTLE, ABV, 0xff },
     "BR 18.3", MFX },
+  // id 25
+  { 4, {0, 1, 2, 3, 4, 0xff }, { LIGHT, SMOKE, ENGINE, WHISTLE, ABV, 0xff },
+    "Re 420 cargo", DCC_128 },
+  // id 26
+  { 5, {0, 1, 2, 3, 4, 0xff }, { LIGHT, SMOKE, ENGINE, WHISTLE, ABV, 0xff },
+    "Re 620 cargo", DCC_128 },
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
 };
