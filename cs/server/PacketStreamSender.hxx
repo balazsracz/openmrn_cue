@@ -44,7 +44,7 @@ namespace server {
 typedef FlowInterface<Buffer<string> > PacketFlowInterface;
 typedef StateFlow<Buffer<string>, QList<1> > PacketFlow;
 
-static constexpr uint32_t kStreamMagic = 0x3d82c6e1;
+static constexpr uint32_t kStreamMagic = 0x3d82c6e2;
 
 class PacketStreamSender : public PacketFlow {
  public:
