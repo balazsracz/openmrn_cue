@@ -2,7 +2,7 @@ APP_PATH ?= $(realpath ../..)
 include $(APP_PATH)/config.mk
 
 export TARGET=linux.x86
-export EXECUTABLE=host
+export EXECUTABLE=androidproxy
 
 TEST_EXTRA_OBJS += error.o
 TESTOBJSEXTRA += error.o 
@@ -42,4 +42,4 @@ veryclean: cleangen
 .PHONY: install
 
 install: $(EXECUTABLE)$(EXTENTION)
-	cp -f $< /home/bracz/bin/train-nhost
+	cp -f $< /home/bracz/bin/train-ahost

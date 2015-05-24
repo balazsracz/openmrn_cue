@@ -42,22 +42,54 @@
 #include "os/TempFile.hxx"
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "custom/HostProtocol.hxx"
+#include "mobilestation/MobileStationTraction.hxx"
+#include "mobilestation/TrainDb.hxx"
 #include "utils/socket_listener.hxx"
 #include "utils/StringPrintf.hxx"
 #include "utils/HubDevice.hxx"
 #include "server/TrainControlService.hxx"
 
+
+namespace mobilestation {
+
+extern const struct const_loco_db_t const_lokdb[];
+
+const struct const_loco_db_t const_lokdb[] = {
+  // 1
+  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
+    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
+  // 2
+  /*  { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
+  // id 3
+  { 38, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
+    "BDe 4/4 1640", DCC_128 | PUSHPULL },  // Tams LD-G32, DC motor
+  // 3 (jim's)
+  //{ 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
+  { 0, {0, }, {0,}, "", 0},*/
+  { 0, {0, }, {0,}, "", 0},
+  { 0, {0, }, {0,}, "", 0},
+};
+extern const size_t const_lokdb_size;
+const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+
+}  // namespace mobilestation
+
+
 static const nmranet::NodeID NODE_ID = 0x050101011472ULL;
 OVERRIDE_CONST(num_memory_spaces, 4);
+OVERRIDE_CONST(num_datagram_registry_entries, 6);
 OVERRIDE_CONST(gc_generate_newlines, 1);
+// Forces all trains to be our responsibility.
+OVERRIDE_CONST(mobile_station_train_count, 0);
+
 int port = 12021;
 const char *host = "localhost";
 const char *device_path = nullptr;
 
 int proxy_port = 50001;
 const char *proxy_host = "28k.ch";
-uint64_t destination_nodeid = 0;
-uint16_t destination_alias = 0;
 const char *lokdb_path;
 string lokdb = "LokDb { }";
 
@@ -75,11 +107,18 @@ const SimpleNodeStaticValues SNIP_STATIC_DATA = {
 
 server::TrainControlService control_server(stack.executor());
 
+// This is the mobile station proxy.
+mobilestation::TrainDb train_db;
+CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
+CanIf can1_interface(stack.service(), &can_hub1);
+mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.interface(), &train_db, stack.node());
+bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
+
 void usage(const char *e) {
   fprintf(stderr, "Usage: %s", e);
   fprintf(stderr, R"usage(
  [-i destination_host] [-p port] [-d device_path] -l lokdb_path
-            (-n nodeid | -a alias) [-f debugfd] [-R proxy_host] [-P proxy_port]
+            [-f debugfd] [-R proxy_host] [-P proxy_port]
 
 Host server for android train connections.
 
@@ -92,9 +131,6 @@ specified, then the two connections will be bridged.
            hub over TCP. This defaults to localhost:12021. Specify port=-1 to
            disable.
 
-        -n 0x0501010114FF or -a 0x123 defines the node ID or the alias to reach
-           the command station through.
-
         -R host -P port specifies the location of the proxy server for the
            android connections.
 
@@ -106,7 +142,7 @@ specified, then the two connections will be bridged.
 
 void parse_args(int argc, char *argv[]) {
   int opt;
-  while ((opt = getopt(argc, argv, "hp:i:d:n:a:R:P:l:f:")) >= 0) {
+  while ((opt = getopt(argc, argv, "hp:i:d:a:R:P:l:f:")) >= 0) {
     switch (opt) {
       case 'h':
         usage(argv[0]);
@@ -131,12 +167,6 @@ void parse_args(int argc, char *argv[]) {
         break;
       case 'l':
         lokdb_path = optarg;
-        break;
-      case 'n':
-        destination_nodeid = strtoll(optarg, nullptr, 16);
-        break;
-      case 'a':
-        destination_alias = strtoul(optarg, nullptr, 16);
         break;
       default:
         fprintf(stderr, "Unknown option %c\n", opt);
@@ -196,7 +226,7 @@ int appl_main(int argc, char *argv[]) {
   }
   control_server.initialize(
       stack.dg_service(), stack.node(),
-      nmranet::NodeHandle(destination_nodeid, destination_alias), lokdb, true);
+      nmranet::NodeHandle(NODE_ID, 0), lokdb, true);
   int proxy_fd = ConnectSocket(proxy_host, proxy_port);
   if (proxy_fd < 0) {
     DIE("Could not connect to proxy.");
