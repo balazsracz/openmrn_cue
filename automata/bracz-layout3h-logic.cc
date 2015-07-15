@@ -235,10 +235,10 @@ PhysicalSignal B447(&bd.In2, &bd.Rel0,
                     &signal_B447_main.signal, &signal_B447_adv.signal,
                     &signal_A421_main.signal, &signal_A421_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal B460(&bb.InGreenGreen, &bb.Rel2, &signal_B460_main.signal,
+PhysicalSignal B460(&bb.InBrownGrey, &bb.Rel2, &signal_B460_main.signal,
                     nullptr, &signal_A447_main.signal, &signal_A447_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal B475(&bb.InBrownGrey, &bb.Rel1,
+PhysicalSignal B475(&bb.InGreenGreen, &bb.Rel1,
                     &signal_B475_main.signal, &signal_B475_adv.signal,
                     &signal_A460_main.signal, &signal_A460_adv.signal,
                     &signal_B460_adv.signal, &signal_A475_adv.signal);
@@ -251,25 +251,25 @@ PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow,
                     &signal_ZZA3_main.signal, &signal_ZZA3_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYA3(&be.InGreenYellow, &be.Rel0,
+PhysicalSignal YYA3(&be.In6, &be.Rel0,
                     nullptr, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYC23(&ba.In0, &ba.Rel3,
+PhysicalSignal YYC23(&ba.InBrownGrey, &ba.Rel3,
                      &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal XXB1(&be.InBrownBrown, &be.Rel1,
+PhysicalSignal XXB1(&be.InOraRed, &be.Rel1,
                     &signal_XXB1_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 PhysicalSignal XXB2(&ba.In3, &ba.Rel2,
                     &signal_XXB2_main.signal, &signal_XXB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel2,
+PhysicalSignal XXB3(&be.InOraGreen, &be.Rel2,
                     &signal_XXB3_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB2(&be.InGreenGreen, &be.Rel3,
+PhysicalSignal YYB2(&be.In7, &be.Rel3,
                     &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
 
@@ -525,9 +525,12 @@ StandardMovableTurnout Turnout_ZZW6(
 StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic2.allocator(), "ZZ.A2");
 StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic2.allocator(), "ZZ.A3");
 
-StandardMiddleDetector Det_380(&brd, &bb.InGreenYellow,
+StandardMiddleDetector Det_380(&brd, &bb.In7,
                                EventBlock::Allocator(logic2.allocator(),
                                                      "Det380", 24, 8));
+StandardMiddleDetector Det_480(&brd, &bb.In6,
+                               EventBlock::Allocator(logic2.allocator(),
+                                                     "Det480", 24, 8));
 
 MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBrownGrey,
                       &be.ActBrownBrown);
@@ -540,7 +543,7 @@ StandardMovableTurnout Turnout_W381(&brd,
 StandardMovableTurnout Turnout_W380(
     &brd, EventBlock::Allocator(logic2.allocator(), "W380", 40), &Magnet_W380);
 
-StandardMiddleDetector Det_500(&brd, &be.InOraRed,
+StandardMiddleDetector Det_500(&brd, &be.InGreenYellow,
                                EventBlock::Allocator(logic2.allocator(),
                                                      "Det500", 24, 8));
 
@@ -557,7 +560,7 @@ StandardMovableTurnout Turnout_W481(
 StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
 StandardBlock Block_YYA3(&brd, &YYA3, logic2.allocator(), "YY.A3");
 StandardBlock Block_YYC23(&brd, &YYC23, logic2.allocator(), "YY.C23");
-StandardMiddleDetector Det_YYC22(&brd, &ba.In1,
+StandardMiddleDetector Det_YYC22(&brd, &ba.InBrownBrown,
                                  EventBlock::Allocator(logic2.allocator(),
                                                        "YY.C22", 24, 8));
 
@@ -570,8 +573,8 @@ MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen, &be.ActOraRed);
 StandardMovableTurnout Turnout_XXW1(
     &brd, EventBlock::Allocator(logic2.allocator(), "XX.W1", 40), &Magnet_XXW1);
 
-MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActGreenGreen,
-                      &ba.ActGreenRed);
+MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActBlueGrey,
+                      &ba.ActBlueBrown);
 StandardMovableTurnout Turnout_XXW2(&brd,
                                     EventBlock::Allocator(logic2.allocator(),
                                                           "XX.W2", 40),
@@ -583,7 +586,7 @@ StandardMovableTurnout Turnout_XXW7(
     &brd, EventBlock::Allocator(logic2.allocator(), "XX.W7", 40),
     &Magnet_XXW7);
 
-MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActBlueGrey, &ba.ActBlueBrown);
+MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActGreenGreen, &ba.ActGreenRed);
 StandardMovableTurnout Turnout_XXW8(
     &brd, EventBlock::Allocator(logic2.allocator(), "XX.W8", 40), &Magnet_XXW8);
 
@@ -636,7 +639,8 @@ bool ign = BindPairs({
     {Turnout_ZZW1.b.side_thrown(), DKW_ZZW3.b.point_a1()},
     {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
     {DKW_ZZW3.b.point_b1(), Turnout_ZZW5.b.side_points()},
-    {Turnout_ZZW5.b.side_thrown(), Turnout_W481.b.side_points()},
+    {Turnout_ZZW5.b.side_thrown(), Det_480.side_b()},
+    {Det_480.side_a(), Turnout_W481.b.side_points()},
     {Turnout_ZZW5.b.side_closed(), Turnout_ZZW6.b.side_thrown()},
     {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
     {Block_WWB14.side_a(), Block_WWA11.side_b()},
@@ -727,6 +731,7 @@ DefAut(signalaut2, brd, {
 DefAut(signalaut3, brd, {
     BlockSignal(this, &Block_ZZA2.b_);
     BlockSignal(this, &Block_ZZA3.b_);
+    RgSignal(this, ImportVariable(Det_480.route_set_ab()), ImportVariable(&signal_A480_main.signal));
     RgSignal(this, ImportVariable(Det_380.route_set_ab()), ImportVariable(&signal_A380_main.signal));
   });
 
@@ -765,7 +770,7 @@ void IfLoopOkay(Automata::Op* op) {
 // B475->XXB2
 void IfFrontFrontInOkay(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W380.b.any_route()))
       .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()))
       .IfReg0(op->parent()->ImportVariable(*DKW_ZZW3.b.any_route()));
 }
@@ -773,14 +778,14 @@ void IfFrontFrontInOkay(Automata::Op* op) {
 // XXB1/XXB3 -> A360
 void IfFrontFrontOutOkay(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()))
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W380.b.any_route()))
       .IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
 }
 
 // YYC2 -> A360
 void IfFrontBackOutOkay(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*Turnout_W381.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W380.b.any_route()));
 }
 
 void IfZZW3Free(Automata::Op* op) {
