@@ -226,7 +226,7 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
 
 typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
-QuiesceDebouncer::Options opts(15);
+QuiesceDebouncer::Options opts(8);
 
 TivaGPIOProducer in0(opts, R_EVENT_ID + 48 + 0, R_EVENT_ID + 49 + 0,
                      IN0_Pin::GPIO_BASE, IN0_Pin::GPIO_PIN);
