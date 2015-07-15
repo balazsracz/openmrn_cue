@@ -1005,6 +1005,28 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
   }
 
+  // Runs the loop XX/YY from 475 to eventually 360
+  void RunLoopXXYYLong(Automata* aut) {
+    // in
+    AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
+    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
+    SwitchTurnout(Turnout_W481.b.magnet(), false);
+
+    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
+
+    // back->front
+    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
+                               &g_loop_condition);
+    SwitchTurnout(Turnout_XXW8.b.magnet(), false);
+
+    // out
+    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
+    SwitchTurnout(Turnout_W380.b.magnet(), true);
+    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
+  }
+
   ByteImportVariable stored_speed_;
 };
 
@@ -1019,6 +1041,19 @@ class CircleTrain : public LayoutSchedule {
     RunLoopWW(aut);
     Run421_to_475(aut);
     RunLoopXXYY(aut);
+  }
+};
+
+class LongCircleTrain : public LayoutSchedule {
+ public:
+  LongCircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    Run360_to_301(aut);
+    RunLoopWW(aut);
+    Run421_to_475(aut);
+    RunLoopXXYYLong(aut);
   }
 };
 
@@ -1090,7 +1125,7 @@ CircleTrain train_wle("wle_er20", 27, 30);
 CircleTrain train_re474("Re474", 12, 30);
 CircleTrain train_krokodil("Krokodil", 68, 35);
 CircleTrain train_rheingold("Rheingold", 19, 35);
-CircleTrain train_re10_10("Re_10_10", 3, 35);
+LongCircleTrain train_re10_10("Re_10_10", 3, 35);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
