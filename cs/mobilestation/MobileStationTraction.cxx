@@ -126,7 +126,7 @@ class TractionImpl : public IncomingFrameFlow {
       LOG(VERBOSE, "nothing to do. dlc %u, data[0] %u, data[1] %u",
           frame().can_dlc, frame().data[0], frame().data[1]);
     } else {
-      LOG(ERROR, "unexpected command 0x%08" PRIx32 " masked 0x%08" PRIx32 " compare 0x%08x", can_id, (can_id & TRACTION_ESTOP_MASK), TRACTION_ESTOP_ID);
+      LOG_ERROR("unexpected command 0x%08" PRIx32 " masked 0x%08" PRIx32 " compare 0x%08x", can_id, (can_id & TRACTION_ESTOP_MASK), TRACTION_ESTOP_ID);
     }
     return release_and_exit();
   }
@@ -332,7 +332,7 @@ void MobileStationTraction::set_estop_state(EstopSource source,
   last_state = estopState_ & bit;
   if (last_state != is_stopped) {
     // Sends update to MoSta.
-    LOG(ERROR, "estop command %d to MoSta", is_stopped);
+    LOG_ERROR("estop command %d to MoSta", is_stopped);
     auto* b = mosta_if()->frame_write_flow()->alloc();
     struct can_frame* f = b->data()->mutable_frame();
     SET_CAN_FRAME_ID_EFF(*f, TractionImpl::TRACTION_ESTOP_ID);
@@ -349,7 +349,7 @@ void MobileStationTraction::set_estop_state(EstopSource source,
   last_state = estopState_ & bit;
   if (last_state != is_stopped) {
     // Sends update to OpenLCB.
-    LOG(ERROR, "estop command %d to OpenLCB", is_stopped);
+    LOG_ERROR("estop command %d to OpenLCB", is_stopped);
     auto* b = nmranet_if()->global_message_write_flow()->alloc();
     b->data()->reset(
         nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),

@@ -296,7 +296,7 @@ class HostPacketQueue : public PacketQueueFlow {
   Action send_complete() {
     if ((dg_client_->result() & DatagramClient::RESPONSE_CODE_MASK) !=
         DatagramClient::OPERATION_SUCCESS) {
-      LOG(ERROR, "Failed to send datagram via host channel. Error 0x%x",
+      LOG_ERROR("Failed to send datagram via host channel. Error 0x%x",
           dg_client_->result());
     } else {
       is_synced_ = true;
