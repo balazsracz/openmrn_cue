@@ -154,13 +154,17 @@ HostClient::HostClientSend::HostClientSend(HostClient* parent) : HubPort(parent)
 HostClient::HostClientSend::~HostClientSend() {}
 
 void HostClient::log_output(char* buf, int size) {
-  if (size <= 0) return;
-  auto* b = send_client()->alloc();
-  b->data()->reserve(size + 2);
-  b->data()->push_back(HostProtocolDefs::SERVER_DATAGRAM_ID);
-  b->data()->push_back(CMD_VCOM1);
-  b->data()->append(buf, size);
-  send_client()->send(b);
+  while (size > 0) {
+    int actual_size = std::min(70, size);
+    auto* b = send_client()->alloc();
+    b->data()->reserve(actual_size + 2);
+    b->data()->push_back(HostProtocolDefs::SERVER_DATAGRAM_ID);
+    b->data()->push_back(CMD_VCOM1);
+    b->data()->append(buf, actual_size);
+    send_client()->send(b);
+    buf += actual_size;
+    size -= actual_size;
+  }
 }
 
 StateFlowBase::Action HostClient::HostClientSend::entry() {
