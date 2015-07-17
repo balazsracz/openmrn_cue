@@ -31,8 +31,8 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
   { 15, { 0, 1, 3, 4,  0xff, }, { LIGHT, BEAMER, FNT11, ABV,  0xff, },
     "RE 4/4 II", DCC_28 /* TODO: this should be dcc 14 */ }, // todo: snail mode
   // 9
-  { 47, { 0,  0xff, }, { LIGHT,  0xff, },
-    "RE 465", MARKLIN_OLD | PUSHPULL },  // Marklin 6090
+  { 47, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RE 465", DCC_128 | PUSHPULL },  // ESU LokPilot standard (V4.0)
   // id 10
   { 72, { 0, 1, 4, 0xff, }, { LIGHT, LIGHT1, ABV, 0xff },
     "DHG 700", MARKLIN_NEW },
@@ -80,10 +80,10 @@ __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
     "BR 18.3", MFX },
   // id 25
   { 4, {0, 1, 2, 3, 4, 0xff }, { LIGHT, SMOKE, ENGINE, WHISTLE, ABV, 0xff },
-    "Re 420 cargo", DCC_128 },
+    "Re 420 cargo", DCC_128 }, // Some ZIMO decoder
   // id 26
   { 5, {0, 1, 2, 3, 4, 0xff }, { LIGHT, SMOKE, ENGINE, WHISTLE, ABV, 0xff },
-    "Re 620 cargo", DCC_128 },
+    "Re 620 cargo", DCC_128 }, // Some ZIMO decoder
   { 0, {0, }, {0,}, "", 0},
   { 0, {0, }, {0,}, "", 0},
 };
