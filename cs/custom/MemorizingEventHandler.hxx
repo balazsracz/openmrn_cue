@@ -73,7 +73,7 @@ class MemorizingHandlerBlock;
 class MemorizingHandlerManager : public EventHandler {
  public:
   /** Creates a memorizing handler block. It will register itself with the
-   *global event registry.
+   * global event registry.
    *
    * @param event_base is the first event of the first block.
    * @param num_total_events is the total size of all the blocks.
@@ -91,17 +91,14 @@ class MemorizingHandlerManager : public EventHandler {
                                 BarrierNotifiable* done) OVERRIDE;
   void HandleIdentifyGlobal(EventReport* event,
                             BarrierNotifiable* done) OVERRIDE;
-  void HandleIdentifyConsumer(EventReport* event,
-                              BarrierNotifiable* done) {
+  void HandleIdentifyConsumer(EventReport* event, BarrierNotifiable* done) {
     // These are handled by individual blocks TODO: what if there is no block
     return done->notify();
   }
-  void HandleIdentifyProducer(EventReport* event,
-                              BarrierNotifiable* done) {
+  void HandleIdentifyProducer(EventReport* event, BarrierNotifiable* done) {
     // These are handled by individual blocks TODO: what if there is no block
     return done->notify();
   }
-
 
   unsigned block_size() { return block_size_; }
 
@@ -113,12 +110,29 @@ class MemorizingHandlerManager : public EventHandler {
   bool is_mine(uint64_t event) {
     return event >= event_base_ && event < (event_base_ + num_total_events_);
   }
+
+  /// Reports that the given event ID is in the VALID state. Internally it
+  /// creates the handler block if it does not exist yet. This will be called
+  /// on both PCER, as well as Identify {Producer, Consumer} VALID messages.
   void UpdateValidEvent(uint64_t eventid);
+
+  struct BlockOffsetInfo;
+  inline void GetBlockFileOffset(unsigned block_num, BlockOffsetInfo* info);
+
+  /// Checks the backing file whether the given block has information saved or
+  /// not. If it has info, returns the valid event for that block. Otherwise
+  /// returns 0.
+  uint64_t GetBlockFromFile(unsigned block_offset);
+
+  /// Sets a block in the backing file to a given valid event id.
+  void SaveValidEventToFile(uint64_t eventid);
 
   Node* node_;
   uint64_t event_base_;
   unsigned num_total_events_;
   unsigned block_size_;
+  int fd_{-1};  /// If >= 0, then our block is backed by a file.
+  unsigned file_offset_;
 
   // All the event blocks we own. Keyed by (first_event_of_block - event_base_).
   std::map<unsigned, std::unique_ptr<MemorizingHandlerBlock> > blocks_;

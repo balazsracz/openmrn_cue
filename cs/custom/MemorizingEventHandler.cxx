@@ -104,6 +104,112 @@ void MemorizingHandlerManager::UpdateValidEvent(uint64_t eventid) {
   p->set_current_event(eventid);
 }
 
+struct MemorizingHandlerManager::BlockOffsetInfo {
+  // offset in the file
+  off_t file_offset;
+  // how many bytes from that offset need to be read. Must be between 1 and
+  // 64. The bytes are stored in host-endian byte order.
+  uint8_t read_bytes;
+  // how many bits the data read needs to be shifted so that we get the eventid.
+  uint8_t shift_count;
+  // This is how many of the low bits are actually used (need to be
+  // masked). e.g. if this value is 3, then we need to mask with & 7.
+  uint8_t bits_used;
+};
+
+void MemorizingHandlerManager::GetBlockFileOffset(unsigned block_num,
+                                                  BlockOffsetInfo* info) {
+  HASSERT(info);
+  uint8_t bits_used = 2;
+  unsigned max_size = 4;
+  // we need one additional state (for 'unknown') than the actual block size.
+  while (block_size() >= max_size && bits_used < 32) {
+    max_size <<= 1;
+    bits_used++;
+  }
+  info->bits_used = bits_used;
+  unsigned bit_offset = block_num * bits_used;
+  info->file_offset = file_offset_ + (bit_offset >> 3);
+  info->shift_count = bit_offset & 7;
+  info->read_bytes = (info->shift_count + bits_used + 7) >> 3;
+  HASSERT(info->read_bytes <= 8);
+}
+
+size_t read_repeated(int fd, void* d, size_t bytes) {
+  uint8_t* data = (uint8_t*)d;
+  size_t rd = 0;
+  while (bytes) {
+    ssize_t ret = ::read(fd, data, bytes);
+    ERRNOCHECK("read", ret);
+    if (ret == 0) {
+      memset(data, 0, bytes);
+      return rd;
+    }
+    data += ret;
+    rd += ret;
+    bytes -= ret;
+  }
+  return rd;
+}
+
+void write_repeated(int fd, const void* d, size_t bytes) {
+  const uint8_t* data = (uint8_t*)d;
+  size_t rd = 0;
+  while (bytes) {
+    ssize_t ret = ::write(fd, data, bytes);
+    ERRNOCHECK("write", ret);
+    data += ret;
+    rd += ret;
+    bytes -= ret;
+  }
+}
+
+uint64_t MemorizingHandlerManager::GetBlockFromFile(unsigned block_num) {
+  BlockOffsetInfo info;
+  GetBlockFileOffset(block_num, &info);
+  off_t offset = lseek(fd_, info.file_offset, SEEK_SET);
+  if (offset < info.file_offset) {
+    // file does not have data about this
+    return 0;
+  }
+  uint64_t data = 0;
+  read_repeated(fd_, &data, info.read_bytes);
+  data >>= info.shift_count;
+  data &= (1ULL << info.bits_used) - 1;
+  // special marker of zeroes: state unknown
+  if (!data) return 0;
+  --data;
+  uint64_t event_id = event_base_ + block_num * block_size_ + data;
+  return event_id;
+}
+
+void MemorizingHandlerManager::SaveValidEventToFile(uint64_t eventid) {
+  unsigned block_num = (eventid - event_base_) / block_size_;
+  unsigned block_base = block_num * block_size_;
+  uint64_t block_value = eventid - event_base_ - block_base;
+
+  BlockOffsetInfo info;
+  GetBlockFileOffset(block_num, &info);
+  off_t offset = lseek(fd_, info.file_offset, SEEK_SET);
+  ERRNOCHECK("lseek", offset);
+  HASSERT(offset == info.file_offset);
+
+  ++block_value;  // zero is reserved for "unknown" so we shift everything else.
+  uint64_t mask = ((1ULL << info.bits_used) - 1);
+  HASSERT((block_value & mask) == block_value);
+  uint64_t data = 0;
+  read_repeated(fd_, &data, info.read_bytes);
+  block_value <<= info.shift_count;
+  mask <<= info.shift_count;
+  data &= ~mask;
+  data |= block_value;
+
+  offset = lseek(fd_, info.file_offset, SEEK_SET);
+  ERRNOCHECK("lseek", offset);
+  HASSERT(offset == info.file_offset);
+  write_repeated(fd_, &data, info.read_bytes);
+}
+
 MemorizingHandlerBlock::MemorizingHandlerBlock(MemorizingHandlerManager* parent,
                                                uint64_t event_base)
     : parent_(parent), event_base_(event_base), current_event_(0) {
