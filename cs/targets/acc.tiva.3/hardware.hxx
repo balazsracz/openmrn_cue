@@ -4,6 +4,7 @@
 #define USE_WII_CHUCK
 
 #include "TivaGPIO.hxx"
+#include "DummyGPIO.hxx"
 
 #include "inc/hw_memmap.h"
 #include "inc/hw_ints.h"
@@ -95,7 +96,7 @@ struct DCCDecode
     static const auto TIMER_TIM_TIMEOUT = TIMER_TIMA_TIMEOUT;
 
     static const auto OS_INTERRUPT = INT_WTIMER4B;
-    DECL_HWPIN(NRZPIN, D, 4, WT4CCP0);
+    DECL_HWPIN(NRZPIN, D, 4, WT4CCP0, Timer);
 
     static const uint32_t TIMER_MAX_VALUE = 0x8000000UL;
     static const uint32_t PS_MAX = 0;
@@ -116,10 +117,10 @@ struct RailcomHw
 
     static const auto OS_INTERRUPT = INT_UART2;
 
-    GPIO_HWPIN(CH1, GpioHwPin, C, 4, U4RX);
-    GPIO_HWPIN(CH2, GpioHwPin, C, 6, U3RX);
-    GPIO_HWPIN(CH3, GpioHwPin, G, 4, U2RX);
-    GPIO_HWPIN(CH4, GpioHwPin, E, 0, U7RX);
+    GPIO_HWPIN(CH1, GpioHwPin, C, 4, U4RX, UART);
+    GPIO_HWPIN(CH2, GpioHwPin, C, 6, U3RX, UART);
+    GPIO_HWPIN(CH3, GpioHwPin, G, 4, U2RX, UART);
+    GPIO_HWPIN(CH4, GpioHwPin, E, 0, U7RX, UART);
 
     static void hw_init() {
          CH1_Pin::hw_init();

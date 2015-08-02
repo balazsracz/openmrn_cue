@@ -46,6 +46,7 @@
 #include "utils/GcTcpHub.hxx"
 #include "utils/HubDevice.hxx"
 #include "utils/HubDeviceNonBlock.hxx"
+#include "utils/HubDeviceSelect.hxx"
 #include "dcc/RailcomBroadcastDecoder.hxx"
 #include "nmranet/IfCan.hxx"
 #include "nmranet/Defs.hxx"
@@ -595,7 +596,7 @@ int appl_main(int argc, char* argv[]) {
   LED_GREEN_Pin::set(false);
   LED_YELLOW_Pin::set(false);
   LED_BLUE_Pin::set(false);
-  HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+  HubDeviceSelect<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
 #ifdef HAVE_RAILCOM
   // we need to enable the dcc receiving driver.
   ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
