@@ -53,6 +53,15 @@ EventBasedVariable reset_all_routes(&brd, "reset_routes",
                             BRACZ_LAYOUT | 0x0012, BRACZ_LAYOUT | 0x0013, 7,
                             30, 4);
 
+EventBasedVariable route_lock_WW(&brd, "route_lock_WW",
+                            BRACZ_LAYOUT | 0x0014, BRACZ_LAYOUT | 0x0015, 7,
+                            30, 3);
+
+EventBasedVariable route_lock_ZZ(&brd, "route_lock_ZZ",
+                            BRACZ_LAYOUT | 0x0016, BRACZ_LAYOUT | 0x0017, 7,
+                            30, 2);
+
+
 //I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n8(0x28);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
@@ -867,6 +876,7 @@ class LayoutSchedule : public TrainSchedule {
 
   // In WW, runs around the loop track 11 to 14.
   void RunLoopWW(Automata* aut) {
+    WithRouteLock l(this, &route_lock_WW);
     AddEagerBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
@@ -879,6 +889,7 @@ class LayoutSchedule : public TrainSchedule {
 
   // In WW, run through the stub track, changing direction.
   void RunStubWW(Automata* aut) {
+    WithRouteLock l(this, &route_lock_WW);
     AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
@@ -900,6 +911,7 @@ class LayoutSchedule : public TrainSchedule {
 
   // In WW, run through the stub track, changing direction.
   void RunStubWWB3(Automata* aut) {
+    WithRouteLock l(this, &route_lock_WW);
     AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
@@ -912,6 +924,7 @@ class LayoutSchedule : public TrainSchedule {
 
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
+    ClearAutomataVariables(aut);
     AddEagerBlockTransition(&Block_B421, &Block_B447, &g_not_paused_condition);
     AddEagerBlockTransition(&Block_B447, &Block_B460, &g_not_paused_condition);
     SwitchTurnout(Turnout_W447.b.magnet(), false);
@@ -920,6 +933,7 @@ class LayoutSchedule : public TrainSchedule {
 
   // Runs in ZZ into the stub track and reverses direction.
   void RunStubZZ(Automata* aut) {
+    WithRouteLock l(this, &route_lock_ZZ);
     AddEagerBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
@@ -930,6 +944,7 @@ class LayoutSchedule : public TrainSchedule {
   }
 
   void RunStub2ZZ(Automata* aut) {
+    WithRouteLock l(this, &route_lock_ZZ);
     AddEagerBlockTransition(&Block_B475, &Block_ZZA3.b_, &g_zzw1_free);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), false);
     StopAndReverseAtStub(&Block_ZZA3);
@@ -960,6 +975,8 @@ class LayoutSchedule : public TrainSchedule {
 
   // Runs the loop XX/YY from 475 to eventually 360
   void RunLoopXXYY(Automata* aut) {
+    {
+    WithRouteLock l(this, &route_lock_ZZ);
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
@@ -973,6 +990,7 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(Turnout_W380.b.magnet(), true);
     SwitchTurnout(Turnout_XXW1.b.magnet(), true);
     SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+    }
 
     AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
 
@@ -993,6 +1011,8 @@ class LayoutSchedule : public TrainSchedule {
                                &g_loop_condition);
     SwitchTurnout(Turnout_YYW6.b.magnet(), true);
 
+    {
+    WithRouteLock l(this, &route_lock_ZZ);
     // out
     AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
     SwitchTurnout(Turnout_W380.b.magnet(), true);
@@ -1003,16 +1023,20 @@ class LayoutSchedule : public TrainSchedule {
     AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
     SwitchTurnout(Turnout_W381.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
+    }
   }
 
   // Runs the loop XX/YY from 475 to eventually 360
   void RunLoopXXYYLong(Automata* aut) {
+    {
+    WithRouteLock l(this, &route_lock_ZZ);
     // in
     AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
     SwitchTurnout(Turnout_W481.b.magnet(), false);
+    }
 
     AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
 
@@ -1021,10 +1045,13 @@ class LayoutSchedule : public TrainSchedule {
                                &g_loop_condition);
     SwitchTurnout(Turnout_XXW8.b.magnet(), false);
 
+    {
+    WithRouteLock l(this, &route_lock_ZZ);
     // out
     AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
     SwitchTurnout(Turnout_W380.b.magnet(), true);
     SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
+    }
   }
 
   ByteImportVariable stored_speed_;
