@@ -99,9 +99,9 @@ class DACThread : public OSThread {
       usleep(kPeriod);
       LED_GREEN_Pin::set(false);
 
-      TivaGNDControl::enable_railcom_cutout(true);
+      TivaBypassControl::set(false);
       usleep(2000);
-      TivaGNDControl::enable_railcom_cutout(false);
+      TivaBypassControl::set(true);
     }
     return nullptr;
   }

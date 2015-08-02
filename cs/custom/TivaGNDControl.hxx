@@ -72,4 +72,28 @@ class TivaGNDControl {
   }
 };
 
-#endif  // _BRACZ_CUSTOM_TIVADAC_HXX_
+class TivaBypassControl {
+ public:
+  static const int kDelayCrossover1 = 3;
+  static const int kDelayCrossover2 = 3;
+
+  TivaBypassControl() {
+    RCBYPASS_OFF_Pin::set(false);
+    SysCtlDelay(kDelayCrossover1);
+    RCBYPASS_NON_Pin::set(false);
+  }
+
+  static void set(bool bypass_on) {
+    if (bypass_on) {
+      RCBYPASS_OFF_Pin::set(false);
+      SysCtlDelay(kDelayCrossover1);
+      RCBYPASS_NON_Pin::set(false);
+    } else {
+      RCBYPASS_NON_Pin::set(true);
+      //SysCtlDelay(kDelayCrossover2);
+      RCBYPASS_OFF_Pin::set(true);
+    }
+  }
+};
+
+#endif  // _BRACZ_CUSTOM_TIVAGNDCONTROL_HXX_
