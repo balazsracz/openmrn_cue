@@ -18,7 +18,7 @@
 #include "LPC17xx.h"
 #elif !defined(__FreeRTOS__)
 #define SKIP_DRIVER
-#elif defined(BOARD_BRACZ_ACC) || defined(BOARD_BRACZ_CS_TIVA) || defined(BOARD_BRACZ_CS_TIVA_SMALL)
+#elif defined(BOARD_BRACZ_ACC) || defined(BOARD_BRACZ_CS_TIVA) || defined(BOARD_BRACZ_CS_TIVA_SMALL) || defined(BOARD_BRACZ_RAILCOM)
 #define SKIP_DRIVER
 #else
 #error don_t know about your CPU
