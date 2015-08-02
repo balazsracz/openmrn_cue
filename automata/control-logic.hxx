@@ -1387,6 +1387,9 @@ class TrainSchedule : public virtual AutomataPlugin {
     return AllocateOrGetLocation(&block->detector(), block->name());
   }
 
+  OpCallback* route_lock_acquire() { return route_lock_acquire_.get(); }
+  OpCallback* route_lock_release() { return route_lock_release_.get(); }
+
   // Allocates a new or returns an existing helper bit. id has to be different
   // for each different helper bit to be requested. name will be used in the
   // debugging name of the new bit.
@@ -1453,7 +1456,38 @@ class TrainSchedule : public virtual AutomataPlugin {
   // If non-null, specifies a variable where to load the speed data from.
   GlobalVariable* speed_var_;
 
+  struct WithRouteLock {
+    WithRouteLock(TrainSchedule* parent, GlobalVariable* v) : parent_(parent) {
+      HASSERT(!parent->route_set_lock_var_);
+      parent_->route_set_lock_var_ = v;
+    }
+    ~WithRouteLock() {
+      parent_->route_set_lock_var_ = nullptr;
+    }
+   private:
+    TrainSchedule* parent_;
+  };
+
  private:
+  void RouteLockAcquire(Automata::Op *op) {
+    if (!route_set_lock_var_) return;
+    op->IfReg0(op->parent()->ImportVariable(*route_set_lock_var_))
+        .ActReg1(op->parent()->ImportVariable(route_set_lock_var_));
+  }
+  void RouteLockRelease(Automata::Op *op) {
+    if (!route_set_lock_var_) return;
+    op->ActReg0(op->parent()->ImportVariable(route_set_lock_var_));
+  }
+
+  std::unique_ptr<OpCallback> route_lock_acquire_{
+      NewCallbackPtr(this, &TrainSchedule::RouteLockAcquire)};
+  std::unique_ptr<OpCallback> route_lock_release_{
+      NewCallbackPtr(this, &TrainSchedule::RouteLockRelease)};
+
+  // If non-null, specifies a global lock to acquire before starting to set
+  // routes, and release after the route setting is complete.
+  GlobalVariable* route_set_lock_var_{nullptr};
+
   // This will be set temporarily as the processing goes down the body of
   // RunTransition. It always points to the location structure for the source
   // of the current transition.

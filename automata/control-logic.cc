@@ -1086,6 +1086,7 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
       .IfReg0(next_block_route_in_)
       .IfReg0(aut->ImportVariable(*is_frozen_))
       .RunCallback(condition)
+      .RunCallback(route_lock_acquire())
       .ActState(StReadyToGo);
 
   // Handles the frozen request.
@@ -1100,6 +1101,7 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
   // routingloc.
   Def().IfState(StRequestTransition)
       .IfReg1(current_block_permaloc_)
+      .RunCallback(route_lock_release())
       .ActReg0(&current_block_permaloc_)
       .ActReg1(&next_block_permaloc_)
       .ActState(StTransitionDone);
@@ -1163,6 +1165,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .IfReg1(current_block_routingloc_)
       .IfReg1(permit_request_)
       .IfReg1(permit_granted_)
+      .RunCallback(route_lock_acquire())
       .ActReg0(&permit_request_)
       .ActReg0(&permit_granted_)
       .ActReg1(&permit_taken_)
@@ -1181,6 +1184,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
   Def().IfState(StRequestTransition)
       .IfReg1(current_block_permaloc_)
       .IfReg1(current_direction_)
+      .RunCallback(route_lock_release())
       .ActReg0(&current_block_permaloc_)
       .ActReg1(&next_block_permaloc_)
       .ActReg0(&current_direction_)
