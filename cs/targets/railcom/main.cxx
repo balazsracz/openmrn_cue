@@ -43,6 +43,7 @@
 #include "freertos_drivers/common/BlinkerGPIO.hxx"
 #include "config.hxx"
 #include "hardware.hxx"
+#include "custom/TivaGNDControl.hxx"
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
 extern const nmranet::NodeID NODE_ID = 0x050101011462ULL;
@@ -79,13 +80,12 @@ nmranet::ConfiguredProducer producer_sw2(stack.node(),
 nmranet::RefreshLoop loop(stack.node(),
                           {producer_sw1.polling(), producer_sw2.polling()});
 
-
 class DACThread : public OSThread {
  public:
-  void* entry() OVERRIDE {
-    const int kPeriod = 3000000;
-    while(true)  {
-      usleep(kPeriod);
+  void *entry() OVERRIDE {
+    const int kPeriod = 9000;
+    while (true) {
+      /*      usleep(kPeriod);
       dac.set_div(true);
       STAT1_Pin::set(false);
       LED_GREEN_Pin::set(false);
@@ -94,7 +94,14 @@ class DACThread : public OSThread {
       dac.set_div(false);
       STAT1_Pin::set(true);
       LED_GREEN_Pin::set(true);
-      dac.set_pwm(7, 10);
+      dac.set_pwm(7, 10);*/
+
+      usleep(kPeriod);
+      LED_GREEN_Pin::set(false);
+
+      TivaGNDControl::enable_railcom_cutout(true);
+      usleep(2000);
+      TivaGNDControl::enable_railcom_cutout(false);
     }
     return nullptr;
   }
