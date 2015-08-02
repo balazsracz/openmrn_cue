@@ -218,20 +218,20 @@ PhysicalSignal A347(&bd.In3, &bd.Rel1,
 PhysicalSignal A321(&bd.In5, &bd.Rel3, &signal_A321_main.signal,
                     &signal_A321_adv.signal, &signal_B347_main.signal,
                     &signal_B347_adv.signal, nullptr, nullptr);
-PhysicalSignal A301(&bc.InBrownBrown, &bc.LedYellow,
+PhysicalSignal A301(&bc.In2, &bc.LedYellow,
                     &signal_A301_main.signal, &signal_A301_adv.signal,
                     &signal_B321_main.signal, &signal_B321_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal WWB14(&bc.InBrownGrey, &bc.Rel0,
+PhysicalSignal WWB14(&bc.In3, &bc.Rel0,
                      &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
                      nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB3(&bc.InGreenYellow, &bc.Rel1,
+PhysicalSignal WWB3(&bc.In7, &bc.Rel1,
                     &signal_WWB3_main.signal, &signal_WWB3_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB2(&bc.InGreenGreen, &bc.Rel2,
+PhysicalSignal WWB2(&bc.In6, &bc.Rel2,
                     &signal_WWB2_main.signal, &signal_WWB2_adv.signal,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWA11(&bc.InOraGreen, &bc.Rel3,
+PhysicalSignal WWA11(&bc.In5, &bc.Rel3,
                      nullptr, nullptr,
                      &signal_WWB11_main.signal, &signal_WWB11_adv.signal,
                      //                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
@@ -476,8 +476,8 @@ StandardFixedTurnout Turnout_WWW5(&brd, EventBlock::Allocator(logic.allocator(),
                                   FixedTurnout::TURNOUT_CLOSED);
 
 StandardBlock Block_WWA11(&brd, &WWA11, logic.allocator(), "WW.A11");
-StubBlock Block_WWB2(&brd, &WWB2, &bc.InGreenGreen, logic.allocator(), "WW.B2");
-StubBlock Block_WWB3(&brd, &WWB3, &bc.InGreenYellow, logic.allocator(),
+StubBlock Block_WWB2(&brd, &WWB2, &bc.In6, logic.allocator(), "WW.B2");
+StubBlock Block_WWB3(&brd, &WWB3, &bc.In7, logic.allocator(),
                      "WW.B3");
 StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
 
