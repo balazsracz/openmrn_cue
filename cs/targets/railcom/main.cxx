@@ -38,16 +38,23 @@
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/ConfiguredConsumer.hxx"
 #include "nmranet/ConfiguredProducer.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
+#include "dcc/RailcomHub.hxx"
 
 #include "freertos_drivers/ti/TivaGPIO.hxx"
 #include "freertos_drivers/common/BlinkerGPIO.hxx"
 #include "config.hxx"
 #include "hardware.hxx"
 #include "custom/TivaGNDControl.hxx"
+#include "custom/TivaDAC.hxx"
+
+extern TivaDAC<DACDefs> dac;
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
 extern const nmranet::NodeID NODE_ID = 0x050101011462ULL;
 nmranet::SimpleCanStack stack(NODE_ID);
+
+dcc::RailcomHubFlow railcom_hub(stack.service());
 
 nmranet::ConfigDef cfg(0);
 
@@ -60,16 +67,16 @@ static_assert(nmranet::CONFIG_FILE_SIZE <= 256, "Need to adjust eeprom size");
 
 typedef BLINKER_Pin LED_RED_Pin;
 
-/*nmranet::ConfiguredConsumer consumer_red(stack.node(),
+nmranet::ConfiguredConsumer consumer_red(stack.node(),
                                          cfg.seg().consumers().entry<0>(),
                                          LED_RED_Pin());
 nmranet::ConfiguredConsumer consumer_green(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
-                                           LED_GREEN_Pin());
+                                           OUTPUT_EN0_Pin());
 nmranet::ConfiguredConsumer consumer_blue(stack.node(),
                                           cfg.seg().consumers().entry<2>(),
-                                          LED_BLUE_Pin());
-*/
+                                          OUTPUT_EN1_Pin());
+
 nmranet::ConfiguredProducer producer_sw1(stack.node(),
                                          cfg.seg().producers().entry<0>(),
                                          SW1_Pin());
@@ -80,10 +87,48 @@ nmranet::ConfiguredProducer producer_sw2(stack.node(),
 nmranet::RefreshLoop loop(stack.node(),
                           {producer_sw1.polling(), producer_sw2.polling()});
 
+
+
+class FeedbackBasedOccupancy : public dcc::RailcomHubPort {
+ public:
+  FeedbackBasedOccupancy(nmranet::Node* node, uint64_t event_base,
+                         unsigned channel_count)
+      : dcc::RailcomHubPort(node->interface()),
+        currentValues_(0),
+        eventHandler_(node, event_base, &currentValues_, channel_count) {}
+
+  Action entry() {
+    if (message()->data()->channel != 0xff) return release_and_exit();
+    uint32_t new_values = message()->data()->ch1Data[0];
+    release();
+    if (new_values == currentValues_) return exit();
+    unsigned bit = 1;
+    unsigned ofs = 0;
+    uint32_t diff = new_values ^ currentValues_;
+    while (bit && ((diff & bit) == 0)) {
+      bit <<= 1;
+      ofs++;
+    }
+    eventHandler_.Set(ofs, (new_values & bit), &h_, n_.reset(this));
+    return wait_and_call(STATE(set_done));
+  }
+
+  Action set_done() { return exit(); }
+
+ private:
+  uint32_t currentValues_;
+  nmranet::BitRangeEventPC eventHandler_;
+  nmranet::WriteHelper h_;
+  BarrierNotifiable n_;
+};
+
+FeedbackBasedOccupancy occupancy_report(stack.node(), (NODE_ID << 16) | 0x6000,
+                                        RailcomDefs::CHANNEL_COUNT);
+
 class DACThread : public OSThread {
  public:
   void *entry() OVERRIDE {
-    const int kPeriod = 9000;
+    const int kPeriod = 1000000;
     while (true) {
       /*      usleep(kPeriod);
       dac.set_div(true);
@@ -97,11 +142,11 @@ class DACThread : public OSThread {
       dac.set_pwm(7, 10);*/
 
       usleep(kPeriod);
-      LED_GREEN_Pin::set(false);
-
-      TivaBypassControl::set(false);
-      usleep(2000);
-      TivaBypassControl::set(true);
+      //LED_GREEN_Pin::set(false);
+      //OUTPUT_EN0_Pin::set(false);
+      usleep(kPeriod);
+      //LED_GREEN_Pin::set(true);
+      // OUTPUT_EN0_Pin::set(true);
     }
     return nullptr;
   }
@@ -115,6 +160,14 @@ class DACThread : public OSThread {
 int appl_main(int argc, char *argv[]) {
   stack.add_can_port_select("/dev/can0");
   dac_thread.start("dac", 0, 600);
+  dac.set_pwm(1, 10);
+  dac.set_div(true);
+
+  // we need to enable the dcc receiving driver.
+  ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
+  HubDeviceNonBlock<dcc::RailcomHubFlow> railcom_port(&railcom_hub, "/dev/railcom");
+  railcom_hub.register_port(&occupancy_report);
+
   stack.loop_executor();
   return 0;
 }
