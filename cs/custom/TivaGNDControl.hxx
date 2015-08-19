@@ -48,7 +48,7 @@ class TivaGNDControl {
     SysCtlDelay(10);
     GNDBCTRL_NOFF_Pin::set(false);
     SysCtlDelay(10);
-    GNDACTRL_NON_Pin::set(true);
+    GNDACTRL_NON_Pin::set(false);
   }
 
   static const int kDelayCrossover = 40;
