@@ -69,7 +69,7 @@
 #include "src/usb_proto.h"
 
 
-#define STANDALONE
+//#define STANDALONE
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -437,7 +437,7 @@ int appl_main(int argc, char* argv[])
   // TODO(balazs.racz): add a workign implementation of watchdog.
   //start_watchdog(5000);
   // add_watchdog_reset_timer(500);
-    stack.add_can_port_async("/dev/can0");
+    stack.add_can_port_select("/dev/can0");
     //stack.add_gridconnect_port("/dev/serUSB0");
     usb_port = new HubDeviceSelect<HubFlow>(stack.gridconnect_hub(), "/dev/serUSB0");
 #ifdef STANDALONE    
