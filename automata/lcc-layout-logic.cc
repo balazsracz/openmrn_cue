@@ -28,22 +28,32 @@ StateRef StUser2(11);
 EventBasedVariable block_main1(&brd, "main1", INPUT_BASE | 0x00,
                                INPUT_BASE | 01, 0, OFS_IOA, 0);
 EventBasedVariable block_main2(&brd, "main2", INPUT_BASE | 0x1E,
-                               INPUT_BASE | 0x1E + 1, 0, OFS_IOA, 1);
+                               INPUT_BASE | (0x1E + 1), 0, OFS_IOA, 1);
 EventBasedVariable block_main3(&brd, "main3", INPUT_BASE | 0x02,
-                               INPUT_BASE | 0x02 + 1, 0, OFS_IOA, 2);
+                               INPUT_BASE | (0x02 + 1), 0, OFS_IOA, 2);
 EventBasedVariable block_main4(&brd, "main4", INPUT_BASE | 0x0A,
-                               INPUT_BASE | 0x0A + 1, 0, OFS_IOA, 3);
+                               INPUT_BASE | (0x0A + 1), 0, OFS_IOA, 3);
 EventBasedVariable block_main5(&brd, "main5", INPUT_BASE | 0x06,
-                               INPUT_BASE | 0x06 + 1, 0, OFS_IOA, 4);
+                               INPUT_BASE | (0x06 + 1), 0, OFS_IOA, 4);
 EventBasedVariable block_siding1(&brd, "siding1", INPUT_BASE | 0x04,
-                                 INPUT_BASE | 0x04 + 1, 0, OFS_IOA, 5);
+                                 INPUT_BASE | (0x04 + 1), 0, OFS_IOA, 5);
 EventBasedVariable block_siding2(&brd, "siding2", INPUT_BASE | 0x08,
-                                 INPUT_BASE | 0x08 + 1, 0, OFS_IOA, 6);
+                                 INPUT_BASE | (0x08 + 1), 0, OFS_IOA, 6);
 
 EventBasedVariable block_stub1(&brd, "stub1", INPUT_BASE | 0x18,
-                               INPUT_BASE | 0x18 + 1, 0, OFS_IOA + 1, 0);
+                               INPUT_BASE | (0x18 + 1), 0, OFS_IOA + 1, 0);
 EventBasedVariable block_stub2(&brd, "stub2", INPUT_BASE | 0x1C,
-                               INPUT_BASE | 0x1C + 1, 0, OFS_IOA + 1, 1);
+                               INPUT_BASE | (0x1C + 1), 0, OFS_IOA + 1, 1);
+
+// TODO: the turnout events are not correct
+EventBasedVariable turnout_stub1(&brd, "turnout_stub1", OUTPUT_BASE | 0x0,
+                                 OUTPUT_BASE | (0x0 + 1), 0, OFS_IOB, 0);
+EventBasedVariable turnout_stub2(&brd, "turnout_stub1", OUTPUT_BASE | 0x2,
+                                 OUTPUT_BASE | (0x2 + 1), 0, OFS_IOB, 1);
+EventBasedVariable turnout_siding1(&brd, "turnout_siding1", OUTPUT_BASE | 0x4,
+                                   OUTPUT_BASE | (0x4 + 1), 0, OFS_IOB, 2);
+EventBasedVariable turnout_siding2(&brd, "turnout_siding2", OUTPUT_BASE | 0x6,
+                                   OUTPUT_BASE | (0x6 + 1), 0, OFS_IOB, 3);
 
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
 
@@ -73,8 +83,61 @@ EventBasedVariable out_x2a(&brd, "rrx2_a", OUTPUT_BASE | 0x4, OUTPUT_BASE | 0x5,
 EventBasedVariable out_x2b(&brd, "rrx2_b", OUTPUT_BASE | 0x6, OUTPUT_BASE | 0x7,
                            0, OFS_IOB, 3);
 
-void CrossingBlink(const LocalVariable& in_x, LocalVariable* out_xa,
-                   LocalVariable* out_xb) {
+EventBasedVariable signal_main3_red(&brd, "sig_main3_red", OUTPUT_BASE | 0x1E,
+                                    OUTPUT_BASE | 0x1F, 1, OFS_IOA, 0);
+EventBasedVariable signal_main3_green(&brd, "sig_main3_green",
+                                      OUTPUT_BASE | 0x1C, OUTPUT_BASE | 0x1D, 1,
+                                      OFS_IOA, 1);
+
+EventBasedVariable signal_main2_top_red(&brd, "sig_main2_top_red",
+                                        OUTPUT_BASE | 0x14, OUTPUT_BASE | 0x15,
+                                        1, OFS_IOA, 2);
+EventBasedVariable signal_main2_top_green(&brd, "sig_main2_top_green",
+                                          OUTPUT_BASE | 0x16,
+                                          OUTPUT_BASE | 0x17, 1, OFS_IOA, 3);
+EventBasedVariable signal_main2_bot_red(&brd, "sig_main2_bot_red",
+                                        OUTPUT_BASE | 0x10, OUTPUT_BASE | 0x11,
+                                        1, OFS_IOA, 4);
+EventBasedVariable signal_main2_bot_green(&brd, "sig_main2_bot_green",
+                                          OUTPUT_BASE | 0x12,
+                                          OUTPUT_BASE | 0x13, 1, OFS_IOA, 5);
+
+EventBasedVariable signal_main5_to_4_red(&brd, "sig_main5_to_4_red",
+                                         OUTPUT_BASE | 0x4C, OUTPUT_BASE | 0x4D,
+                                         1, OFS_IOA, 6);
+EventBasedVariable signal_main5_to_4_green(&brd, "sig_main5_to_4_green",
+                                           OUTPUT_BASE | 0x4E,
+                                           OUTPUT_BASE | 0x4F, 1, OFS_IOA, 7);
+
+EventBasedVariable signal_siding1_red(&brd, "sig_siding1_red",
+                                      OUTPUT_BASE | 0x48, OUTPUT_BASE | 0x49, 1,
+                                      OFS_IOA + 1, 0);
+EventBasedVariable signal_siding1_green(&brd, "sig_siding1_green",
+                                        OUTPUT_BASE | 0x4A, OUTPUT_BASE | 0x4B,
+                                        1, OFS_IOA + 1, 1);
+
+EventBasedVariable signal_main5_to_1_red(&brd, "sig_main5_to_1_red",
+                                         OUTPUT_BASE | 0x24, OUTPUT_BASE | 0x25,
+                                         1, OFS_IOA + 1, 2);
+EventBasedVariable signal_main5_to_1_green(&brd, "sig_main5_to_1_green",
+                                           OUTPUT_BASE | 0x26,
+                                           OUTPUT_BASE | 0x27, 1, OFS_IOA + 1, 3);
+
+EventBasedVariable signal_siding2_red(&brd, "sig_siding2_red",
+                                      OUTPUT_BASE | 0x20, OUTPUT_BASE | 0x21, 1,
+                                      OFS_IOA + 1, 4);
+EventBasedVariable signal_siding2_green(&brd, "sig_siding2_green",
+                                        OUTPUT_BASE | 0x22, OUTPUT_BASE | 0x23,
+                                        1, OFS_IOA + 1, 5);
+
+
+std::unique_ptr<GlobalVariable> constant_false(
+    logic.allocator()->Allocate("constant_false"));
+
+typedef automata::Automata::LocalVariable LocalVariable;
+
+void CrossingBlink(Automata* aut, const LocalVariable& in_x,
+                   LocalVariable* out_xa, LocalVariable* out_xb) {
   Def().IfState(StBase).IfReg1(in_x).ActState(StUser1);
   Def()
       .IfState(StUser1)
@@ -95,36 +158,259 @@ void CrossingBlink(const LocalVariable& in_x, LocalVariable* out_xa,
 
 DefAut(crossing1, brd, {
   Def().IfState(StInit).ActState(StBase);
-  auto* out_xa = ImportVariable(out_x1a.get());
-  auto* out_xb = ImportVariable(out_x1b.get());
-  auto* in_x = ImportVariable(*rrx1);
-  CrossingBlink(*in_x, out_xa, out_xb);
+  auto* out_xa = ImportVariable(&out_x1a);
+  auto* out_xb = ImportVariable(&out_x1b);
+  auto* in_x = ImportVariable(rrx1.get());
+  CrossingBlink(aut, *in_x, out_xa, out_xb);
 
   Def()
-      .IfReg0(ImportVariable(*block_main2))
-      .IfReg0(ImportVariable(*block_main3))
+      .IfReg0(ImportVariable(block_main2))
+      .IfReg0(ImportVariable(block_main3))
       .ActReg0(in_x);
-  Def().IfReg1(ImportVariable(*block_main2)).ActReg1(in_x);
-  Def().IfReg1(ImportVariable(*block_main3)).ActReg1(in_x);
+  Def().IfReg1(ImportVariable(block_main2)).ActReg1(in_x);
+  Def().IfReg1(ImportVariable(block_main3)).ActReg1(in_x);
 });
 
 DefAut(crossing2, brd, {
   Def().IfState(StInit).ActState(StBase);
-  auto* out_xa = ImportVariable(out_x2a.get());
-  auto* out_xb = ImportVariable(out_x2b.get());
-  auto* in_x = ImportVariable(*rrx2);
-  CrossingBlink(*in_x, out_xa, out_xb);
+  auto* out_xa = ImportVariable(&out_x2a);
+  auto* out_xb = ImportVariable(&out_x2b);
+  auto* in_x = ImportVariable(rrx2.get());
+  CrossingBlink(aut, *in_x, out_xa, out_xb);
 
   Def()
-      .IfReg0(ImportVariable(*block_main4))
-      .IfReg0(ImportVariable(*block_main5))
-      .IfReg0(ImportVariable(*block_siding1))
+      .IfReg0(ImportVariable(block_main4))
+      .IfReg0(ImportVariable(block_main5))
+      .IfReg0(ImportVariable(block_siding1))
       .ActReg0(in_x);
-  Def().IfReg1(ImportVariable(*block_main4)).ActReg1(in_x);
-  Def().IfReg1(ImportVariable(*block_main5)).ActReg1(in_x);
-  Def().IfReg1(ImportVariable(*block_siding1)).ActReg1(in_x);
+  Def().IfReg1(ImportVariable(block_main4)).ActReg1(in_x);
+  Def().IfReg1(ImportVariable(block_main5)).ActReg1(in_x);
+  Def().IfReg1(ImportVariable(block_siding1)).ActReg1(in_x);
 });
 
+// Logic OR of occupancy of main1 and main2
+std::unique_ptr<GlobalVariable> agg_main12(
+    logic.allocator()->Allocate("block_agg_main12"));
+// Logic OR of occupancy of main3 and main4
+std::unique_ptr<GlobalVariable> agg_main34(
+    logic.allocator()->Allocate("block_agg_main34"));
+
+// tells occupancy of siding2 when coming from main1, taking into account the
+// state of turnout_stub2 and the occupancy state of stub2 and siding1,
+// respectively.
+std::unique_ptr<GlobalVariable> agg_siding2_from_main1(
+    logic.allocator()->Allocate("block_agg_siding2_from_main1"));
+
+// std::unique_ptr<GlobalVariable> agg_siding1_from_main4(
+//    logic.allocator()->Allocate("block_agg_siding1_from_main4"));
+
+void OccupancyAggregate(Automata* aut, const LocalVariable& block1,
+                        const LocalVariable& block2, LocalVariable* block_out) {
+  Def().IfReg0(block1).IfReg0(block2).ActReg0(block_out);
+  Def().IfReg1(block1).ActReg1(block_out);
+  Def().IfReg1(block2).ActReg1(block_out);
+}
+
+DefAut(block_agg, brd, {
+  OccupancyAggregate(aut, ImportVariable(block_main1),
+                     ImportVariable(block_main2),
+                     ImportVariable(agg_main12.get()));
+  OccupancyAggregate(aut, ImportVariable(block_main3),
+                     ImportVariable(block_main4),
+                     ImportVariable(agg_main34.get()));
+});
+
+// These variables tell whether the next logical block is occupied (1) or
+// free(0), where next is defined by the turnout setting.
+std::unique_ptr<GlobalVariable> next_main4(
+    logic.allocator()->Allocate("next_main4"));
+std::unique_ptr<GlobalVariable> next_main2(
+    logic.allocator()->Allocate("next_main2"));
+std::unique_ptr<GlobalVariable> next_main1(
+    logic.allocator()->Allocate("next_main1"));
+std::unique_ptr<GlobalVariable> next_siding2(
+    logic.allocator()->Allocate("next_siding2"));
+
+// These variables are outputs of the turnout-conditional ABS, and tell zero if
+// the turnout is not lined up with the current place, and tell the occupancy
+// of the next block ifthe turnout is lined up.
+std::unique_ptr<GlobalVariable> condnext_main5_to_4(
+    logic.allocator()->Allocate("condnext_main5_to_4"));
+std::unique_ptr<GlobalVariable> condnext_siding1_to_main4(
+    logic.allocator()->Allocate("condnext_siding1_to_main4"));
+
+std::unique_ptr<GlobalVariable> condnext_main5_to_1(
+    logic.allocator()->Allocate("condnext_main5_to_1"));
+std::unique_ptr<GlobalVariable> condnext_siding2_to_main1(
+    logic.allocator()->Allocate("condnext_main5_to_1"));
+
+std::unique_ptr<GlobalVariable> condnext_main3_to_2(
+    logic.allocator()->Allocate("condnext_main3_to_2"));
+std::unique_ptr<GlobalVariable> condnext_stub1_to_main2(
+    logic.allocator()->Allocate("condnext_stub1_to_main2"));
+
+std::unique_ptr<GlobalVariable> condnext_unused1(
+    logic.allocator()->Allocate("condnext_unused1"));
+
+
+void TurnoutAwareABS(Automata* aut, const LocalVariable& turnout,
+                     bool expected_direction, const LocalVariable& nextblock,
+                     const LocalVariable& secondblock, LocalVariable* red,
+                     LocalVariable* green, LocalVariable* condnext) {
+  Def()
+      .IfReg(turnout, !expected_direction)
+      .ActReg1(condnext)
+      .ActReg1(red)
+      .ActReg0(green);
+  Def()
+      .IfReg(turnout, expected_direction)
+      .IfReg1(nextblock)
+      .ActReg1(condnext)
+      .ActReg1(red)
+      .ActReg0(green);
+  Def()
+      .IfReg(turnout, expected_direction)
+      .IfReg0(nextblock)
+      .IfReg1(secondblock)
+      .ActReg0(condnext)
+      .ActReg1(red)
+      .ActReg1(green);
+  Def()
+      .IfReg(turnout, expected_direction)
+      .IfReg0(nextblock)
+      .IfReg0(secondblock)
+      .ActReg0(condnext)
+      .ActReg0(red)
+      .ActReg1(green);
+}
+
+void ABS(Automata* aut, const LocalVariable& nextblock,
+         const LocalVariable& secondblock, LocalVariable* red,
+         LocalVariable* green) {
+  Def().IfReg1(nextblock).ActReg1(red).ActReg0(green);
+  Def().IfReg0(nextblock).IfReg1(secondblock).ActReg1(red).ActReg1(green);
+  Def().IfReg0(nextblock).IfReg0(secondblock).ActReg0(red).ActReg1(green);
+}
+
+DefAut(sig_32, brd, {
+  Def().ActReg0(ImportVariable(constant_false.get()));
+  const auto& turnout = ImportVariable(turnout_stub1);
+  const auto& nextblock = ImportVariable(*agg_main12);
+  const auto& secondblock = ImportVariable(*next_main1);
+
+  auto* red = ImportVariable(&signal_main3_red);
+  auto* green = ImportVariable(&signal_main3_green);
+  TurnoutAwareABS(aut, turnout, false, nextblock, secondblock, red, green,
+                  ImportVariable(condnext_main3_to_2.get()));
+});
+
+DefAut(sig_to_main4, brd, {
+  const auto& turnout = ImportVariable(turnout_siding1);
+  const auto& nextblock = ImportVariable(*agg_main34);
+  const auto& secondblock = ImportVariable(*condnext_main3_to_2);
+  {
+    auto* red = ImportVariable(&signal_main5_to_4_red);
+    auto* green = ImportVariable(&signal_main5_to_4_green);
+    TurnoutAwareABS(aut, turnout, true, nextblock, secondblock, red, green,
+                    ImportVariable(condnext_main5_to_4.get()));
+  }
+  {
+    auto* red = ImportVariable(&signal_siding1_red);
+    auto* green = ImportVariable(&signal_siding1_green);
+    TurnoutAwareABS(aut, turnout, false, nextblock, secondblock, red, green,
+                    ImportVariable(condnext_siding1_to_main4.get()));
+  }
+});
+
+DefAut(sig_to_main1, brd, {
+  const auto& turnout = ImportVariable(turnout_siding2);
+  const auto& nextblock = ImportVariable(*agg_main12);
+  const auto& secondblock = ImportVariable(*next_main2);
+  {
+    auto* red = ImportVariable(&signal_main5_to_1_red);
+    auto* green = ImportVariable(&signal_main5_to_1_green);
+    TurnoutAwareABS(aut, turnout, true, nextblock, secondblock, red, green,
+                    ImportVariable(condnext_main5_to_1.get()));
+  }
+  {
+    auto* red = ImportVariable(&signal_siding2_red);
+    auto* green = ImportVariable(&signal_siding2_green);
+    TurnoutAwareABS(aut, turnout, false, nextblock, secondblock, red, green,
+                    ImportVariable(condnext_siding2_to_main1.get()));
+  }
+});
+
+// Copies the block occupancy from the turnout's currently set direction to a
+// virtual "next" block.
+void CopyTurnout(Automata* aut, const LocalVariable& turnout,
+                 const LocalVariable& block_closed,
+                 const LocalVariable& block_thrown,
+                 LocalVariable* vblock_next) {
+  Def().IfReg0(turnout).IfReg0(block_closed).ActReg0(vblock_next);
+  Def().IfReg0(turnout).IfReg1(block_closed).ActReg1(vblock_next);
+  Def().IfReg1(turnout).IfReg0(block_thrown).ActReg0(vblock_next);
+  Def().IfReg1(turnout).IfReg1(block_thrown).ActReg1(vblock_next);
+}
+
+DefAut(nextblocks, brd, {
+  CopyTurnout(aut, ImportVariable(turnout_stub1), ImportVariable(block_main3),
+              ImportVariable(block_stub1), ImportVariable(next_main2.get()));
+  CopyTurnout(aut, ImportVariable(turnout_stub2), ImportVariable(block_stub2),
+              ImportVariable(block_siding1), ImportVariable(next_siding2.get()));
+  // todo: we also need to copy next-next bits from the turnouts beyond siding1.
+
+  // todo: what happens if the user wants to go from main4 to siding1 but
+  // turnout is set towards the factory ? it should be red.
+  CopyTurnout(aut, ImportVariable(turnout_siding1),
+              ImportVariable(block_siding1), ImportVariable(block_main5),
+              ImportVariable(next_main4.get()));
+
+  // The siding is free if the turnout is thrown and both siding1 and siding2
+  // is free, or if the turnout is thrown and both siding2 and stub2 is free.
+  OccupancyAggregate(aut, ImportVariable(block_siding2),
+                     ImportVariable(*next_siding2),
+                     ImportVariable(agg_siding2_from_main1.get()));
+  CopyTurnout(aut, ImportVariable(turnout_siding2),
+              ImportVariable(*agg_siding2_from_main1),
+              ImportVariable(block_main5), ImportVariable(next_main1.get()));
+});
+
+DefAut(sig_23, brd, {
+  const auto& turnout = ImportVariable(turnout_stub1);
+  {
+    const auto& nextblock = ImportVariable(*agg_main34);
+    const auto& secondblock = ImportVariable(*next_main4);
+
+    auto* red = ImportVariable(&signal_main2_top_red);
+    auto* green = ImportVariable(&signal_main2_top_green);
+    TurnoutAwareABS(aut, turnout, false, nextblock, secondblock, red, green, ImportVariable(condnext_unused1.get()));
+  }
+  {
+    const auto& nextblock = ImportVariable(block_stub1);
+    const auto& secondblock = ImportVariable(*constant_false);
+    auto* red = ImportVariable(&signal_main2_bot_red);
+    auto* green = ImportVariable(&signal_main2_bot_green);
+    TurnoutAwareABS(aut, turnout, true, nextblock, secondblock, red, green, ImportVariable(condnext_unused1.get()));
+  }
+});
+
+DefAut(sig_1, brd, {
+  const auto& turnout = ImportVariable(turnout_siding2);
+  const auto& nextblock = ImportVariable(*next_main1);
+  {
+    // todo: figure out what the next would be from siding2 to siding1
+    const auto& secondblock = ImportVariable(*constant_false);
+    auto* red = ImportVariable(&signal_main2_top_red);
+    auto* green = ImportVariable(&signal_main2_top_green);
+    TurnoutAwareABS(aut, turnout, false, nextblock, secondblock, red, green, ImportVariable(condnext_unused1.get()));
+  }
+  {
+    const auto& secondblock = ImportVariable(*condnext_main5_to_4);
+    auto* red = ImportVariable(&signal_main2_bot_red);
+    auto* green = ImportVariable(&signal_main2_bot_green);
+    TurnoutAwareABS(aut, turnout, true, nextblock, secondblock, red, green, ImportVariable(condnext_unused1.get()));
+  }
+});
 
 
 
@@ -133,11 +419,7 @@ unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
 EventBasedVariable led(&brd, "led", 0x0502010202650012ULL,
                        0x0502010202650013ULL, 7, 31, 1);
 
-DefAut(watchdog, brd, {
-  LocalVariable* w = ImportVariable(&watchdog);
-  Def().IfTimerDone().ActReg1(w).ActReg0(w).ActTimer(1);
-});
-
+/*
 DefAut(blinkaut, brd, {
   const int kBlinkSpeed = 3;
   LocalVariable* rep(ImportVariable(&bd.LedGoldSw));
@@ -159,11 +441,9 @@ DefAut(blinkaut, brd, {
       .ActReg1(rep);
 
   // DefCopy(*rep, ImportVariable(&bd.LedGoldSw));
-});
+  });*/
 
 int main(int argc, char** argv) {
-  automata::reset_routes = &reset_all_routes;
-
   FILE* f = fopen("automata.bin", "wb");
   assert(f);
   string output;
