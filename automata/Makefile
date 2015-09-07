@@ -7,7 +7,7 @@ OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout
 BINS = $(AUTS:.cpp=)
 
 DEFAULT_AUT = bracz-layout3h-logic  # lcc-layout-logic
-TARGET_NODE = 0x05010101143F
+TARGET_NODE = 0x050101011432 # host.tiva
 
 all: lib test-aut bracz-layout3h-logic bin lcc-layout-logic
 
