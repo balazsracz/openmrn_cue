@@ -1,12 +1,15 @@
-CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -m32 -Wall -isystem /opt/gmock/default/gtest/include
+CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -Wall -isystem /opt/gmock/default/gtest/include
 
 OBJS=system.o control-logic.o registry.o
 
 AUTS = rr-crossing.cpp logic-demo.cpp 
-OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout
 BINS = $(AUTS:.cpp=)
 
-all: lib test-aut bracz-layout3h-logic bin
+DEFAULT_AUT = lcc-layout-logic
+TARGET_NODE = 0x05010101143F
+
+all: lib test-aut bracz-layout3h-logic bin lcc-layout-logic
 
 -include *.d
 
@@ -39,6 +42,9 @@ test-aut: $(OBJS) test-aut.o
 bracz-layout3h-logic: $(OBJS) bracz-layout3h-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ bracz-layout3h-logic.o $(OBJS) 
 
+lcc-layout-logic: $(OBJS) lcc-layout-logic.o # control-logic.hxx
+	$(CXX) $(CXXFLAGS) -o $@ lcc-layout-logic.o $(OBJS) 
+
 convention-logic: convention-logic.o $(OBJS)  # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ $+
 
@@ -53,15 +59,13 @@ flash-test: test-aut
 	aut-flash.sh *bin
 
 .PHONY: flash
-flash: bracz-layout3h-logic
-	./bracz-layout3h-logic
-	aut-flash.sh *bin
+flash: bin
+	train-reflash-automata -n $(TARGET_NODE)
+#	aut-flash.sh *bin
 
 .PHONY: bin
-bin: bracz-layout3h-logic
-	./bracz-layout3h-logic
-
-bracz-layout3h-logic.cout: bin
+bin: $(DEFAULT_AUT)
+	./$(DEFAULT_AUT)
 
 #bin: convention-logic
 #	./convention-logic
