@@ -665,14 +665,14 @@ bool ign = BindPairs({
 });
 
 DefAut(display, brd, {
-  DefCopy(ImportVariable(Block_XXB1.detector()),
+    /*  DefCopy(ImportVariable(Block_XXB1.detector()),
           ImportVariable(&panda_bridge.l0));
   DefCopy(ImportVariable(Block_A301.detector()),
           ImportVariable(&panda_bridge.l1));
   DefCopy(ImportVariable(Block_WWB14.detector()),
           ImportVariable(&panda_bridge.l2));
   DefCopy(ImportVariable(Block_YYC23.detector()),
-          ImportVariable(&panda_bridge.l3));
+  ImportVariable(&panda_bridge.l3));*/
 });
 
 void RgSignal(Automata* aut, const Automata::LocalVariable& route_set, Automata::LocalVariable* signal) {
