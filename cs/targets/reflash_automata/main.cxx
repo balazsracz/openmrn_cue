@@ -226,7 +226,7 @@ int appl_main(int argc, char *argv[]) {
   parse_args(argc, argv);
 
   string file_data = read_file_to_string(filename);
-  LOG(INFO, "Read %d bytes from %s.", file_data.size(), filename);
+  LOG(INFO, "Read %zd bytes from %s.", file_data.size(), filename);
 
   if (device_path) {
     stack.add_gridconnect_port(device_path);
