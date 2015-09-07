@@ -49,47 +49,50 @@ MemorizingHandlerManager::MemorizingHandlerManager(Node* node,
       num_total_events_(num_total_events),
       block_size_(block_size) {
   unsigned mask = EventRegistry::align_mask(&event_base, num_total_events);
-  EventRegistry::instance()->register_handlerr(this, event_base, mask);
+  EventRegistry::instance()->register_handler(
+      EventRegistryEntry(this, event_base), mask);
   HASSERT(num_total_events % block_size == 0);
 }
 
 MemorizingHandlerManager::~MemorizingHandlerManager() {
-  uint64_t base = event_base_;
-  unsigned mask = EventRegistry::align_mask(&base, num_total_events_);
-  EventRegistry::instance()->unregister_handlerr(this, base, mask);
+  EventRegistry::instance()->unregister_handler(this);
 }
 
 void MemorizingHandlerManager::HandleEventReport(
-    EventReport* event, BarrierNotifiable* done) OVERRIDE {
+    const EventRegistryEntry& registry_entry, EventReport* event,
+    BarrierNotifiable* done) {
   AutoNotify n(done);
   if (!is_mine(event->event)) return;
   UpdateValidEvent(event->event);
 }
 
 void MemorizingHandlerManager::HandleConsumerIdentified(
-    EventReport* event, BarrierNotifiable* done) OVERRIDE {
+    const EventRegistryEntry& registry_entry, EventReport* event,
+    BarrierNotifiable* done) {
   AutoNotify n(done);
   if (!is_mine(event->event) || event->state != VALID) return;
   UpdateValidEvent(event->event);
 }
 
 void MemorizingHandlerManager::HandleProducerIdentified(
-    EventReport* event, BarrierNotifiable* done) OVERRIDE {
+    const EventRegistryEntry& registry_entry, EventReport* event,
+    BarrierNotifiable* done) {
   AutoNotify n(done);
   if (!is_mine(event->event) || event->state != VALID) return;
   UpdateValidEvent(event->event);
 }
 
-void MemorizingHandlerManager::HandleIdentifyGlobal(EventReport* event,
-                                                    BarrierNotifiable* done) {
+void MemorizingHandlerManager::HandleIdentifyGlobal(
+    const EventRegistryEntry& registry_entry, EventReport* event,
+    BarrierNotifiable* done) {
   AutoNotify n(done);
   uint64_t range = EncodeRange(event_base_, num_total_events_);
-  event_write_helper1.WriteAsync(
-      node_, Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-      WriteHelper::global(), eventid_to_buffer(range), done->new_child());
-  event_write_helper2.WriteAsync(
-      node_, Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
-      WriteHelper::global(), eventid_to_buffer(range), done->new_child());
+  event_write_helper1.WriteAsync(node_, Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+                                 WriteHelper::global(),
+                                 eventid_to_buffer(range), done->new_child());
+  event_write_helper2.WriteAsync(node_, Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
+                                 WriteHelper::global(),
+                                 eventid_to_buffer(range), done->new_child());
 }
 
 void MemorizingHandlerManager::UpdateValidEvent(uint64_t eventid) {
@@ -214,13 +217,12 @@ MemorizingHandlerBlock::MemorizingHandlerBlock(MemorizingHandlerManager* parent,
                                                uint64_t event_base)
     : parent_(parent), event_base_(event_base), current_event_(0) {
   unsigned mask = EventRegistry::align_mask(&event_base, parent_->block_size());
-  EventRegistry::instance()->register_handlerr(this, event_base, mask);
+  EventRegistry::instance()->register_handler(
+      EventRegistryEntry(this, event_base), mask);
 }
 
 MemorizingHandlerBlock::~MemorizingHandlerBlock() {
-  uint64_t base = event_base_;
-  unsigned mask = EventRegistry::align_mask(&base, parent_->block_size());
-  EventRegistry::instance()->unregister_handlerr(this, base, mask);
+  EventRegistry::instance()->unregister_handler(this);
 }
 
 /** Checks if a single eventid is ours, and sends out a PCER for the valid
