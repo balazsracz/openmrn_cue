@@ -76,3 +76,8 @@ $(OUTPUTS): %.cout : %
 
 
 $(BINS): $(OBJS)
+
+.PHONY: panel
+panel:
+	./gen-panel-html.py ~/.jmri/3h-layout-082.xml panel.html
+
