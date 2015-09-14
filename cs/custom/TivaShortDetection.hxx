@@ -272,7 +272,7 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
     return this->start_timer();
   }
 
-  Action voltage_sample(uint32_t adc_value) OVERRIDE {
+  Action voltage_sample(uint32_t adc_value) {
     adc_value *= 201;
     adc_value >>= 12;
     if (!count_report_) {
@@ -371,8 +371,8 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
                          uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  virtual bool GetCurrentState() { return query_dcc(); }
-  virtual void SetState(bool new_value) {
+  bool GetCurrentState() OVERRIDE { return query_dcc(); }
+  void SetState(bool new_value) OVERRIDE {
     if (new_value) {
       LOG(WARNING, "enable dcc");
       enable_dcc();
@@ -382,7 +382,7 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
     }
   }
 
-  virtual nmranet::Node* node() { return node_; }
+  nmranet::Node* node() OVERRIDE { return node_; }
 
  private:
   nmranet::Node* node_;
@@ -395,8 +395,8 @@ class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
                        uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  virtual bool GetCurrentState() { return HW::ACC_ENABLE_Pin::get(); }
-  virtual void SetState(bool new_value) {
+  bool GetCurrentState() OVERRIDE { return HW::ACC_ENABLE_Pin::get(); }
+  void SetState(bool new_value) OVERRIDE {
     if (!HW::ACC_ENABLE_Pin::get() && new_value) {
       // We are turning power on.
       // sends some event reports to clear off the shorted and overcurrent bits.
@@ -412,7 +412,7 @@ class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
     HW::ACC_ENABLE_Pin::set(new_value);
   }
 
-  virtual nmranet::Node* node() { return node_; }
+  nmranet::Node* node() OVERRIDE { return node_; }
 
  private:
   nmranet::Node* node_;
