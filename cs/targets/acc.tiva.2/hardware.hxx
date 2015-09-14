@@ -2,12 +2,13 @@
 #define _ACC_TIVA_2_HARDWARE_HXX_
 
 #include "TivaGPIO.hxx"
+#include "DummyGPIO.hxx"
 
 #include "inc/hw_memmap.h"
 #include "inc/hw_ints.h"
 #include "driverlib/timer.h"
 
-GPIO_PIN(LED_RED, LedPin, D, 6);
+GPIO_PIN(LED_RED_RAW, LedPin, D, 6);
 GPIO_PIN(LED_GREEN, LedPin, D, 5);
 GPIO_PIN(LED_BLUE, LedPin, G, 1);
 GPIO_PIN(LED_YELLOW, LedPin, B, 0);
@@ -43,7 +44,7 @@ GPIO_PIN(IN7, GpioInputNP, A, 7);
 GPIO_PIN(BUT_BLUE, GpioInputPU, C, 6);
 GPIO_PIN(BUT_GOLD, GpioInputPU, C, 7);
 
-typedef LED_RED_Pin BlinkerLed;
+typedef LED_RED_RAW_Pin BlinkerLed;
 
 struct Debug {
   // One for the duration of the first byte successfully read from the uart
