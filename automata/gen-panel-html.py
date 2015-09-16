@@ -24,11 +24,6 @@ webpage_template = """
 <script type="text/javascript" id="jshelpers">
 function addSensorBinding(sensor_id, event_on, url_on, event_off, url_off) {
   var el = document.getElementById(sensor_id);
-  if (!el) {
-    console.log('could not find element by id: ', sensor_id);
-  } else {
-    el.setAttribute("xlink:href", url_on);
-  }
   var fn_on = function() {
     el.setAttribute("xlink:href", url_on);
   }
@@ -55,6 +50,23 @@ function addTrackBinding(track_id, event_on, color_on, event_off, color_off) {
     el.style.stroke = color_off;
   }
   var listener = new Module.BitEventPC(event_on, fn_on, event_off, fn_off);
+}
+function addTurnoutBinding(event_closed, event_thrown, xcen, ycen, closed_id, x1, y1, thrown_id, x2, y2) {
+  var closed = document.getElementById(closed_id);
+  var thrown = document.getElementById(thrown_id);
+  var fn_closed = function() {
+    closed.setAttribute('x2', xcen);
+    closed.setAttribute('y2', ycen);
+    thrown.setAttribute('x2', (xcen + x2) / 2);
+    thrown.setAttribute('y2', (ycen + y2) / 2);
+  }
+  var fn_thrown = function() {
+    thrown.setAttribute('x2', xcen);
+    thrown.setAttribute('y2', ycen);
+    closed.setAttribute('x2', (xcen + x1) / 2);
+    closed.setAttribute('y2', (ycen + y1) / 2);
+  }
+  var listener = new Module.BitEventPC(event_closed, fn_closed, event_thrown, fn_thrown);
 }
 </script>
 
@@ -134,27 +146,18 @@ class Sensor:
     self.event_off = JmriToEvent(m.group(2))
 
 class Turnout:
-  def __init__(self, system_name, user_name, sensor_name):
+  def __init__(self, system_name, user_name):
     self.system_name = system_name
     self.user_name = user_name
-    self.sensor_name = sensor_name
+    self.ParseName()
 
-  def Render(self, parent_element):
-    e = ET.SubElement(parent_element, 'turnout')
-    e.tail = '\n'
-    e.set('systemName', self.system_name)
-    e.set('inverted', 'false')
-    e.set('userName', self.user_name)
-    e.set('automate', 'Default')
-    if self.sensor_name:
-      e.set('feedback', 'ONESENSOR')
-      e.set('sensor1', self.sensor_name)
-    else:
-      e.set('feedback', 'DIRECT')
-    sn = ET.SubElement(e, 'systemName')
-    sn.text = self.system_name
-    un = ET.SubElement(e, 'userName')
-    un.text = self.user_name
+  def ParseName(self):
+    m = re.match('MT([^;]*);([^;]*)', self.system_name)
+    if not m:
+      raise Exception("Cannot parse turnout system name '" + self.system_name + "'")
+    self.event_on = JmriToEvent(m.group(1))
+    self.event_off = JmriToEvent(m.group(2))
+
 
 def FindOrInsert(element, tag):
   """Find the first child element with a given tag, or if not found, creates one. Returns the (old or new) tag."""
@@ -457,6 +460,8 @@ class TrainLocLogixConditional:
 all_sensors = []
 sensor_by_user_name = {}
 
+all_turnouts = []
+turnout_by_user_name = {}
 
 #all_turnouts = []
 #all_locations = []
@@ -478,6 +483,18 @@ def ParseAllSensors(sensor_tree):
     sensor_by_user_name[user_name] = s
     sensor_by_user_name[system_name] = s
   print(len(all_sensors), "sensors found")
+
+def ParseAllTurnouts(jmri_tree):
+  """Reads all the turnout objects from the xml tree passed in, and fills out the global list all_turnouts."""
+  root = jmri_tree.getroot()
+  for entry in root.findall('turnouts/turnout'):
+    system_name = entry.get('systemName')
+    user_name = entry.get('userName')
+    s = Turnout(system_name, user_name)
+    all_turnouts.append(s)
+    turnout_by_user_name[user_name] = s
+    turnout_by_user_name[system_name] = s
+  print(len(all_turnouts), "turnouts found")
 
 def ParseAllBlocks(tree):
   """Reads all the layoutblock objects from the xml tree passed in, and fills out the global list all_layoutblocks."""
@@ -1048,6 +1065,8 @@ def AddTrackSegment(svg_root, jmri_segment, points, panelattrs):
       event_on=sensor_obj.event_on, event_off=sensor_obj.event_off,
       color_on=occcolor, color_off=defcolor))
 
+turnout_binding_template = string.Template('addTurnoutBinding("${event_closed}", "${event_thrown}", ${xcen}, ${ycen}, "${closed_id}", ${x1}, ${y1}, "${thrown_id}", ${x2}, ${y2});');
+
 def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
   ttype = jmri_turnout.attrib['type']
   if not (ttype == "1" or ttype == "2"):
@@ -1074,6 +1093,8 @@ def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
   cloline.set('y2', pcen.y)
   trwidth = panelattrs['mainlinetrackwidth'] if track_is_mainline[jmri_turnout.attrib['connectbname']] else panelattrs['sidetrackwidth']
   cloline.set('style', 'stroke:%s;stroke-width:%s' % (panelattrs['defaulttrackcolor'],trwidth))
+  closed_id = GetSvgId()
+  cloline.set('id', closed_id)
 
   divline = ET.SubElement(svg_root, 'line')
   divline.set('x1', pc.x)
@@ -1082,7 +1103,24 @@ def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
   divline.set('y2', pcen.y)
   trwidth = panelattrs['mainlinetrackwidth'] if track_is_mainline[jmri_turnout.attrib['connectcname']] else panelattrs['sidetrackwidth']
   divline.set('style', 'stroke:%s;stroke-width:%s' % (panelattrs['defaulttrackcolor'],trwidth))
+  div_id = GetSvgId()
+  divline.set('id', div_id)
 
+  turnout_name = jmri_turnout.get('turnoutname')
+  if turnout_name:
+    event_on = turnout_by_user_name[turnout_name].event_on
+    event_off = turnout_by_user_name[turnout_name].event_off
+    AddJsBinding(turnout_binding_template.substitute(
+        event_closed=event_off,
+        event_thrown=event_on,
+        xcen=pcen.x,
+        ycen=pcen.y,
+        closed_id=closed_id,
+        x1=pb.x,
+        y1=pb.y,
+        thrown_id=div_id,
+        x2=pc.x,
+        y2=pc.y))
 
 def ProcessPanel(panel_root, output_html):
   parent_div = output_html.find('.//div[@id="panel"]')
@@ -1147,6 +1185,7 @@ def main():
   xml_tree = ET.parse(sys.argv[1])
   root = xml_tree.getroot()
   ParseAllSensors(xml_tree)
+  ParseAllTurnouts(xml_tree)
   ParseAllBlocks(xml_tree)
 
   html_root = ET.fromstring(webpage_template)
