@@ -36,6 +36,10 @@ function addSensorBinding(sensor_id, event_on, url_on, event_off, url_off) {
     el.setAttribute("xlink:href", url_off);
   }
   var listener = new Module.BitEventPC(event_on, fn_on, event_off, fn_off);
+  var fn_click = function() {
+    listener.toggleState();
+  }
+  el.addEventListener("DOMActivate", fn_click, false);
 }
 function addTrackBinding(track_id, event_on, color_on, event_off, color_off) {
   var el = document.getElementById(track_id);
