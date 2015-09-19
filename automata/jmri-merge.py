@@ -112,6 +112,57 @@ class SignalHead:
     ta = FindOrInsertWithDefines(e, 'turnoutname', 'aspect')
     ta.text = self.turnout_name
 
+
+class DoubleSignalHead(SignalHead):
+  def __init__(self, name, turnout_red, turnout_green):
+    self.user_name = name
+    self.turnout_red_name = turnout_red
+    self.turnout_green_name = turnout_green
+
+#  def key(self):
+#    return self.user_name
+
+  @staticmethod
+  def get_key(e):
+    s = e.get('userName')
+    if s: return s
+    s = e.find('userName')
+    if s is not None: return s.text
+    return None
+
+  @staticmethod
+  def xml_name():
+    return 'signalhead'
+
+  @classmethod
+  def GetNextId(cls):
+    next_id = cls.max_id
+    cls.max_id = cls.max_id + 1
+    return next_id
+
+  @classmethod
+  def SetMaxId(cls, i):
+    cls.max_id = i
+
+  def Update(self, e):
+    e.set('class', "jmri.implementation.configurexml.DoubleTurnoutSignalHeadXml")
+    e.set('userName', self.user_name)
+    self.system_name = e.get('systemName')
+    if not self.system_name:
+      self.system_name = 'LH' + str(self.GetNextId())
+    e.set('systemName', self.system_name)
+    sn = FindOrInsert(e, 'systemName')
+    sn.text = self.system_name
+    un = FindOrInsert(e, 'userName')
+    if un.text != self.user_name:
+      print("Overwriting user name", un.text, "with", self.user_name)
+    un.text = self.user_name
+    at = FindOrInsertWithDefines(e, 'turnoutname', 'green')
+    at.text = self.turnout_green_name
+    at = FindOrInsertWithDefines(e, 'turnoutname', 'red')
+    at.text = self.turnout_red_name
+
+
 class SystemBlock:
   def __init__(self, user_name, sensor_name):
     self.user_name = user_name
@@ -418,6 +469,18 @@ def CreateTurnouts():
       username = 'Sig.R' + blockname
       sensorname = sensor.user_name
       all_turnouts.append(Turnout(systemname, username, sensorname))
+    m = re.match('turnout_(.*)', sensor.user_name)
+    if m:
+      systemname = 'MT' + sensor.system_name[2:]
+      username = sensor.user_name
+      sensorname = None
+      all_turnouts.append(Turnout(systemname, username, sensorname))
+    m = re.match('sig_(.*)', sensor.user_name)
+    if m:
+      systemname = 'MT' + sensor.system_name[2:]
+      username = sensor.user_name
+      sensorname = None
+      all_turnouts.append(Turnout(systemname, username, sensorname))
     continue
     m = re.match('logic.(.*).body_det.simulated_occ', sensor.user_name)
     if m:
@@ -631,6 +694,11 @@ def RenderSignalHeads(output_tree_root):
   for location in all_locations:
     desired_signalhead_list.append(SignalHead('Sig.' + location))
     desired_signalhead_list.append(SignalHead('Sig.R' + location))
+  for sensor in all_sensors:
+    m = re.match('(sig_.*)_red', sensor.user_name)
+    if not m: continue
+    signame = m.group(1)
+    desired_signalhead_list.append(DoubleSignalHead(signame, signame + "_red", signame + "_green"))
   all_signalhead_node = output_tree_root.find('signalheads')
   SignalHead.SetMaxId(GetMaxSystemId(all_signalhead_node, strip_letters='LMH'))
   print("Number of signal heads:", len(desired_signalhead_list))
@@ -643,6 +711,9 @@ def RenderMemoryVariables(output_tree_root):
   for train in all_trains:
     desired_memory_list.append(Memory('train.' + train))
   all_memory_node = output_tree_root.find('memories')
+  if not all_memory_node:
+    print("No memory node - skipping rendering")
+    return
   Memory.SetMaxId(GetMaxSystemId(all_memory_node, strip_letters='IM:AUTO:LOC'))
   print("Number of memory entries: ", len(desired_memory_list))
   MergeEntries(all_memory_node, desired_memory_list)
@@ -656,12 +727,17 @@ def RenderLogixConditionals(output_tree_root):
     desired_conditionals.append(TrainLocLogixConditional(sensor.user_name))
   print("Number of train location logix conditionals: ", len(desired_conditionals))
   all_cond_node = output_tree_root.find('conditionals')
-  TrainLocLogixConditional.SetMaxId(GetMaxSystemId(all_cond_node, 'IX:GEN:TRAINLOC:BCC'))
-  MergeEntries(all_cond_node, desired_conditionals)
+  if not all_cond_node:
+    print("No conditionals node - skipping rendering")
+  else:
+    TrainLocLogixConditional.SetMaxId(GetMaxSystemId(all_cond_node, 'IX:GEN:TRAINLOC:BCC'))
+    MergeEntries(all_cond_node, desired_conditionals)
 
   # Finds the main logix node
   logixnode = output_tree_root.find('./logixs/logix[@systemName=\'IX:GEN:TRAINLOC:\']')
   if not logixnode:
+    print("No logix node - skipping rendering")
+    return
     raise Exception("cannot find logix node for trainloc")
   conditionals = logixnode.findall('logixConditional')
   for e in conditionals: logixnode.remove(e)
