@@ -81,6 +81,62 @@ function addTurnoutBinding(event_closed, event_thrown, activate_id, xcen, ycen, 
   el.addEventListener(clickeventname, fn_click, false);
   el.addEventListener(dblclickeventname, ignorefn, false);
 }
+function addSignalheadBinding(signalhead_id, event_red_on, event_red_off, event_green_on, event_green_off, url_dark, url_red, url_yellow, url_green) {
+  var el = document.getElementById(signalhead_id);
+  var red_state = false
+  var green_state = false
+  var fn_update = function() {
+    if (red_state) {
+      if (green_state) {
+        el.setAttribute("xlink:href", url_yellow);
+      } else {
+        el.setAttribute("xlink:href", url_red);
+      }
+    } else {
+      if (green_state) {
+        el.setAttribute("xlink:href", url_green);
+      } else {
+        el.setAttribute("xlink:href", url_dark);
+      }
+    }
+  }
+  var fn_red_on = function() {
+    red_state = true;
+    fn_update();
+  }
+  var fn_red_off = function() {
+    red_state = false;
+    fn_update();
+  }
+  var listener_red = new Module.BitEventPC(event_red_on, fn_red_on, event_red_off, fn_red_off);
+  var fn_green_on = function() {
+    green_state = true;
+    fn_update();
+  }
+  var fn_green_off = function() {
+    green_state = false;
+    fn_update();
+  }
+  var listener_green = new Module.BitEventPC(event_green_on, fn_green_on, event_green_off, fn_green_off);
+  var fn_click = function() {
+    if (red_state) {
+      if (green_state) {
+        listener_red.toggleState();
+      } else {
+        listener_green.toggleState();
+      }
+    } else {
+      if (green_state) { 
+        listener_red.toggleState();
+        listener_green.toggleState();
+      } else {
+        listener_red.toggleState();
+      }
+    }
+  }
+  el.addEventListener(clickeventname, fn_click, false);
+  //el.addEventListener(dblclickeventname, ignorefn, false);
+}
 </script>
 
 <script type="text/javascript" id="jsbindings"/>
@@ -176,6 +232,12 @@ class Turnout:
     self.event_on = JmriToEvent(m.group(1))
     self.event_off = JmriToEvent(m.group(2))
 
+class DblSignalHead:
+  def __init__(self, system_name, user_name, red_turnout, green_turnout):
+    self.system_name = system_name
+    self.user_name = user_name
+    self.red_turnout = red_turnout
+    self.green_turnout = green_turnout
 
 def FindOrInsert(element, tag):
   """Find the first child element with a given tag, or if not found, creates one. Returns the (old or new) tag."""
@@ -481,6 +543,9 @@ sensor_by_user_name = {}
 all_turnouts = []
 turnout_by_user_name = {}
 
+all_signalheads = []
+signalhead_by_name = {}
+
 #all_turnouts = []
 #all_locations = []
 #all_trains = []
@@ -525,6 +590,24 @@ def ParseAllBlocks(tree):
     layoutblocks_by_name[system_name] = entry
     layoutblocks_by_name[user_name] = entry
   print(len(all_layoutblocks), "layoutblocks found")
+
+def ParseAllSignals(tree):
+  """Reads all the signalhead objects from the xml tree passed in, and fills out the global list all_signalheads."""
+  root = tree.getroot()
+  for entry in root.findall('signalheads/signalhead'):
+    system_name = entry.get('systemName')
+    user_name = entry.get('userName')
+    signalclass = entry.attrib['class']
+    obj = None
+    if signalclass == "jmri.implementation.configurexml.DoubleTurnoutSignalHeadXml":
+      red_turnout = entry.find("./turnoutname[@defines='red']").text
+      green_turnout = entry.find("./turnoutname[@defines='green']").text
+      obj = DblSignalHead(system_name, user_name, red_turnout, green_turnout)
+    if obj is not None:
+      all_signalheads.append(obj)
+      signalhead_by_name[system_name] = obj
+      signalhead_by_name[user_name] = obj
+  print(len(all_signalheads), "signalheads found")
 
 def ReadVariableFile():
   """Reads the file jmri-out.xml, parses it as an xml element tree and returns the tree root Element."""
@@ -1028,6 +1111,57 @@ def AddSensorIcon(svg_root, jmri_icon):
       url_on=ResourceToUrl(jmri_icon.find('./active').attrib['url']),
       url_off=ResourceToUrl(jmri_icon.find('./inactive').attrib['url'])))
 
+signalhead_binding_template = string.Template('addSignalheadBinding("${id}", "${event_red_on}", "${event_red_off}", "${event_green_on}", "${event_green_off}", "${dark_icon}", "${red_icon}", "${yellow_icon}", "${green_icon}");');
+
+def AddSignalheadIcon(svg_root, jmri_icon):
+  img = ET.SubElement(svg_root, 'image')
+  img.tail = '\n'
+  ix = jmri_icon.attrib['x']
+  iy = jmri_icon.attrib['y']
+  img.set('x', ix)
+  img.set('y', iy)
+  iw = 16
+  ih = 12
+  img.set('width', str(iw))  # TODO: figure out proper W and H
+  img.set('height', str(ih))
+  dark_icon = jmri_icon.find('./icons/dark').attrib['url']
+  red_icon = jmri_icon.find('./icons/red').attrib['url']
+  yellow_icon = jmri_icon.find('./icons/yellow').attrib['url']
+  green_icon = jmri_icon.find('./icons/green').attrib['url']
+  rotations = {}
+  for entry in jmri_icon.findall('.//rotation'):
+    rotations[entry.text] = rotations.get(entry.text, 0) + 1
+  if len(rotations) > 1:
+    raise Exception("Ambiguous rotation (%s) for signal head %s" % (str(rotations), str(jmri_icon)))
+  if len(rotations) == 1:
+    rot, count = rotations.popitem()
+    midx = float(ix) + (iw / 2)
+    midy = float(iy) + (ih / 2)
+    if rot == "1":
+      img.set('transform', "rotate(270 %d %d)" % (midx, midy))
+    if rot == "2":
+      img.set('transform', "rotate(180 %d %d)" % (midx, midy))
+    if rot == "3":
+      img.set('transform', "rotate(90 %d %d)" % (midx, midy))
+  img.set('xlink:href', ResourceToUrl(dark_icon))
+  ident = GetSvgId()
+  img.set('id', ident)
+  signalhead_name = jmri_icon.attrib['signalhead']
+  if signalhead_name not in signalhead_by_name:
+    raise Exception('Panel is referncing a non-existing signalhead "%s"' % signalhead_name)
+  signalhead_obj = signalhead_by_name[signalhead_name]
+  turnout_red = turnout_by_user_name[signalhead_obj.red_turnout]
+  turnout_green = turnout_by_user_name[signalhead_obj.green_turnout]
+  AddJsBinding(signalhead_binding_template.substitute(
+    id=ident,
+    event_red_on=turnout_red.event_on, event_red_off=turnout_red.event_off,
+    event_green_on=turnout_green.event_on, event_green_off=turnout_green.event_off,
+    dark_icon=ResourceToUrl(dark_icon),
+    red_icon=ResourceToUrl(red_icon),
+    yellow_icon=ResourceToUrl(yellow_icon),
+    green_icon=ResourceToUrl(green_icon)))
+
+
 track_occupancy_binding_template = string.Template('addTrackBinding("${id}", "${event_on}", "${color_on}", "${event_off}", "${color_off}");');
 
 def AddTrackSegment(svg_root, jmri_segment, points, panelattrs):
@@ -1201,6 +1335,8 @@ def ProcessPanel(panel_root, output_html):
       AddTrackSegment(svg, entry, points, panel_root.attrib)
     elif entry.tag == 'layoutturnout':
       AddTurnout(svg, entry, points, panel_root.attrib, track_is_mainline)
+    elif entry.tag == 'signalheadicon':
+      AddSignalheadIcon(svg, entry)
     else:
       if entry.tag not in unknown_count: unknown_count[entry.tag] = 0
       unknown_count[entry.tag] += 1
@@ -1219,6 +1355,7 @@ def main():
   ParseAllSensors(xml_tree)
   ParseAllTurnouts(xml_tree)
   ParseAllBlocks(xml_tree)
+  ParseAllSignals(xml_tree)
 
   html_root = ET.fromstring(webpage_template)
   html_tree = ET.ElementTree(html_root)
