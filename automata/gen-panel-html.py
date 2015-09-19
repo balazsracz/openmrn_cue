@@ -22,6 +22,10 @@ webpage_template = """
 <div id="panel"/>
 
 <script type="text/javascript" id="jshelpers">
+//var clickeventname = "DOMActivate"
+var clickeventname = "click"
+var dblclickeventname = "dlbclick"
+var ignorefn = function() {}
 function addSensorBinding(sensor_id, event_on, url_on, event_off, url_off) {
   var el = document.getElementById(sensor_id);
   var fn_on = function() {
@@ -32,9 +36,11 @@ function addSensorBinding(sensor_id, event_on, url_on, event_off, url_off) {
   }
   var listener = new Module.BitEventPC(event_on, fn_on, event_off, fn_off);
   var fn_click = function() {
+    console.log('sensor click ' + event_on);
     listener.toggleState();
   }
-  el.addEventListener("DOMActivate", fn_click, false);
+  el.addEventListener(clickeventname, fn_click, false);
+  el.addEventListener(dblclickeventname, ignorefn, false);
 }
 function addTrackBinding(track_id, event_on, color_on, event_off, color_off) {
   var el = document.getElementById(track_id);
@@ -51,7 +57,7 @@ function addTrackBinding(track_id, event_on, color_on, event_off, color_off) {
   }
   var listener = new Module.BitEventPC(event_on, fn_on, event_off, fn_off);
 }
-function addTurnoutBinding(event_closed, event_thrown, xcen, ycen, closed_id, x1, y1, thrown_id, x2, y2) {
+function addTurnoutBinding(event_closed, event_thrown, activate_id, xcen, ycen, closed_id, x1, y1, thrown_id, x2, y2) {
   var closed = document.getElementById(closed_id);
   var thrown = document.getElementById(thrown_id);
   var fn_closed = function() {
@@ -67,6 +73,13 @@ function addTurnoutBinding(event_closed, event_thrown, xcen, ycen, closed_id, x1
     closed.setAttribute('y2', (ycen + y1) / 2);
   }
   var listener = new Module.BitEventPC(event_closed, fn_closed, event_thrown, fn_thrown);
+  var fn_click = function() {
+    console.log('turnout click ' + event_thrown);
+    listener.toggleState();
+  }
+  var el = document.getElementById(activate_id);
+  el.addEventListener(clickeventname, fn_click, false);
+  el.addEventListener(dblclickeventname, ignorefn, false);
 }
 </script>
 
@@ -101,7 +114,12 @@ def ResourceToUrl(jmri_resource):
   """Translates a JMRI resource url to a usable serving url.
   Example in: program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif
   Example out: resources/icons/smallschematics/tracksegments/circuit-occupied.gif"""
-  return jmri_resource.replace('program:', '')
+  if jmri_resource.startswith('program:'):
+    return jmri_resource.replace('program:', '')
+  if jmri_resource.startswith('scripts:'):
+    pos = jmri_resource.find('resources/')
+    return jmri_resource[pos:]
+  raise Exception('Unknown JMRI url scheme: ' + jmri_resource)
 
 svg_id = 0
 
@@ -1065,7 +1083,7 @@ def AddTrackSegment(svg_root, jmri_segment, points, panelattrs):
       event_on=sensor_obj.event_on, event_off=sensor_obj.event_off,
       color_on=occcolor, color_off=defcolor))
 
-turnout_binding_template = string.Template('addTurnoutBinding("${event_closed}", "${event_thrown}", ${xcen}, ${ycen}, "${closed_id}", ${x1}, ${y1}, "${thrown_id}", ${x2}, ${y2});');
+turnout_binding_template = string.Template('addTurnoutBinding("${event_closed}", "${event_thrown}", "${activate_id}", ${xcen}, ${ycen}, "${closed_id}", ${x1}, ${y1}, "${thrown_id}", ${x2}, ${y2});');
 
 def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
   ttype = jmri_turnout.attrib['type']
@@ -1106,6 +1124,18 @@ def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
   div_id = GetSvgId()
   divline.set('id', div_id)
 
+  buttons_el = svg_root #.find("./g[@id='turnout_buttons']")
+  active_g = ET.SubElement(buttons_el, 'g', opacity="0.0")
+  circle = ET.SubElement(active_g, 'circle')
+  circle.set('cx', pcen.x)
+  circle.set('cy', pcen.y)
+  lenb = math.sqrt(math.fabs(float(pcen.x)-float(pb.x)) ** 2 + math.fabs(float(pcen.y)-float(pb.y)) ** 2)
+  lenc = math.sqrt(math.fabs(float(pcen.x)-float(pc.x)) ** 2 + math.fabs(float(pcen.y)-float(pc.y)) ** 2)
+  circle.set('r', '%.1f' % ((lenb + lenc) / 2))
+  circle.set('style', 'fill:white;stroke:black')
+  activate_id = GetSvgId()
+  active_g.set('id', activate_id)
+
   turnout_name = jmri_turnout.get('turnoutname')
   if turnout_name:
     event_on = turnout_by_user_name[turnout_name].event_on
@@ -1113,6 +1143,7 @@ def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
     AddJsBinding(turnout_binding_template.substitute(
         event_closed=event_off,
         event_thrown=event_on,
+        activate_id=activate_id,
         xcen=pcen.x,
         ycen=pcen.y,
         closed_id=closed_id,
@@ -1129,6 +1160,7 @@ def ProcessPanel(panel_root, output_html):
   svg = ET.SubElement(panel_div, 'svg')
   svg.set('width', panel_root.attrib['windowwidth'])
   svg.set('height', panel_root.attrib['windowheight'])
+  ET.SubElement(svg, 'g', id="turnout_buttons")
   unknown_count = {}
   points = {}
   track_is_mainline = {}
