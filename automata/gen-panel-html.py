@@ -19,7 +19,10 @@ webpage_template = """
 
 <script type="text/javascript" src="js_client.js"></script>
 
+<div style="text:grey">See the <a href="about.html" target="abt">about</a> page for information and copyright notes.</div>
+
 <div id="panel"/>
+
 
 <script type="text/javascript" id="jshelpers">
 //var clickeventname = "DOMActivate"

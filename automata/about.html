@@ -4,13 +4,13 @@
 
 <h2>About</h2>
 
-This page demonstrates a native OpenLCB control panel running in a HTML5 web
+This page demonstrates a native OpenLCB control panel running in an HTML5 web
 browser. The panel was drawn in JMRI and then automatically converted using a
-program to a HTML page that you see. The program understands many of the
+program to the HTML page that you see. The program understands many of the
 concepts in the XML file written by JMRI and represents the same concept using
 a native OpenLCB program running right inside your browser. There is no need
 for a running JMRI machine in order to operate this page -- it can run in your
-web browser, on your smart phone or on a tablet and control the layout
+web browser, on your smart phone or tablet and control the layout
 directly. <br/>
 
 <h2>How does it work?</h2>
@@ -37,8 +37,26 @@ signaling logic is exactly the same as the one running inside the real layout
 (although in the real layout it is running in a physical node, mounted below
 the benchwork).<br/>
 
-Of course if you connected the real layout using a CAN-USB adapter, then all
-the turnout throws, occupancy sensors etc would be operating as usual.
+If you were to connect the real layout using a CAN-USB adapter, then all the
+turnout throws, occupancy sensors etc would be operating as usual. <br/>
+
+Another important difference is that while normally you would use your home
+wifi to connect to your layout, in this demo the layout access point runs on my
+server and you connect over the Internet.<br/>
+
+<h2>Connecting JMRI</h2>
+
+<p>If you wish, you can connect JMRI to your home OpenLCB layout with a CAN-USB adapter. To connect to the virtual layout, you have to set up JMRI to connect via the Internet to my layout access server. Use the following settings in the JMRI Preferences panel:</p>
+<ul>
+<li> System manufacturer: OpenLCB
+<li> System Connection: CAN via GridConnect network interface
+<li> IP Address/Host name: 28k.ch
+<li> TCP/UDP port: 50004
+</ul>
+
+<p>Then you can download the <a href="panel.xml" download>panel file</a> and load it into JMRI. The panel will receive live updates from the layout.</p>
+
+<p><b>Note:</b> due to a deficiency in JMRI signal head implementation, the signals on the JMRI panel will not update as the hardware signaling logic changes the state of the physical signals. JMRI is just not prepared for having any other signaling logic than its own.</p>
 
 <h2>Copyright note and credits</h2>
 
@@ -49,9 +67,9 @@ presented here:
 <ul>
 <li> The LCC demonstration layout is owned by the NMRA, it's design and realization (c) by Stephen Priest.
 <li> The signaling logic (c) Balazs Racz.
-<li> Artwork presented on this page is (c) the JMRI project and its authors. <a href="http://jmri.sourceforge.net/">jmri.sourceforge.net</a>
+<li> Artwork presented on this page (c) the JMRI project and its authors. <a href="http://jmri.sourceforge.net/">jmri.sourceforge.net</a>
 <li> The drawing of the layout panel (c) Balazs Racz, using the JMRI Layout Editor software.
-<li> The OpenLCB program code is (c) the OpenMRN project and its authors. <a href="https://github.com/bakerstu/openmrn">github.com/bakerstu/openmrn</a>
+<li> The OpenLCB program code (c) the OpenMRN project and its authors. <a href="https://github.com/bakerstu/openmrn">github.com/bakerstu/openmrn</a>
 <li> Portions of the runtime (c) the emscripten project. <a href="https://github.com/kripken/emscripten">github.com/kripken/emscripten</a>
 <li> The server-side code uses node.js, and its modules websocket and ecstatic. <a href="https://nodejs.org/en/">nodejs.org</a>
 </ul>
