@@ -473,7 +473,7 @@ def CreateTurnouts():
     if m:
       systemname = 'MT' + sensor.system_name[2:]
       username = sensor.user_name
-      sensorname = None
+      sensorname = sensor.user_name
       all_turnouts.append(Turnout(systemname, username, sensorname))
     m = re.match('sig_(.*)', sensor.user_name)
     if m:

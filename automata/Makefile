@@ -3,13 +3,13 @@ CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -Wall -isystem /opt/gmock/default/
 OBJS=system.o control-logic.o registry.o
 
 AUTS = rr-crossing.cpp logic-demo.cpp 
-OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout
 BINS = $(AUTS:.cpp=)
 
 DEFAULT_AUT = bracz-layout3h-logic  # lcc-layout-logic
 TARGET_NODE = 0x050101011432 # host.tiva
 
-all: lib test-aut bracz-layout3h-logic bin lcc-layout-logic
+all: lib test-aut bracz-layout3h-logic bin lcc-layout-logic lcc-layout-logic-soft
 
 -include *.d
 
@@ -44,6 +44,9 @@ bracz-layout3h-logic: $(OBJS) bracz-layout3h-logic.o # control-logic.hxx
 
 lcc-layout-logic: $(OBJS) lcc-layout-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ lcc-layout-logic.o $(OBJS) 
+
+lcc-layout-logic-soft: $(OBJS) lcc-layout-logic-soft.o # control-logic.hxx
+	$(CXX) $(CXXFLAGS) -o $@ lcc-layout-logic-soft.o $(OBJS) 
 
 convention-logic: convention-logic.o $(OBJS)  # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ $+

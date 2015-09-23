@@ -1,0 +1,59 @@
+<html>
+<head><title>OpenLCB panel page -- About</title>
+</head><body>
+
+<h2>About</h2>
+
+This page demonstrates a native OpenLCB control panel running in a HTML5 web
+browser. The panel was drawn in JMRI and then automatically converted using a
+program to a HTML page that you see. The program understands many of the
+concepts in the XML file written by JMRI and represents the same concept using
+a native OpenLCB program running right inside your browser. There is no need
+for a running JMRI machine in order to operate this page -- it can run in your
+web browser, on your smart phone or on a tablet and control the layout
+directly. <br/>
+
+<h2>How does it work?</h2>
+
+There is an OpenLCB bus, connected to the layout. On this bus there is a node
+that acts as a gateway. The gateway is connected to Ethernet or wifi, and acts
+as a webserver, serving the panel.html and the included javascript code that
+you are using. This gateway also contains a websocket server. A Raspberry Pi or
+a Beaglebone Black is perfectly capable of performing this gateway
+function.<br/>
+
+When you load the panel.html page, it contains the graphic elements, a
+reference to the OpenLCB code, and a number of bindings between the two. The
+OpenLCB code is compiled into JavaScript, connects using the websockets
+protocol to the gateway and participates in the OpenLCB bus as a fully
+functional node. </br>
+
+<h2>Modifications for this demo</h2>
+
+This demo is completely virtual. The OpenLCB bus is only represented as a
+TCP/IP hub running as a computer program. There is another node running as a
+computer program connected to it, which runs the signaling logic. This
+signaling logic is exactly the same as the one running inside the real layout
+(although in the real layout it is running in a physical node, mounted below
+the benchwork).<br/>
+
+Of course if you connected the real layout using a CAN-USB adapter, then all
+the turnout throws, occupancy sensors etc would be operating as usual.
+
+<h2>Copyright note and credits</h2>
+
+Thanks, credits and copyright are due to a large number of authors and
+organizations in developing the tools, tehcnologies and material that is
+presented here:
+
+<ul>
+<li> The LCC demonstration layout is owned by the NMRA, it's design and realization (c) by Stephen Priest.
+<li> The signaling logic (c) Balazs Racz.
+<li> Artwork presented on this page is (c) the JMRI project and its authors. <a href="http://jmri.sourceforge.net/">jmri.sourceforge.net</a>
+<li> The drawing of the layout panel (c) Balazs Racz, using the JMRI Layout Editor software.
+<li> The OpenLCB program code is (c) the OpenMRN project and its authors. <a href="https://github.com/bakerstu/openmrn">github.com/bakerstu/openmrn</a>
+<li> Portions of the runtime (c) the emscripten project. <a href="https://github.com/kripken/emscripten">github.com/kripken/emscripten</a>
+<li> The server-side code uses node.js, and its modules websocket and ecstatic. <a href="https://nodejs.org/en/">nodejs.org</a>
+</ul>
+
+</body></html>
