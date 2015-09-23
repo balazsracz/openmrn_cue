@@ -73,7 +73,7 @@ class TrackPowerOnOffBit : public nmranet::BitEventInterface {
   TrackPowerOnOffBit(uint64_t event_on, uint64_t event_off, dcc::PacketFlowInterface* track)
       : BitEventInterface(event_on, event_off), track_(track), state_(false) {}
 
-  virtual bool GetCurrentState() { return state_; }
+  virtual nmranet::EventState GetCurrentState() { return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID; }
   virtual void SetState(bool new_value) {
     auto* b = track_->alloc();
     b->data()->dlc = 0;

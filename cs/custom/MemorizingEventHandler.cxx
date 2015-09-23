@@ -70,7 +70,7 @@ void MemorizingHandlerManager::HandleConsumerIdentified(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
-  if (!is_mine(event->event) || event->state != VALID) return;
+  if (!is_mine(event->event) || event->state != EventState::VALID) return;
   UpdateValidEvent(event->event);
 }
 
@@ -78,7 +78,7 @@ void MemorizingHandlerManager::HandleProducerIdentified(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
-  if (!is_mine(event->event) || event->state != VALID) return;
+  if (!is_mine(event->event) || event->state != EventState::VALID) return;
   UpdateValidEvent(event->event);
 }
 
