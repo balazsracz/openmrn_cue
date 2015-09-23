@@ -1290,10 +1290,18 @@ def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
         x2=pc.x,
         y2=pc.y))
 
+def AddLabel(svg_root, jmri_label):
+  text = ET.SubElement(svg_root, 'text')
+  text.tail = '\n'
+  text.set('x', jmri_label.attrib['x'])
+  text.set('y', '%d' % (int(jmri_label.attrib['y']) + 12))
+  text.set('style', 'fill:#%02x%02x%02x' % (int(jmri_label.attrib['red']),int(jmri_label.attrib['green']),int(jmri_label.attrib['blue'])))
+  text.text = jmri_label.attrib['text']
+
 def ProcessPanel(panel_root, output_html):
   parent_div = output_html.find('.//div[@id="panel"]')
   panel_div = ET.SubElement(parent_div, 'div')
-  parent_div.text = panel_root.attrib['name']
+  parent_div.text = 'Panel' # panel_root.attrib['name']
   svg = ET.SubElement(panel_div, 'svg')
   svg.set('width', panel_root.attrib['windowwidth'])
   svg.set('height', panel_root.attrib['windowheight'])
@@ -1340,6 +1348,8 @@ def ProcessPanel(panel_root, output_html):
       AddTurnout(svg, entry, points, panel_root.attrib, track_is_mainline)
     elif entry.tag == 'signalheadicon':
       AddSignalheadIcon(svg, entry)
+    elif entry.tag == 'positionablelabel':
+      AddLabel(svg, entry)
     else:
       if entry.tag not in unknown_count: unknown_count[entry.tag] = 0
       unknown_count[entry.tag] += 1
