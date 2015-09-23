@@ -26,3 +26,5 @@ OBJS += $(AUTOMATA).o
 $(EXECUTABLE)$(EXTENTION): $(AUTOMATA).o
 
 all: $(AUTOMATA).cout
+
+LDFLAGS+= -static
