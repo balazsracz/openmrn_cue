@@ -25,6 +25,8 @@ StateRef StUser2(11);
 #define OUTPUT_BASE 0x0501010118010100
 #define INPUT_BASE 0x0501010118010000
 
+#define V_BASE 0x0501010118010200
+
 EventBasedVariable block_main1(&brd, "main1", INPUT_BASE | 0x00,
                                INPUT_BASE | 01, 0, OFS_IOA, 0);
 EventBasedVariable block_main2(&brd, "main2", INPUT_BASE | 0x1E,
@@ -156,6 +158,29 @@ EventBasedVariable signal_main4_bot_red(&brd, "sig_main4_bot_red",
 EventBasedVariable signal_main4_bot_green(&brd, "sig_main4_bot_green",
                                           OUTPUT_BASE | 0x46,
                                           OUTPUT_BASE | 0x47, 1, OFS_IOB, 5);
+
+EventBasedVariable req_cw(&brd, "request_cw", V_BASE | 0, V_BASE | 1, 2,
+                          OFS_IOA, 0);
+
+EventBasedVariable go_cw(&brd, "go_cw", V_BASE | 3, V_BASE | 2, 2, OFS_IOA, 1);
+
+EventBasedVariable req_ccw(&brd, "request_ccw", V_BASE | 4, V_BASE | 4 | 1, 2,
+                           OFS_IOA, 2);
+
+EventBasedVariable go_ccw(&brd, "go_ccw", V_BASE | 7, V_BASE | 4 | 2, 2,
+                          OFS_IOA, 3);
+
+EventBasedVariable req_stop(&brd, "request_stop", V_BASE | 8, V_BASE | 8 | 1, 2,
+                            OFS_IOA, 4);
+
+EventBasedVariable go_stop(&brd, "go_stop", V_BASE | 11, V_BASE | 8 | 2, 2,
+                           OFS_IOA, 5);
+
+EventBasedVariable req_off(&brd, "request_off", V_BASE | 12, V_BASE | 12 | 1, 2,
+                           OFS_IOA, 6);
+
+EventBasedVariable go_off(&brd, "go_off", V_BASE | 15, V_BASE | 12 | 2, 2,
+                          OFS_IOA, 7);
 
 #define SW_EVENT_BASE 0x05010101143F0000ULL
 
@@ -498,25 +523,23 @@ DefAut(sig_4, brd, {
 DefAut(second_reset_aut, brd, {
   Def().IfReg1(ImportVariable(reset_sw)).ActState(StInit);
 
-  for (auto* var : {&block_main1,   &block_main2, &block_main3,
-                    &block_main4,   &block_main5, &block_siding1,
-                    &block_siding2, &block_stub1, &block_stub2}) {
+  for (auto* var :
+       {&block_main1, &block_main2, &block_main3, &block_main4, &block_main5,
+        &block_siding1, &block_siding2, &block_stub1, &block_stub2}) {
     auto* lv = ImportVariable(var);
     Def().IfState(StInit).ActReg1(lv).ActReg0(lv);
   }
 
   ClearUsedVariables();
-  for (auto* var : {&signal_main3_red,      &signal_main3_green,
-                    &signal_main2_top_red,  &signal_main2_top_green,
-                    &signal_main2_bot_red,  &signal_main2_bot_green,
-                    &signal_main5_to_4_red, &signal_main5_to_4_green,
-                    &signal_siding1_red,    &signal_siding1_green,
-                    &signal_main5_to_1_red, &signal_main5_to_1_green,
-                    &signal_siding2_red,    &signal_siding2_green,
-                    &signal_main1_top_red,  &signal_main1_top_green,
-                    &signal_main1_bot_red,  &signal_main1_bot_green,
-                    &signal_main4_top_red,  &signal_main4_top_green,
-                    &signal_main4_bot_red,  &signal_main4_bot_green}) {
+  for (auto* var :
+       {&signal_main3_red, &signal_main3_green, &signal_main2_top_red,
+        &signal_main2_top_green, &signal_main2_bot_red, &signal_main2_bot_green,
+        &signal_main5_to_4_red, &signal_main5_to_4_green, &signal_siding1_red,
+        &signal_siding1_green, &signal_main5_to_1_red, &signal_main5_to_1_green,
+        &signal_siding2_red, &signal_siding2_green, &signal_main1_top_red,
+        &signal_main1_top_green, &signal_main1_bot_red, &signal_main1_bot_green,
+        &signal_main4_top_red, &signal_main4_top_green, &signal_main4_bot_red,
+        &signal_main4_bot_green}) {
     auto* lv = ImportVariable(var);
     Def().IfState(StInit).ActReg1(lv).ActReg0(lv);
   }
@@ -534,12 +557,15 @@ DefAut(second_reset_aut, brd, {
   StateRef Stt4a(16);
   StateRef Stt4b(17);
 
-  Def()
-      .IfState(StUser1)
-    .ActState(Stt1a);
+  Def().IfState(StUser1).ActState(Stt1a);
 
 #define SWITCHSTATE(prev_state, DirAct, turnout, nextstate) \
-  Def().IfState(prev_state).IfTimerDone().DirAct(ImportVariable(&turnout)).ActTimer(2).ActState(nextstate)
+  Def()                                                     \
+      .IfState(prev_state)                                  \
+      .IfTimerDone()                                        \
+      .DirAct(ImportVariable(&turnout))                     \
+      .ActTimer(2)                                          \
+      .ActState(nextstate)
 
   SWITCHSTATE(Stt1a, ActReg0, turnout_siding1, Stt1b);
   SWITCHSTATE(Stt1b, ActReg1, turnout_siding1, Stt2a);
@@ -556,29 +582,238 @@ unique_ptr<GlobalVariable> blink_variable(NewTempVariable(&brd));
 EventBasedVariable led(&brd, "led", 0x0502010202650012ULL,
                        0x0502010202650013ULL, 7, 31, 1);
 
-/*
 DefAut(blinkaut, brd, {
-  const int kBlinkSpeed = 3;
-  LocalVariable* rep(ImportVariable(&bd.LedGoldSw));
-  const LocalVariable& lblink_off(ImportVariable(blink_off));
+  const int kBlinkSpeed = 20;
+  LocalVariable* rep(ImportVariable(blink_variable.get()));
   Def().IfState(StInit).ActState(StUser1);
   Def()
       .IfState(StUser1)
       .IfTimerDone()
-      .IfReg0(lblink_off)
       .ActTimer(kBlinkSpeed)
       .ActState(StUser2)
       .ActReg0(rep);
   Def()
       .IfState(StUser2)
       .IfTimerDone()
-      .IfReg0(lblink_off)
       .ActTimer(kBlinkSpeed)
       .ActState(StUser1)
       .ActReg1(rep);
 
   // DefCopy(*rep, ImportVariable(&bd.LedGoldSw));
-  });*/
+});
+
+static const int kNextBlockTime = 3;
+static const int kTransitionTime = 1;
+
+unique_ptr<GlobalVariable> trans_cw(NewTempVariable(&brd));
+unique_ptr<GlobalVariable> trans_ccw(NewTempVariable(&brd));
+unique_ptr<GlobalVariable> trans_closed(NewTempVariable(&brd));
+unique_ptr<GlobalVariable> trans_thrown(NewTempVariable(&brd));
+
+void AddTransition(Automata* aut, const LocalVariable& go_var,
+                   LocalVariable* trans_var, const StateRef& StPrev,
+                   const StateRef& StNext, GlobalVariable* block_prev,
+                   GlobalVariable* block_next) {
+  Def()
+      .IfState(StPrev)
+      .IfReg1(go_var)
+      .IfReg0(*trans_var)
+      .IfTimerDone()
+      .ActReg1(trans_var)
+      .ActTimer(kTransitionTime)
+      .ActReg1(aut->ImportVariable(block_next));
+
+  Def()
+      .IfState(StPrev)
+      .IfReg1(*trans_var)
+      .IfTimerDone()
+      .ActState(StNext)
+      .ActTimer(kNextBlockTime)
+      .ActReg0(trans_var)
+      .ActReg0(aut->ImportVariable(block_prev));
+}
+
+void AddCondTransition(Automata* aut, const LocalVariable& go_var,
+                       LocalVariable* trans_var, const StateRef& StPrev,
+                       const StateRef& StNext, GlobalVariable* block_prev,
+                       GlobalVariable* block_next,
+                       const LocalVariable& condition, bool value) {
+  Def()
+      .IfState(StPrev)
+      .IfReg1(go_var)
+      .IfReg0(*trans_var)
+      .IfReg(condition, value)
+      .IfTimerDone()
+      .ActReg1(trans_var)
+      .ActTimer(kTransitionTime)
+      .ActReg1(aut->ImportVariable(block_next));
+
+  Def()
+      .IfState(StPrev)
+      .IfReg1(*trans_var)
+      .IfTimerDone()
+      .ActState(StNext)
+      .ActReg0(trans_var)
+      .ActTimer(kNextBlockTime)
+      .ActReg0(aut->ImportVariable(block_prev));
+}
+
+// link straight blocks: A to B is clockwise
+void LinkBlock(Automata* aut, const StateRef& StA, const StateRef& StB,
+               GlobalVariable* block_A, GlobalVariable* block_B) {
+  AddTransition(aut, aut->ImportVariable(go_cw),
+                aut->ImportVariable(trans_cw.get()), StA, StB, block_A,
+                block_B);
+  AddTransition(aut, aut->ImportVariable(go_ccw),
+                aut->ImportVariable(trans_ccw.get()), StB, StA, block_B,
+                block_A);
+}
+
+// link straight blocks: A to B is clockwise
+void LinkTurnout(Automata* aut, const StateRef& StP, const StateRef& StC,
+                 const StateRef& StT, GlobalVariable* block_P,
+                 GlobalVariable* block_C, GlobalVariable* block_T,
+                 const LocalVariable& go_PT, const LocalVariable& go_TP,
+                 LocalVariable* trans_TP, const LocalVariable& turnout) {
+  AddTransition(aut, go_TP, trans_TP, StT, StP, block_T, block_P);
+  AddTransition(aut, go_TP, trans_TP, StC, StP, block_C, block_P);
+
+  AddCondTransition(aut, go_PT, aut->ImportVariable(trans_closed.get()), StP,
+                    StC, block_P, block_C, turnout, false);
+  AddCondTransition(aut, go_PT, aut->ImportVariable(trans_thrown.get()), StP,
+                    StT, block_P, block_T, turnout, true);
+}
+
+DefAut(vtrainaut, brd, {
+  ResetUserState(StInit.state + 1);
+  static StateRef StGoOff(NewUserState());
+  static StateRef StOff(NewUserState());
+  static StateRef StCreate(NewUserState());
+
+  auto* lgo_cw = ImportVariable(&go_cw);
+  auto* lgo_ccw = ImportVariable(&go_ccw);
+  auto* lgo_stop = ImportVariable(&go_stop);
+  auto* lgo_off = ImportVariable(&go_off);
+
+  auto* lreq_cw = ImportVariable(&req_cw);
+  auto* lreq_ccw = ImportVariable(&req_ccw);
+  auto* lreq_stop = ImportVariable(&req_stop);
+  auto* lreq_off = ImportVariable(&req_off);
+
+  static StateRef St5(NewUserState());
+  static StateRef St4(NewUserState());
+  static StateRef St3(NewUserState());
+  static StateRef St2(NewUserState());
+  static StateRef St1(NewUserState());
+  static StateRef StS1(NewUserState());
+  static StateRef StS2(NewUserState());
+  static StateRef StI1(NewUserState());
+  static StateRef StI2(NewUserState());
+
+  Def().IfState(StInit).ActState(StGoOff);
+
+  Def().IfReg1(*lreq_off).IfReg0(*lgo_off).ActState(StGoOff);
+  Def()
+      .IfState(StGoOff)
+      .ActReg0(lreq_cw)
+      .ActReg0(lgo_cw)
+      .ActReg0(lreq_ccw)
+      .ActReg0(lgo_ccw)
+      .ActReg0(lreq_stop)
+      .ActReg0(lgo_stop)
+      .ActReg1(lreq_off)
+      .ActReg1(lgo_off);
+
+  for (auto* var :
+       {&block_main1, &block_main2, &block_main3, &block_main4, &block_main5,
+        &block_siding1, &block_siding2, &block_stub1, &block_stub2}) {
+    auto* lv = ImportVariable(var);
+    Def().IfState(StGoOff).ActReg0(lv);
+  }
+
+  Def().IfState(StGoOff).ActState(StOff);
+  Def().IfState(StOff).IfReg1(*lreq_cw).ActState(StCreate);
+  Def().IfState(StOff).IfReg1(*lreq_ccw).ActState(StCreate);
+  Def().IfState(StOff).IfReg1(*lreq_stop).ActState(StCreate);
+
+  Def().IfState(StCreate).ActReg1(ImportVariable(&block_main5)).ActReg0(lreq_off).ActReg0(lgo_off).ActState(St5);
+
+  // Radio-button behavior. If a request comes in, we remove all other shadow
+  // variables and ack the request by copying it to the shadow variable.
+
+  Def()
+      .IfReg1(*lreq_cw)
+      .IfReg0(*lgo_cw)
+      .ActReg1(lgo_cw)
+      .ActReg0(lgo_ccw)
+      .ActReg0(lgo_stop)
+      .ActReg0(lgo_off)
+      .ActReg0(lreq_ccw)
+      .ActReg0(lreq_stop)
+      .ActReg0(lreq_off)
+      .ActTimer(kTransitionTime);
+
+  Def()
+      .IfReg1(*lreq_ccw)
+      .IfReg0(*lgo_ccw)
+      .ActReg1(lgo_ccw)
+      .ActReg0(lgo_cw)
+      .ActReg0(lgo_stop)
+      .ActReg0(lgo_off)
+      .ActReg0(lreq_cw)
+      .ActReg0(lreq_stop)
+      .ActReg0(lreq_off)
+      .ActTimer(kTransitionTime);
+
+  Def()
+      .IfReg1(*lreq_stop)
+      .IfReg0(*lgo_stop)
+      .ActReg0(lgo_ccw)
+      .ActReg0(lgo_cw)
+      .ActReg1(lgo_stop)
+      .ActReg0(lgo_off)
+      .ActReg0(lreq_ccw)
+      .ActReg0(lreq_cw)
+      .ActReg0(lreq_off);
+
+  Def()
+      .IfReg1(*lreq_off)
+      .IfReg0(*lgo_off)
+      .ActReg0(lgo_ccw)
+      .ActReg0(lgo_cw)
+      .ActReg0(lgo_stop)
+      .ActReg1(lgo_off)
+      .ActReg0(lreq_ccw)
+      .ActReg0(lreq_cw)
+      .ActReg0(lreq_stop)
+      .ActState(StGoOff);
+
+  // If a shadow variable was killed, kill the request variable too.
+
+  Def().IfReg0(*lgo_cw).ActReg0(lreq_cw);
+  Def().IfReg0(*lgo_ccw).ActReg0(lreq_ccw);
+  Def().IfReg0(*lgo_stop).ActReg0(lreq_stop);
+  Def().IfReg0(*lgo_off).ActReg0(lreq_off);
+
+  LinkBlock(aut, St4, St3, &block_main4, &block_main3);
+  LinkBlock(aut, St2, St1, &block_main2, &block_main1);
+
+  LinkTurnout(aut, StS2, StI2, StS1, &block_siding2, &block_stub2,
+              &block_siding1, *lgo_cw, *lgo_ccw,
+              ImportVariable(trans_ccw.get()), ImportVariable(turnout_stub2));
+
+  LinkTurnout(aut, St1, StS2, St5, &block_main1, &block_siding2, &block_main5,
+              *lgo_cw, *lgo_ccw, ImportVariable(trans_ccw.get()),
+              ImportVariable(turnout_siding2));
+
+  LinkTurnout(aut, St4, StS1, St5, &block_main4, &block_siding1, &block_main5,
+              *lgo_ccw, *lgo_cw, ImportVariable(trans_cw.get()),
+              ImportVariable(turnout_siding1));
+
+  LinkTurnout(aut, St2, St3, StI1, &block_main2, &block_main3, &block_stub1,
+              *lgo_ccw, *lgo_cw, ImportVariable(trans_cw.get()),
+              ImportVariable(turnout_stub1));
+});
 
 int main(int argc, char** argv) {
   FILE* f = fopen("automata.bin", "wb");
