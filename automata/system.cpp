@@ -48,7 +48,7 @@ void Board::RenderPreamble(string* output) {
         v->SetId(output->size());
         v->Render(output);
     }
-    fprintf(stderr, "%d global variables, total size: %d\n", global_variables_.size(), output->size());
+    fprintf(stderr, "%zd global variables, total size: %zd\n", global_variables_.size(), output->size());
     // Terminate the global variable list.
     output->push_back(0);
 }
@@ -63,7 +63,7 @@ void Board::RenderAutomatas(string* output) {
         (*output)[a.ptr_offset] = a.offset & 0xff;
         (*output)[a.ptr_offset + 1] = (a.offset >> 8) & 0xff;
     }
-    fprintf(stderr, "%d automatas, total output size: %d\n", automatas_.size(),
+    fprintf(stderr, "%zd automatas, total output size: %zd\n", automatas_.size(),
             output->size());
 }
 

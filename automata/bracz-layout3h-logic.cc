@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <string>
 #include <fstream>
@@ -1181,7 +1182,7 @@ int main(int argc, char** argv) {
   assert(f);
   map<uint64_t, string>& m(*automata::GetEventMap());
   for (const auto& it : m) {
-    fprintf(f, "%016llx: %s\n", it.first, it.second.c_str());
+    fprintf(f, "%016" PRIx64 ": %s\n", it.first, it.second.c_str());
   }
   fclose(f);
 

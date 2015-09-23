@@ -1,3 +1,5 @@
+#include <inttypes.h>
+
 #include "registry.hxx"
 
 #include <vector>
@@ -36,7 +38,7 @@ string EventToJmriFormat(uint64_t event) {
 }
 
 void PrintAllEventVariables(FILE* f) {
-  fprintf(stderr, "%d total variables \n", registered_variables()->size());
+  fprintf(stderr, "%zd total variables \n", registered_variables()->size());
   for (const auto& v : *registered_variables()) {
     string name = v.name;
     if (name.substr(0, 7) == "logic2.") {
@@ -55,8 +57,8 @@ void PrintAllEventVariables(FILE* f) {
 
 void PrintAllEventVariablesInBashFormat(FILE* f) {
   for (const auto& v : *registered_variables()) {
-    fprintf(f, "%016llX %s=on\n", v.event_on, v.name.c_str());
-    fprintf(f, "%016llX %s=off\n", v.event_off, v.name.c_str());
+    fprintf(f, "%016" PRIX64 " %s=on\n", v.event_on, v.name.c_str());
+    fprintf(f, "%016" PRIX64 " %s=off\n", v.event_off, v.name.c_str());
   }
 }
 

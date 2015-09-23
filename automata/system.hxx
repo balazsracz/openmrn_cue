@@ -180,6 +180,10 @@ class Automata {
       return id;
     }
 
+    void ResetUserState(int next_id) {
+      next_user_state_ = next_id;
+    }
+
     void DefCopy(const LocalVariable& src, LocalVariable* dst);
     void DefNCopy(const LocalVariable& src, LocalVariable* dst);
 
