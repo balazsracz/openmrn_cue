@@ -29,7 +29,7 @@ webpage_template = """
 var clickeventname = "click"
 var dblclickeventname = "dlbclick"
 var ignorefn = function() {}
-function addSensorBinding(sensor_id, event_on, url_on, event_off, url_off) {
+function addSensorBinding(sensor_id, circle_id, event_on, url_on, event_off, url_off) {
   var el = document.getElementById(sensor_id);
   var fn_on = function() {
     el.setAttribute("xlink:href", url_on);
@@ -43,6 +43,7 @@ function addSensorBinding(sensor_id, event_on, url_on, event_off, url_off) {
     listener.toggleState();
   }
   el.addEventListener(clickeventname, fn_click, false);
+  document.getElementById(circle_id).addEventListener(clickeventname, fn_click, false);
   el.addEventListener(dblclickeventname, ignorefn, false);
 }
 function addTrackBinding(track_id, event_on, color_on, event_off, color_off) {
@@ -1091,7 +1092,7 @@ def RenderPanelLocationTable(output_tree_root, index):
     y += 40
 
 
-sensor_binding_template = string.Template('addSensorBinding("${id}", "${event_on}", "${url_on}", "${event_off}", "${url_off}");');
+sensor_binding_template = string.Template('addSensorBinding("${id}", "${circle_ident}", "${event_on}", "${url_on}", "${event_off}", "${url_off}");');
 
 def AddSensorIcon(svg_root, jmri_icon):
   img = ET.SubElement(svg_root, 'image')
@@ -1108,8 +1109,19 @@ def AddSensorIcon(svg_root, jmri_icon):
   if sensor_name not in sensor_by_user_name:
     raise Exception('Panel is referncing a non-existing sensor "%s"' % sensor_name)
   sensor_obj = sensor_by_user_name[sensor_name]
+
+  buttons_el = svg_root.find("./g[@id='turnout_buttons']")
+  active_g = ET.SubElement(buttons_el, 'g', opacity="0.0")
+  circle = ET.SubElement(active_g, 'circle')
+  circle.set('cx', '%.1f' % (float(img.attrib['x']) + float(img.attrib['width']) / 2))
+  circle.set('cy', '%.1f' % (float(img.attrib['y']) + float(img.attrib['height']) / 2))
+  circle.set('r', "22")
+  c_ident = GetSvgId()
+  circle.set('id', c_ident)
+
   AddJsBinding(sensor_binding_template.substitute(
       id=ident,
+      circle_ident=c_ident,
       event_on=sensor_obj.event_on, event_off=sensor_obj.event_off,
       url_on=ResourceToUrl(jmri_icon.find('./active').attrib['url']),
       url_off=ResourceToUrl(jmri_icon.find('./inactive').attrib['url'])))
