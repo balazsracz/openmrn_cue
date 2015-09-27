@@ -541,6 +541,41 @@ class TrainLocLogixConditional:
                          + str(int(coord.center[0]))+ ", "
                          + str(int(coord.center[1])) + ", HORIZONTAL)")
 
+class VoronoiCollection:
+  class Point:
+    pass
+
+  def __init__(self):
+    self.points = []
+  
+  def add(self, x, y):
+    """Takes a coordinate for adding to the touchable entities list.  @return an
+    SVG ID to bind the OnClick entry upon.
+
+    """
+    entry = self.Point()
+    entry.x = x
+    entry.y = y
+    entry.id = GetSvgId()
+    self.points.append(entry)
+    return entry.id
+
+  def render(self, svg_group):
+    """Renders all entries as a voronoi-diagram into the SVG tree.
+
+    @param svg_group is an element under which the cells are going to be
+    rendered.
+
+    """
+    for entry in self.points:
+      active_g = ET.SubElement(svg_group, 'g', opacity="0.0")
+      circle = ET.SubElement(active_g, 'circle')
+      circle.set('cx', '%.1f' % (entry.x))
+      circle.set('cy', '%.1f' % (entry.y))
+      circle.set('r', "30")
+      c_ident = entry.id
+      circle.set('id', c_ident)
+
 all_sensors = []
 sensor_by_user_name = {}
 
@@ -549,6 +584,8 @@ turnout_by_user_name = {}
 
 all_signalheads = []
 signalhead_by_name = {}
+
+all_touchpoints = VoronoiCollection()
 
 #all_turnouts = []
 #all_locations = []
@@ -1110,15 +1147,10 @@ def AddSensorIcon(svg_root, jmri_icon):
     raise Exception('Panel is referncing a non-existing sensor "%s"' % sensor_name)
   sensor_obj = sensor_by_user_name[sensor_name]
 
-  buttons_el = svg_root.find("./g[@id='turnout_buttons']")
-  active_g = ET.SubElement(buttons_el, 'g', opacity="0.0")
-  circle = ET.SubElement(active_g, 'circle')
-  circle.set('cx', '%.1f' % (float(img.attrib['x']) + float(img.attrib['width']) / 2))
-  circle.set('cy', '%.1f' % (float(img.attrib['y']) + float(img.attrib['height']) / 2))
-  circle.set('r', "22")
-  c_ident = GetSvgId()
-  circle.set('id', c_ident)
-
+  c_ident = all_touchpoints.add(
+    float(img.attrib['x']) + float(img.attrib['width']) / 2,
+    float(img.attrib['y']) + float(img.attrib['height']) / 2)
+                                
   AddJsBinding(sensor_binding_template.substitute(
       id=ident,
       circle_ident=c_ident,
@@ -1369,6 +1401,8 @@ def ProcessPanel(panel_root, output_html):
   for tag, count in unknown_count.items():
     print('Found %d unknown tags of %s' % (count, tag))
 
+  touch_el = svg.find("./g[@id='turnout_buttons']")
+  all_touchpoints.render(touch_el)
 
 def main():
   if len(sys.argv) < 2:
