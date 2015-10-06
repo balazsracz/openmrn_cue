@@ -39,6 +39,12 @@
 #include "driverlib/rom_map.h"
 #include "driverlib/timer.h"
 
+struct DacSettings {
+  uint32_t nominator;
+  uint32_t denominator;
+  bool divide;
+};
+
 template<class HW> class TivaDAC {
  public:
   TivaDAC() {
@@ -65,6 +71,11 @@ template<class HW> class TivaDAC {
 
   static void set_div(bool do_div) {
     HW::DIV_Pin::set(do_div);
+  }
+
+  static void set(const DacSettings& s) {
+    set_div(s.divide);
+    set_pwm(s.nominator, s.denominator);
   }
 };
 
