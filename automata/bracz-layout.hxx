@@ -211,37 +211,37 @@ struct PandaControlBoard {
             name_ + "L0",
             BRACZ_LAYOUT | 0x2030,
             BRACZ_LAYOUT | 0x2031,
-            7, 31, 4),
+            7, 29, 4),
         l1(
             &brd,
             name_ + "L1",
             BRACZ_LAYOUT | 0x2032,
             BRACZ_LAYOUT | 0x2033,
-            7, 31, 5),
+            7, 29, 5),
         l2(
             &brd,
             name_ + "L2",
             BRACZ_LAYOUT | 0x2034,
             BRACZ_LAYOUT | 0x2035,
-            7, 31, 6),
+            7, 29, 6),
         l3(
             &brd,
             name_ + "L3",
             BRACZ_LAYOUT | 0x2036,
             BRACZ_LAYOUT | 0x2037,
-            7, 31, 7),
+            7, 29, 7),
         l4(
             &brd,
             name_ + "L4",
             BRACZ_LAYOUT | 0x2038,
             BRACZ_LAYOUT | 0x2039,
-            7, 30, 0),
+            7, 29, 0),
         l5(
             &brd,
             name_ + "L5",
             BRACZ_LAYOUT | 0x203a,
             BRACZ_LAYOUT | 0x203b,
-            7, 30, 1)
+            7, 29, 1)
   {}
   string name_;
   EventBasedVariable l0, l1, l2, l3, l4, l5;
@@ -254,7 +254,7 @@ struct LPC11C {
             "LPC11C.L0",
             BRACZ_LAYOUT | 0x2020,
             BRACZ_LAYOUT | 0x2021,
-            7, 30, 2)
+            7, 29, 2)
   {}
 
   EventBasedVariable l0;
