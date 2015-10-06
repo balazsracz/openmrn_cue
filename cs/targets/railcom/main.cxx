@@ -63,7 +63,7 @@ extern const char *const nmranet::SNIP_DYNAMIC_FILENAME =
     nmranet::CONFIG_FILENAME;
 extern const size_t nmranet::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
-static_assert(nmranet::CONFIG_FILE_SIZE <= 256, "Need to adjust eeprom size");
+static_assert(nmranet::CONFIG_FILE_SIZE <= 512, "Need to adjust eeprom size");
 
 typedef BLINKER_Pin LED_RED_Pin;
 
