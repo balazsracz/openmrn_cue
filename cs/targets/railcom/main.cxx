@@ -98,47 +98,156 @@ nmranet::RefreshLoop loop(stack.node(),
                           {producer_sw1.polling(), producer_sw2.polling()});
 
 
-
+template <class Debouncer>
 class FeedbackBasedOccupancy : public dcc::RailcomHubPort {
  public:
+  template<typename... Args>
   FeedbackBasedOccupancy(nmranet::Node* node, uint64_t event_base,
-                         uint8_t channel, unsigned channel_count)
+                         uint8_t channel, unsigned channel_count,
+                         Args... args)
       : dcc::RailcomHubPort(node->interface()),
+        channel_(channel),
         currentValues_(0),
-        eventHandler_(node, event_base, &currentValues_, channel_count),
-        channel_(channel) {}
+        eventHandler_(node, event_base, &currentValues_, channel_count) {
+    for (unsigned i = 0; i < channel_count; ++i) {
+      debouncers_.emplace_back(args...);
+      debouncers_.back().initialize(false);
+    }
+  }
 
   Action entry() {
     if (message()->data()->channel != channel_) return release_and_exit();
-    uint32_t new_values = message()->data()->ch1Data[0];
+    newPayload_ = message()->data()->ch1Data[0];
+    nextOffset_ = 0;
     release();
-    if (new_values == currentValues_) return exit();
-    unsigned bit = 1;
-    unsigned ofs = 0;
-    uint32_t diff = new_values ^ currentValues_;
-    while (bit && ((diff & bit) == 0)) {
-      bit <<= 1;
-      ofs++;
-    }
-    eventHandler_.Set(ofs, (new_values & bit), &h_, n_.reset(this));
-    return wait_and_call(STATE(set_done));
+    return call_immediately(STATE(consume_bit));
   }
 
-  Action set_done() { return exit(); }
+  Action consume_bit() {
+    while (nextOffset_ < eventHandler_.size()) {
+      auto& debouncer = debouncers_[nextOffset_];
+      bool last_state_deb = debouncer.current_state();
+      bool last_state_network = eventHandler_.Get(nextOffset_);
+      if (last_state_network != last_state_deb) {
+        debouncer.override(last_state_network);
+      }
+      bool new_state_input = newPayload_ & (1<<nextOffset_);
+      if (debouncer.update_state(new_state_input)) {
+        // Need to produce new value to network.
+        eventHandler_.Set(nextOffset_, debouncer.current_state(), &h_, n_.reset(this));
+        return wait_and_call(STATE(step_bit));
+      }
+      nextOffset_++;
+    }
+    return exit();
+  }
+
+  Action step_bit() {
+    nextOffset_++;
+    return call_immediately(STATE(consume_bit));
+  }
 
  private:
+  std::vector<Debouncer> debouncers_;
+  uint8_t newPayload_;  //< Packed data that came with the input.
+  uint8_t nextOffset_;  //< Which index we are evaluating now.
+  uint8_t channel_;
   uint32_t currentValues_;
   nmranet::BitRangeEventPC eventHandler_;
   nmranet::WriteHelper h_;
   BarrierNotifiable n_;
-  uint8_t channel_;
 };
 
-FeedbackBasedOccupancy occupancy_report(stack.node(), (NODE_ID << 16) | 0x6000,
-                                        0xff, RailcomDefs::CHANNEL_COUNT);
+CountingDebouncer::Options debouncer_opts{12, 3};
 
-FeedbackBasedOccupancy overcurrent_report(stack.node(), (NODE_ID << 16) | 0x7000,
-                                        0xfe, RailcomDefs::CHANNEL_COUNT);
+FeedbackBasedOccupancy<CountingDebouncer> occupancy_report(
+    stack.node(), (NODE_ID << 16) | 0x6000, 0xff, RailcomDefs::CHANNEL_COUNT,
+    debouncer_opts);
+
+
+void set_output_en(unsigned port, bool enable) {
+  switch(port) {
+    case 0: return OUTPUT_EN0_Pin::set(enable);
+    case 1: return OUTPUT_EN1_Pin::set(enable);
+    case 2: return OUTPUT_EN2_Pin::set(enable);
+    case 3: return OUTPUT_EN3_Pin::set(enable);
+    case 4: return OUTPUT_EN4_Pin::set(enable);
+    case 5: return OUTPUT_EN5_Pin::set(enable);
+  }
+  DIE("Setting unknown output_en port.");
+}
+
+template <class Debouncer>
+class OvercurrentFlow : public dcc::RailcomHubPort {
+ public:
+  template<typename... Args>
+  OvercurrentFlow(nmranet::Node* node, uint64_t event_base,
+                         uint8_t channel, unsigned channel_count,
+                         Args... args)
+      : dcc::RailcomHubPort(node->interface()),
+        channel_(channel),
+        currentValues_(0),
+        eventHandler_(node, event_base, &currentValues_, channel_count) {
+    for (unsigned i = 0; i < channel_count; ++i) {
+      debouncers_.emplace_back(args...);
+      debouncers_.back().initialize(false);
+    }
+  }
+
+  Action entry() {
+    if (message()->data()->channel != channel_) return release_and_exit();
+    newPayload_ = message()->data()->ch1Data[0];
+    nextOffset_ = 0;
+    release();
+    return call_immediately(STATE(consume_bit));
+  }
+
+  Action consume_bit() {
+    while (nextOffset_ < eventHandler_.size()) {
+      auto& debouncer = debouncers_[nextOffset_];
+      bool last_state_deb = debouncer.current_state();
+      bool last_state_network = eventHandler_.Get(nextOffset_);
+      if (last_state_network != last_state_deb) {
+        debouncer.override(last_state_network);
+      }
+      bool new_state_input = newPayload_ & (1<<nextOffset_);
+      if (debouncer.update_state(new_state_input)) {
+        // Need to produce new value to network.
+        if (debouncer.current_state()) {
+          // Overcurrent detected. Turn off output port.
+          // OUTPUT_EN is inverted.
+          set_output_en(nextOffset_, true);
+        }
+        eventHandler_.Set(nextOffset_, debouncer.current_state(), &h_, n_.reset(this));
+        return wait_and_call(STATE(step_bit));
+      }
+      nextOffset_++;
+    }
+    return exit();
+  }
+
+  Action step_bit() {
+    nextOffset_++;
+    return call_immediately(STATE(consume_bit));
+  }
+
+ private:
+  std::vector<Debouncer> debouncers_;
+  uint8_t newPayload_;  //< Packed data that came with the input.
+  uint8_t nextOffset_;  //< Which index we are evaluating now.
+  uint8_t channel_;
+  uint32_t currentValues_;
+  nmranet::BitRangeEventPC eventHandler_;
+  nmranet::WriteHelper h_;
+  BarrierNotifiable n_;
+};
+
+
+CountingDebouncer::Options overcurrent_debouncer_opts{1, 1};
+
+OvercurrentFlow<CountingDebouncer> overcurrent_report(
+    stack.node(), (NODE_ID << 16) | 0x7000, 0xfe, RailcomDefs::CHANNEL_COUNT,
+    overcurrent_debouncer_opts);
 
 class RailcomBroadcastFlow : public dcc::RailcomHubPort {
  public:
@@ -279,8 +388,8 @@ uint8_t RailcomDefs::feedbackChannel_ = 0xff;
 DacSettings dac_occupancy = { 5, 50, true };  // 1.9 mV
 //DacSettings dac_occupancy = { 5, 10, true };
 
-#if 0
-DacSettings dac_overcurrent = { 1, 3, false };
+#if 1
+DacSettings dac_overcurrent = { 5, 20, false };
 #else
 DacSettings dac_overcurrent = dac_occupancy;
 #endif
