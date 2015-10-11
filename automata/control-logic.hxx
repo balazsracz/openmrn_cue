@@ -154,7 +154,7 @@ struct CoupledMagnetDef : public MagnetBase {
 
 class MagnetCommandAutomata : public virtual AutomataPlugin {
  public:
-  MagnetCommandAutomata(Board *brd, const EventBlock::Allocator &alloc);
+  MagnetCommandAutomata(Board *brd, const AllocatorPtr& parent_alloc);
 
   // Adds a magnet to this automata.
   void AddMagnet(MagnetDef *def);
@@ -167,7 +167,7 @@ class MagnetCommandAutomata : public virtual AutomataPlugin {
   }
 
  private:
-  EventBlock::Allocator alloc_;
+  AllocatorPtr alloc_;
 
   StandardPluginAutomata aut_;
 };
@@ -220,12 +220,12 @@ class OccupancyLookupInterface {
 
 class CtrlTrackInterface {
  public:
-  CtrlTrackInterface(const EventBlock::Allocator &allocator,
+  CtrlTrackInterface(AllocatorPtr allocator,
                      OccupancyLookupInterface *parent)
-      : out_try_set_route(allocator.Allocate("out_try_set_route")),
-        in_route_set_success(allocator.Allocate("in_route_set_success")),
-        in_route_set_failure(allocator.Allocate("in_route_set_failure")),
-        out_route_released(allocator.Allocate("out_route_released")),
+      : out_try_set_route(allocator->Allocate("out_try_set_route")),
+        in_route_set_success(allocator->Allocate("in_route_set_success")),
+        in_route_set_failure(allocator->Allocate("in_route_set_failure")),
+        out_route_released(allocator->Allocate("out_route_released")),
         lookup_if_(parent),
         binding_(nullptr) {}
 
@@ -270,17 +270,17 @@ class StraightTrack : public StraightTrackInterface,
                       public OccupancyLookupInterface,
                       public virtual AutomataPlugin {
  public:
-  StraightTrack(const EventBlock::Allocator &allocator)
-      : side_a_(EventBlock::Allocator(&allocator, "a", 8), this),
-        side_b_(EventBlock::Allocator(&allocator, "b", 8), this),
-        simulated_occupancy_(allocator.Allocate("simulated_occ")),
-        route_set_ab_(allocator.Allocate("route_set_ab")),
-        route_set_ba_(allocator.Allocate("route_set_ba")),
-        route_pending_ab_(allocator.Allocate("route_pending_ab")),
-        route_pending_ba_(allocator.Allocate("route_pending_ba")),
-        tmp_seen_train_in_next_(allocator.Allocate("tmp_seen_train_in_next")),
+  StraightTrack(AllocatorPtr allocator)
+      : side_a_(allocator->Allocate("a", 8), this),
+        side_b_(allocator->Allocate("b", 8), this),
+        simulated_occupancy_(allocator->Allocate("simulated_occ")),
+        route_set_ab_(allocator->Allocate("route_set_ab")),
+        route_set_ba_(allocator->Allocate("route_set_ba")),
+        route_pending_ab_(allocator->Allocate("route_pending_ab")),
+        route_pending_ba_(allocator->Allocate("route_pending_ba")),
+        tmp_seen_train_in_next_(allocator->Allocate("tmp_seen_train_in_next")),
         tmp_route_setting_in_progress_(
-            allocator.Allocate("tmp_route_setting_in_progress")) {
+            allocator->Allocate("tmp_route_setting_in_progress")) {
     AddAutomataPlugin(
         20, NewCallbackPtr(this, &StraightTrack::SimulateAllOccupancy));
   }
@@ -293,6 +293,8 @@ class StraightTrack : public StraightTrackInterface,
 
   void SimulateAllOccupancy(Automata *aut);
   void SimulateAllRoutes(Automata *aut);
+
+  static const int kAllocSize = 24;
 
  protected:
   bool Bind(CtrlTrackInterface *me, CtrlTrackInterface *opposite);
@@ -340,9 +342,9 @@ class StraightTrack : public StraightTrackInterface,
 
 class StraightTrackWithDetector : public StraightTrack {
  public:
-  StraightTrackWithDetector(const EventBlock::Allocator &allocator,
+  StraightTrackWithDetector(AllocatorPtr allocator,
                             GlobalVariable *detector)
-      : StraightTrack(allocator), detector_(detector) {
+      : StraightTrack(std::move(allocator)), detector_(detector) {
     // No occupancy simulation needed.
     RemoveAutomataPlugins(20);
     AddAutomataPlugin(
@@ -374,12 +376,14 @@ class StraightTrackWithDetector : public StraightTrack {
 
 class StraightTrackWithRawDetector : public StraightTrackWithDetector {
  public:
-  StraightTrackWithRawDetector(const EventBlock::Allocator &allocator,
+  StraightTrackWithRawDetector(AllocatorPtr allocator,
                                const GlobalVariable *raw_detector,
                                int min_occupied_time = 0)
-      : StraightTrackWithDetector(allocator, nullptr),
+      : StraightTrackWithDetector(
+            allocator->Forward(1),
+            nullptr),
         raw_detector_(raw_detector),
-        debounce_temp_var_(allocator.Allocate("tmp_debounce")) {
+        debounce_temp_var_(allocator->Allocate("tmp_debounce")) {
     detector_ = simulated_occupancy_.get();
     RemoveAutomataPlugins(20);
     AddAutomataPlugin(
@@ -397,8 +401,8 @@ class StraightTrackWithRawDetector : public StraightTrackWithDetector {
 
 class StraightTrackShort : public StraightTrack {
  public:
-  StraightTrackShort(const EventBlock::Allocator &allocator)
-      : StraightTrack(allocator) {
+  StraightTrackShort(AllocatorPtr allocator)
+      : StraightTrack(std::move(allocator)) {
     AddAutomataPlugin(30, NewCallbackPtr((StraightTrack *)this,
                                          &StraightTrack::SimulateAllRoutes));
   }
@@ -420,8 +424,8 @@ class StraightTrackShort : public StraightTrack {
 
 class StraightTrackLong : public StraightTrack {
  public:
-  StraightTrackLong(const EventBlock::Allocator &allocator)
-      : StraightTrack(allocator) {
+  StraightTrackLong(AllocatorPtr allocator)
+      : StraightTrack(std::move(allocator)) {
     AddAutomataPlugin(30,
                       NewCallbackPtr(this, &StraightTrack::SimulateAllRoutes));
   }
@@ -444,9 +448,9 @@ class StraightTrackLong : public StraightTrack {
 // shall) stop if the signal is red.
 class SignalPiece : public StraightTrackShort {
  public:
-  SignalPiece(const EventBlock::Allocator &allocator,
+  SignalPiece(AllocatorPtr allocator,
               GlobalVariable *request_green, GlobalVariable *signal)
-      : StraightTrackShort(allocator),
+      : StraightTrackShort(std::move(allocator)),
         request_green_(request_green),
         signal_(signal) {
     // We "override" the occupancy detection by just copying the occupancy
@@ -488,18 +492,18 @@ class SignalPiece : public StraightTrackShort {
 class StandardBlock : public StraightTrackInterface {
  public:
   StandardBlock(Board *brd, PhysicalSignal *physical,
-                EventBlock::Allocator *parent_alloc, const string &base_name,
+                const AllocatorPtr& parent_alloc, const string &base_name,
                 int num_to_allocate = 104)
       : alloc_(parent_alloc->Allocate(base_name, num_to_allocate, 8)),
         base_name_(base_name),
-        request_green_(alloc_.Allocate("request_green")),
-        rrequest_green_(alloc_.Allocate("rev_request_green")),
-        body_(alloc_.Allocate("body", 24, 8)),
-        body_det_(alloc_.Allocate("body_det", 24, 8),
+        request_green_(alloc_->Allocate("request_green")),
+        rrequest_green_(alloc_->Allocate("rev_request_green")),
+        body_(alloc_->Allocate("body", 24, 8)),
+        body_det_(alloc_->Allocate("body_det", 24, 8),
                   physical->sensor_raw),
-        signal_(alloc_.Allocate("signal", 24, 8),
+        signal_(alloc_->Allocate("signal", 24, 8),
                 request_green_.get(), physical->signal_raw),
-        rsignal_(alloc_.Allocate("rsignal", 24, 8),
+        rsignal_(alloc_->Allocate("rsignal", 24, 8),
                  rrequest_green_.get(), nullptr),
         physical_(physical),
         aut_body_(name() + ".body", brd, &body_),
@@ -510,7 +514,7 @@ class StandardBlock : public StraightTrackInterface {
   }
 
  protected:
-  EventBlock::Allocator alloc_;
+  AllocatorPtr alloc_;
   string base_name_;
   friend class StubBlock;
 
@@ -534,7 +538,7 @@ class StandardBlock : public StraightTrackInterface {
 
   /** Returns the full name of the block (including path). */
   const string& name() {
-    return alloc_.name();
+    return alloc_->name();
   }
 
  private:
@@ -561,11 +565,10 @@ class StandardBlock : public StraightTrackInterface {
 class StandardMiddleDetector : public StraightTrackWithRawDetector {
  public:
   StandardMiddleDetector(Board *brd, const GlobalVariable *sensor_raw,
-                         const EventBlock::Allocator &alloc)
-      : StraightTrackWithRawDetector(
-            EventBlock::Allocator(&alloc, "body_det", 24, 8), sensor_raw,
-            8 /*min_occupied_time*/),
-        aut_(alloc.name() + ".det", brd, this) {}
+                         AllocatorPtr alloc)
+      : StraightTrackWithRawDetector(alloc->Allocate("body_det", 24, 8),
+                                     sensor_raw, 8 /*min_occupied_time*/),
+        aut_(alloc->name() + ".det", brd, this) {}
 
  private:
   StandardPluginAutomata aut_;
@@ -606,26 +609,26 @@ class TurnoutBase : public TurnoutInterface,
  public:
   enum State { TURNOUT_CLOSED, TURNOUT_THROWN, TURNOUT_DONTCARE };
 
-  TurnoutBase(const EventBlock::Allocator &allocator)
-      : side_points_(EventBlock::Allocator(&allocator, "points", 8), this),
-        side_closed_(EventBlock::Allocator(&allocator, "closed", 8), this),
-        side_thrown_(EventBlock::Allocator(&allocator, "thrown", 8), this),
-        simulated_occupancy_(allocator.Allocate("simulated_occ")),
-        route_set_PC_(allocator.Allocate("route_set_PC")),
-        route_set_CP_(allocator.Allocate("route_set_CP")),
-        route_set_PT_(allocator.Allocate("route_set_PT")),
-        route_set_TP_(allocator.Allocate("route_set_TP")),
-        route_pending_PC_(allocator.Allocate("route_pending_PC")),
-        route_pending_CP_(allocator.Allocate("route_pending_CP")),
-        route_pending_PT_(allocator.Allocate("route_pending_PT")),
-        route_pending_TP_(allocator.Allocate("route_pending_TP")),
-        any_route_set_(allocator.Allocate("any_route_set")),
-        turnout_state_(allocator.Allocate("turnout_state")),
-        tmp_seen_train_in_next_(allocator.Allocate("tmp_seen_train_in_next")),
+  TurnoutBase(AllocatorPtr allocator)
+      : side_points_(allocator->Allocate("points", 8), this),
+        side_closed_(allocator->Allocate("closed", 8), this),
+        side_thrown_(allocator->Allocate("thrown", 8), this),
+        simulated_occupancy_(allocator->Allocate("simulated_occ")),
+        route_set_PC_(allocator->Allocate("route_set_PC")),
+        route_set_CP_(allocator->Allocate("route_set_CP")),
+        route_set_PT_(allocator->Allocate("route_set_PT")),
+        route_set_TP_(allocator->Allocate("route_set_TP")),
+        route_pending_PC_(allocator->Allocate("route_pending_PC")),
+        route_pending_CP_(allocator->Allocate("route_pending_CP")),
+        route_pending_PT_(allocator->Allocate("route_pending_PT")),
+        route_pending_TP_(allocator->Allocate("route_pending_TP")),
+        any_route_set_(allocator->Allocate("any_route_set")),
+        turnout_state_(allocator->Allocate("turnout_state")),
+        tmp_seen_train_in_next_(allocator->Allocate("tmp_seen_train_in_next")),
         tmp_route_setting_in_progress_(
-            allocator.Allocate("tmp_route_setting_in_progress")),
-        detector_next_(allocator.Allocate("detector_next")),
-        detector_far_(allocator.Allocate("detector_far")) {
+            allocator->Allocate("tmp_route_setting_in_progress")),
+        detector_next_(allocator->Allocate("detector_next")),
+        detector_far_(allocator->Allocate("detector_far")) {
     directions_.push_back(Direction(&side_points_, &side_closed_,
                                     route_set_PC_.get(),
                                     route_pending_PC_.get(), TURNOUT_CLOSED));
@@ -732,8 +735,8 @@ class TurnoutBase : public TurnoutInterface,
 
 class MovableTurnout : public TurnoutBase {
  public:
-  MovableTurnout(const EventBlock::Allocator &allocator, MagnetBase *def)
-      : TurnoutBase(allocator), magnet_(def) {
+  MovableTurnout(AllocatorPtr allocator, MagnetBase *def)
+      : TurnoutBase(std::move(allocator)), magnet_(def) {
     AddAutomataPlugin(110, NewCallbackPtr(this, &MovableTurnout::CopyState));
   }
 
@@ -748,8 +751,8 @@ class MovableTurnout : public TurnoutBase {
 
 class FixedTurnout : public TurnoutBase {
  public:
-  FixedTurnout(State state, const EventBlock::Allocator &allocator)
-      : TurnoutBase(allocator), state_(state) {
+  FixedTurnout(State state, AllocatorPtr allocator)
+      : TurnoutBase(std::move(allocator)), state_(state) {
     AddAutomataPlugin(9, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
 
     directions_.clear();
@@ -806,7 +809,7 @@ class DKW : private OccupancyLookupInterface,
     ROUTE_MAX = 8,
   };
 
-  DKW(const EventBlock::Allocator &allocator)
+  DKW(AllocatorPtr allocator)
       : routes_({RouteInfo(POINT_A1, POINT_B1, DKW_STRAIGHT),
                  RouteInfo(POINT_A1, POINT_B2, DKW_CURVED),
                  RouteInfo(POINT_A2, POINT_B2, DKW_STRAIGHT),
@@ -817,30 +820,30 @@ class DKW : private OccupancyLookupInterface,
                  RouteInfo(POINT_B2, POINT_A1, DKW_CURVED)}) {
     for (int i = POINT_MIN; i <= POINT_MAX; ++i) {
       points_[i].interface.reset(new CtrlTrackInterface(
-          allocator.Allocate(string("point_") + point_name(i), 8, 8), this));
+          allocator->Allocate(string("point_") + point_name(i), 8, 8), this));
     }
     for (int i = ROUTE_MIN; i <= ROUTE_MAX; ++i) {
-      routes_[i].route_set.reset(allocator.Allocate(
+      routes_[i].route_set.reset(allocator->Allocate(
           string("route_set_") + point_name(routes_[i].from) + "_" +
           point_name(routes_[i].to)));
     }
     for (int i = ROUTE_MIN; i <= ROUTE_MAX; ++i) {
-      routes_[i].route_pending.reset(allocator.Allocate(
+      routes_[i].route_pending.reset(allocator->Allocate(
           string("route_pending_") + point_name(routes_[i].from) + "_" +
           point_name(routes_[i].to)));
     }
     for (int i = POINT_MIN; i <= POINT_MAX; ++i) {
       points_[i].detector_next.reset(
-          allocator.Allocate("detector_next_" + point_name(i)));
+          allocator->Allocate("detector_next_" + point_name(i)));
       points_[i].detector_far.reset(
-          allocator.Allocate("detector_far_" + point_name(i)));
+          allocator->Allocate("detector_far_" + point_name(i)));
     }
-    any_route_set_.reset(allocator.Allocate("any_route_set"));
-    simulated_occupancy_.reset(allocator.Allocate("simulated_occ"));
-    turnout_state_.reset(allocator.Allocate("turnout_state"));
-    tmp_seen_train_in_next_.reset(allocator.Allocate("tmp_seen_train_in_next"));
+    any_route_set_.reset(allocator->Allocate("any_route_set"));
+    simulated_occupancy_.reset(allocator->Allocate("simulated_occ"));
+    turnout_state_.reset(allocator->Allocate("turnout_state"));
+    tmp_seen_train_in_next_.reset(allocator->Allocate("tmp_seen_train_in_next"));
     tmp_route_setting_in_progress_.reset(
-        allocator.Allocate("tmp_route_setting_in_progress"));
+        allocator->Allocate("tmp_route_setting_in_progress"));
 
     AddAutomataPlugin(20, NewCallbackPtr(this, &DKW::DKWOccupancy));
     AddAutomataPlugin(25, NewCallbackPtr(this, &DKW::ProxyDetectors));
@@ -951,8 +954,8 @@ protected:
 
 class FixedDKW : public DKW {
 public:
-  FixedDKW(State state, const EventBlock::Allocator &allocator)
-    : DKW(allocator), fixed_state_(state) {
+  FixedDKW(State state, AllocatorPtr allocator)
+      : DKW(std::move(allocator)), fixed_state_(state) {
     AddAutomataPlugin(9, NewCallbackPtr(this, &FixedDKW::FixDKWState));
   }
 
@@ -970,8 +973,8 @@ public:
 
 class MovableDKW : public DKW {
  public:
-  MovableDKW(const EventBlock::Allocator &allocator, MagnetBase *def)
-      : DKW(allocator), magnet_(def) {
+  MovableDKW(AllocatorPtr allocator, MagnetBase *def)
+      : DKW(std::move(allocator)), magnet_(def) {
     AddAutomataPlugin(110, NewCallbackPtr(this, &MovableDKW::CopyState));
   }
 
@@ -993,9 +996,9 @@ class MovableDKW : public DKW {
 
 class StandardMovableDKW {
  public:
-  StandardMovableDKW(Board *brd, const EventBlock::Allocator &alloc,
+  StandardMovableDKW(Board *brd, AllocatorPtr alloc,
                      MagnetBase *magnet)
-      : b(alloc, magnet), aut_(alloc.name(), brd, &b) {}
+      : b(alloc->Forward(), magnet), aut_(alloc->name(), brd, &b) {}
 
   GlobalVariable *command() { return b.magnet()->command.get(); }
   const GlobalVariable &state() { return *b.magnet()->current_state; }
@@ -1012,11 +1015,11 @@ class StubBlock {
  public:
   StubBlock(Board *brd, PhysicalSignal *physical,
             GlobalVariable *entry_sensor_raw,
-            EventBlock::Allocator *parent_alloc, const string &base_name,
+            const AllocatorPtr& parent_alloc, const string &base_name,
             int num_to_allocate = 184)
       : b_(brd, physical, parent_alloc, base_name, num_to_allocate),
-        fake_turnout_(FixedTurnout::TURNOUT_THROWN, b_.alloc_.Allocate("fake_turnout", 40, 8)),
-        entry_det_(b_.alloc_.Allocate("entry_det", 24, 8), entry_sensor_raw),
+        fake_turnout_(FixedTurnout::TURNOUT_THROWN, b_.alloc_->Allocate("fake_turnout", 40, 8)),
+        entry_det_(b_.alloc_->Allocate("entry_det", 24, 8), entry_sensor_raw),
         aut_fake_turnout_(name() + ".fake_turnout", brd, &fake_turnout_),
         aut_entry_det_(name() + ".entry_det", brd, &entry_det_) {
     BindSequence(fake_turnout_.side_thrown(),
@@ -1058,9 +1061,9 @@ class StubBlock {
 
 class StandardMovableTurnout {
  public:
-  StandardMovableTurnout(Board *brd, const EventBlock::Allocator &alloc,
+  StandardMovableTurnout(Board *brd, AllocatorPtr alloc,
                          MagnetBase *magnet)
-      : b(alloc, magnet), aut_(alloc.name(), brd, &b) {}
+      : b(alloc->Forward(), magnet), aut_(alloc->name(), brd, &b) {}
 
   GlobalVariable *command() { return b.magnet()->command.get(); }
   const GlobalVariable &state() { return *b.magnet()->current_state; }
@@ -1073,9 +1076,9 @@ class StandardMovableTurnout {
 
 class StandardFixedTurnout {
  public:
-  StandardFixedTurnout(Board *brd, const EventBlock::Allocator &alloc,
+  StandardFixedTurnout(Board *brd, AllocatorPtr alloc,
                        FixedTurnout::State state)
-      : b(state, alloc), aut_(alloc.name(), brd, &b) {}
+      : b(state, alloc->Forward()), aut_(alloc->name(), brd, &b) {}
 
   FixedTurnout b;
 
@@ -1088,12 +1091,12 @@ class StandardFixedTurnout {
 class RequestClientInterface {
  public:
   RequestClientInterface(const string &name,
-                         EventBlock::Allocator &parent_alloc)
+                         const AllocatorPtr& parent_alloc)
       : name_(name),
-        alloc_(parent_alloc.Allocate("client." + name, 3, 4)),
-        request_(alloc_.Allocate("request")),
-        granted_(alloc_.Allocate("granted")),
-        taken_(alloc_.Allocate("taken")) {}
+        alloc_(parent_alloc->Allocate("client." + name, 3, 4)),
+        request_(alloc_->Allocate("request")),
+        granted_(alloc_->Allocate("granted")),
+        taken_(alloc_->Allocate("taken")) {}
 
   // This bit will be set by the client (the train automata) if the train
   // routing is at the present location, and all other necessary conditions are
@@ -1120,7 +1123,7 @@ class RequestClientInterface {
   DISALLOW_COPY_AND_ASSIGN(RequestClientInterface);
 
   string name_;
-  EventBlock::Allocator alloc_;
+  AllocatorPtr alloc_;
   std::unique_ptr<GlobalVariable> request_;
   std::unique_ptr<GlobalVariable> granted_;
   std::unique_ptr<GlobalVariable> taken_;
@@ -1131,20 +1134,20 @@ class FlipFlopClient;
 class FlipFlopAutomata : public AutomataPlugin {
  public:
   FlipFlopAutomata(Board *brd, const string &name,
-                   EventBlock::Allocator &parent_alloc,
+                   const AllocatorPtr &parent_alloc,
                    int num_to_allocate = 16)
       : name_(name),
-        alloc_(parent_alloc.Allocate(name, num_to_allocate, 8)),
+        alloc_(parent_alloc->Allocate(name, num_to_allocate, 8)),
         aut_(name, brd, this),
         aut(&aut_),
-        steal_request_(alloc_.Allocate("steal_request")),
-        steal_granted_(alloc_.Allocate("steal_granted")) {
+        steal_request_(alloc_->Allocate("steal_request")),
+        steal_granted_(alloc_->Allocate("steal_granted")) {
     AddAutomataPlugin(100,
                       NewCallbackPtr(this, &FlipFlopAutomata::FlipFlopLogic));
   }
 
-  EventBlock::Allocator& AddClient(FlipFlopClient* client);
-  EventBlock::Allocator& alloc() {
+  const AllocatorPtr& AddClient(FlipFlopClient* client);
+  const AllocatorPtr& alloc() {
     return alloc_;
   }
 
@@ -1167,7 +1170,7 @@ class FlipFlopAutomata : public AutomataPlugin {
   void FlipFlopLogic(Automata* aut);
 
   string name_;
-  EventBlock::Allocator alloc_;
+  AllocatorPtr alloc_;
   StandardPluginAutomata aut_;
   Automata* aut;
   std::unique_ptr<GlobalVariable> steal_request_;
@@ -1182,7 +1185,7 @@ struct FlipFlopClient : public RequestClientInterface {
   FlipFlopClient(const string &name, FlipFlopAutomata *parent)
       : RequestClientInterface(name, parent->AddClient(this)),
         client_state(parent->GetNewClientState()),
-        next(parent->alloc().Allocate("next." + name)) {}
+        next(parent->alloc()->Allocate("next." + name)) {}
 
  private:
   friend class FlipFlopAutomata;
@@ -1217,17 +1220,17 @@ static constexpr StateRef StFrozen(17);
 class TrainSchedule : public virtual AutomataPlugin {
  public:
   TrainSchedule(const string &name, Board *brd, uint64_t train_node_id,
-                EventBlock::Allocator &&perm_alloc,
-                EventBlock::Allocator &&alloc,
+                AllocatorPtr perm_alloc,
+                AllocatorPtr alloc,
                 GlobalVariable* speed_var = nullptr)
       : train_node_id_(train_node_id),
-        permanent_alloc_(std::forward<EventBlock::Allocator>(perm_alloc)),
-        alloc_(std::forward<EventBlock::Allocator>(alloc)),
+        permanent_alloc_(std::move(perm_alloc)),
+        alloc_(std::move(alloc)),
         aut_(name, brd, this),
         aut(&aut_),
-        is_reversed_(permanent_alloc_.Allocate("is_reversed")),
-        last_set_reversed_(alloc_.Allocate("last_reversed")),
-        is_frozen_(permanent_alloc_.Allocate("do_not_move")),
+        is_reversed_(permanent_alloc_->Allocate("is_reversed")),
+        last_set_reversed_(alloc_->Allocate("last_reversed")),
+        is_frozen_(permanent_alloc_->Allocate("do_not_move")),
         current_block_detector_(aut_.ReserveVariable()),
         current_block_request_green_(aut_.ReserveVariable()),
         current_block_route_out_(aut_.ReserveVariable()),
@@ -1243,8 +1246,8 @@ class TrainSchedule : public virtual AutomataPlugin {
         permit_request_(aut_.ReserveVariable()),
         permit_granted_(aut_.ReserveVariable()),
         permit_taken_(aut_.ReserveVariable()),
-        magnets_ready_(alloc_.Allocate("magnets_ready")),
-        need_reverse_(alloc_.Allocate("need_reverse")),
+        magnets_ready_(alloc_->Allocate("magnets_ready")),
+        need_reverse_(alloc_->Allocate("need_reverse")),
         outgoing_route_conditions_(
             NewCallbackPtr(this, &TrainSchedule::AddCurrentOutgoingConditions)),
         speed_var_(speed_var),
@@ -1399,9 +1402,9 @@ class TrainSchedule : public virtual AutomataPlugin {
   uint64_t train_node_id_;
 
   // These bits should be used for non-reconstructible state.
-  EventBlock::Allocator permanent_alloc_;
+  AllocatorPtr permanent_alloc_;
   // These bits should be used for transient state.
-  EventBlock::Allocator alloc_;
+  AllocatorPtr alloc_;
 
   StandardPluginAutomata aut_;
   // Alias to the above object for using in Def().

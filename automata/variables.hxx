@@ -2,6 +2,7 @@
 #define _bracz_train_automata_variables_hxx_
 
 #include <string>
+#include <memory>
 
 using std::string;
 
@@ -116,6 +117,33 @@ class EventBasedVariable : public EventVariableBase {
   string name_;
 };
 
+class AllocatorInterface;
+typedef std::unique_ptr<AllocatorInterface> AllocatorPtr;
+
+class AllocatorInterface {
+ public:
+  virtual ~AllocatorInterface();
+
+  // Creates a new variable and transfers ownership to the caller.
+  virtual GlobalVariable* Allocate(const string& name) const = 0;
+
+  // Allocates a block and returns an allocator instance pointing to that
+  // specific block.
+  virtual AllocatorPtr Allocate(const string& name, int count,
+                                int alignment = 1) const = 0;
+
+  virtual const string& name() const = 0;
+
+  virtual int remaining() const = 0;
+
+  AllocatorPtr Forward(int num_to_reserve = 0) {
+    HASSERT(num_to_reserve <= remaining());
+    return Allocate("", remaining() - num_to_reserve);
+  }
+
+};
+
+
 class EventBlock : public EventVariableBase {
  public:
   EventBlock(Board* brd, uint64_t event_base, const string& name,
@@ -123,7 +151,7 @@ class EventBlock : public EventVariableBase {
       : EventVariableBase(brd),
         event_base_(event_base),
         size_(1),
-        allocator_(this, name, size) {}
+        allocator_(new Allocator(this, name, size)) {}
 
   virtual void Render(string* output) {
     CreateEventId(0, event_base_, output);
@@ -137,7 +165,20 @@ class EventBlock : public EventVariableBase {
     if (size >= size_) size_ = size + 1;
   }
 
-  class Allocator {
+  const AllocatorPtr& allocator() { return allocator_; }
+
+  uint64_t event_base() const { return event_base_; }
+
+  // These should never be called. This variable does not represent a single
+  // bit.
+  virtual uint64_t event_on() const { HASSERT(false); }
+  virtual uint64_t event_off() const { HASSERT(false); }
+
+ private:
+  // Accesses the allocator directly.
+  friend class BlockVariable;
+
+  class Allocator : public AllocatorInterface {
    public:
     Allocator(EventBlock* block, const string& name, int size = 8 << 8)
         : name_(name), block_(block), next_entry_(0), end_(size) {}
@@ -150,25 +191,17 @@ class EventBlock : public EventVariableBase {
       end_ = next_entry_ + count;
     }
 
-    Allocator(Allocator&& o)
-        : name_(o.name_),
-          block_(o.block_),
-          next_entry_(o.next_entry_),
-          end_(o.end_)
-    {
-      // Prevents o from allocating any value that we own now.
-      o.next_entry_ = end_;
+    Allocator(Allocator&& o) = delete;
+
+    AllocatorPtr Allocate(const string& name, int count, int alignment = 1) const override {
+      return AllocatorPtr(new Allocator(this, name, count, alignment));
     }
 
-    Allocator Allocate(const string& name, int count, int alignment = 1) const {
-      return Allocator(this, name, count, alignment);
-    }
-
-    // Reserves a number entries at the beginning of the block. Returns the
-    // first entry that was reserved.
+    // Reserves a number of entries at the beginning of the free block. Returns
+    // the first entry that was reserved.
     int Reserve(int count, string caller = "unknown") const {
       if (next_entry_ + count > end_) {
-        fprintf(stderr, "Allocator '%s' block overrun trying to reserver %d entries for '%s'.\n", name().c_str(), count, caller.c_str());
+        fprintf(stderr, "Allocator '%s' block overrun trying to reserve %d entries for '%s'.\n", name().c_str(), count, caller.c_str());
         HASSERT(0);
       }
       HASSERT(next_entry_ + count <= end_);
@@ -178,7 +211,7 @@ class EventBlock : public EventVariableBase {
     }
 
     // Creates a new variable and transfers ownership to the caller.
-    GlobalVariable* Allocate(const string& name) const;
+    GlobalVariable* Allocate(const string& name) const override;
 
     // Rounds up the next to-be-allocated entry to Alignment.
     void Align(int alignment) const {
@@ -187,7 +220,7 @@ class EventBlock : public EventVariableBase {
       next_entry_ *= alignment;
     }
 
-    const string& name() const { return name_; }
+    const string& name() const override { return name_; }
 
     EventBlock* block() const { return block_; }
 
@@ -213,20 +246,10 @@ class EventBlock : public EventVariableBase {
     int end_;
   };
 
-  Allocator* allocator() { return &allocator_; }
-
-  uint64_t event_base() const { return event_base_; }
-
-  // These should never be called. This variable does not represent a single
-  // bit.
-  virtual uint64_t event_on() const { HASSERT(false); }
-  virtual uint64_t event_off() const { HASSERT(false); }
-
- private:
   DISALLOW_COPY_AND_ASSIGN(EventBlock);
   uint64_t event_base_;
   uint16_t size_;
-  Allocator allocator_;
+  AllocatorPtr allocator_;
 };
 
 class BlockVariable : public GlobalVariable {

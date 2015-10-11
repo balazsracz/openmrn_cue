@@ -46,25 +46,20 @@ EventBasedVariable sendmeasure(&brd, "send_current_measurements",
                                BRACZ_LAYOUT | 0x000a, BRACZ_LAYOUT | 0x000b, 7,
                                30, 6);
 
-EventBasedVariable watchdog(&brd, "reset_watchdog",
-                            BRACZ_LAYOUT | 0x0010, BRACZ_LAYOUT | 0x0010, 7,
-                            30, 5);
+EventBasedVariable watchdog(&brd, "reset_watchdog", BRACZ_LAYOUT | 0x0010,
+                            BRACZ_LAYOUT | 0x0010, 7, 30, 5);
 
-EventBasedVariable reset_all_routes(&brd, "reset_routes",
-                            BRACZ_LAYOUT | 0x0012, BRACZ_LAYOUT | 0x0013, 7,
-                            30, 4);
+EventBasedVariable reset_all_routes(&brd, "reset_routes", BRACZ_LAYOUT | 0x0012,
+                                    BRACZ_LAYOUT | 0x0013, 7, 30, 4);
 
-EventBasedVariable route_lock_WW(&brd, "route_lock_WW",
-                            BRACZ_LAYOUT | 0x0014, BRACZ_LAYOUT | 0x0015, 7,
-                            30, 3);
+EventBasedVariable route_lock_WW(&brd, "route_lock_WW", BRACZ_LAYOUT | 0x0014,
+                                 BRACZ_LAYOUT | 0x0015, 7, 30, 3);
 
-EventBasedVariable route_lock_ZZ(&brd, "route_lock_ZZ",
-                            BRACZ_LAYOUT | 0x0016, BRACZ_LAYOUT | 0x0017, 7,
-                            30, 2);
+EventBasedVariable route_lock_ZZ(&brd, "route_lock_ZZ", BRACZ_LAYOUT | 0x0016,
+                                 BRACZ_LAYOUT | 0x0017, 7, 30, 2);
 
-
-//I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
-//NativeIO n8(0x28);
+// I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
+// NativeIO n8(0x28);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
 
 /*StateRef StGreen(2);
@@ -78,8 +73,7 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-
-I2CSignal signal_XXB2_main(&ba, 31, "XX.B2.main"); // 159 (0x9F)
+I2CSignal signal_XXB2_main(&ba, 31, "XX.B2.main");  // 159 (0x9F)
 I2CSignal signal_XXB2_adv(&ba, 32, "XX.B2.adv");
 
 I2CSignal signal_A301_main(&bc, 72, "A301.main");
@@ -107,7 +101,7 @@ I2CSignal signal_B447_adv(&bd, 11, "B447.adv");
 I2CSignal signal_A447_main(&bd, 44, "A447.main");  // 151 0x97
 I2CSignal signal_A447_adv(&bd, 45, "A447.adv");
 
-I2CSignal signal_A360_main(&bb, 12, "A360.main"); // 142 (0x8E)
+I2CSignal signal_A360_main(&bb, 12, "A360.main");  // 142 (0x8E)
 I2CSignal signal_A360_adv(&bb, 13, "A360.adv");
 I2CSignal signal_A460_main(&bb, 14, "A460.main");  // 139 (0x8B)
 I2CSignal signal_A460_adv(&bb, 15, "A460.adv");
@@ -123,20 +117,20 @@ I2CSignal signal_A475_adv(&bb, 74, "A475.adv");  // 129 0x81
 
 I2CSignal signal_B375_main(&bb, 32, "B375.main");  // 145 0x91
 I2CSignal signal_B375_adv(&bb, 33, "B375.adv");
-I2CSignal signal_B475_main(&bb, 6, "B475.main"); // 155 0x9B
+I2CSignal signal_B475_main(&bb, 6, "B475.main");  // 155 0x9B
 I2CSignal signal_B475_adv(&bb, 7, "B475.adv");
 
-I2CSignal signal_XXB1_main(&be, 25, "XX.B1.main"); // 147 (0x93)
-I2CSignal signal_XXB3_main(&be, 24, "XX.B3.main"); // 140 (0x8C)
+I2CSignal signal_XXB1_main(&be, 25, "XX.B1.main");  // 147 (0x93)
+I2CSignal signal_XXB3_main(&be, 24, "XX.B3.main");  // 140 (0x8C)
 
-I2CSignal signal_YYC23_main(&ba, 26, "YY.C23.main"); //  158 (0x9E)
+I2CSignal signal_YYC23_main(&ba, 26, "YY.C23.main");  //  158 (0x9E)
 I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
 
-I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main"); // 141 (0x8D)
+I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main");  // 141 (0x8D)
 I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
-//I2CSignal signal_WWB14_main(&bc, 34, "WW.B14.main"); // NOT REFLASHED
-//I2CSignal signal_WWB14_adv(&bc, 35, "WW.B14.adv");
+// I2CSignal signal_WWB14_main(&bc, 34, "WW.B14.main"); // NOT REFLASHED
+// I2CSignal signal_WWB14_adv(&bc, 35, "WW.B14.adv");
 
 I2CSignal signal_WWB14_main(&bc, 69, "WW.B14.main");  // 173
 I2CSignal signal_WWB14_adv(&bc, 70, "WW.B14.adv");
@@ -155,8 +149,6 @@ I2CSignal signal_ZZA2_main(&bb, 57, "ZZ.A2.main");  // 153
 I2CSignal signal_ZZA2_adv(&bb, 58, "ZZ.A2.adv");
 I2CSignal signal_ZZA3_main(&bb, 65, "ZZ.A3.main");  // 136
 I2CSignal signal_ZZA3_adv(&bb, 66, "ZZ.A3.adv");
-
-
 
 /* More signals
 
@@ -205,83 +197,77 @@ address 153 0x99 main 57 adv 58 reflashed in ZZA2
 address 136 0x86 main 65 adv 66 reflashed in ZZA3
 */
 
-//I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
-//I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
+// I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
+// I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
 
-
-PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0,
-                    &signal_A360_main.signal, &signal_A360_adv.signal,
-                    &signal_B375_main.signal, &signal_B375_adv.signal,
-                    &signal_A375_adv.signal, &signal_B360_adv.signal);
-PhysicalSignal A347(&bd.In3, &bd.Rel1,
-                    &signal_A347_main.signal, &signal_A347_adv.signal,
-                    &signal_B360_main.signal, nullptr, nullptr, nullptr);
+PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0, &signal_A360_main.signal,
+                    &signal_A360_adv.signal, &signal_B375_main.signal,
+                    &signal_B375_adv.signal, &signal_A375_adv.signal,
+                    &signal_B360_adv.signal);
+PhysicalSignal A347(&bd.In3, &bd.Rel1, &signal_A347_main.signal,
+                    &signal_A347_adv.signal, &signal_B360_main.signal, nullptr,
+                    nullptr, nullptr);
 PhysicalSignal A321(&bd.In5, &bd.Rel3, &signal_A321_main.signal,
                     &signal_A321_adv.signal, &signal_B347_main.signal,
                     &signal_B347_adv.signal, nullptr, nullptr);
-PhysicalSignal A301(&bc.In2, &bc.LedYellow,
-                    &signal_A301_main.signal, &signal_A301_adv.signal,
-                    &signal_B321_main.signal, &signal_B321_adv.signal,
-                    nullptr, nullptr);
-PhysicalSignal WWB14(&bc.In3, &bc.Rel0,
-                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
-                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB3(&bc.In7, &bc.Rel1,
-                    &signal_WWB3_main.signal, &signal_WWB3_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWB2(&bc.In6, &bc.Rel2,
-                    &signal_WWB2_main.signal, &signal_WWB2_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal WWA11(&bc.In5, &bc.Rel3,
-                     nullptr, nullptr,
-                     &signal_WWB11_main.signal, &signal_WWB11_adv.signal,
-                     //                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
-                     nullptr, nullptr);
+PhysicalSignal A301(&bc.In2, &bc.LedYellow, &signal_A301_main.signal,
+                    &signal_A301_adv.signal, &signal_B321_main.signal,
+                    &signal_B321_adv.signal, nullptr, nullptr);
+PhysicalSignal WWB14(&bc.In3, &bc.Rel0, &signal_WWB14_main.signal,
+                     &signal_WWB14_adv.signal, nullptr, nullptr, nullptr,
+                     nullptr);
+PhysicalSignal WWB3(&bc.In7, &bc.Rel1, &signal_WWB3_main.signal,
+                    &signal_WWB3_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal WWB2(&bc.In6, &bc.Rel2, &signal_WWB2_main.signal,
+                    &signal_WWB2_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal WWA11(
+    &bc.In5, &bc.Rel3, nullptr, nullptr, &signal_WWB11_main.signal,
+    &signal_WWB11_adv.signal,
+    //                     &signal_WWB14_main.signal, &signal_WWB14_adv.signal,
+    nullptr, nullptr);
 
 PhysicalSignal B421(&bd.In4, &bd.Rel2, &signal_B421_main.signal,
                     &signal_B421_adv.signal, &signal_A401_main.signal,
                     &signal_A401_adv.signal, nullptr, nullptr);
-PhysicalSignal B447(&bd.In2, &bd.Rel0,
-                    &signal_B447_main.signal, &signal_B447_adv.signal,
-                    &signal_A421_main.signal, &signal_A421_adv.signal,
-                    nullptr, nullptr);
+PhysicalSignal B447(&bd.In2, &bd.Rel0, &signal_B447_main.signal,
+                    &signal_B447_adv.signal, &signal_A421_main.signal,
+                    &signal_A421_adv.signal, nullptr, nullptr);
 PhysicalSignal B460(&bb.InBrownGrey, &bb.Rel2, &signal_B460_main.signal,
                     nullptr, &signal_A447_main.signal, &signal_A447_adv.signal,
                     nullptr, nullptr);
-PhysicalSignal B475(&bb.InGreenGreen, &bb.Rel1,
-                    &signal_B475_main.signal, &signal_B475_adv.signal,
-                    &signal_A460_main.signal, &signal_A460_adv.signal,
-                    &signal_B460_adv.signal, &signal_A475_adv.signal);
+PhysicalSignal B475(&bb.InGreenGreen, &bb.Rel1, &signal_B475_main.signal,
+                    &signal_B475_adv.signal, &signal_A460_main.signal,
+                    &signal_A460_adv.signal, &signal_B460_adv.signal,
+                    &signal_A475_adv.signal);
 
-PhysicalSignal ZZA2(&bb.InOraGreen, &bb.LedGreen,
-                    &signal_ZZA2_main.signal, &signal_ZZA2_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal ZZA2(&bb.InOraGreen, &bb.LedGreen, &signal_ZZA2_main.signal,
+                    &signal_ZZA2_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
 
-PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow,
-                    &signal_ZZA3_main.signal, &signal_ZZA3_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal ZZA3(&bb.InOraRed, &bb.LedYellow, &signal_ZZA3_main.signal,
+                    &signal_ZZA3_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
 
-PhysicalSignal YYA3(&be.In6, &be.Rel0,
-                    nullptr, nullptr,
-                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal YYA3(&be.In6, &be.Rel0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
 
-PhysicalSignal YYC23(&ba.InBrownGrey, &ba.Rel3,
-                     &signal_YYC23_main.signal, &signal_YYC23_adv.signal,
-                     nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal YYC23(&ba.InBrownGrey, &ba.Rel3, &signal_YYC23_main.signal,
+                     &signal_YYC23_adv.signal, nullptr, nullptr, nullptr,
+                     nullptr);
 
-PhysicalSignal XXB1(&be.InOraRed, &be.Rel1,
-                    &signal_XXB1_main.signal, nullptr,
+PhysicalSignal XXB1(&be.InOraRed, &be.Rel1, &signal_XXB1_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal XXB2(&ba.In3, &ba.Rel2,
-                    &signal_XXB2_main.signal, &signal_XXB2_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
-PhysicalSignal XXB3(&be.InOraGreen, &be.Rel2,
-                    &signal_XXB3_main.signal, nullptr,
+PhysicalSignal XXB2(&ba.In3, &ba.Rel2, &signal_XXB2_main.signal,
+                    &signal_XXB2_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal XXB3(&be.InOraGreen, &be.Rel2, &signal_XXB3_main.signal, nullptr,
                     nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB2(&be.In7, &be.Rel3,
-                    &signal_YYB2_main.signal, &signal_YYB2_adv.signal,
-                    nullptr, nullptr, nullptr, nullptr);
+PhysicalSignal YYB2(&be.In7, &be.Rel3, &signal_YYB2_main.signal,
+                    &signal_YYB2_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
 
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
@@ -316,45 +302,42 @@ class MagnetPause {
     Automata::LocalVariable* power_acc(aut->ImportVariable(power_magnets_));
     Def().IfState(StInit).ActReg1(power_acc);
     Def().IfReg0(*power_acc).ActState(StPaused);
-    Def()
-        .IfReg1(*power_acc)
-        .IfState(StPaused)
-        .ActState(StBase);
+    Def().IfReg1(*power_acc).IfState(StPaused).ActState(StBase);
   }
 
   GlobalVariable* power_magnets_;
 };
 
 DefAut(watchdog, brd, {
-    LocalVariable* w = ImportVariable(&watchdog);
-    Def().IfState(StInit).ActReg1(ImportVariable(&is_paused)).ActState(StBase);
-    Def().IfTimerDone().ActReg1(w).ActReg0(w).ActTimer(1);
+  LocalVariable* w = ImportVariable(&watchdog);
+  Def().IfState(StInit).ActReg1(ImportVariable(&is_paused)).ActState(StBase);
+  Def().IfTimerDone().ActReg1(w).ActReg0(w).ActTimer(1);
 
-    auto* signal_off_tmp = ImportVariable(acc_off_tmp.get());
-    auto* signal_on = ImportVariable(&power_acc);
-    const auto& signal_short = ImportVariable(short_det);
-    const auto& signal_over = ImportVariable(overcur);
-    Def().IfReg1(*signal_on).ActReg0(signal_off_tmp);
-    Def().IfReg1(signal_short).ActReg0(signal_off_tmp);
-    Def().IfReg1(signal_over).ActReg0(signal_off_tmp);
+  auto* signal_off_tmp = ImportVariable(acc_off_tmp.get());
+  auto* signal_on = ImportVariable(&power_acc);
+  const auto& signal_short = ImportVariable(short_det);
+  const auto& signal_over = ImportVariable(overcur);
+  Def().IfReg1(*signal_on).ActReg0(signal_off_tmp);
+  Def().IfReg1(signal_short).ActReg0(signal_off_tmp);
+  Def().IfReg1(signal_over).ActReg0(signal_off_tmp);
 
-    // If the signal power is off but no short and no overcurrent detected,
-    // turn it back on.
-    Def().IfReg0(*signal_on).IfReg1(*signal_off_tmp).ActReg1(signal_on);
+  // If the signal power is off but no short and no overcurrent detected,
+  // turn it back on.
+  Def().IfReg0(*signal_on).IfReg1(*signal_off_tmp).ActReg1(signal_on);
 
-    // But do this only after waiting for one cycle for any overcurrent event
-    // to come in.
-    Def()
-        .IfReg0(*signal_on)
-        .IfReg0(signal_short)
-        .IfReg0(signal_over)
-        .ActReg1(signal_off_tmp);
+  // But do this only after waiting for one cycle for any overcurrent event
+  // to come in.
+  Def()
+      .IfReg0(*signal_on)
+      .IfReg0(signal_short)
+      .IfReg0(signal_over)
+      .ActReg1(signal_off_tmp);
 
-    // Turns on is_paused when the accessory bus turned off due to short etc.
-    auto* lis_paused = ImportVariable(&is_paused);
-    Def().IfReg1(signal_short).ActReg1(lis_paused);
-    Def().IfReg1(signal_over).ActReg1(lis_paused);
-  });
+  // Turns on is_paused when the accessory bus turned off due to short etc.
+  auto* lis_paused = ImportVariable(&is_paused);
+  Def().IfReg1(signal_short).ActReg1(lis_paused);
+  Def().IfReg1(signal_over).ActReg1(lis_paused);
+});
 
 DefAut(blinkaut, brd, {
   const int kBlinkSpeed = 3;
@@ -452,34 +435,33 @@ void SimpleFollowStrategy(
 EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm", 1024 / 2);
 EventBlock logic2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
 EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
-EventBlock::Allocator& train_perm(*perm.allocator());
-EventBlock::Allocator train_tmp(logic2.allocator()->Allocate("train", 384));
+const AllocatorPtr& train_perm(perm.allocator());
+AllocatorPtr train_tmp(logic2.allocator()->Allocate("train", 384));
 
-MagnetCommandAutomata g_magnet_aut(&brd, *logic2.allocator());
+MagnetCommandAutomata g_magnet_aut(&brd, logic2.allocator());
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
-
 MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &bc.ActOraGreen, &bc.ActOraRed);
-StandardMovableTurnout Turnout_WWW1(
-    &brd, EventBlock::Allocator(logic.allocator(), "WW.W1", 40), &Magnet_WWW1);
+StandardMovableTurnout Turnout_WWW1(&brd,
+                                    logic.allocator()->Allocate("WW.W1", 40),
+                                    &Magnet_WWW1);
 
-MagnetDef Magnet_WWW3(&g_magnet_aut, "WW.W3", &bc.ActGreenGreen, &bc.ActGreenRed);
-StandardMovableDKW DKW_WWW3(&brd, EventBlock::Allocator(logic.allocator(),
-                                                        "WW.W3", 64),
+MagnetDef Magnet_WWW3(&g_magnet_aut, "WW.W3", &bc.ActGreenGreen,
+                      &bc.ActGreenRed);
+StandardMovableDKW DKW_WWW3(&brd, logic.allocator()->Allocate("WW.W3", 64),
                             &Magnet_WWW3);
 
-MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueBrown, &bc.ActBlueGrey);
-StandardMovableDKW DKW_WWW4(&brd, EventBlock::Allocator(logic.allocator(),
-                                                        "WW.W4", 64),
+MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueBrown,
+                      &bc.ActBlueGrey);
+StandardMovableDKW DKW_WWW4(&brd, logic.allocator()->Allocate("WW.W4", 64),
                             &Magnet_WWW4);
-StandardFixedTurnout Turnout_WWW5(&brd, EventBlock::Allocator(logic.allocator(),
-                                                              "WW.W5", 40),
+StandardFixedTurnout Turnout_WWW5(&brd,
+                                  logic.allocator()->Allocate("WW.W5", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
 
 StandardBlock Block_WWA11(&brd, &WWA11, logic.allocator(), "WW.A11");
 StubBlock Block_WWB2(&brd, &WWB2, &bc.In6, logic.allocator(), "WW.B2");
-StubBlock Block_WWB3(&brd, &WWB3, &bc.In7, logic.allocator(),
-                     "WW.B3");
+StubBlock Block_WWB3(&brd, &WWB3, &bc.In7, logic.allocator(), "WW.B3");
 StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
 
 StandardBlock Block_A301(&brd, &A301, logic.allocator(), "A301");
@@ -487,12 +469,15 @@ StandardBlock Block_A321(&brd, &A321, logic.allocator(), "A321");
 StandardBlock Block_A347(&brd, &A347, logic.allocator(), "A347");
 StandardBlock Block_A360(&brd, &A360, logic.allocator(), "A360");
 
-MagnetDef Magnet_W447(&g_magnet_aut, "W447", &bd.ActGreenGreen, &bd.ActGreenRed);
-StandardMovableTurnout Turnout_W447(
-    &brd, EventBlock::Allocator(logic.allocator(), "W447", 40), &Magnet_W447);
+MagnetDef Magnet_W447(&g_magnet_aut, "W447", &bd.ActGreenGreen,
+                      &bd.ActGreenRed);
+StandardMovableTurnout Turnout_W447(&brd,
+                                    logic.allocator()->Allocate("W447", 40),
+                                    &Magnet_W447);
 CoupledMagnetDef Magnet_W347(&g_magnet_aut, "W347", &Magnet_W447, false);
-StandardMovableTurnout Turnout_W347(
-    &brd, EventBlock::Allocator(logic.allocator(), "W347", 40), &Magnet_W347);
+StandardMovableTurnout Turnout_W347(&brd,
+                                    logic.allocator()->Allocate("W347", 40),
+                                    &Magnet_W347);
 TurnoutWrap TW447(&Turnout_W447.b, kPointToClosed);
 TurnoutWrap TW347(&Turnout_W347.b, kPointToClosed);
 
@@ -503,102 +488,107 @@ StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
 
 MagnetDef Magnet_W359(&g_magnet_aut, "W359", &bb.ActBrownGrey,
                       &bb.ActBrownBrown);
-StandardMovableTurnout Turnout_W359(
-    &brd, EventBlock::Allocator(logic.allocator(), "W359", 40), &Magnet_W359);
+StandardMovableTurnout Turnout_W359(&brd,
+                                    logic.allocator()->Allocate("W359", 40),
+                                    &Magnet_W359);
 CoupledMagnetDef Magnet_W459(&g_magnet_aut, "W459", &Magnet_W359, false);
-StandardMovableTurnout Turnout_W459(
-    &brd, EventBlock::Allocator(logic.allocator(), "W459", 40), &Magnet_W459);
+StandardMovableTurnout Turnout_W459(&brd,
+                                    logic.allocator()->Allocate("W459", 40),
+                                    &Magnet_W459);
 
 MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &bb.ActGreenGreen,
                       &bb.ActGreenRed);
-StandardMovableTurnout Turnout_ZZW1(
-    &brd, EventBlock::Allocator(logic.allocator(), "ZZ.W1", 40), &Magnet_ZZW1);
+StandardMovableTurnout Turnout_ZZW1(&brd,
+                                    logic.allocator()->Allocate("ZZ.W1", 40),
+                                    &Magnet_ZZW1);
 
 MagnetDef Magnet_ZZW2(&g_magnet_aut, "ZZ.W2", &bb.ActOraGreen, &bb.ActOraRed);
-StandardMovableTurnout Turnout_ZZW2(
-    &brd, EventBlock::Allocator(logic.allocator(), "ZZ.W2", 40), &Magnet_ZZW2);
+StandardMovableTurnout Turnout_ZZW2(&brd,
+                                    logic.allocator()->Allocate("ZZ.W2", 40),
+                                    &Magnet_ZZW2);
 
 MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
                       &bb.ActBlueGrey);
-StandardMovableDKW DKW_ZZW3(&brd, EventBlock::Allocator(logic.allocator(),
-                                                        "ZZ.W3", 64),
+StandardMovableDKW DKW_ZZW3(&brd, logic.allocator()->Allocate("ZZ.W3", 64),
                             &Magnet_ZZW3);
 
 MagnetDef Magnet_ZZW6(&g_magnet_aut, "ZZ.W6", &be.ActGreenGreen,
                       &be.ActGreenRed);
 CoupledMagnetDef Magnet_ZZW5(&g_magnet_aut, "ZZ.W5", &Magnet_ZZW6, true);
-StandardMovableTurnout Turnout_ZZW5(
-    &brd, EventBlock::Allocator(logic2.allocator(), "ZZ.W5", 40), &Magnet_ZZW5);
-StandardMovableTurnout Turnout_ZZW6(
-    &brd, EventBlock::Allocator(logic2.allocator(), "ZZ.W6", 40), &Magnet_ZZW6);
+StandardMovableTurnout Turnout_ZZW5(&brd,
+                                    logic2.allocator()->Allocate("ZZ.W5", 40),
+                                    &Magnet_ZZW5);
+StandardMovableTurnout Turnout_ZZW6(&brd,
+                                    logic2.allocator()->Allocate("ZZ.W6", 40),
+                                    &Magnet_ZZW6);
 
 StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic2.allocator(), "ZZ.A2");
 StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic2.allocator(), "ZZ.A3");
 
 StandardMiddleDetector Det_380(&brd, &bb.In7,
-                               EventBlock::Allocator(logic2.allocator(),
-                                                     "Det380", 24, 8));
+                               logic2.allocator()->Allocate("Det380", 24, 8));
 StandardMiddleDetector Det_480(&brd, &bb.In6,
-                               EventBlock::Allocator(logic2.allocator(),
-                                                     "Det480", 24, 8));
+                               logic2.allocator()->Allocate("Det480", 24, 8));
 
 MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBrownGrey,
                       &be.ActBrownBrown);
 CoupledMagnetDef Magnet_W381(&g_magnet_aut, "W381", &Magnet_W481, true);
 MagnetDef Magnet_W380(&g_magnet_aut, "W380", &be.ActBlueGrey, &be.ActBlueBrown);
 StandardMovableTurnout Turnout_W381(&brd,
-                                    EventBlock::Allocator(logic2.allocator(),
-                                                          "W381", 40),
+                                    logic2.allocator()->Allocate("W381", 40),
                                     &Magnet_W381);
-StandardMovableTurnout Turnout_W380(
-    &brd, EventBlock::Allocator(logic2.allocator(), "W380", 40), &Magnet_W380);
+StandardMovableTurnout Turnout_W380(&brd,
+                                    logic2.allocator()->Allocate("W380", 40),
+                                    &Magnet_W380);
 
 StandardMiddleDetector Det_500(&brd, &be.InGreenYellow,
-                               EventBlock::Allocator(logic2.allocator(),
-                                                     "Det500", 24, 8));
+                               logic2.allocator()->Allocate("Det500", 24, 8));
 
-StandardMovableTurnout Turnout_W481(
-    &brd, EventBlock::Allocator(logic2.allocator(), "W481", 40), &Magnet_W481);
+StandardMovableTurnout Turnout_W481(&brd,
+                                    logic2.allocator()->Allocate("W481", 40),
+                                    &Magnet_W481);
 
-//MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &be.ActGreenGreen, &be.ActGreenRed);
-//StandardMovableTurnout Turnout_YYW1(
-//    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W1", 40), &Magnet_YYW1);
-//CoupledMagnetDef Magnet_YYW3(&g_magnet_aut, "YY.W3", &Magnet_YYW1, true);
-//StandardMovableTurnout Turnout_YYW3(
-//    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W3", 40), &Magnet_YYW3);
+// MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &be.ActGreenGreen,
+// &be.ActGreenRed);
+// StandardMovableTurnout Turnout_YYW1(
+//    &brd, logic2.allocator()->Allocate( "YY.W1", 40), &Magnet_YYW1);
+// CoupledMagnetDef Magnet_YYW3(&g_magnet_aut, "YY.W3", &Magnet_YYW1, true);
+// StandardMovableTurnout Turnout_YYW3(
+//    &brd, logic2.allocator()->Allocate( "YY.W3", 40), &Magnet_YYW3);
 
 StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
 StandardBlock Block_YYA3(&brd, &YYA3, logic2.allocator(), "YY.A3");
 StandardBlock Block_YYC23(&brd, &YYC23, logic2.allocator(), "YY.C23");
 StandardMiddleDetector Det_YYC22(&brd, &ba.InBrownBrown,
-                                 EventBlock::Allocator(logic2.allocator(),
-                                                       "YY.C22", 24, 8));
+                                 logic2.allocator()->Allocate("YY.C22", 24, 8));
 
-MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen,
-                      &ba.ActOraRed);
-StandardMovableTurnout Turnout_YYW6(
-    &brd, EventBlock::Allocator(logic2.allocator(), "YY.W6", 40), &Magnet_YYW6);
+MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen, &ba.ActOraRed);
+StandardMovableTurnout Turnout_YYW6(&brd,
+                                    logic2.allocator()->Allocate("YY.W6", 40),
+                                    &Magnet_YYW6);
 
 MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen, &be.ActOraRed);
-StandardMovableTurnout Turnout_XXW1(
-    &brd, EventBlock::Allocator(logic2.allocator(), "XX.W1", 40), &Magnet_XXW1);
+StandardMovableTurnout Turnout_XXW1(&brd,
+                                    logic2.allocator()->Allocate("XX.W1", 40),
+                                    &Magnet_XXW1);
 
 MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActBlueGrey,
                       &ba.ActBlueBrown);
 StandardMovableTurnout Turnout_XXW2(&brd,
-                                    EventBlock::Allocator(logic2.allocator(),
-                                                          "XX.W2", 40),
+                                    logic2.allocator()->Allocate("XX.W2", 40),
                                     &Magnet_XXW2);
 
 MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &ba.ActBrownGrey,
                       &ba.ActBrownBrown);
-StandardMovableTurnout Turnout_XXW7(
-    &brd, EventBlock::Allocator(logic2.allocator(), "XX.W7", 40),
-    &Magnet_XXW7);
+StandardMovableTurnout Turnout_XXW7(&brd,
+                                    logic2.allocator()->Allocate("XX.W7", 40),
+                                    &Magnet_XXW7);
 
-MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActGreenGreen, &ba.ActGreenRed);
-StandardMovableTurnout Turnout_XXW8(
-    &brd, EventBlock::Allocator(logic2.allocator(), "XX.W8", 40), &Magnet_XXW8);
+MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActGreenGreen,
+                      &ba.ActGreenRed);
+StandardMovableTurnout Turnout_XXW8(&brd,
+                                    logic2.allocator()->Allocate("XX.W8", 40),
+                                    &Magnet_XXW8);
 
 StandardBlock Block_XXB1(&brd, &XXB1, logic2.allocator(), "XX.B1");
 StandardBlock Block_XXB2(&brd, &XXB2, logic2.allocator(), "XX.B2");
@@ -666,17 +656,18 @@ bool ign = BindPairs({
 });
 
 DefAut(display, brd, {
-    /*  DefCopy(ImportVariable(Block_XXB1.detector()),
-          ImportVariable(&panda_bridge.l0));
-  DefCopy(ImportVariable(Block_A301.detector()),
-          ImportVariable(&panda_bridge.l1));
-  DefCopy(ImportVariable(Block_WWB14.detector()),
-          ImportVariable(&panda_bridge.l2));
-  DefCopy(ImportVariable(Block_YYC23.detector()),
-  ImportVariable(&panda_bridge.l3));*/
-});
+                         /*  DefCopy(ImportVariable(Block_XXB1.detector()),
+                               ImportVariable(&panda_bridge.l0));
+                       DefCopy(ImportVariable(Block_A301.detector()),
+                               ImportVariable(&panda_bridge.l1));
+                       DefCopy(ImportVariable(Block_WWB14.detector()),
+                               ImportVariable(&panda_bridge.l2));
+                       DefCopy(ImportVariable(Block_YYC23.detector()),
+                       ImportVariable(&panda_bridge.l3));*/
+                     });
 
-void RgSignal(Automata* aut, const Automata::LocalVariable& route_set, Automata::LocalVariable* signal) {
+void RgSignal(Automata* aut, const Automata::LocalVariable& route_set,
+              Automata::LocalVariable* signal) {
   Def().IfReg0(route_set).ActSetValue(signal, 1, A_STOP);
   Def().IfReg1(route_set).ActSetValue(signal, 1, A_90);
 }
@@ -713,64 +704,67 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
 }
 
 DefAut(signalaut, brd, {
-    BlockSignal(this, &Block_XXB1);
-    BlockSignal(this, &Block_XXB2);
-    BlockSignal(this, &Block_XXB3);
-    BlockSignal(this, &Block_YYB2);
-    BlockSignal(this, &Block_YYC23);
-    BlockSignal(this, &Block_WWB14);
-  });
+  BlockSignal(this, &Block_XXB1);
+  BlockSignal(this, &Block_XXB2);
+  BlockSignal(this, &Block_XXB3);
+  BlockSignal(this, &Block_YYB2);
+  BlockSignal(this, &Block_YYC23);
+  BlockSignal(this, &Block_WWB14);
+});
 
 DefAut(signalaut1, brd, {
-    BlockSignal(this, &Block_A360);
-    BlockSignal(this, &Block_A347);
-    BlockSignal(this, &Block_A321);
-    BlockSignal(this, &Block_A301);
-    BlockSignal(this, &Block_WWB2.b_);
-    BlockSignal(this, &Block_WWB3.b_);
-  });
+  BlockSignal(this, &Block_A360);
+  BlockSignal(this, &Block_A347);
+  BlockSignal(this, &Block_A321);
+  BlockSignal(this, &Block_A301);
+  BlockSignal(this, &Block_WWB2.b_);
+  BlockSignal(this, &Block_WWB3.b_);
+});
 
 DefAut(signalaut2, brd, {
-    BlockSignal(this, &Block_B421);
-    BlockSignal(this, &Block_B447);
-    BlockSignal(this, &Block_B460);
-    BlockSignal(this, &Block_B475);
-    BlockSignal(this, &Block_WWA11);
-  });
+  BlockSignal(this, &Block_B421);
+  BlockSignal(this, &Block_B447);
+  BlockSignal(this, &Block_B460);
+  BlockSignal(this, &Block_B475);
+  BlockSignal(this, &Block_WWA11);
+});
 
 DefAut(signalaut3, brd, {
-    BlockSignal(this, &Block_ZZA2.b_);
-    BlockSignal(this, &Block_ZZA3.b_);
-    RgSignal(this, ImportVariable(Det_480.route_set_ab()), ImportVariable(&signal_A480_main.signal));
-    RgSignal(this, ImportVariable(Det_380.route_set_ab()), ImportVariable(&signal_A380_main.signal));
-  });
+  BlockSignal(this, &Block_ZZA2.b_);
+  BlockSignal(this, &Block_ZZA3.b_);
+  RgSignal(this, ImportVariable(Det_480.route_set_ab()),
+           ImportVariable(&signal_A480_main.signal));
+  RgSignal(this, ImportVariable(Det_380.route_set_ab()),
+           ImportVariable(&signal_A380_main.signal));
+});
 
-FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", *logic.allocator(), 32);
+FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", logic.allocator(), 32);
 FlipFlopClient lpc_tofront1("to_front_1", &loop_flipflop);
 FlipFlopClient lpc_toback1("to_back_1", &loop_flipflop);
 FlipFlopClient lpc_tofront3("to_front_3", &loop_flipflop);
 FlipFlopClient lpc_toback1x("to_back_1x", &loop_flipflop);
 
-FlipFlopAutomata front_flipflop(&brd, "front_flipflop", *logic.allocator(), 32);
+FlipFlopAutomata front_flipflop(&brd, "front_flipflop", logic.allocator(), 32);
 FlipFlopClient frc_tofront("to_front", &front_flipflop);
 FlipFlopClient frc_fromfront1("from_front1", &front_flipflop);
 FlipFlopClient frc_toback("to_back", &front_flipflop);
 FlipFlopClient frc_fromback("from_back", &front_flipflop);
 FlipFlopClient frc_fromfront3("from_front3", &front_flipflop);
 
-FlipFlopAutomata ww_in_flipflop(&brd, "ww_in_flipflop", *logic.allocator(), 32);
+FlipFlopAutomata ww_in_flipflop(&brd, "ww_in_flipflop", logic.allocator(), 32);
 FlipFlopClient ww_to2("to_2", &ww_in_flipflop);
 FlipFlopClient ww_to3("to_3", &ww_in_flipflop);
 
-FlipFlopAutomata ww_out_flipflop(&brd, "ww_out_flipflop", *logic.allocator(),
+FlipFlopAutomata ww_out_flipflop(&brd, "ww_out_flipflop", logic.allocator(),
                                  32);
 FlipFlopClient ww_from2("from_2", &ww_out_flipflop);
 FlipFlopClient ww_from3("from_3", &ww_out_flipflop);
 FlipFlopClient ww_from14("from_14", &ww_out_flipflop);
 
-
-std::unique_ptr<GlobalVariable> g_stop_b460(logic2.allocator()->Allocate("block_b460"));
-std::unique_ptr<GlobalVariable> g_stop_b360(logic2.allocator()->Allocate("block_b360"));
+std::unique_ptr<GlobalVariable> g_stop_b460(
+    logic2.allocator()->Allocate("block_b460"));
+std::unique_ptr<GlobalVariable> g_stop_b360(
+    logic2.allocator()->Allocate("block_b360"));
 
 void IfLoopOkay(Automata::Op* op) {
   IfNotPaused(op);
@@ -859,9 +853,8 @@ class LayoutSchedule : public TrainSchedule {
  public:
   LayoutSchedule(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
-                      train_perm.Allocate(name, 24, 8),
-                      train_tmp.Allocate(name, 24, 8),
-                      &stored_speed_),
+                      train_perm->Allocate(name, 24, 8),
+                      train_tmp->Allocate(name, 24, 8), &stored_speed_),
         stored_speed_(&brd, "speed." + name,
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
 
@@ -871,8 +864,7 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked);
     AddEagerBlockTransition(&Block_A347, &Block_A321, &g_not_paused_condition);
     SwitchTurnout(Turnout_W347.b.magnet(), false);
-    AddEagerBlockSequence({&Block_A321, &Block_A301},
-                          &g_not_paused_condition);
+    AddEagerBlockSequence({&Block_A321, &Block_A301}, &g_not_paused_condition);
   }
 
   // In WW, runs around the loop track 11 to 14.
@@ -881,7 +873,8 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
-    AddEagerBlockTransition(&Block_WWA11, &Block_WWB14, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_WWA11, &Block_WWB14,
+                            &g_not_paused_condition);
 
     AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
                                &g_wwb3_entry_free);
@@ -891,12 +884,14 @@ class LayoutSchedule : public TrainSchedule {
   // In WW, run through the stub track, changing direction.
   void RunStubWW(Automata* aut) {
     WithRouteLock l(this, &route_lock_WW);
-    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3,
+                               &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB3);
 
-    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2, &g_wwb2_entry_free);
+    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2,
+                               &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB2);
@@ -913,7 +908,8 @@ class LayoutSchedule : public TrainSchedule {
   // In WW, run through the stub track, changing direction.
   void RunStubWWB3(Automata* aut) {
     WithRouteLock l(this, &route_lock_WW);
-    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3, &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3,
+                               &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB3);
@@ -953,21 +949,20 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
     auto* stop_b460 = aut->ImportVariable(g_stop_b460.get());
     auto* stop_b360 = aut->ImportVariable(g_stop_b360.get());
-    Def().IfReg0(current_block_permaloc_)
-        .ActReg0(stop_b460)
-        .ActReg0(stop_b360);
-    Def().IfReg1(current_block_permaloc_)
-        .IfState(StWaiting)
-        .ActReg1(stop_b460);
-    Def().IfReg1(current_block_permaloc_)
+    Def().IfReg0(current_block_permaloc_).ActReg0(stop_b460).ActReg0(stop_b360);
+    Def().IfReg1(current_block_permaloc_).IfState(StWaiting).ActReg1(stop_b460);
+    Def()
+        .IfReg1(current_block_permaloc_)
         .IfState(StWaiting)
         .IfReg1(aut->ImportVariable(Block_B475.detector()))
         .ActReg0(stop_b360);
-    Def().IfReg1(current_block_permaloc_)
+    Def()
+        .IfReg1(current_block_permaloc_)
         .IfState(StWaiting)
         .IfReg1(aut->ImportVariable(Block_B475.route_in()))
         .ActReg0(stop_b360);
-    Def().IfReg1(current_block_permaloc_)
+    Def()
+        .IfReg1(current_block_permaloc_)
         .IfState(StWaiting)
         .IfReg0(aut->ImportVariable(Block_B475.route_in()))
         .IfReg0(aut->ImportVariable(Block_B475.detector()))
@@ -977,20 +972,22 @@ class LayoutSchedule : public TrainSchedule {
   // Runs the loop XX/YY from 475 to eventually 360
   void RunLoopXXYY(Automata* aut) {
     {
-    WithRouteLock l(this, &route_lock_ZZ);
-    // in
-    AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
-    SwitchTurnout(Turnout_W481.b.magnet(), false);
-    AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront, &g_front_front_in_condition);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW5.b.magnet(), false);
-    SwitchTurnout(Turnout_W380.b.magnet(), true);
-    SwitchTurnout(Turnout_XXW1.b.magnet(), true);
-    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+      WithRouteLock l(this, &route_lock_ZZ);
+      // in
+      AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback,
+                                 &g_zzw3_free);
+      SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+      SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+      SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
+      SwitchTurnout(Turnout_W481.b.magnet(), false);
+      AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront,
+                                 &g_front_front_in_condition);
+      SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+      SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+      SwitchTurnout(Turnout_ZZW5.b.magnet(), false);
+      SwitchTurnout(Turnout_W380.b.magnet(), true);
+      SwitchTurnout(Turnout_XXW1.b.magnet(), true);
+      SwitchTurnout(Turnout_XXW2.b.magnet(), true);
     }
 
     AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
@@ -1013,30 +1010,34 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(Turnout_YYW6.b.magnet(), true);
 
     {
-    WithRouteLock l(this, &route_lock_ZZ);
-    // out
-    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
-    SwitchTurnout(Turnout_W380.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
-    AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3, &g_front_front_out_condition);
-    SwitchTurnout(Turnout_W380.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
-    AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback, &g_front_back_out_condition);
-    SwitchTurnout(Turnout_W381.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
+      WithRouteLock l(this, &route_lock_ZZ);
+      // out
+      AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1,
+                                 &g_front_front_out_condition);
+      SwitchTurnout(Turnout_W380.b.magnet(), true);
+      SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
+      AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3,
+                                 &g_front_front_out_condition);
+      SwitchTurnout(Turnout_W380.b.magnet(), true);
+      SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
+      AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback,
+                                 &g_front_back_out_condition);
+      SwitchTurnout(Turnout_W381.b.magnet(), true);
+      SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
     }
   }
 
   // Runs the loop XX/YY from 475 to eventually 360
   void RunLoopXXYYLong(Automata* aut) {
     {
-    WithRouteLock l(this, &route_lock_ZZ);
-    // in
-    AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback, &g_zzw3_free);
-    SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-    SwitchTurnout(DKW_ZZW3.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
-    SwitchTurnout(Turnout_W481.b.magnet(), false);
+      WithRouteLock l(this, &route_lock_ZZ);
+      // in
+      AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback,
+                                 &g_zzw3_free);
+      SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
+      SwitchTurnout(DKW_ZZW3.b.magnet(), true);
+      SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
+      SwitchTurnout(Turnout_W481.b.magnet(), false);
     }
 
     AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
@@ -1047,17 +1048,17 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(Turnout_XXW8.b.magnet(), false);
 
     {
-    WithRouteLock l(this, &route_lock_ZZ);
-    // out
-    AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1, &g_front_front_out_condition);
-    SwitchTurnout(Turnout_W380.b.magnet(), true);
-    SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
+      WithRouteLock l(this, &route_lock_ZZ);
+      // out
+      AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1,
+                                 &g_front_front_out_condition);
+      SwitchTurnout(Turnout_W380.b.magnet(), true);
+      SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
     }
   }
 
   ByteImportVariable stored_speed_;
 };
-
 
 class CircleTrain : public LayoutSchedule {
  public:
@@ -1114,8 +1115,7 @@ class StraightOnlyPushPull : public LayoutSchedule {
 
 class M61PushPull : public LayoutSchedule {
  public:
-  M61PushPull(const string& name, uint16_t train_id,
-              uint8_t default_speed)
+  M61PushPull(const string& name, uint16_t train_id, uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
@@ -1166,7 +1166,9 @@ int main(int argc, char** argv) {
   fclose(f);
 
   f = fopen("bracz-layout3h-logic.cout", "wb");
-  fprintf(f, "const char automata_code[] __attribute__((section(\"automata\"))) = {\n  ");
+  fprintf(f,
+          "const char automata_code[] __attribute__((section(\"automata\"))) = "
+          "{\n  ");
   int c = 0;
   for (char t : output) {
     fprintf(f, "0x%02x, ", (uint8_t)t);

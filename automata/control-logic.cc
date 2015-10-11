@@ -829,26 +829,26 @@ void MagnetAutomataFinal(Automata* aut) {
   Def().IfState(StBase).IfTimerDone().ActTimer(1);
 }
 
-MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const EventBlock::Allocator& alloc)
-      : alloc_(&alloc, "magnets", 64), aut_("magnets", brd, this) {
+MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const AllocatorPtr& parent_alloc)
+    : alloc_(parent_alloc->Allocate("magnets", 64)), aut_("magnets", brd, this) {
   //AddAutomataPlugin(1, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
   AddAutomataPlugin(100, NewCallbackPtr(&MagnetAutomataFinal));
 }
 
 void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
-  def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
-  def->command.reset(alloc_.Allocate(def->name_ + ".command"));
+  def->current_state.reset(alloc_->Allocate(def->name_ + ".current_state"));
+  def->command.reset(alloc_->Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
-  def->owned_locked.reset(alloc_.Allocate(def->name_ + ".locked"));
+  def->owned_locked.reset(alloc_->Allocate(def->name_ + ".locked"));
   def->locked = def->owned_locked.get();
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
 }
 
 void MagnetCommandAutomata::AddCoupledMagnet(CoupledMagnetDef* def) {
-  def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
-  def->command.reset(alloc_.Allocate(def->name_ + ".command"));
+  def->current_state.reset(alloc_->Allocate(def->name_ + ".current_state"));
+  def->command.reset(alloc_->Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
-  def->remote_command.reset(alloc_.Allocate(def->name_ + ".remote_command"));
+  def->remote_command.reset(alloc_->Allocate(def->name_ + ".remote_command"));
   def->locked = def->original->owned_locked.get();
   AddAutomataPlugin(2, NewCallbackPtr(&MagnetAutomataCouple, def));
 }
@@ -1047,7 +1047,7 @@ TrainSchedule::ScheduleLocation* TrainSchedule::AllocateOrGetLocation(
     const void* ptr, const string& name) {
   auto& loc = location_map_[ptr];
   if (!loc.permaloc_bit) {
-    loc.permaloc_bit.reset(permanent_alloc_.Allocate("loc." + name)); 
+    loc.permaloc_bit.reset(permanent_alloc_->Allocate("loc." + name)); 
   }
   return &loc;
 }
@@ -1056,7 +1056,7 @@ GlobalVariable* TrainSchedule::GetHelperBit(
     const void* ptr, const string& name) {
   auto& loc = helper_bits_[ptr];
   if (!loc.get()) {
-    loc.reset(alloc_.Allocate(name)); 
+    loc.reset(alloc_->Allocate(name)); 
   }
   return loc.get();
 }
@@ -1226,7 +1226,7 @@ void TrainSchedule::SwitchTurnout(MagnetBase* magnet, bool desired_state) {
       .ActReg(&magnet_command_, desired_state);
 }
 
-EventBlock::Allocator& FlipFlopAutomata::AddClient(FlipFlopClient* client) {
+const AllocatorPtr& FlipFlopAutomata::AddClient(FlipFlopClient* client) {
   clients_.push_back(client);
   return alloc_;
 }

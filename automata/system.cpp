@@ -6,8 +6,9 @@
 #include "operations.hxx"
 #include "variables.hxx"
 
-
 namespace automata {
+
+AllocatorInterface::~AllocatorInterface() {}
 
 string* GetDebugData() {
   static string debug_data;
