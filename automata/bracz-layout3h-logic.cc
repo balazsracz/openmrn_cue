@@ -393,7 +393,9 @@ void IfNotPaused(Automata::Op* op) {
       .IfReg0(op->parent()->ImportVariable(reset_all_routes));
 }
 
+namespace automata {
 auto g_not_paused_condition = NewCallback(&IfNotPaused);
+}
 
 // Adds the necessary conditions that represent if there is a train at the
 // source track waiting to depart.
@@ -864,20 +866,19 @@ class LayoutSchedule : public TrainSchedule {
  protected:
   // Runs down from ZZ to WW on track 300.
   void Run360_to_301(Automata* aut) {
-    AddEagerBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked);
-    AddEagerBlockTransition(&Block_A347, &Block_A321, &g_not_paused_condition);
+    AddDirectBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked);
+    AddEagerBlockTransition(&Block_A347, &Block_A321);
     SwitchTurnout(Turnout_W347.b.magnet(), false);
-    AddEagerBlockSequence({&Block_A321, &Block_A301}, &g_not_paused_condition);
+    AddEagerBlockSequence({&Block_A321, &Block_A301});
   }
 
   // In WW, runs around the loop track 11 to 14.
   void RunLoopWW(Automata* aut) {
     WithRouteLock l(this, &route_lock_WW);
-    AddEagerBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
+    AddDirectBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
-    AddEagerBlockTransition(&Block_WWA11, &Block_WWB14,
-                            &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_WWA11, &Block_WWB14);
 
     AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
                                &g_wwb3_entry_free);
@@ -925,31 +926,31 @@ class LayoutSchedule : public TrainSchedule {
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
     ClearAutomataVariables(aut);
-    AddEagerBlockTransition(&Block_B421, &Block_B447, &g_not_paused_condition);
-    AddEagerBlockTransition(&Block_B447, &Block_B460, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_B421, &Block_B447);
+    AddEagerBlockTransition(&Block_B447, &Block_B460);
     SwitchTurnout(Turnout_W447.b.magnet(), false);
-    AddEagerBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked);
+    AddDirectBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked);
   }
 
   // Runs in ZZ into the stub track and reverses direction.
   void RunStubZZ(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZZ);
-    AddEagerBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
+    AddDirectBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     StopAndReverseAtStub(&Block_ZZA2);
 
-    AddEagerBlockTransition(&Block_ZZA2.b_, &Block_A360, &g_zzw3_free);
+    AddDirectBlockTransition(&Block_ZZA2.b_, &Block_A360, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
   }
 
   void RunStub2ZZ(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZZ);
-    AddEagerBlockTransition(&Block_B475, &Block_ZZA3.b_, &g_zzw1_free);
+    AddDirectBlockTransition(&Block_B475, &Block_ZZA3.b_, &g_zzw1_free);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), false);
     StopAndReverseAtStub(&Block_ZZA3);
 
-    AddEagerBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
+    AddDirectBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
     auto* stop_b460 = aut->ImportVariable(g_stop_b460.get());
     auto* stop_b360 = aut->ImportVariable(g_stop_b360.get());
     Def().IfReg0(current_block_permaloc_).ActReg0(stop_b460).ActReg0(stop_b360);
@@ -993,7 +994,7 @@ class LayoutSchedule : public TrainSchedule {
       SwitchTurnout(Turnout_XXW2.b.magnet(), true);
     }
 
-    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23);
 
     // back->front
     AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
@@ -1043,7 +1044,7 @@ class LayoutSchedule : public TrainSchedule {
       SwitchTurnout(Turnout_W481.b.magnet(), false);
     }
 
-    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23, &g_not_paused_condition);
+    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23);
 
     // back->front
     AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,

@@ -1061,9 +1061,9 @@ GlobalVariable* TrainSchedule::GetHelperBit(
   return loc.get();
 }
 
-void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
-                                            StandardBlock* dest,
-                                            OpCallback* condition) {
+void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
+                                             StandardBlock* dest,
+                                             OpCallback* condition) {
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(*source->request_green(),

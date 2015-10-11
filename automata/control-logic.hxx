@@ -1310,8 +1310,17 @@ class TrainSchedule : public virtual AutomataPlugin {
   // destination is free, the train will move into the destination
   // block. Condiiton, if specified, will have to evaluate to true in order to
   // give a green to the train from the current block to the next.
-  void AddEagerBlockTransition(StandardBlock *source, StandardBlock *dest,
-                               OpCallback *condition = nullptr);
+  void AddEagerBlockTransition(StandardBlock *source, StandardBlock *dest) {
+    extern CallbackSpec1_0<Automata::Op*> g_not_paused_condition;
+    AddDirectBlockTransition(source, dest, &g_not_paused_condition);
+  }
+
+  // Direct block transition is a case when there is still only one choice on
+  // where to go, but this should be prepared only when the train arrives. An
+  // example is when the train would block a single track section.
+  void AddDirectBlockTransition(StandardBlock *source, StandardBlock *dest,
+                                OpCallback *condition = nullptr);
+
 
   // Adds an eager block transition between each successive pair of blocks in
   // this list.
@@ -1322,7 +1331,7 @@ class TrainSchedule : public virtual AutomataPlugin {
     if (ia == blocks.end()) return;
     auto ib = blocks.begin(); ++ib;
     while (ib != blocks.end()) {
-      AddEagerBlockTransition(*ia, *ib, condition);
+      AddDirectBlockTransition(*ia, *ib, condition);
       ++ia;
       ++ib;
     }
