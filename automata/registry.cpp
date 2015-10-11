@@ -6,12 +6,6 @@
 
 namespace automata {
 
-struct RegisteredVariable {
-  uint64_t event_on;
-  uint64_t event_off;
-  string name;
-};
-
 std::vector<RegisteredVariable>* registered_variables() {
   static std::vector<RegisteredVariable> v;
   return &v;

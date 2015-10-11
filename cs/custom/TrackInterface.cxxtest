@@ -15,7 +15,7 @@ TEST_F(HostPacketQueueTest, TestSendLog) {
   send_host_log_event(bracz_custom::HostLogEvent::MOSTA_DISCOVER);
 }
 
-class MockEmptyQueue : public PacketFlowInterface {
+class MockEmptyQueue : public dcc::PacketFlowInterface {
  public:
   MOCK_METHOD2(arrived, void(Buffer<dcc::Packet>*, unsigned));
 

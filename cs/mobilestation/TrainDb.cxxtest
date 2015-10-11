@@ -18,8 +18,8 @@ TEST(TrainDbTest, getaddress) {
 TEST(TrainDbTest, isknown) {
   TrainDb db;
   EXPECT_TRUE(db.is_train_id_known(1));
-  EXPECT_TRUE(db.is_train_id_known(24));
-  EXPECT_FALSE(db.is_train_id_known(25));
+  EXPECT_TRUE(db.is_train_id_known(26));
+  EXPECT_FALSE(db.is_train_id_known(27));
   EXPECT_FALSE(db.is_train_id_known(150));
 }
 

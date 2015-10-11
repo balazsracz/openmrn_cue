@@ -141,6 +141,8 @@ class AllocatorInterface {
     return Allocate("", remaining() - num_to_reserve);
   }
 
+  virtual int TEST_Reserve(int num) { HASSERT(0); }
+
 };
 
 class UnionAllocator : public AllocatorInterface {
@@ -240,6 +242,10 @@ class EventBlock : public EventVariableBase {
 
     AllocatorPtr Allocate(const string& name, int count, int alignment = 1) const override {
       return AllocatorPtr(new Allocator(this, name, count, alignment));
+    }
+
+    int TEST_Reserve(int n) override {
+      return Reserve(n);
     }
 
     // Reserves a number of entries at the beginning of the free block. Returns

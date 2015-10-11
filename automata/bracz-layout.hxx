@@ -4,6 +4,8 @@
 #ifndef _AUTOMATA_BRACZ_LAYOUT_HXX_
 #define _AUTOMATA_BRACZ_LAYOUT_HXX_
 
+#include <stdint.h>
+
 #include "system.hxx"
 #include "operations.hxx"
 #include "variables.hxx"
@@ -66,8 +68,8 @@ using namespace automata;
  */
 
 
-#define BRACZ_LAYOUT 0x0501010114FF0000ULL
-#define BRACZ_SPEEDS (BRACZ_LAYOUT - 0x10000ULL)
+#define BRACZ_LAYOUT UINT64_C(0x0501010114FF0000)
+#define BRACZ_SPEEDS (BRACZ_LAYOUT - UINT64_C(0x10000))
 
 extern Board brd;
 
