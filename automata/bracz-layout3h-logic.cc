@@ -433,166 +433,169 @@ void SimpleFollowStrategy(
 }
 
 EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm", 1024 / 2);
-EventBlock logic2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
-EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
-const AllocatorPtr& train_perm(perm.allocator());
-AllocatorPtr train_tmp(logic2.allocator()->Allocate("train", 384));
 
-MagnetCommandAutomata g_magnet_aut(&brd, logic2.allocator());
+EventBlock l2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
+EventBlock l1(&brd, BRACZ_LAYOUT | 0xE000, "logic");
+AllocatorPtr logic(new UnionAllocator({l1.allocator().get(), l2.allocator().get()}));
+const AllocatorPtr& logic2(logic);
+const AllocatorPtr& train_perm(perm.allocator());
+AllocatorPtr train_tmp(logic2->Allocate("train", 384));
+
+MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &bc.ActOraGreen, &bc.ActOraRed);
 StandardMovableTurnout Turnout_WWW1(&brd,
-                                    logic.allocator()->Allocate("WW.W1", 40),
+                                    logic->Allocate("WW.W1", 40),
                                     &Magnet_WWW1);
 
 MagnetDef Magnet_WWW3(&g_magnet_aut, "WW.W3", &bc.ActGreenGreen,
                       &bc.ActGreenRed);
-StandardMovableDKW DKW_WWW3(&brd, logic.allocator()->Allocate("WW.W3", 64),
+StandardMovableDKW DKW_WWW3(&brd, logic->Allocate("WW.W3", 64),
                             &Magnet_WWW3);
 
 MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueBrown,
                       &bc.ActBlueGrey);
-StandardMovableDKW DKW_WWW4(&brd, logic.allocator()->Allocate("WW.W4", 64),
+StandardMovableDKW DKW_WWW4(&brd, logic->Allocate("WW.W4", 64),
                             &Magnet_WWW4);
 StandardFixedTurnout Turnout_WWW5(&brd,
-                                  logic.allocator()->Allocate("WW.W5", 40),
+                                  logic->Allocate("WW.W5", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
 
-StandardBlock Block_WWA11(&brd, &WWA11, logic.allocator(), "WW.A11");
-StubBlock Block_WWB2(&brd, &WWB2, &bc.In6, logic.allocator(), "WW.B2");
-StubBlock Block_WWB3(&brd, &WWB3, &bc.In7, logic.allocator(), "WW.B3");
-StandardBlock Block_WWB14(&brd, &WWB14, logic.allocator(), "WW.B14");
+StandardBlock Block_WWA11(&brd, &WWA11, logic, "WW.A11");
+StubBlock Block_WWB2(&brd, &WWB2, &bc.In6, logic, "WW.B2");
+StubBlock Block_WWB3(&brd, &WWB3, &bc.In7, logic, "WW.B3");
+StandardBlock Block_WWB14(&brd, &WWB14, logic, "WW.B14");
 
-StandardBlock Block_A301(&brd, &A301, logic.allocator(), "A301");
-StandardBlock Block_A321(&brd, &A321, logic.allocator(), "A321");
-StandardBlock Block_A347(&brd, &A347, logic.allocator(), "A347");
-StandardBlock Block_A360(&brd, &A360, logic.allocator(), "A360");
+StandardBlock Block_A301(&brd, &A301, logic, "A301");
+StandardBlock Block_A321(&brd, &A321, logic, "A321");
+StandardBlock Block_A347(&brd, &A347, logic, "A347");
+StandardBlock Block_A360(&brd, &A360, logic, "A360");
 
 MagnetDef Magnet_W447(&g_magnet_aut, "W447", &bd.ActGreenGreen,
                       &bd.ActGreenRed);
 StandardMovableTurnout Turnout_W447(&brd,
-                                    logic.allocator()->Allocate("W447", 40),
+                                    logic->Allocate("W447", 40),
                                     &Magnet_W447);
 CoupledMagnetDef Magnet_W347(&g_magnet_aut, "W347", &Magnet_W447, false);
 StandardMovableTurnout Turnout_W347(&brd,
-                                    logic.allocator()->Allocate("W347", 40),
+                                    logic->Allocate("W347", 40),
                                     &Magnet_W347);
 TurnoutWrap TW447(&Turnout_W447.b, kPointToClosed);
 TurnoutWrap TW347(&Turnout_W347.b, kPointToClosed);
 
-StandardBlock Block_B421(&brd, &B421, logic.allocator(), "B421");
-StandardBlock Block_B447(&brd, &B447, logic.allocator(), "B447");
-StandardBlock Block_B460(&brd, &B460, logic.allocator(), "B460");
-StandardBlock Block_B475(&brd, &B475, logic.allocator(), "B475");
+StandardBlock Block_B421(&brd, &B421, logic, "B421");
+StandardBlock Block_B447(&brd, &B447, logic, "B447");
+StandardBlock Block_B460(&brd, &B460, logic, "B460");
+StandardBlock Block_B475(&brd, &B475, logic, "B475");
 
 MagnetDef Magnet_W359(&g_magnet_aut, "W359", &bb.ActBrownGrey,
                       &bb.ActBrownBrown);
 StandardMovableTurnout Turnout_W359(&brd,
-                                    logic.allocator()->Allocate("W359", 40),
+                                    logic->Allocate("W359", 40),
                                     &Magnet_W359);
 CoupledMagnetDef Magnet_W459(&g_magnet_aut, "W459", &Magnet_W359, false);
 StandardMovableTurnout Turnout_W459(&brd,
-                                    logic.allocator()->Allocate("W459", 40),
+                                    logic->Allocate("W459", 40),
                                     &Magnet_W459);
 
 MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &bb.ActGreenGreen,
                       &bb.ActGreenRed);
 StandardMovableTurnout Turnout_ZZW1(&brd,
-                                    logic.allocator()->Allocate("ZZ.W1", 40),
+                                    logic->Allocate("ZZ.W1", 40),
                                     &Magnet_ZZW1);
 
 MagnetDef Magnet_ZZW2(&g_magnet_aut, "ZZ.W2", &bb.ActOraGreen, &bb.ActOraRed);
 StandardMovableTurnout Turnout_ZZW2(&brd,
-                                    logic.allocator()->Allocate("ZZ.W2", 40),
+                                    logic->Allocate("ZZ.W2", 40),
                                     &Magnet_ZZW2);
 
 MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
                       &bb.ActBlueGrey);
-StandardMovableDKW DKW_ZZW3(&brd, logic.allocator()->Allocate("ZZ.W3", 64),
+StandardMovableDKW DKW_ZZW3(&brd, logic->Allocate("ZZ.W3", 64),
                             &Magnet_ZZW3);
 
 MagnetDef Magnet_ZZW6(&g_magnet_aut, "ZZ.W6", &be.ActGreenGreen,
                       &be.ActGreenRed);
 CoupledMagnetDef Magnet_ZZW5(&g_magnet_aut, "ZZ.W5", &Magnet_ZZW6, true);
 StandardMovableTurnout Turnout_ZZW5(&brd,
-                                    logic2.allocator()->Allocate("ZZ.W5", 40),
+                                    logic2->Allocate("ZZ.W5", 40),
                                     &Magnet_ZZW5);
 StandardMovableTurnout Turnout_ZZW6(&brd,
-                                    logic2.allocator()->Allocate("ZZ.W6", 40),
+                                    logic2->Allocate("ZZ.W6", 40),
                                     &Magnet_ZZW6);
 
-StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic2.allocator(), "ZZ.A2");
-StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic2.allocator(), "ZZ.A3");
+StubBlock Block_ZZA2(&brd, &ZZA2, &bb.InOraGreen, logic2, "ZZ.A2");
+StubBlock Block_ZZA3(&brd, &ZZA3, &bb.InOraRed, logic2, "ZZ.A3");
 
 StandardMiddleDetector Det_380(&brd, &bb.In7,
-                               logic2.allocator()->Allocate("Det380", 24, 8));
+                               logic2->Allocate("Det380", 24, 8));
 StandardMiddleDetector Det_480(&brd, &bb.In6,
-                               logic2.allocator()->Allocate("Det480", 24, 8));
+                               logic2->Allocate("Det480", 24, 8));
 
 MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBrownGrey,
                       &be.ActBrownBrown);
 CoupledMagnetDef Magnet_W381(&g_magnet_aut, "W381", &Magnet_W481, true);
 MagnetDef Magnet_W380(&g_magnet_aut, "W380", &be.ActBlueGrey, &be.ActBlueBrown);
 StandardMovableTurnout Turnout_W381(&brd,
-                                    logic2.allocator()->Allocate("W381", 40),
+                                    logic2->Allocate("W381", 40),
                                     &Magnet_W381);
 StandardMovableTurnout Turnout_W380(&brd,
-                                    logic2.allocator()->Allocate("W380", 40),
+                                    logic2->Allocate("W380", 40),
                                     &Magnet_W380);
 
 StandardMiddleDetector Det_500(&brd, &be.InGreenYellow,
-                               logic2.allocator()->Allocate("Det500", 24, 8));
+                               logic2->Allocate("Det500", 24, 8));
 
 StandardMovableTurnout Turnout_W481(&brd,
-                                    logic2.allocator()->Allocate("W481", 40),
+                                    logic2->Allocate("W481", 40),
                                     &Magnet_W481);
 
 // MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &be.ActGreenGreen,
 // &be.ActGreenRed);
 // StandardMovableTurnout Turnout_YYW1(
-//    &brd, logic2.allocator()->Allocate( "YY.W1", 40), &Magnet_YYW1);
+//    &brd, logic2->Allocate( "YY.W1", 40), &Magnet_YYW1);
 // CoupledMagnetDef Magnet_YYW3(&g_magnet_aut, "YY.W3", &Magnet_YYW1, true);
 // StandardMovableTurnout Turnout_YYW3(
-//    &brd, logic2.allocator()->Allocate( "YY.W3", 40), &Magnet_YYW3);
+//    &brd, logic2->Allocate( "YY.W3", 40), &Magnet_YYW3);
 
-StandardBlock Block_YYB2(&brd, &YYB2, logic2.allocator(), "YY.B2");
-StandardBlock Block_YYA3(&brd, &YYA3, logic2.allocator(), "YY.A3");
-StandardBlock Block_YYC23(&brd, &YYC23, logic2.allocator(), "YY.C23");
+StandardBlock Block_YYB2(&brd, &YYB2, logic2, "YY.B2");
+StandardBlock Block_YYA3(&brd, &YYA3, logic2, "YY.A3");
+StandardBlock Block_YYC23(&brd, &YYC23, logic2, "YY.C23");
 StandardMiddleDetector Det_YYC22(&brd, &ba.InBrownBrown,
-                                 logic2.allocator()->Allocate("YY.C22", 24, 8));
+                                 logic2->Allocate("YY.C22", 24, 8));
 
 MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen, &ba.ActOraRed);
 StandardMovableTurnout Turnout_YYW6(&brd,
-                                    logic2.allocator()->Allocate("YY.W6", 40),
+                                    logic2->Allocate("YY.W6", 40),
                                     &Magnet_YYW6);
 
 MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen, &be.ActOraRed);
 StandardMovableTurnout Turnout_XXW1(&brd,
-                                    logic2.allocator()->Allocate("XX.W1", 40),
+                                    logic2->Allocate("XX.W1", 40),
                                     &Magnet_XXW1);
 
 MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActBlueGrey,
                       &ba.ActBlueBrown);
 StandardMovableTurnout Turnout_XXW2(&brd,
-                                    logic2.allocator()->Allocate("XX.W2", 40),
+                                    logic2->Allocate("XX.W2", 40),
                                     &Magnet_XXW2);
 
 MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &ba.ActBrownGrey,
                       &ba.ActBrownBrown);
 StandardMovableTurnout Turnout_XXW7(&brd,
-                                    logic2.allocator()->Allocate("XX.W7", 40),
+                                    logic2->Allocate("XX.W7", 40),
                                     &Magnet_XXW7);
 
 MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActGreenGreen,
                       &ba.ActGreenRed);
 StandardMovableTurnout Turnout_XXW8(&brd,
-                                    logic2.allocator()->Allocate("XX.W8", 40),
+                                    logic2->Allocate("XX.W8", 40),
                                     &Magnet_XXW8);
 
-StandardBlock Block_XXB1(&brd, &XXB1, logic2.allocator(), "XX.B1");
-StandardBlock Block_XXB2(&brd, &XXB2, logic2.allocator(), "XX.B2");
-StandardBlock Block_XXB3(&brd, &XXB3, logic2.allocator(), "XX.B3");
+StandardBlock Block_XXB1(&brd, &XXB1, logic2, "XX.B1");
+StandardBlock Block_XXB2(&brd, &XXB2, logic2, "XX.B2");
+StandardBlock Block_XXB3(&brd, &XXB3, logic2, "XX.B3");
 
 bool ignored1 = BindSequence({&Block_A347, &TW347, &Block_A321, &Block_A301});
 bool ignored2 = BindSequence({&Block_B421, &Block_B447, &TW447, &Block_B460});
@@ -738,33 +741,33 @@ DefAut(signalaut3, brd, {
            ImportVariable(&signal_A380_main.signal));
 });
 
-FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", logic.allocator(), 32);
+FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", logic, 32);
 FlipFlopClient lpc_tofront1("to_front_1", &loop_flipflop);
 FlipFlopClient lpc_toback1("to_back_1", &loop_flipflop);
 FlipFlopClient lpc_tofront3("to_front_3", &loop_flipflop);
 FlipFlopClient lpc_toback1x("to_back_1x", &loop_flipflop);
 
-FlipFlopAutomata front_flipflop(&brd, "front_flipflop", logic.allocator(), 32);
+FlipFlopAutomata front_flipflop(&brd, "front_flipflop", logic, 32);
 FlipFlopClient frc_tofront("to_front", &front_flipflop);
 FlipFlopClient frc_fromfront1("from_front1", &front_flipflop);
 FlipFlopClient frc_toback("to_back", &front_flipflop);
 FlipFlopClient frc_fromback("from_back", &front_flipflop);
 FlipFlopClient frc_fromfront3("from_front3", &front_flipflop);
 
-FlipFlopAutomata ww_in_flipflop(&brd, "ww_in_flipflop", logic.allocator(), 32);
+FlipFlopAutomata ww_in_flipflop(&brd, "ww_in_flipflop", logic, 32);
 FlipFlopClient ww_to2("to_2", &ww_in_flipflop);
 FlipFlopClient ww_to3("to_3", &ww_in_flipflop);
 
-FlipFlopAutomata ww_out_flipflop(&brd, "ww_out_flipflop", logic.allocator(),
+FlipFlopAutomata ww_out_flipflop(&brd, "ww_out_flipflop", logic,
                                  32);
 FlipFlopClient ww_from2("from_2", &ww_out_flipflop);
 FlipFlopClient ww_from3("from_3", &ww_out_flipflop);
 FlipFlopClient ww_from14("from_14", &ww_out_flipflop);
 
 std::unique_ptr<GlobalVariable> g_stop_b460(
-    logic2.allocator()->Allocate("block_b460"));
+    logic2->Allocate("block_b460"));
 std::unique_ptr<GlobalVariable> g_stop_b360(
-    logic2.allocator()->Allocate("block_b360"));
+    logic2->Allocate("block_b360"));
 
 void IfLoopOkay(Automata::Op* op) {
   IfNotPaused(op);
@@ -1203,9 +1206,9 @@ int main(int argc, char** argv) {
   fclose(f);
 
   fprintf(stderr, "Allocator %s: %d entries remaining\n",
-          logic.allocator()->name().c_str(), logic.allocator()->remaining());
+          l1.allocator()->name().c_str(), l1.allocator()->remaining());
   fprintf(stderr, "Allocator %s: %d entries remaining\n",
-          logic2.allocator()->name().c_str(), logic2.allocator()->remaining());
+          l2.allocator()->name().c_str(), l2.allocator()->remaining());
   fprintf(stderr, "Allocator %s: %d entries remaining\n",
           perm.allocator()->name().c_str(), perm.allocator()->remaining());
 

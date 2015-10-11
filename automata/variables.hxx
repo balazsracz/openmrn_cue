@@ -143,6 +143,51 @@ class AllocatorInterface {
 
 };
 
+class UnionAllocator : public AllocatorInterface {
+ public:
+  UnionAllocator(std::initializer_list<const AllocatorInterface*> members)
+      : members_(members) {
+    HASSERT(members_.size());
+  }
+
+  const string& name() const override { return members_[0]->name(); }
+
+  AllocatorPtr Allocate(const string& name, int count,
+                        int alignment = 1) const override {
+    CheckAdvance(name, count + alignment);
+    return members_[next_]->Allocate(name, count, alignment);
+  }
+
+  GlobalVariable* Allocate(const string& name) const override {
+    CheckAdvance(name, 1);
+    return members_[next_]->Allocate(name);
+  }
+
+  int remaining() const override{
+    return members_.back()->remaining();
+  }
+
+ private:
+  // Checks that the current member has enough entries remaining for a given
+  // allocation. If not, advances the member index. Dies if we run out of
+  // members.
+  void CheckAdvance(const string& name, int count) const {
+    HASSERT(next_ < members_.size());
+    if (count > members_[next_]->remaining()) {
+      ++next_;
+    }
+    if (next_ >= members_.size()) {
+      fprintf(stderr, "union-allocator %s ran out while trying to allocate %s",
+              this->name().c_str(), name.c_str());
+      HASSERT(0);
+    }
+  }
+
+  std::vector<const AllocatorInterface*> members_;
+  // Allocation may advance this member, hence volatile.
+  mutable unsigned next_ = 0;
+};
+
 
 class EventBlock : public EventVariableBase {
  public:
