@@ -187,6 +187,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     current_program_.clear();
     brd->Render(&current_program_);
     fprintf(stderr, "program size: %zd\n", current_program_.size());
+    HASSERT(sizeof(program_area_) >= current_program_.size());
     memcpy(program_area_, current_program_.data(), current_program_.size());
     runner_ = new AutomataRunner(node_, program_area_, false);
     for (auto bit : mock_bits_) {
@@ -215,7 +216,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
 
 protected:
   AutomataRunner* runner_;
-  insn_t program_area_[10000];
+  insn_t program_area_[30000];
   string current_program_;
 
 private:

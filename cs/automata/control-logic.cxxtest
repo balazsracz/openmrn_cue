@@ -1975,6 +1975,9 @@ class LogicTrainTest : public LogicTest, protected TrainTestHelper {
   LogicTrainTest() : TrainTestHelper(this) {}
 };
 
+void IfNotPaused(Automata::Op* op) {
+}
+auto g_not_paused_condition = NewCallback(&IfNotPaused);
 
 TEST_F(LogicTrainTest, ScheduleStraight) {
   TestDetectorBlock before(this, "before");
@@ -2067,8 +2070,8 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
 // entry, then a fixedturnout to exit.
 //
 //
-//   >Rleft           
-//  /--\  TopA>TopB  /---------\   x  
+//   >Rleft
+//  /--\  TopA>TopB  /---------\   x
 //  |   \-----------/--/--x    |   x
 //  |   /-----------\-/  StubR |   x
 //  \--/  BotB<BotA  \---------/   x
@@ -2110,12 +2113,15 @@ class SampleLayoutLogicTrainTest : public LogicTrainTest {
 
 TEST_F(SampleLayoutLogicTrainTest, Construct) {}
 
-/*
+TEST_F(SampleLayoutLogicTrainTest, SetupRunner) {
+  SetupRunner(&brd);
+}
+
 TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
-            EventBlock::Allocator* alloc)
+            const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
@@ -2129,6 +2135,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
    private:
     SampleLayoutLogicTrainTest* t_;
   } my_train(this, &brd, alloc());
+
   SetupRunner(&brd);
 
   Run(20);
@@ -2167,11 +2174,12 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   EXPECT_FALSE(TopB.signal_green()->Get());
 }
 
+
 TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
-            EventBlock::Allocator* alloc)
+            const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
@@ -2222,7 +2230,7 @@ TEST_F(SampleLayoutLogicTrainTest, SpeedSetting) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
-            EventBlock::Allocator* alloc)
+            const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
@@ -2278,7 +2286,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
-            EventBlock::Allocator* alloc)
+            const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
@@ -2358,7 +2366,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
-            EventBlock::Allocator* alloc)
+            const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
@@ -2406,10 +2414,10 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
-            EventBlock::Allocator* alloc)
+            const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
-                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain.pbits", 16),
                         alloc->Allocate("mytrain", 16)),
           gate_loop_("gate_loop", alloc_),
           gate_stub_("gate_stub", alloc_),
@@ -2440,11 +2448,11 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   vector<TestBlock*> blocks = {&BotA, &BotB, &RLeft, &TopA, &TopB};
   BotA.inverted_detector()->Set(false);
   SetVar(*my_train.TEST_GetPermalocBit(BotA.b()), true);
-  size_t i = 1;
+  unsigned i = 1;
   bool is_out = false;
   BlockInterface* last_block = blocks[0];
   bool is_forward = true;
-  for (int j = 0; j < 37; ++i, ++j) {
+  for (unsigned j = 0; j < 37; ++i, ++j) {
     BlockInterface* nblock;
     if (i == blocks.size()) {
       is_out = !is_out;
@@ -2465,7 +2473,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
       nblock = blocks[i];
     }
     wait();
-    LOG(INFO, "\n===========\nround %d / %d, last_block %s nblock %s", j, i,
+    LOG(INFO, "\n===========\nround %u / %u, last_block %s nblock %s", j, i,
         last_block->b()->name().c_str(), nblock->b()->name().c_str());
     Run(30);
     EXPECT_TRUE(QueryVar(last_block->b()->route_out()));
@@ -2505,10 +2513,10 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
-            EventBlock::Allocator* alloc)
+            const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
                         nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
-                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain.pbits", 16),
                         alloc->Allocate("mytrain", 16)),
           t_(t) {}
 
@@ -2558,6 +2566,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
     Run(20);
   }
 }
+/*
 */
 
 }  // namespace automata
