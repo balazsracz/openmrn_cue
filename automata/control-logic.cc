@@ -990,6 +990,11 @@ void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
   // This will set the need_reverse to 1 just before the move.
   auto* need_reverse = aut->ImportVariable(need_reverse_.get());
   MapCurrentBlockPermaloc(&dest->b_);
+
+  Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(dest->detector(),
+                         current_block_detector_);
+
   Def()
       .IfReg1(aut->ImportVariable(*is_moving_))
       .IfReg1(current_block_permaloc_)
@@ -1001,6 +1006,7 @@ void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
   Def()
       .IfState(StWaiting)
       .IfReg1(current_block_permaloc_)
+      .IfReg1(current_block_detector_)
       .IfReg1(*need_reverse)
       .ActReg0(need_reverse)
       .ActState(StBeforeReverseWait)
@@ -1082,7 +1088,9 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(source->route_out(),
-                         current_block_route_out_);
+                         current_block_route_out_)
+      .ActImportVariable(source->detector(),
+                         current_block_detector_);
   if (!eager) {
     aut->DefCopy(current_block_permaloc_, &current_block_routingloc_);
   } else {
@@ -1097,6 +1105,7 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
         .IfReg1(current_block_routingloc_)
         .ActImportVariable(source->route_in(), next_block_route_in_);
     Def()
+        .IfState(StWaiting)
         .IfReg1(current_block_routingloc_)
         .IfReg0(current_block_permaloc_)
         .IfReg0(next_block_route_in_)
@@ -1104,10 +1113,21 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
   }
 
   Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(source->detector(),
-                         current_block_detector_)
       .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->permaloc(),
                          next_block_permaloc_);
+
+  // Transition permaloc to next step if eager.
+  if (eager) {
+    Def()
+        .IfReg1(current_block_permaloc_)
+        .IfReg1(current_block_detector_)
+        .IfReg1(current_block_route_out_)
+        .ActReg0(&current_block_permaloc_)
+        .ActReg1(&next_block_permaloc_)
+        // This will make sure not to stop the train here.
+        .ActImportVariable(dest->detector(),
+                           current_block_detector_);
+  }
 
   Def().IfReg1(current_block_routingloc_)
       .ActImportVariable(*source->request_green(),
@@ -1122,8 +1142,8 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
       .ActImportVariable(dest->route_in(), next_block_route_in_);
 
   Def().IfState(StWaiting)
-      .IfReg1(current_block_permaloc_)
-      .IfReg1(current_block_detector_)
+      .IfReg1(current_block_routingloc_)
+      .MaybeIfReg(!eager, current_block_detector_, true)
       .IfReg0(next_block_detector_)
       .IfReg0(current_block_route_out_)
       .IfReg0(next_block_route_in_)
@@ -1142,14 +1162,23 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
 
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
-  Def().IfState(StRequestTransition)
-      .IfReg1(current_block_permaloc_)
-      .RunCallback(route_lock_release())
-      .ActReg0(&current_block_permaloc_)
-      .ActReg0(&current_block_routingloc_)
-      .ActReg1(&next_block_permaloc_)
-      .ActReg1(&next_block_routingloc_)
-      .ActState(StTransitionDone);
+  if (eager) {
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_routingloc_)
+        .RunCallback(route_lock_release())
+        .ActReg0(&current_block_routingloc_)
+        .ActReg1(&next_block_routingloc_)
+        .ActState(StTransitionDone);
+  } else {
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_permaloc_)
+        .RunCallback(route_lock_release())
+        .ActReg0(&current_block_permaloc_)
+        .ActReg0(&current_block_routingloc_)
+        .ActReg1(&next_block_permaloc_)
+        .ActReg1(&next_block_routingloc_)
+        .ActState(StTransitionDone);
+  }
 }
 
 void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
