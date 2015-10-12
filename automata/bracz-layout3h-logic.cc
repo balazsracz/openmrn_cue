@@ -436,12 +436,13 @@ void SimpleFollowStrategy(
 
 EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm", 1024 / 2);
 
-EventBlock l2(&brd, BRACZ_LAYOUT | 0xD000, "logic2");
+EventBlock l2(&brd, BRACZ_LAYOUT | 0xD000, "logic");
 EventBlock l1(&brd, BRACZ_LAYOUT | 0xE000, "logic");
-AllocatorPtr logic(new UnionAllocator({l1.allocator().get(), l2.allocator().get()}));
+EventBlock l3(&brd, BRACZ_LAYOUT | 0xB000, "logic");
+AllocatorPtr logic(new UnionAllocator({l1.allocator().get(), l2.allocator().get(), l3.allocator().get()}));
 const AllocatorPtr& logic2(logic);
 const AllocatorPtr& train_perm(perm.allocator());
-AllocatorPtr train_tmp(logic2->Allocate("train", 384));
+AllocatorPtr train_tmp(logic2->Allocate("train", 768));
 
 MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
@@ -859,7 +860,7 @@ class LayoutSchedule : public TrainSchedule {
   LayoutSchedule(const string& name, uint16_t train_id, uint8_t default_speed)
       : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
                       train_perm->Allocate(name, 24, 8),
-                      train_tmp->Allocate(name, 24, 8), &stored_speed_),
+                      train_tmp->Allocate(name, 48, 8), &stored_speed_),
         stored_speed_(&brd, "speed." + name,
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
 
@@ -1206,10 +1207,9 @@ int main(int argc, char** argv) {
   PrintAllEventVariablesInBashFormat(f);
   fclose(f);
 
-  fprintf(stderr, "Allocator %s: %d entries remaining\n",
-          l1.allocator()->name().c_str(), l1.allocator()->remaining());
-  fprintf(stderr, "Allocator %s: %d entries remaining\n",
-          l2.allocator()->name().c_str(), l2.allocator()->remaining());
+  fprintf(stderr, "Allocator 1: %d entries remaining\n", l1.allocator()->remaining());
+  fprintf(stderr, "Allocator 2: %d entries remaining\n", l2.allocator()->remaining());
+  fprintf(stderr, "Allocator 3: %d entries remaining\n", l3.allocator()->remaining());
   fprintf(stderr, "Allocator %s: %d entries remaining\n",
           perm.allocator()->name().c_str(), perm.allocator()->remaining());
 

@@ -35,7 +35,7 @@ void PrintAllEventVariables(FILE* f) {
   fprintf(stderr, "%zd total variables \n", registered_variables()->size());
   for (const auto& v : *registered_variables()) {
     string name = v.name;
-    if (name.substr(0, 7) == "logic2.") {
+    if (name.substr(0, 7) == "logic2." || name.substr(0, 7) == "logic3.") {
       name.erase(5, 1);
     }
     fprintf(f,
