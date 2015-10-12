@@ -155,6 +155,14 @@ public:
         return *this;
     }
 
+    Op& MaybeIfReg(bool enabled, const Automata::LocalVariable& var,
+                   bool value) {
+        if (!enabled) {
+            return *this;
+        }
+        return IfReg(var, value);
+    }
+
     Op& ActReg0(Automata::LocalVariable* var) {
         uint8_t v = _ACT_REG;
         if (output_) v |= var->GetId();

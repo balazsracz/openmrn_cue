@@ -1202,10 +1202,8 @@ static constexpr StateRef StReadyToGo(3);
 static constexpr StateRef StRequestGreen(4);
 static constexpr StateRef StGreenRequested(13);
 static constexpr StateRef StGreenWait(5);
-static constexpr StateRef StStartTrain(6);
-static constexpr StateRef StMoving(7);
-static constexpr StateRef StStopTrain(8);
 
+// 6-7-8 are free (ststarttrain, ststoptrain, stmoving)
 static constexpr StateRef StRequestTransition(9);
 static constexpr StateRef StTransitionDone(10);
 
@@ -1235,9 +1233,10 @@ class TrainSchedule : public virtual AutomataPlugin {
         current_block_request_green_(aut_.ReserveVariable()),
         current_block_route_out_(aut_.ReserveVariable()),
         current_block_permaloc_(aut_.ReserveVariable()),
-        current_block_routingloc_(current_block_permaloc_),
+        current_block_routingloc_(aut_.ReserveVariable()),
         current_direction_(aut_.ReserveVariable()),
         next_block_permaloc_(aut_.ReserveVariable()),
+        next_block_routingloc_(aut_.ReserveVariable()),
         next_block_route_in_(aut_.ReserveVariable()),
         next_block_detector_(aut_.ReserveVariable()),
         magnet_command_(aut_.ReserveVariable()),
@@ -1248,6 +1247,9 @@ class TrainSchedule : public virtual AutomataPlugin {
         permit_taken_(aut_.ReserveVariable()),
         magnets_ready_(alloc_->Allocate("magnets_ready")),
         need_reverse_(alloc_->Allocate("need_reverse")),
+        req_stop_(alloc_->Allocate("req_stop")),
+        req_go_(alloc_->Allocate("req_go")),
+        is_moving_(alloc_->Allocate("is_moving")),
         outgoing_route_conditions_(
             NewCallbackPtr(this, &TrainSchedule::AddCurrentOutgoingConditions)),
         speed_var_(speed_var),
@@ -1257,6 +1259,7 @@ class TrainSchedule : public virtual AutomataPlugin {
         99, NewCallbackPtr(this, &TrainSchedule::ClearCurrentLocation));
     AddAutomataPlugin(100, NewCallbackPtr(this, &TrainSchedule::RunTransition));
     // 200 already needs the imported local variables
+    AddAutomataPlugin(199, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(200,
                       NewCallbackPtr(this, &TrainSchedule::HandleBaseStates));
     AddAutomataPlugin(210,
@@ -1277,6 +1280,13 @@ class TrainSchedule : public virtual AutomataPlugin {
     return r;
   }
 
+  GlobalVariable* TEST_GetRoutinglocBit(StandardBlock* source) {
+    size_t s = location_map_.size();
+    auto* r = AllocateOrGetLocationByBlock(source)->permaloc();
+    HASSERT(s == location_map_.size());
+    return r;
+  }
+
  protected:
   struct ScheduleLocation {
     ScheduleLocation()
@@ -1287,8 +1297,7 @@ class TrainSchedule : public virtual AutomataPlugin {
     }
 
     GlobalVariable* routingloc() {
-      // TODO(balazs.racz): switch this to the other bit.
-      return permaloc_bit.get();
+      return routingloc_bit.get();
     }
 
     // This bit will be 1 if the train is right now physically in (or
@@ -1305,22 +1314,24 @@ class TrainSchedule : public virtual AutomataPlugin {
     // false, the direction bit is not imported.
     bool respect_direction_;
   };
-  // Makes an eager transfer from block source to block dest. This transfer
-  // will not be gated on anything; as soon as the train shows up in source and
-  // destination is free, the train will move into the destination
-  // block. Condiiton, if specified, will have to evaluate to true in order to
-  // give a green to the train from the current block to the next.
+
+  // Makes a train transferfrom block 'source' to block 'dest'. The transition
+  // happens when condition is true. If eager==false, then the transition
+  // happens as soon as the train arrives physically (i.e. the permaloc == true
+  // and occupied == true). If eager==true, then the outgoing route will be
+  // requested whenever the location's routingloc==true and condition holds,
+  // irrespectively of the permaloc. This means that the train will set the
+  // route multiple blocks ahead.
+  void AddDirectBlockTransition(StandardBlock *source, StandardBlock *dest,
+                                OpCallback *condition = nullptr,
+                                bool eager = false);
+
+  // Simplification of an "eager block transition", meaning open track with
+  // multiple blocks one behind the other.
   void AddEagerBlockTransition(StandardBlock *source, StandardBlock *dest) {
     extern CallbackSpec1_0<Automata::Op*> g_not_paused_condition;
-    AddDirectBlockTransition(source, dest, &g_not_paused_condition);
+    AddDirectBlockTransition(source, dest, &g_not_paused_condition, true);
   }
-
-  // Direct block transition is a case when there is still only one choice on
-  // where to go, but this should be prepared only when the train arrives. An
-  // example is when the train would block a single track section.
-  void AddDirectBlockTransition(StandardBlock *source, StandardBlock *dest,
-                                OpCallback *condition = nullptr);
-
 
   // Adds an eager block transition between each successive pair of blocks in
   // this list.
@@ -1433,9 +1444,8 @@ class TrainSchedule : public virtual AutomataPlugin {
   // The location bit for the current block will be mapped here.
   Automata::LocalVariable current_block_permaloc_;
   // The routing location for the current state. This bit will be 1 if the head
-  // of the route set is at the current location. Currently maps to permaloc,
-  // because we do not support advance routing.
-  Automata::LocalVariable& current_block_routingloc_;
+  // of the route set is at the current location.
+  Automata::LocalVariable current_block_routingloc_;
   // If the current state transition is direction sensitive (that is,
   // current_location_->respect_direction_ == true), then this bit will be 1 if
   // we are at the chosen transition direction.
@@ -1443,6 +1453,7 @@ class TrainSchedule : public virtual AutomataPlugin {
 
   // The location bit for the next block will be mapped here.
   Automata::LocalVariable next_block_permaloc_;
+  Automata::LocalVariable next_block_routingloc_;
   Automata::LocalVariable next_block_route_in_;
   Automata::LocalVariable next_block_detector_;
 
@@ -1461,6 +1472,16 @@ class TrainSchedule : public virtual AutomataPlugin {
   // Used for the turnaround logic to figure out if we still need to switch the
   // direction.
   std::unique_ptr<GlobalVariable> need_reverse_;
+
+  // If 1, instructs the train control part of the automata to start the
+  // engine.
+  std::unique_ptr<GlobalVariable> req_stop_;
+  // If 1, instructs the train control part of the automata to stop the
+  // engine.
+  std::unique_ptr<GlobalVariable> req_go_;
+  // Defines whether the train is moving right now.
+  std::unique_ptr<GlobalVariable> is_moving_;
+
 
   // Callback that will add all necessary checks for outgoing route setting.
   std::unique_ptr<OpCallback> outgoing_route_conditions_;
