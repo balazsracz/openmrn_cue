@@ -371,7 +371,10 @@ class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
                          uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  bool GetCurrentState() OVERRIDE { return query_dcc(); }
+  nmranet::EventState GetCurrentState() OVERRIDE {
+    return query_dcc() ? nmranet::EventState::VALID
+                       : nmranet::EventState::INVALID;
+  }
   void SetState(bool new_value) OVERRIDE {
     if (new_value) {
       LOG(WARNING, "enable dcc");
@@ -395,7 +398,10 @@ class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
                        uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  bool GetCurrentState() OVERRIDE { return HW::ACC_ENABLE_Pin::get(); }
+  nmranet::EventState GetCurrentState() OVERRIDE {
+    return HW::ACC_ENABLE_Pin::get() ? nmranet::EventState::VALID
+                                     : nmranet::EventState::INVALID;
+  }
   void SetState(bool new_value) OVERRIDE {
     if (!HW::ACC_ENABLE_Pin::get() && new_value) {
       // We are turning power on.
