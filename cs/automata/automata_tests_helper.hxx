@@ -282,6 +282,10 @@ protected:
     return all_listener_.Query(var);
   }
 
+  bool QueryVar(const string& var) {
+    return all_listener_.Query(var);
+  }
+
   // Like QueryVar, but assert fails if the variable value is not defined yet.
   bool SQueryVar(const automata::GlobalVariable& var) {
     return all_listener_.StrictQuery(var);
@@ -304,19 +308,47 @@ protected:
     GlobalEventListenerBase() : tick_(0) {}
 
     bool StrictQuery(const automata::GlobalVariable& var) {
-      int t_on = event_last_seen_[var.event_on()];
-      int t_off = event_last_seen_[var.event_off()];
+      return StrictQuery(var.event_on(), var.event_off());
+    }
+
+    bool StrictQuery(uint64_t event_on, uint64_t event_off) {
+      int t_on = event_last_seen_[event_on];
+      int t_off = event_last_seen_[event_off];
       if (!t_on && !t_off) {
-        uint64_t v = (var.event_on() - BRACZ_LAYOUT - 0xc000)/2;
-        fprintf(stderr,"tick %d, not seen: %" PRIx64 " and %" PRIx64 " (bit %" PRIx64 ")\n", tick_, var.event_on(), var.event_off(), v);
+        uint64_t v = (event_on - BRACZ_LAYOUT - 0xc000)/2;
+        fprintf(stderr,"tick %d, not seen: %" PRIx64 " and %" PRIx64 " (bit %" PRIx64 ")\n", tick_, event_on, event_off, v);
       }
       HASSERT(t_on || t_off);
       return t_on > t_off;
     }
 
+    const automata::RegisteredVariable& GetVarByName(const string& name) {
+      auto& v = known_var_[name];
+      if (v.name != name) {
+        auto* p = automata::registered_variables();
+        for (auto& entry : *p) {
+          if (entry.name == name) {
+            v = entry;
+            return v;
+          }
+        }
+        EXPECT_TRUE(false) << "Unknown variable name " << name;
+      }
+      return v;
+    }
+
+    bool Query(const string& name) {
+      auto& v = GetVarByName(name);
+      return Query(v.event_on, v.event_off);
+    }
+
     bool Query(const automata::GlobalVariable& var) {
-      int t_on = event_last_seen_[var.event_on()];
-      int t_off = event_last_seen_[var.event_off()];
+      return Query(var.event_on(), var.event_off());
+    }
+
+    bool Query(uint64_t event_on, uint64_t event_off) {
+      int t_on = event_last_seen_[event_on];
+      int t_off = event_last_seen_[event_off];
       // If they are both zero, we return false.
       return t_on > t_off;
     }
@@ -328,6 +360,7 @@ protected:
 
    private:
     map<uint64_t, int> event_last_seen_;
+    map<string, automata::RegisteredVariable> known_var_;
     int tick_;
   };
 
