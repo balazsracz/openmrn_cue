@@ -1337,12 +1337,12 @@ class TrainSchedule : public virtual AutomataPlugin {
   // this list.
   void AddEagerBlockSequence(
       const std::initializer_list<StandardBlock *> &blocks,
-      OpCallback *condition = nullptr) {
+      OpCallback *condition = nullptr, bool is_eager = false) {
     auto ia = blocks.begin();
     if (ia == blocks.end()) return;
     auto ib = blocks.begin(); ++ib;
     while (ib != blocks.end()) {
-      AddDirectBlockTransition(*ia, *ib, condition);
+      AddDirectBlockTransition(*ia, *ib, condition, is_eager);
       ++ia;
       ++ib;
     }

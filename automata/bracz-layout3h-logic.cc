@@ -867,10 +867,10 @@ class LayoutSchedule : public TrainSchedule {
  protected:
   // Runs down from ZZ to WW on track 300.
   void Run360_to_301(Automata* aut) {
-    AddDirectBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked);
+    AddDirectBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked, true);
     AddEagerBlockTransition(&Block_A347, &Block_A321);
     SwitchTurnout(Turnout_W347.b.magnet(), false);
-    AddEagerBlockSequence({&Block_A321, &Block_A301});
+    AddEagerBlockSequence({&Block_A321, &Block_A301}, nullptr, true);
   }
 
   // In WW, runs around the loop track 11 to 14.
@@ -930,7 +930,7 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(&Block_B421, &Block_B447);
     AddEagerBlockTransition(&Block_B447, &Block_B460);
     SwitchTurnout(Turnout_W447.b.magnet(), false);
-    AddDirectBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked);
+    AddDirectBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked, true);
   }
 
   // Runs in ZZ into the stub track and reverses direction.
