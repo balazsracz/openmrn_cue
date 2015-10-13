@@ -1119,6 +1119,7 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
   // Transition permaloc to next step if eager.
   if (eager) {
     Def()
+        .IfReg1(aut->ImportVariable(*is_moving_))
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
         .IfReg1(current_block_route_out_)
