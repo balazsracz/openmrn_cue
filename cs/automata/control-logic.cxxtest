@@ -2121,7 +2121,7 @@ TEST_F(SampleLayoutLogicTrainTest, SetupRunner) {
 }
 
 TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
-  debug_variables = 2;
+  debug_variables = 0;
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
@@ -2416,7 +2416,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
 }
 
 TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
-  debug_variables = 2;
+  debug_variables = 0;
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
@@ -2572,7 +2572,127 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
     Run(20);
   }
 }
-/*
-*/
+
+TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
+  debug_variables = 2;
+  static FlipFlopAutomata flaut(&brd, "flipflop", alloc());
+  static FlipFlopClient flc_loop("loop", &flaut);
+  static FlipFlopClient flc_stub("stub", &flaut);
+
+  expect_next_alias_allocation();
+  expect_packet_(":X1070144CN060100001388;");
+  expect_packet_(":X1910044CN060100001388;");
+
+  nmranet::LoggingTrain trainImpl2(0x1388);
+  nmranet::TrainNode trainNode2(&trainService_, &trainImpl2);
+
+  wait();
+
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(const string& name,
+            uint64_t id,
+            SampleLayoutLogicTrainTest* t, Board* b,
+            AllocatorPtr alloc)
+        : TrainSchedule(name, b,
+                        id,
+                        alloc->Allocate("pbits", 16),
+                        alloc->Allocate("u", 32)),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      AddEagerBlockSequence({t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b(), t_->TopB.b()}, nullptr, true);
+      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RRight.b(),
+                                 &flc_loop);
+      SwitchTurnout(t_->RStubEntry.b.magnet(), true);
+      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RStub.b(),
+                                 &flc_stub);
+      SwitchTurnout(t_->RStubEntry.b.magnet(), false);
+      AddEagerBlockTransition(t_->RRight.b(), t_->BotA.b());
+      AddDirectBlockTransition(t_->RStub.b(), t_->BotA.b(), nullptr, false);
+    }
+
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } train1("t1", nmranet::TractionDefs::NODE_ID_DCC | 0x1384, this, &brd, alloc()->Allocate("t1", 64)),
+      train2("t2", nmranet::TractionDefs::NODE_ID_DCC | 0x1388, this, &brd, alloc()->Allocate("t2", 64));
+  SetupRunner(&brd);
+  Run(20);
+  vector<BlockInterface*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,
+                                    &TopA, &TopB, &RStub, &BotA, &BotB, &RLeft};
+  TopA.inverted_detector()->Set(false);
+  SetVar(*train1.TEST_GetPermalocBit(TopA.b()), true);
+  BotA.inverted_detector()->Set(false);
+  SetVar(*train2.TEST_GetPermalocBit(BotA.b()), true);
+
+  Run(50);
+
+  EXPECT_TRUE(QueryVar(BotA.b()->route_out()));
+  EXPECT_TRUE(QueryVar(BotB.b()->route_out()));
+  EXPECT_FALSE(QueryVar(RLeft.b()->route_out()));
+  EXPECT_TRUE(QueryVar(TopA.b()->route_out()));
+  EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
+
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.blk.RLeft"));
+  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.blk.TopB"));
+
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.blk.BotB"));
+  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.blk.TopB"));
+
+  // The trains are moving.
+  EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
+  EXPECT_EQ(40, (int)(trainImpl2.get_speed().mph() + 0.5));
+  EXPECT_TRUE(QueryVar("blk.t2.u.is_moving"));
+  EXPECT_TRUE(QueryVar("blk.t1.u.is_moving"));
+
+  LOG(INFO, "\n\nTop train gets on the move.\n");
+  TopA.inverted_detector()->Set(true);
+  Run(50);
+
+  EXPECT_TRUE(QueryVar(RLeft.b()->route_out()));
+  EXPECT_FALSE(QueryVar(TopA.b()->route_out()));
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.blk.TopA"));
+  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.blk.TopB"));
+
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.blk.BotB"));
+  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.blk.TopB"));
+
+  LOG(INFO, "\n\nTop train arrives.\n");
+  TopB.inverted_detector()->Set(false);
+  Run(50);
+
+  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.blk.RRight"));
+  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.blk.RRight"));
+
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.blk.BotB"));
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.blk.TopA"));
+
+  //PrintAllEventVariables(stderr);
+
+  /*
+  for (int i = 0; i < 37; ++i) {
+    BlockInterface* cblock = blocks[i % blocks.size()];
+    BlockInterface* nblock = blocks[(i + 1) % blocks.size()];
+    Run(20);
+    EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+    cblock->inverted_detector()->Set(true);
+    if (nblock == &RStub) {
+      RStub.inverted_entry_detector()->Set(false);
+    }
+    Run(20);
+    EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
+    EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
+    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
+    if (nblock == &RStub) {
+      RStub.inverted_entry_detector()->Set(true);
+    }
+    nblock->inverted_detector()->Set(false);
+    Run(20);
+    }*/
+}
 
 }  // namespace automata
