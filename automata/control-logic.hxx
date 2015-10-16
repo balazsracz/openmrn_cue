@@ -226,6 +226,8 @@ class CtrlTrackInterface {
         in_route_set_success(allocator->Allocate("in_route_set_success")),
         in_route_set_failure(allocator->Allocate("in_route_set_failure")),
         out_route_released(allocator->Allocate("out_route_released")),
+        in_next_signal_1(allocator->Allocate("in_next_signal_1")),
+        in_next_signal_2(allocator->Allocate("in_next_signal_2")),
         lookup_if_(parent),
         binding_(nullptr) {}
 
@@ -233,6 +235,10 @@ class CtrlTrackInterface {
   std::unique_ptr<GlobalVariable> in_route_set_success;
   std::unique_ptr<GlobalVariable> in_route_set_failure;
   std::unique_ptr<GlobalVariable> out_route_released;
+
+  std::unique_ptr<GlobalVariable> in_next_signal_1;
+  std::unique_ptr<GlobalVariable> in_next_signal_2;
+
 
   // Occupancy value of the current block, or the neighboring block less than a
   // train-length away.
@@ -283,6 +289,8 @@ class StraightTrack : public StraightTrackInterface,
             allocator->Allocate("tmp_route_setting_in_progress")) {
     AddAutomataPlugin(
         20, NewCallbackPtr(this, &StraightTrack::SimulateAllOccupancy));
+    AddAutomataPlugin(
+        23, NewCallbackPtr(this, &StraightTrack::CopySignalState));
   }
 
   virtual CtrlTrackInterface *side_a() { return &side_a_; }
@@ -293,6 +301,7 @@ class StraightTrack : public StraightTrackInterface,
 
   void SimulateAllOccupancy(Automata *aut);
   void SimulateAllRoutes(Automata *aut);
+  void CopySignalState(Automata *aut);
 
   static const int kAllocSize = 24;
 
@@ -457,6 +466,10 @@ class SignalPiece : public StraightTrackShort {
     // value from the previous piece of track.
     RemoveAutomataPlugins(20);
     AddAutomataPlugin(20, NewCallbackPtr(this, &SignalPiece::SignalOccupancy));
+
+    RemoveAutomataPlugins(23);
+    AddAutomataPlugin(23, NewCallbackPtr(this, &SignalPiece::SetSignalState));
+
     // Signals have custom route setting logic in the forward direction.
     RemoveAutomataPlugins(30);
     AddAutomataPlugin(30, NewCallbackPtr(this, &SignalPiece::SignalRoute));
@@ -482,6 +495,7 @@ class SignalPiece : public StraightTrackShort {
   }
 
   void SignalRoute(Automata *aut);
+  void SetSignalState(Automata *aut);
   void SignalOccupancy(Automata *aut);
 
  private:
@@ -581,6 +595,8 @@ class TurnoutInterface {
   virtual CtrlTrackInterface *side_thrown() = 0;
 };
 
+// Allows a turnout be included in a BindSequence({tack, track, turnout, track,
+// track})
 class TurnoutWrap : public StraightTrackInterface {
  public:
   struct PointToClosed {};
@@ -642,6 +658,7 @@ class TurnoutBase : public TurnoutInterface,
                                     route_set_TP_.get(),
                                     route_pending_TP_.get(), TURNOUT_DONTCARE));
     AddAutomataPlugin(20, NewCallbackPtr(this, &TurnoutBase::TurnoutOccupancy));
+    AddAutomataPlugin(23, NewCallbackPtr(this, &TurnoutBase::ProxySignals));
     AddAutomataPlugin(25, NewCallbackPtr(this, &TurnoutBase::ProxyDetectors));
     AddAutomataPlugin(29, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(30, NewCallbackPtr(this, &TurnoutBase::TurnoutRoute));
@@ -729,6 +746,7 @@ class TurnoutBase : public TurnoutInterface,
 
   void PopulateAnyRouteSet(Automata *aut);
   void ProxyDetectors(Automata *aut);
+  void ProxySignals(Automata *aut);
   void TurnoutOccupancy(Automata *aut);
   void TurnoutRoute(Automata *aut);
 };
@@ -846,6 +864,7 @@ class DKW : private OccupancyLookupInterface,
         allocator->Allocate("tmp_route_setting_in_progress"));
 
     AddAutomataPlugin(20, NewCallbackPtr(this, &DKW::DKWOccupancy));
+    AddAutomataPlugin(23, NewCallbackPtr(this, &DKW::ProxySignals));
     AddAutomataPlugin(25, NewCallbackPtr(this, &DKW::ProxyDetectors));
     AddAutomataPlugin(29, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(30, NewCallbackPtr(this, &DKW::DKWRoute));
@@ -933,6 +952,7 @@ protected:
   void DKWOccupancy(Automata *aut);
   void PopulateAnyRouteSet(Automata *aut);
   void ProxyDetectors(Automata *aut);
+  void ProxySignals(Automata *aut);
   void DKWRoute(Automata *aut);
 
   PointInfo points_[4];
