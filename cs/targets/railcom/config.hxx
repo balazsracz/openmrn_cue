@@ -23,8 +23,8 @@ namespace nmranet
 /// - the Simple Node Ident Info Protocol will return this data
 /// - the ACDI memory space will contain this data.
 extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
-    4,               "OpenMRN", "Test IO Board - Tiva Launchpad 123",
-    "ek-tm4c123gxl", "1.01"};
+    4,               "Balazs Racz", "Railcom IO board",
+    "ek-tm4c123gxl", "2015-07-30"};
 
 #define NUM_OUTPUTS 3
 #define NUM_INPUTS 2

@@ -212,9 +212,9 @@ public:
     {
     }
 
-    virtual bool GetCurrentState()
+    nmranet::EventState GetCurrentState() OVERRIDE
     {
-        return state_;
+        return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
     }
     virtual void SetState(bool new_value)
     {
@@ -244,7 +244,10 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
         ptr_(reinterpret_cast<const uint8_t*>(port_base +
                                               (((unsigned)port_bit) << 2))) {}
 
-  bool GetCurrentState() OVERRIDE { return *ptr_; }
+
+  nmranet::EventState GetCurrentState() OVERRIDE {
+    return *ptr_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+  }
 
   void SetState(bool new_value) OVERRIDE {
     DIE("cannot set state of input producer");
@@ -265,7 +268,10 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
         BitEventConsumer(this),
         memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
 
-  bool GetCurrentState() OVERRIDE { return (*memory_) ? true : false; }
+  nmranet::EventState GetCurrentState() OVERRIDE {
+    return (*memory_) ? nmranet::EventState::VALID
+                      : nmranet::EventState::INVALID;
+  }
   void SetState(bool new_value) OVERRIDE {
     if (new_value) {
       *memory_ = 0xff;

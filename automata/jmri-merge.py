@@ -332,7 +332,7 @@ class TrainLocLogixConditional:
 
   def __init__(self, sensor_name):
     self.sensor_name = sensor_name
-    m = re.match('perm\.(.*)\.loc.logic2?\.(.*)', sensor_name)
+    m = re.match('perm\.(.*)\.loc.logic[23]?\.(.*)', sensor_name)
  #                'perm.icn.loc.logic.A360'
 
     if not m:
@@ -608,7 +608,7 @@ def GetAllLocationList():
   """Returns a list of strings, with each location name."""
   locations = []
   for sensor in all_sensors:
-    m = re.match('logic.(.*)[.]signal.route_set_ab', sensor.user_name)
+    m = re.match('logic[.](.*)[.]signal.route_set_ab', sensor.user_name)
     if m:
       locations.append(m.group(1))
   return locations

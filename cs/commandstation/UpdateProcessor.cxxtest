@@ -6,7 +6,7 @@
 
 using ::testing::ElementsAre;
 
-class MockPacketQueue : public PacketFlowInterface {
+class MockPacketQueue : public dcc::PacketFlowInterface {
  public:
   MOCK_METHOD2(arrived, void(uint8_t, vector<uint8_t>));
 

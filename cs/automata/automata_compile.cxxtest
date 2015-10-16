@@ -191,28 +191,28 @@ TEST(BlockTest, AllocatorTest) {
   Board brd;
   EventBlock block1(&brd, 0x05020102020658000ULL, "blk");
   EXPECT_EQ("blk", block1.allocator()->name());
-  EventBlock::Allocator resv1(block1.allocator(), "r1", 13);
-  EXPECT_EQ("blk.r1", resv1.name());
-  EXPECT_EQ(13, resv1.remaining());
+  AllocatorPtr resv1(block1.allocator()->Allocate("r1", 13));
+  EXPECT_EQ("blk.r1", resv1->name());
+  EXPECT_EQ(13, resv1->remaining());
   EXPECT_EQ(2035, block1.allocator()->remaining());
-  EXPECT_EQ(0, resv1.Reserve(1));
-  EXPECT_EQ(1, resv1.Reserve(1));
-  EXPECT_EQ(2, resv1.Reserve(1));
-  EXPECT_EQ(3, resv1.Reserve(1));
-  EXPECT_EQ(9, resv1.remaining());
+  EXPECT_EQ(0, resv1->TEST_Reserve(1));
+  EXPECT_EQ(1, resv1->TEST_Reserve(1));
+  EXPECT_EQ(2, resv1->TEST_Reserve(1));
+  EXPECT_EQ(3, resv1->TEST_Reserve(1));
+  EXPECT_EQ(9, resv1->remaining());
 
-  EventBlock::Allocator resv2(block1.allocator(), "", 7, 16);
-  EXPECT_EQ(16, resv2.Reserve(1));
-  EXPECT_EQ(17, resv2.Reserve(1));
-  EXPECT_EQ(18, resv2.Reserve(1));
-  EXPECT_EQ(4, resv2.remaining());
+  AllocatorPtr resv2(block1.allocator()->Allocate("", 7, 16));
+  EXPECT_EQ(16, resv2->TEST_Reserve(1));
+  EXPECT_EQ(17, resv2->TEST_Reserve(1));
+  EXPECT_EQ(18, resv2->TEST_Reserve(1));
+  EXPECT_EQ(4, resv2->remaining());
 
-  EXPECT_DEATH(resv2.Reserve(5), "'blk' block overrun");
-  BlockVariable bv(&resv1, "blockvar");
-  EXPECT_EQ("blk.r1.blockvar", bv.name());
+  EXPECT_DEATH(resv2->TEST_Reserve(5), "'blk' block overrun");
+  std::unique_ptr<GlobalVariable> bv(resv1->Allocate("blockvar"));
+  EXPECT_EQ("blk.r1.blockvar", registered_variables()->back().name);
   block1.SetId(354);
 
-  GlobalVariableId id = bv.GetId();
+  GlobalVariableId id = bv->GetId();
   EXPECT_EQ(354U, id.id);
   EXPECT_EQ(4, id.arg);
 }
@@ -221,12 +221,12 @@ TEST(BlockTest, AllocatorTest) {
 TEST(BoardCompile, BlockEventBoard) {
   Board brd;
   EventBlock block1(&brd, 0x0502010202658000ULL, "blk");
-  block1.allocator()->Reserve(42);
-  EventBlock::Allocator resv1(block1.allocator(), "r1", 7);
-  static BlockVariable bv(&resv1, "blockvar");
+  block1.allocator()->Allocate("reserved", 42);
+  AllocatorPtr resv1(block1.allocator()->Allocate("r1", 7));
+  static std::unique_ptr<GlobalVariable> bv(resv1->Allocate("blockvar"));
 
   DefAut(testaut, brd, {
-      auto* lintev = ImportVariable(&bv);
+      auto* lintev = ImportVariable(bv.get());
       Def().IfReg0(*lintev).ActReg1(lintev);
     });
 

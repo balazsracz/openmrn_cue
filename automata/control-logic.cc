@@ -829,26 +829,26 @@ void MagnetAutomataFinal(Automata* aut) {
   Def().IfState(StBase).IfTimerDone().ActTimer(1);
 }
 
-MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const EventBlock::Allocator& alloc)
-      : alloc_(&alloc, "magnets", 64), aut_("magnets", brd, this) {
+MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const AllocatorPtr& parent_alloc)
+    : alloc_(parent_alloc->Allocate("magnets", 64)), aut_("magnets", brd, this) {
   //AddAutomataPlugin(1, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
   AddAutomataPlugin(100, NewCallbackPtr(&MagnetAutomataFinal));
 }
 
 void MagnetCommandAutomata::AddMagnet(MagnetDef* def) {
-  def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
-  def->command.reset(alloc_.Allocate(def->name_ + ".command"));
+  def->current_state.reset(alloc_->Allocate(def->name_ + ".current_state"));
+  def->command.reset(alloc_->Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
-  def->owned_locked.reset(alloc_.Allocate(def->name_ + ".locked"));
+  def->owned_locked.reset(alloc_->Allocate(def->name_ + ".locked"));
   def->locked = def->owned_locked.get();
   AddAutomataPlugin(def->aut_state.state, NewCallbackPtr(&MagnetAutomataEntry, def));
 }
 
 void MagnetCommandAutomata::AddCoupledMagnet(CoupledMagnetDef* def) {
-  def->current_state.reset(alloc_.Allocate(def->name_ + ".current_state"));
-  def->command.reset(alloc_.Allocate(def->name_ + ".command"));
+  def->current_state.reset(alloc_->Allocate(def->name_ + ".current_state"));
+  def->command.reset(alloc_->Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
-  def->remote_command.reset(alloc_.Allocate(def->name_ + ".remote_command"));
+  def->remote_command.reset(alloc_->Allocate(def->name_ + ".remote_command"));
   def->locked = def->original->owned_locked.get();
   AddAutomataPlugin(2, NewCallbackPtr(&MagnetAutomataCouple, def));
 }
@@ -886,15 +886,23 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
       .IfReg1(current_block_route_out_)
       .ActTimer(2)
       .ActState(StGreenWait);
-  Def().IfState(StGreenWait)
+  Def()
+      .IfState(StGreenWait)
       .IfTimerDone()
-      .ActState(StStartTrain);
+      .ActState(StRequestTransition);
 
-  // TODO(balazs.racz): This can crash if the automata is in state StMoving and
-  // the operator removes all location permabits in an effort to stop the train.
-  Def().IfState(StMoving)
+  Def().IfState(StTransitionDone)
+      .IfReg0(aut->ImportVariable(*is_moving_))
+      .ActReg1(aut->ImportVariable(req_go_.get()));
+  Def().IfState(StTransitionDone)
+      .ActState(StWaiting);
+
+  // TODO(balazs.racz): This can crash if the automata is in state is_moving_
+  // and the operator removes all location permabits in an effort to stop the
+  // train.
+  Def().IfReg1(aut->ImportVariable(*is_moving_))
       .IfReg1(current_block_detector_)
-      .ActState(StStopTrain);
+      .ActReg1(aut->ImportVariable(req_stop_.get()));
 
   Def().IfState(StReadyToGo)
       .ActState(StTurnout)
@@ -919,32 +927,33 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
 void TrainSchedule::SendTrainCommands(Automata *aut) {
   const auto& is_reversed = aut->ImportVariable(*is_reversed_);
   auto* last_set_reversed = aut->ImportVariable(last_set_reversed_.get());
+  auto* req_start_train = aut->ImportVariable(req_go_.get());
+  auto* req_stop_train = aut->ImportVariable(req_stop_.get());
+  auto* is_moving = aut->ImportVariable(is_moving_.get());
   Def().ActSetId(train_node_id_);
   if (speed_var_) {
     // Variable speed.
-    Def().IfState(StStartTrain)
+    Def().IfReg1(*req_start_train)
         .ActGetValueToSpeed(aut->ImportVariable(*speed_var_), 0);
   } else {
     // Fixed speed.
-    Def().IfState(StStartTrain)
+    Def().IfReg1(*req_start_train)
         .ActLoadSpeed(true, 40);
   }
-  Def().IfState(StStartTrain)
+  Def().IfReg1(*req_start_train)
       .IfReg1(is_reversed)
       .ActSpeedReverse();
   // Copies is_reversed to last_set_reversed.
-  Def().IfState(StStartTrain)
+  Def().IfReg1(*req_start_train)
       .IfReg1(is_reversed)
       .ActReg1(last_set_reversed);
-  Def().IfState(StStartTrain)
+  Def().IfReg1(*req_start_train)
       .IfReg0(is_reversed)
       .ActReg0(last_set_reversed);
-  Def().IfState(StStartTrain)
+  Def().IfReg1(*req_start_train)
       .IfSetSpeed()
-      .ActState(StRequestTransition);
-
-  Def().IfState(StTransitionDone)
-      .ActState(StMoving);
+      .ActReg0(req_start_train)
+      .ActReg1(is_moving);
 
   // If is reversed != last_set_reversed, then we send a train stop command
   // with the right direction bit. This should take care of startup train
@@ -952,36 +961,42 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
   Def().IfState(StWaiting)
       .IfReg1(is_reversed)
       .IfReg0(*last_set_reversed)
-      .ActState(StStopTrain);
+      .ActReg1(req_stop_train);
   Def().IfState(StWaiting)
       .IfReg0(is_reversed)
       .IfReg1(*last_set_reversed)
-      .ActState(StStopTrain);
+      .ActReg1(req_stop_train);
 
-  Def().IfState(StStopTrain)
+  Def().IfReg1(*req_stop_train)
       .ActLoadSpeed(true, 0);
-  Def().IfState(StStopTrain)
+  Def().IfReg1(*req_stop_train)
       .IfReg1(is_reversed)
       .ActSpeedReverse();
   // Copies is_reversed to last_set_reversed.
-  Def().IfState(StStopTrain)
+  Def().IfReg1(*req_stop_train)
       .IfReg1(is_reversed)
       .ActReg1(last_set_reversed);
-  Def().IfState(StStopTrain)
+  Def().IfReg1(*req_stop_train)
       .IfReg0(is_reversed)
       .ActReg0(last_set_reversed);
 
-  Def().IfState(StStopTrain)
+  Def().IfReg1(*req_stop_train)
       .IfSetSpeed()
-      .ActState(StWaiting);
+      .ActReg0(req_stop_train)
+      .ActReg0(is_moving);
 }
 
 void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
   // This will set the need_reverse to 1 just before the move.
   auto* need_reverse = aut->ImportVariable(need_reverse_.get());
   MapCurrentBlockPermaloc(&dest->b_);
+
+  Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(dest->detector(),
+                         current_block_detector_);
+
   Def()
-      .IfState(StMoving)
+      .IfReg1(aut->ImportVariable(*is_moving_))
       .IfReg1(current_block_permaloc_)
       .ActReg1(need_reverse);
   // This will flip the is_reversed permaloc once during the StWaiting state.
@@ -991,6 +1006,7 @@ void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
   Def()
       .IfState(StWaiting)
       .IfReg1(current_block_permaloc_)
+      .IfReg1(current_block_detector_)
       .IfReg1(*need_reverse)
       .ActReg0(need_reverse)
       .ActState(StBeforeReverseWait)
@@ -1040,6 +1056,7 @@ void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
 void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
   ScheduleLocation* loc = AllocateOrGetLocationByBlock(source);
   Def().ActImportVariable(*loc->permaloc(), current_block_permaloc_);
+  Def().ActImportVariable(*loc->routingloc(), current_block_routingloc_);
   current_location_ = loc;
 }
 
@@ -1047,7 +1064,10 @@ TrainSchedule::ScheduleLocation* TrainSchedule::AllocateOrGetLocation(
     const void* ptr, const string& name) {
   auto& loc = location_map_[ptr];
   if (!loc.permaloc_bit) {
-    loc.permaloc_bit.reset(permanent_alloc_.Allocate("loc." + name)); 
+    loc.permaloc_bit.reset(permanent_alloc_->Allocate("loc." + name));
+  }
+  if (!loc.routingloc_bit) {
+    loc.routingloc_bit.reset(alloc_->Allocate("rtloc." + name));
   }
   return &loc;
 }
@@ -1056,31 +1076,74 @@ GlobalVariable* TrainSchedule::GetHelperBit(
     const void* ptr, const string& name) {
   auto& loc = helper_bits_[ptr];
   if (!loc.get()) {
-    loc.reset(alloc_.Allocate(name)); 
+    loc.reset(alloc_->Allocate(name));
   }
   return loc.get();
 }
 
-void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
-                                            StandardBlock* dest,
-                                            OpCallback* condition) {
+void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
+                                             StandardBlock* dest,
+                                             OpCallback* condition,
+                                             bool eager) {
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(*source->request_green(),
-                         current_block_request_green_)
       .ActImportVariable(source->route_out(),
                          current_block_route_out_)
       .ActImportVariable(source->detector(),
                          current_block_detector_);
-  Def()
-      .IfReg1(current_block_permaloc_)
+  if (!eager) {
+    aut->DefCopy(current_block_permaloc_, &current_block_routingloc_);
+  } else {
+    // This will take care of permaloc bits that appear out of nowhere.
+    Def().IfReg1(current_block_permaloc_)
+        .IfReg0(current_block_routingloc_)
+        .IfReg0(current_block_route_out_)
+        .ActReg1(&current_block_routingloc_);
+    // We also need to delete routingloc bits that are not corresponding to
+    // routes.
+    Def()
+        .IfReg1(current_block_routingloc_)
+        .ActImportVariable(source->route_in(), next_block_route_in_);
+    Def()
+        .IfState(StWaiting)
+        .IfReg1(current_block_routingloc_)
+        .IfReg0(current_block_permaloc_)
+        .IfReg0(next_block_route_in_)
+        .ActReg0(&current_block_routingloc_);
+  }
+
+  Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->permaloc(),
-                         next_block_permaloc_)
+                         next_block_permaloc_);
+
+  // Transition permaloc to next step if eager.
+  if (eager) {
+    Def()
+        .IfReg1(current_block_permaloc_)
+        .IfReg1(current_block_detector_)
+        .IfReg1(current_block_route_out_)
+        .ActReg0(&current_block_permaloc_)
+        .ActReg1(&next_block_permaloc_)
+        // This will make sure not to stop the train here.
+        .ActImportVariable(dest->detector(),
+                           current_block_detector_);
+  }
+
+  Def().IfReg1(current_block_routingloc_)
+      .ActImportVariable(*source->request_green(),
+                         current_block_request_green_)
+      .ActImportVariable(source->route_out(),
+                         current_block_route_out_);
+  Def()
+      .IfReg1(current_block_routingloc_)
+      .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->routingloc(),
+                         next_block_routingloc_)
       .ActImportVariable(dest->detector(), next_block_detector_)
       .ActImportVariable(dest->route_in(), next_block_route_in_);
 
   Def().IfState(StWaiting)
-      .IfReg1(current_block_permaloc_)
+      .IfReg1(current_block_routingloc_)
+      .MaybeIfReg(!eager, current_block_detector_, true)
       .IfReg0(next_block_detector_)
       .IfReg0(current_block_route_out_)
       .IfReg0(next_block_route_in_)
@@ -1099,12 +1162,23 @@ void TrainSchedule::AddEagerBlockTransition(StandardBlock* source,
 
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
-  Def().IfState(StRequestTransition)
-      .IfReg1(current_block_permaloc_)
-      .RunCallback(route_lock_release())
-      .ActReg0(&current_block_permaloc_)
-      .ActReg1(&next_block_permaloc_)
-      .ActState(StTransitionDone);
+  if (eager) {
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_routingloc_)
+        .RunCallback(route_lock_release())
+        .ActReg0(&current_block_routingloc_)
+        .ActReg1(&next_block_routingloc_)
+        .ActState(StTransitionDone);
+  } else {
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_permaloc_)
+        .RunCallback(route_lock_release())
+        .ActReg0(&current_block_permaloc_)
+        .ActReg0(&current_block_routingloc_)
+        .ActReg1(&next_block_permaloc_)
+        .ActReg1(&next_block_routingloc_)
+        .ActState(StTransitionDone);
+  }
 }
 
 void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
@@ -1117,6 +1191,20 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
                     "transition_" + source->name() + "_" + dest->name()),
       current_direction_);
   current_location_->respect_direction_ = true;
+
+  Def().IfReg1(current_block_permaloc_)
+      .ActImportVariable(source->route_out(),
+                         current_block_route_out_);
+  Def()
+      .IfReg1(current_block_permaloc_)
+      .IfReg0(current_block_route_out_)
+      .ActReg1(&current_block_routingloc_);
+
+  // NOTE(balazs.racz) This ensures that the outgoing route setting does not
+  // become "eager". Namely, we ignore the advance arriving routingloc bit and
+  // just use permaloc everywhere.
+  aut->DefCopy(current_block_permaloc_, &current_block_routingloc_);
+
   Def().IfReg1(current_block_routingloc_)
       .ActImportVariable(*source->request_green(),
                          current_block_request_green_)
@@ -1130,6 +1218,8 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
   Def()
       .IfReg1(current_block_routingloc_)
       .ActImportVariable(dest->detector(), next_block_detector_)
+      .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->routingloc(),
+                         next_block_routingloc_)
       .ActImportVariable(dest->route_in(), next_block_route_in_);
 
   Def().IfState(StWaiting)
@@ -1143,6 +1233,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
 
   Def().IfState(StTestCondition)
       .IfReg1(current_block_routingloc_)
+      .IfReg1(current_block_detector_)
       .IfReg0(next_block_detector_)
       .IfReg0(current_block_route_out_)
       .IfReg0(next_block_route_in_)
@@ -1186,7 +1277,9 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .IfReg1(current_direction_)
       .RunCallback(route_lock_release())
       .ActReg0(&current_block_permaloc_)
+      .ActReg0(&current_block_routingloc_)
       .ActReg1(&next_block_permaloc_)
+      .ActReg1(&next_block_routingloc_)
       .ActReg0(&current_direction_)
       .ActState(StTransitionDone);
 }
@@ -1226,7 +1319,7 @@ void TrainSchedule::SwitchTurnout(MagnetBase* magnet, bool desired_state) {
       .ActReg(&magnet_command_, desired_state);
 }
 
-EventBlock::Allocator& FlipFlopAutomata::AddClient(FlipFlopClient* client) {
+const AllocatorPtr& FlipFlopAutomata::AddClient(FlipFlopClient* client) {
   clients_.push_back(client);
   return alloc_;
 }

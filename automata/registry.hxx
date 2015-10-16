@@ -3,10 +3,19 @@
 
 #include <stdio.h>
 #include <string>
+#include <vector>
 using std::string;
 
 
 namespace automata {
+
+struct RegisteredVariable {
+  uint64_t event_on;
+  uint64_t event_off;
+  string name;
+};
+
+std::vector<RegisteredVariable>* registered_variables();
 
 void RegisterEventVariable(const string &name, uint64_t event_on,
                            uint64_t event_off);

@@ -187,6 +187,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
     current_program_.clear();
     brd->Render(&current_program_);
     fprintf(stderr, "program size: %zd\n", current_program_.size());
+    HASSERT(sizeof(program_area_) >= current_program_.size());
     memcpy(program_area_, current_program_.data(), current_program_.size());
     runner_ = new AutomataRunner(node_, program_area_, false);
     for (auto bit : mock_bits_) {
@@ -215,7 +216,7 @@ class AutomataTests : public nmranet::AsyncNodeTest {
 
 protected:
   AutomataRunner* runner_;
-  insn_t program_area_[10000];
+  insn_t program_area_[30000];
   string current_program_;
 
 private:
@@ -306,7 +307,8 @@ protected:
       int t_on = event_last_seen_[var.event_on()];
       int t_off = event_last_seen_[var.event_off()];
       if (!t_on && !t_off) {
-        fprintf(stderr,"tick %d, not seen: %" PRIx64 " and %" PRIx64 " (bit %" PRIx64 ")\n", tick_, var.event_on(), var.event_off(), (var.event_on() - BRACZ_LAYOUT - 0xc000)/2);
+        uint64_t v = (var.event_on() - BRACZ_LAYOUT - 0xc000)/2;
+        fprintf(stderr,"tick %d, not seen: %" PRIx64 " and %" PRIx64 " (bit %" PRIx64 ")\n", tick_, var.event_on(), var.event_off(), v);
       }
       HASSERT(t_on || t_off);
       return t_on > t_off;
@@ -332,19 +334,19 @@ protected:
   class GlobalEventListener : private nmranet::SimpleEventHandler, public GlobalEventListenerBase {
    public:
     GlobalEventListener() {
-      nmranet::EventRegistry::instance()->register_handlerr(this, 0, 63);
+      nmranet::EventRegistry::instance()->register_handler(nmranet::EventRegistryEntry(this, 0), 63);
     }
 
     ~GlobalEventListener() {
-      nmranet::EventRegistry::instance()->unregister_handlerr(this, 0, 63);
+      nmranet::EventRegistry::instance()->unregister_handler(this);
     }
    private:
-    virtual void HandleEventReport(nmranet::EventReport* event, BarrierNotifiable* done) {
+    virtual void HandleEventReport(const nmranet::EventRegistryEntry&, nmranet::EventReport* event, BarrierNotifiable* done) {
       IncomingEvent(event->event);
       done->notify();
     }
 
-    virtual void HandleIdentifyGlobal(nmranet::EventReport* event, BarrierNotifiable* done) {
+    virtual void HandleIdentifyGlobal(const nmranet::EventRegistryEntry&, nmranet::EventReport* event, BarrierNotifiable* done) {
       done->notify();
     }
   };
