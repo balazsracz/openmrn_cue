@@ -10,6 +10,7 @@
 #include <set>
 
 #include "../cs/src/automata_defs.h"
+#include "callback.hxx"
 
 using std::string;
 using std::vector;
@@ -149,6 +150,8 @@ class Automata {
 
     class Op;
 
+    typedef Callback1<Automata::Op*> OpCallback;
+
     struct LocalVariable {
     public:
         LocalVariable(): id(-1) {}
@@ -184,8 +187,8 @@ class Automata {
       next_user_state_ = next_id;
     }
 
-    void DefCopy(const LocalVariable& src, LocalVariable* dst);
-    void DefNCopy(const LocalVariable& src, LocalVariable* dst);
+    void DefCopy(const LocalVariable& src, LocalVariable* dst, OpCallback* condition = nullptr);
+    void DefNCopy(const LocalVariable& src, LocalVariable* dst, OpCallback* condition = nullptr);
 
     void ClearUsedVariables();
 
