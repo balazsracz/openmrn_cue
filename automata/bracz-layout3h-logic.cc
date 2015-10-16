@@ -682,7 +682,60 @@ void RedSignal(Automata* aut, Automata::LocalVariable* signal) {
   Def().ActSetValue(signal, 1, A_STOP);
 }
 
+void BlockSignalDir(Automata* aut, CtrlTrackInterface* side_front,
+                    CtrlTrackInterface* side_back, SignalVariable* main_sgn,
+                    SignalVariable* adv_sgn, SignalVariable* in_adv_sgn,
+                    const Automata::LocalVariable& green) {
+  if (main_sgn) {
+    auto* sgn = aut->ImportVariable(main_sgn);
+    Def().IfReg0(green).ActSetValue(sgn, 1, A_STOP);
+    const auto& sg1 =
+        aut->ImportVariable(*side_back->binding()->in_next_signal_1);
+    const auto& sg2 =
+        aut->ImportVariable(*side_back->binding()->in_next_signal_2);
+    Def().IfReg1(green).IfReg0(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_40);
+    Def().IfReg1(green).IfReg1(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_60);
+    Def().IfReg1(green).IfReg1(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_90);
+  }
+  if (in_adv_sgn) {
+    auto* sgn = aut->ImportVariable(in_adv_sgn);
+    Def().IfReg0(green).ActSetValue(sgn, 1, A_STOP);
+    const auto& sg1 =
+        aut->ImportVariable(*side_back->binding()->in_next_signal_1);
+    const auto& sg2 =
+        aut->ImportVariable(*side_back->binding()->in_next_signal_2);
+    Def().IfReg1(green).IfReg0(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_40);
+    Def().IfReg1(green).IfReg1(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_60);
+    Def().IfReg1(green).IfReg1(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_90);
+  }
+  if (adv_sgn) {
+    auto* sgn = aut->ImportVariable(adv_sgn);
+    const auto& sg1 = aut->ImportVariable(*side_front->in_next_signal_1);
+    const auto& sg2 = aut->ImportVariable(*side_front->in_next_signal_2);
+    Def().IfReg0(green).ActSetValue(sgn, 1, A_STOP);
+    Def().IfReg0(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_STOP);
+    Def().IfReg1(green).IfReg0(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_40);
+    Def().IfReg1(green).IfReg1(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_60);
+    Def().IfReg1(green).IfReg1(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_90);
+  }
+}
+
 void BlockSignal(Automata* aut, StandardBlock* block) {
+  if (block->p()->main_sgn || block->p()->adv_sgn || block->p()->in_adv_sgn) {
+    BlockSignalDir(aut, block->side_b(), block->side_a(), block->p()->main_sgn,
+                   block->p()->adv_sgn, block->p()->in_adv_sgn,
+                   aut->ImportVariable(block->route_out()));
+  }
+  if (block->p()->r_main_sgn || block->p()->r_adv_sgn ||
+      block->p()->r_in_adv_sgn) {
+    BlockSignalDir(aut, block->side_a(), block->side_b(),
+                   block->p()->r_main_sgn, block->p()->r_adv_sgn,
+                   block->p()->r_in_adv_sgn,
+                   aut->ImportVariable(block->rev_route_out()));
+  }
+}
+
+void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {
   if (block->p()->main_sgn) {
     RgSignal(aut, aut->ImportVariable(block->route_out()),
              aut->ImportVariable(block->p()->main_sgn));
@@ -712,8 +765,10 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
 DefAut(signalaut, brd, {
   BlockSignal(this, &Block_XXB1);
   BlockSignal(this, &Block_XXB2);
+  ClearUsedVariables();
   BlockSignal(this, &Block_XXB3);
   BlockSignal(this, &Block_YYB2);
+  ClearUsedVariables();
   BlockSignal(this, &Block_YYC23);
   BlockSignal(this, &Block_WWB14);
 });
@@ -721,8 +776,10 @@ DefAut(signalaut, brd, {
 DefAut(signalaut1, brd, {
   BlockSignal(this, &Block_A360);
   BlockSignal(this, &Block_A347);
+  ClearUsedVariables();
   BlockSignal(this, &Block_A321);
   BlockSignal(this, &Block_A301);
+  ClearUsedVariables();
   BlockSignal(this, &Block_WWB2.b_);
   BlockSignal(this, &Block_WWB3.b_);
 });
@@ -730,8 +787,10 @@ DefAut(signalaut1, brd, {
 DefAut(signalaut2, brd, {
   BlockSignal(this, &Block_B421);
   BlockSignal(this, &Block_B447);
+  ClearUsedVariables();
   BlockSignal(this, &Block_B460);
   BlockSignal(this, &Block_B475);
+  ClearUsedVariables();
   BlockSignal(this, &Block_WWA11);
 });
 
