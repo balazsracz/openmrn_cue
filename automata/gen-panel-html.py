@@ -1305,17 +1305,10 @@ def AddTurnout(svg_root, jmri_turnout, points, panelattrs, track_is_mainline):
   div_id = GetSvgId()
   divline.set('id', div_id)
 
-  buttons_el = svg_root #.find("./g[@id='turnout_buttons']")
-  active_g = ET.SubElement(buttons_el, 'g', opacity="0.0")
-  circle = ET.SubElement(active_g, 'circle')
-  circle.set('cx', pcen.x)
-  circle.set('cy', pcen.y)
-  lenb = math.sqrt(math.fabs(float(pcen.x)-float(pb.x)) ** 2 + math.fabs(float(pcen.y)-float(pb.y)) ** 2)
-  lenc = math.sqrt(math.fabs(float(pcen.x)-float(pc.x)) ** 2 + math.fabs(float(pcen.y)-float(pc.y)) ** 2)
-  circle.set('r', '%.1f' % ((lenb + lenc) / 2))
-  circle.set('style', 'fill:white;stroke:black')
-  activate_id = GetSvgId()
-  active_g.set('id', activate_id)
+  activate_id = all_touchpoints.add(float(pcen.x), float(pcen.y))
+  #lenb = math.sqrt(math.fabs(float(pcen.x)-float(pb.x)) ** 2 + math.fabs(float(pcen.y)-float(pb.y)) ** 2)
+  #lenc = math.sqrt(math.fabs(float(pcen.x)-float(pc.x)) ** 2 + math.fabs(float(pcen.y)-float(pc.y)) ** 2)
+  #circle.set('r', '%.1f' % ((lenb + lenc) / 2))
 
   turnout_name = jmri_turnout.get('turnoutname')
   if turnout_name:
