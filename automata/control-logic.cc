@@ -302,6 +302,10 @@ void StraightTrackWithDetector::DetectorOccupancy(Automata* aut) {
   Def().IfReg0(det).IfReg1(*occ).ActReg0(route1).ActReg0(route2).ActReg0(occ);
 }
 
+void RouteShortcutCb(const LocalVariable& shortcut, Automata::Op* op) {
+  op->IfReg1(shortcut);
+}
+
 void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
                             CtrlTrackInterface* after,
                             LocalVariable* any_route_setting_in_progress,
@@ -309,7 +313,8 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
                             const MutableVarList current_route,
                             const ConstVarList conflicting_routes,
                             GlobalVariable* go_signal,
-                            GlobalVariable* in_request_green) {
+                            GlobalVariable* in_request_green,
+                            const GlobalVariable& in_route_no_stop) {
   LocalVariable* in_try_set_route =
       aut->ImportVariable(before->binding()->out_try_set_route.get());
   LocalVariable* in_route_set_success =
@@ -325,6 +330,9 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
   const ConstVarList& const_current_route =
       reinterpret_cast<const ConstVarList&>(current_route);
   LocalVariable* signal = go_signal ? aut->ImportVariable(go_signal) : nullptr;
+  const LocalVariable& route_no_stop = aut->ImportVariable(in_route_no_stop);
+
+  auto cb_nostop = NewCallback(&RouteShortcutCb, route_no_stop);
 
   // Initialization
   Def()
@@ -355,6 +363,7 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
   // Accept the incoming route if we can.
   Def()
       .IfReg1(*in_try_set_route)
+      .IfReg0(route_no_stop)
       .IfReg0(*any_route_setting_in_progress)
       .Rept(&Automata::Op::IfReg0, const_current_route)
       .Rept(&Automata::Op::IfReg0, conflicting_routes)
@@ -368,6 +377,7 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
   // Reject the route if we didn't accept in the previous instruction.
   Def()
       .IfReg1(*in_try_set_route)
+      .IfReg0(route_no_stop)
       .ActReg1(in_route_set_failure)
       .ActReg0(in_route_set_success)
       .ActReg0(in_try_set_route);
@@ -386,6 +396,7 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
       .ActReg1(any_route_setting_in_progress);
 
   Def()
+      .IfReg1(*request_green)
       .IfReg1(*out_route_set_success)
       .ActReg0(out_route_set_success)
       .ActReg0(any_route_setting_in_progress)
@@ -394,11 +405,16 @@ void SimulateSignalFwdRoute(Automata* aut, CtrlTrackInterface* before,
       .MaybeActReg(go_signal, signal, 1);
 
   Def()
+      .IfReg1(*request_green)
       .IfReg1(*out_route_set_failure)
       .ActReg0(out_route_set_failure)
       .ActReg0(any_route_setting_in_progress)
       .ActReg0(request_green)
       .MaybeActReg(go_signal, signal, 0);
+
+  SimulateRoute(aut, &cb_nostop, before, after, any_route_setting_in_progress,
+                current_route_setting_in_progress, current_route,
+                conflicting_routes);
 }
 
 void SignalPiece::SignalRoute(Automata* aut) {
@@ -427,7 +443,7 @@ void SignalPiece::SignalRoute(Automata* aut) {
   SimulateSignalFwdRoute(aut, side_a(), side_b(), any_route_setting_in_progress,
                          aut->ImportVariable(route_pending_ab_.get()),
                          {route_set_ab_.get()}, {route_set_ba_.get()}, signal_,
-                         request_green_);
+                         request_green_, *route_no_stop_);
 
   // We set the signal to green (give power to track) if either ab or ba route
   // is set. TODO(balazs.racz): This is actually a case where the signal and

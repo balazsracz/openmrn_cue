@@ -448,11 +448,12 @@ class StraightTrackLong : public StraightTrack {
 // shall) stop if the signal is red.
 class SignalPiece : public StraightTrackShort {
  public:
-  SignalPiece(AllocatorPtr allocator,
-              GlobalVariable *request_green, GlobalVariable *signal)
+  SignalPiece(AllocatorPtr allocator, GlobalVariable *request_green,
+              GlobalVariable *signal, GlobalVariable *route_no_stop)
       : StraightTrackShort(std::move(allocator)),
         request_green_(request_green),
-        signal_(signal) {
+        signal_(signal),
+        route_no_stop_(route_no_stop) {
     // We "override" the occupancy detection by just copying the occupancy
     // value from the previous piece of track.
     RemoveAutomataPlugins(20);
@@ -486,25 +487,60 @@ class SignalPiece : public StraightTrackShort {
 
  private:
   GlobalVariable *request_green_;
+  // Output bit. Turns power on or off to the track.
   GlobalVariable *signal_;
+  // Input bit. If set, the signal will not "stop" trains' route setting
+  // commands, but propagate through.
+  const GlobalVariable *route_no_stop_;
+};
+
+// Allows putting a signal into mainline that will never stop an automated
+// train.
+class StandardMiddleSignal : public StraightTrackInterface {
+ public:
+  StandardMiddleSignal(Board *brd, const AllocatorPtr &parent_alloc,
+                       const string &base_name)
+      : alloc_(parent_alloc->Allocate(base_name, 32)), base_name_(base_name) {
+    signal_.AddAutomataPlugin(
+        131, NewCallbackPtr(this, &StandardMiddleSignal::InitSignalNoStop));
+  }
+
+  CtrlTrackInterface *side_a() override { return signal_.side_a(); }
+  CtrlTrackInterface *side_b() override { return signal_.side_b(); }
+
+ private:
+  void InitSignalNoStop(Automata* aut) {
+    Def().ActReg1(aut->ImportVariable(no_stop_.get()));
+  }
+
+  AllocatorPtr alloc_;
+  string base_name_;
+  std::unique_ptr<GlobalVariable> request_green_{
+      alloc_->Allocate("request_green")};
+  std::unique_ptr<GlobalVariable> no_stop_{alloc_->Allocate("no_stop")};
+  std::unique_ptr<GlobalVariable> signal_out_{alloc_->Allocate("signal_out")};
+
+  SignalPiece signal_{alloc_->Allocate("signal", 24, 8), request_green_.get(),
+                      signal_out_.get(),                 no_stop_.get()};
 };
 
 class StandardBlock : public StraightTrackInterface {
  public:
   StandardBlock(Board *brd, PhysicalSignal *physical,
-                const AllocatorPtr& parent_alloc, const string &base_name,
+                const AllocatorPtr &parent_alloc, const string &base_name,
                 int num_to_allocate = 104)
       : alloc_(parent_alloc->Allocate(base_name, num_to_allocate, 8)),
         base_name_(base_name),
         request_green_(alloc_->Allocate("request_green")),
+        signal_no_stop_(alloc_->Allocate("signal_no_stop")),
         rrequest_green_(alloc_->Allocate("rev_request_green")),
+        rsignal_no_stop_(alloc_->Allocate("rsignal_no_stop")),
         body_(alloc_->Allocate("body", 24, 8)),
-        body_det_(alloc_->Allocate("body_det", 24, 8),
-                  physical->sensor_raw),
-        signal_(alloc_->Allocate("signal", 24, 8),
-                request_green_.get(), physical->signal_raw),
-        rsignal_(alloc_->Allocate("rsignal", 24, 8),
-                 rrequest_green_.get(), nullptr),
+        body_det_(alloc_->Allocate("body_det", 24, 8), physical->sensor_raw),
+        signal_(alloc_->Allocate("signal", 24, 8), request_green_.get(),
+                physical->signal_raw, signal_no_stop_.get()),
+        rsignal_(alloc_->Allocate("rsignal", 24, 8), rrequest_green_.get(),
+                 nullptr, rsignal_no_stop_.get()),
         physical_(physical),
         aut_body_(name() + ".body", brd, &body_),
         aut_body_det_(name() + ".body_det", brd, &body_det_),
@@ -524,6 +560,8 @@ class StandardBlock : public StraightTrackInterface {
 
   GlobalVariable *request_green() { return request_green_.get(); }
   GlobalVariable *rrequest_green() { return rrequest_green_.get(); }
+  GlobalVariable *signal_no_stop() { return signal_no_stop_.get(); }
+  GlobalVariable *rsignal_no_stop() { return rsignal_no_stop_.get(); }
   const GlobalVariable &route_in() const { return *body_det_.route_set_ab_; }
   const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
   const GlobalVariable &rev_route_out() const { return *rsignal_.route_set_ab_; }
@@ -543,7 +581,9 @@ class StandardBlock : public StraightTrackInterface {
 
  private:
   std::unique_ptr<GlobalVariable> request_green_;
+  std::unique_ptr<GlobalVariable> signal_no_stop_;
   std::unique_ptr<GlobalVariable> rrequest_green_;
+  std::unique_ptr<GlobalVariable> rsignal_no_stop_;
 
  public:
   StraightTrackLong body_;
