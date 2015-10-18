@@ -141,6 +141,31 @@ function addSignalheadBinding(signalhead_id, event_red_on, event_red_off, event_
   el.addEventListener(clickeventname, fn_click, false);
   //el.addEventListener(dblclickeventname, ignorefn, false);
 }
+function addSingleSignalheadBinding(signalhead_id, event_on, event_off, url_red, url_green) {
+  var el = document.getElementById(signalhead_id);
+  var state = false
+  var fn_update = function() {
+    if (state) {
+      el.setAttribute("xlink:href", url_green);
+    } else {
+      el.setAttribute("xlink:href", url_red);
+    }
+  }
+  var fn_on = function() {
+    state = true;
+    fn_update();
+  }
+  var fn_off = function() {
+    state = false;
+    fn_update();
+  }
+  var listener = new Module.BitEventPC(event_on, fn_on, event_off, fn_off);
+  var fn_click = function() {
+    listener.toggleState();
+  }
+  el.addEventListener(clickeventname, fn_click, false);
+  //el.addEventListener(dblclickeventname, ignorefn, false);
+}
 </script>
 
 <script type="text/javascript" id="jsbindings"/>
@@ -259,6 +284,17 @@ class SingleSignalHead:
     self.system_name = system_name
     self.user_name = user_name
     self.turnout_name = turnout
+
+  binding_template = string.Template('addSingleSignalheadBinding("${id}", "${event_on}", "${event_off}", "${red_icon}", "${green_icon}");');
+
+  def Bind(self, **kwargs):
+    """Adds the JS binding for this type of signal head. Keyword arguments should contain id, dark_icon red_icon, yellow_icon, green_icon"""
+    AddJsBinding(self.binding_template.substitute( 
+      event_red_on=turnout_by_user_name[self.red_turnout].event_on,
+      event_red_off=turnout_by_user_name[self.red_turnout].event_off,
+      event_green_on=turnout_by_user_name[self.green_turnout].event_on,
+      event_green_off=turnout_by_user_name[self.green_turnout].event_off,
+      **kwargs))
 
 def FindOrInsert(element, tag):
   """Find the first child element with a given tag, or if not found, creates one. Returns the (old or new) tag."""
