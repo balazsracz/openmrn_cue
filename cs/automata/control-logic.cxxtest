@@ -733,20 +733,23 @@ TEST_F(LogicTest, Signal0) {
   FakeBit previous_detector(this);
   FakeBit request_green(this);
   FakeBit signal_green(this);
+  FakeBit route_no_stop(this);
   FakeBit next_detector(this);
   FakeBit request_green2(this);
   FakeBit signal_green2(this);
+  FakeBit route_no_stop2(this);
   static StraightTrackLong first_body(alloc()->Allocate("first_body", 80));
   static StraightTrackWithDetector first_det(
       alloc()->Allocate("first_det", 80), &previous_detector);
-  static SignalPiece signal(
-      alloc()->Allocate("signal", 80), &request_green, &signal_green);
+  static SignalPiece signal(alloc()->Allocate("signal", 80), &request_green,
+                            &signal_green, &route_no_stop);
   static StraightTrackLong mid(alloc()->Allocate("mid", 80));
   static StraightTrackLong second_body(alloc()->Allocate("second_body", 80));
   static StraightTrackWithDetector second_det(
       alloc()->Allocate("second_det", 80), &next_detector);
-  static SignalPiece second_signal(
-      alloc()->Allocate("second_signal", 80), &request_green2, &signal_green2);
+  static SignalPiece second_signal(alloc()->Allocate("second_signal", 80),
+                                   &request_green2, &signal_green2,
+                                   &route_no_stop2);
   static StraightTrackLong after(alloc()->Allocate("after", 80));
 
   BindSequence({&first_body,    &first_det,   &signal,
@@ -1057,6 +1060,8 @@ TEST_F(LogicTest, Signal) {
   EXPECT_FALSE(QueryVar(*first.b()->request_green()));
   EXPECT_FALSE(first.signal_green()->Get());
 
+  debug_variables = 2;
+
   LOG(INFO, "First train gets green at second signal.");
   SetVar(*second.b()->request_green(), true);
   Run(5);
@@ -1070,13 +1075,53 @@ TEST_F(LogicTest, Signal) {
   EXPECT_FALSE(QueryVar(*second.b()->signal_.route_set_ab_));
 
   // Now the second train can go.
-  LOG(INFO, "Second train gets green to second signal.");
-  SetVar(*first.b()->request_green(), true);
+  // We shortcut the second signal.
+  LOG(INFO, "Shortcut second signal.");
+  SetVar(*second.b()->signal_no_stop(), true);
   Run(10);
+  
+  LOG(INFO, "Second train gets green to the end.");
+  first.inverted_detector()->Set(false);
+  SetVar(*first.b()->request_green(), true);
+  Run(20);
   EXPECT_FALSE(QueryVar(*first.b()->request_green()));
   EXPECT_TRUE(first.signal_green()->Get());
   EXPECT_TRUE(QueryVar(*first.b()->signal_.route_set_ab_));
   EXPECT_TRUE(QueryVar(*mid.route_set_ab_));
+  EXPECT_TRUE(QueryVar(*second.b()->signal_.route_set_ab_));
+
+  LOG(INFO, "Second train leaves first.");
+  first.inverted_detector()->Set(true);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(first.signal_green()->Get());
+  EXPECT_TRUE(second.signal_green()->Get());
+
+  LOG(INFO, "Second train gets to second signal.");
+  second.inverted_detector()->Set(false);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*first.b()->signal_.route_set_ab_));
+  EXPECT_FALSE(first.signal_green()->Get());
+  EXPECT_TRUE(second.signal_green()->Get());
+  EXPECT_TRUE(QueryVar(*second.b()->signal_.route_set_ab_));
+
+  LOG(INFO, "Second train leaves second signal.");
+  second.inverted_detector()->Set(true);
+  Run(20);
+  EXPECT_FALSE(first.signal_green()->Get());
+  EXPECT_FALSE(second.signal_green()->Get());
+  EXPECT_FALSE(QueryVar(*second.b()->signal_.route_set_ab_));
+
+  LOG(INFO, "Tests running a third train.");
+  SetVar(*first.b()->signal_no_stop(), true);
+
+  SetVar(*before.b.side_b()->out_try_set_route, true);
+  Run(20);
+  EXPECT_FALSE(QueryVar(*before.b.side_b()->out_try_set_route));
+  EXPECT_TRUE(QueryVar(*first.b()->side_a()->in_route_set_success));
+  EXPECT_FALSE(QueryVar(*first.b()->side_a()->in_route_set_failure));
+  EXPECT_TRUE(first.signal_green()->Get());
+  EXPECT_TRUE(second.signal_green()->Get());
 }
 
 //              ------station_lr>>---
@@ -2121,7 +2166,7 @@ TEST_F(SampleLayoutLogicTrainTest, SetupRunner) {
 }
 
 TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
-  debug_variables = 2;
+  debug_variables = 0;
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
@@ -2416,7 +2461,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
 }
 
 TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
-  debug_variables = 2;
+  debug_variables = 0;
   class MyTrain : public TrainSchedule {
    public:
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
