@@ -536,6 +536,9 @@ StandardMiddleDetector Det_380(&brd, &bb.In7,
 StandardMiddleDetector Det_480(&brd, &bb.In6,
                                logic2->Allocate("Det480", 24, 8));
 
+StandardMiddleSignal Sig_380(&brd, logic, "Sig380");
+StandardMiddleSignal Sig_480(&brd, logic, "Sig480");
+
 MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBrownGrey,
                       &be.ActBrownBrown);
 CoupledMagnetDef Magnet_W381(&g_magnet_aut, "W381", &Magnet_W481, true);
@@ -609,7 +612,7 @@ bool ignored5 = Block_A301.side_a()->Bind(Turnout_XXW1.b.side_points());
 bool ignored6 = Block_XXB1.side_b()->Bind(Turnout_XXW1.b.side_closed());
 bool ignored7 = Block_XXB3.side_b()->Bind(Turnout_XXW1.b.side_thrown());*/
 
-bool ign = BindPairs({
+bool ign = BindPairs({  //
     {Turnout_W347.b.side_thrown(), Turnout_W447.b.side_thrown()},
     {Block_YYC23.side_b(), Turnout_YYW6.b.side_closed()},
     {Det_YYC22.side_b(), Turnout_YYW6.b.side_thrown()},
@@ -628,7 +631,8 @@ bool ign = BindPairs({
     {Turnout_W381.b.side_points(), Block_YYB2.side_b()},
     {Turnout_W381.b.side_thrown(), Turnout_W380.b.side_closed()},
     {Turnout_W380.b.side_points(), Det_380.side_a()},
-    {Det_380.side_b(), Turnout_ZZW6.b.side_points()},
+    {Det_380.side_b(), Sig_380.side_a()},
+    {Sig_380.side_b(), Turnout_ZZW6.b.side_points()},
     {Turnout_ZZW6.b.side_closed(), Turnout_ZZW2.b.side_thrown()},
     {Turnout_ZZW2.b.side_points(), Block_A360.side_a()},
     {Turnout_ZZW2.b.side_closed(), DKW_ZZW3.b.point_a2()},
@@ -645,7 +649,8 @@ bool ign = BindPairs({
     {Turnout_ZZW1.b.side_thrown(), DKW_ZZW3.b.point_a1()},
     {Turnout_ZZW1.b.side_closed(), Block_ZZA3.entry()},
     {DKW_ZZW3.b.point_b1(), Turnout_ZZW5.b.side_points()},
-    {Turnout_ZZW5.b.side_thrown(), Det_480.side_b()},
+    {Turnout_ZZW5.b.side_thrown(), Sig_480.side_b()},
+    {Sig_480.side_a(), Det_480.side_b()},
     {Det_480.side_a(), Turnout_W481.b.side_points()},
     {Turnout_ZZW5.b.side_closed(), Turnout_ZZW6.b.side_thrown()},
     {Block_A301.side_b(), Turnout_WWW1.b.side_points()},
@@ -658,8 +663,7 @@ bool ign = BindPairs({
     {DKW_WWW3.b.point_a1(), Block_B421.side_a()},
     {DKW_WWW3.b.point_b2(), Turnout_WWW5.b.side_points()},
     {Turnout_WWW5.b.side_closed(), Block_WWB3.entry()},
-    {Turnout_WWW5.b.side_thrown(), Block_WWB14.side_b()},
-});
+    {Turnout_WWW5.b.side_thrown(), Block_WWB14.side_b()}, });
 
 DefAut(display, brd, {
                          /*  DefCopy(ImportVariable(Block_XXB1.detector()),
