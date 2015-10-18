@@ -889,6 +889,12 @@ def PrintTrainLine(layout, train, x0, y):
   x0 += 40
   layout.append(CreateSensorIcon(x0, y + sensoroffset, "perm." + train + ".do_not_move"))
   x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic.train." + train + ".is_moving"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic.train." + train + ".req_go"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic.train." + train + ".req_stop"))
+  x0 += 40
   layout.append(CreateMemoryLabel(x0, y, "train." + train))
   x0 += 80
   layout.append(CreateLocoIcon(x0, y, train))
@@ -904,6 +910,8 @@ def RenderPanelLocationTable(output_tree_root, index):
   for entry in layout.findall('./locoicon[@level=\'9\']'):
     layout.remove(entry)
   for entry in layout.findall('./signalheadicon[@level=\'9\']'):
+    layout.remove(entry)
+  for entry in layout.findall('./memoryicon[@level=\'9\']'):
     layout.remove(entry)
   y = 190;
   x0 = 250;

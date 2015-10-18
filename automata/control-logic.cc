@@ -66,6 +66,20 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
                     &side_a_release);
 }
 
+void CopySignals(Automata* aut, CtrlTrackInterface *from, CtrlTrackInterface *to, OpCallback* condition = nullptr) {
+  aut->DefCopy(aut->ImportVariable(*from->in_next_signal_1),
+               aut->ImportVariable(to->in_next_signal_1.get()),
+               condition);
+  aut->DefCopy(aut->ImportVariable(*from->in_next_signal_2),
+               aut->ImportVariable(to->in_next_signal_2.get()),
+               condition);
+}
+
+void StraightTrack::CopySignalState(Automata* aut) {
+  CopySignals(aut, side_a(), side_b()->binding());
+  CopySignals(aut, side_b(), side_a()->binding());
+}
+
 typedef std::initializer_list<GlobalVariable*> MutableVarList;
 typedef std::initializer_list<const GlobalVariable*> ConstVarList;
 
@@ -173,6 +187,7 @@ void SimulateRoute(Automata* aut,
 }
 
 void StraightTrack::SimulateAllRoutes(Automata* aut) {
+  ClearAutomataVariables(aut);
   LocalVariable* any_route_setting_in_progress =
       aut->ImportVariable(tmp_route_setting_in_progress_.get());
   Def()
@@ -208,6 +223,32 @@ void StraightTrackWithDetector::DetectorRoute(Automata* aut) {
   SimulateRoute(aut, nullptr, side_b(), side_a(), any_route_setting_in_progress,
                 aut->ImportVariable(route_pending_ba_.get()),
                 {route_set_ba_.get()}, {route_set_ab_.get(), detector_});
+}
+
+void SignalPiece::SetSignalState(Automata* aut) {
+  //CopySignals(side_a(), side_b()->binding());
+  CopySignals(aut, side_a(), side_b()->binding());
+  const auto& inst1 = aut->ImportVariable(*side_b()->in_next_signal_1);
+  const auto& inst2 = aut->ImportVariable(*side_b()->in_next_signal_2);
+
+  const auto& green = aut->ImportVariable(*route_set_ab_);
+
+  auto* outst1 = aut->ImportVariable(side_a()->binding()->in_next_signal_1.get());
+  auto* outst2 = aut->ImportVariable(side_a()->binding()->in_next_signal_2.get());
+
+  // If red, make it red.
+  Def().IfReg0(green).ActReg0(outst1).ActReg0(outst2);
+
+  // Poor man's binary increment from incoming signal to outgoing signal.
+  Def().IfReg1(green).IfReg0(inst2).IfReg0(inst1)
+      .ActReg0(outst2).ActReg1(outst1);
+
+  Def().IfReg1(green).IfReg0(inst2).IfReg1(inst1)
+      .ActReg1(outst2).ActReg0(outst1);
+
+  // Catch 2+1 and 3+1.
+  Def().IfReg1(green).IfReg1(inst2)
+      .ActReg1(outst2).ActReg1(outst1);
 }
 
 void SignalPiece::SignalOccupancy(Automata* aut) {
@@ -661,6 +702,20 @@ void TurnoutBase::ProxyDetectors(Automata* aut) {
                 detector_far_.get(), side_thrown_.binding());
 }
 
+void TurnoutBase::ProxySignals(Automata* aut) {
+  CopySignals(aut, &side_points_, side_closed_.binding());
+  CopySignals(aut, &side_points_, side_thrown_.binding());
+
+  const LocalVariable& state = aut->ImportVariable(*turnout_state_);
+  // Passes if state == 0 (closed).
+  auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+  // Passes if state == 1 (thrown).
+  auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+
+  CopySignals(aut, &side_closed_, side_points_.binding(), &closed_condition);
+  CopySignals(aut, &side_thrown_, side_points_.binding(), &thrown_condition);
+}
+
 void DKW::ProxyDetectors(Automata* aut) {
   const LocalVariable& state = aut->ImportVariable(*turnout_state_);
   // Passes if state == 0 (closed).
@@ -673,6 +728,21 @@ void DKW::ProxyDetectors(Automata* aut) {
         points_[r.from].detector_next.get(),
         points_[r.from].detector_far.get(),
         points_[r.to].interface->binding());
+  }
+}
+
+void DKW::ProxySignals(Automata* aut) {
+  for (auto& r : routes_) {
+    ClearAutomataVariables(aut);
+    const LocalVariable& state = aut->ImportVariable(*turnout_state_);
+    // Passes if state == 0 (closed).
+    auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+    // Passes if state == 1 (thrown).
+    auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+    CopySignals(
+        aut, points_[r.to].interface.get(),
+        points_[r.from].interface->binding(),
+        r.state == DKW_STRAIGHT ? &thrown_condition : &closed_condition);
   }
 }
 
@@ -1135,6 +1205,7 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
   // Transition permaloc to next step if eager.
   if (eager) {
     Def()
+        .IfReg1(aut->ImportVariable(*is_moving_))
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
         .IfReg1(current_block_route_out_)
