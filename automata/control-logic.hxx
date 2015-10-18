@@ -332,6 +332,7 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(SampleLayoutLogicTrainTest, ScheduleConditional);
 
   friend class StandardBlock;
+  friend class StandardMiddleSignal;
   friend class StubBlock;
 
   std::unique_ptr<GlobalVariable> simulated_occupancy_;
@@ -521,6 +522,8 @@ class StandardMiddleSignal : public StraightTrackInterface {
 
   CtrlTrackInterface *side_a() override { return signal_.side_a(); }
   CtrlTrackInterface *side_b() override { return signal_.side_b(); }
+
+  const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
 
  private:
   void InitSignalNoStop(Automata* aut) {

@@ -739,6 +739,10 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
   }
 }
 
+void MiddleSignal(Automata* aut, StandardMiddleSignal* piece, SignalVariable* main_sgn, SignalVariable* adv_sgn) {
+  BlockSignalDir(aut, piece->side_a(), piece->side_b(), main_sgn, adv_sgn, nullptr, aut->ImportVariable(piece->route_out()));
+}
+
 void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {
   if (block->p()->main_sgn) {
     RgSignal(aut, aut->ImportVariable(block->route_out()),
@@ -801,10 +805,9 @@ DefAut(signalaut2, brd, {
 DefAut(signalaut3, brd, {
   BlockSignal(this, &Block_ZZA2.b_);
   BlockSignal(this, &Block_ZZA3.b_);
-  RgSignal(this, ImportVariable(Det_480.route_set_ab()),
-           ImportVariable(&signal_A480_main.signal));
-  RgSignal(this, ImportVariable(Det_380.route_set_ab()),
-           ImportVariable(&signal_A380_main.signal));
+  ClearUsedVariables();
+  MiddleSignal(this, &Sig_480, &signal_A480_main.signal, &signal_A480_adv.signal);
+  MiddleSignal(this, &Sig_380, &signal_A380_main.signal, &signal_A380_adv.signal);
 });
 
 FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", logic, 32);
