@@ -243,6 +243,23 @@ class DblSignalHead:
     self.red_turnout = red_turnout
     self.green_turnout = green_turnout
 
+  binding_template = string.Template('addSignalheadBinding("${id}", "${event_red_on}", "${event_red_off}", "${event_green_on}", "${event_green_off}", "${dark_icon}", "${red_icon}", "${yellow_icon}", "${green_icon}");');
+
+  def Bind(self, **kwargs):
+    """Adds the JS binding for this type of signal head. Keyword arguments should contain id, dark_icon red_icon, yellow_icon, green_icon"""
+    AddJsBinding(self.binding_template.substitute( 
+      event_red_on=turnout_by_user_name[self.red_turnout].event_on,
+      event_red_off=turnout_by_user_name[self.red_turnout].event_off,
+      event_green_on=turnout_by_user_name[self.green_turnout].event_on,
+      event_green_off=turnout_by_user_name[self.green_turnout].event_off,
+      **kwargs))
+
+class SingleSignalHead:
+  def __init__(self, system_name, user_name, turnout):
+    self.system_name = system_name
+    self.user_name = user_name
+    self.turnout_name = turnout
+
 def FindOrInsert(element, tag):
   """Find the first child element with a given tag, or if not found, creates one. Returns the (old or new) tag."""
   sn = element.find(tag)
@@ -644,6 +661,9 @@ def ParseAllSignals(tree):
       red_turnout = entry.find("./turnoutname[@defines='red']").text
       green_turnout = entry.find("./turnoutname[@defines='green']").text
       obj = DblSignalHead(system_name, user_name, red_turnout, green_turnout)
+    elif signalclass == "jmri.implementation.configurexml.SingleTurnoutSignalHeadXml":
+      turnout = entry.find("./turnoutname[@defines='aspect']").text
+      obj = SingleSignalHead(system_name, user_name, turnout)
     if obj is not None:
       all_signalheads.append(obj)
       signalhead_by_name[system_name] = obj
@@ -1197,17 +1217,11 @@ def AddSignalheadIcon(svg_root, jmri_icon):
   if signalhead_name not in signalhead_by_name:
     raise Exception('Panel is referncing a non-existing signalhead "%s"' % signalhead_name)
   signalhead_obj = signalhead_by_name[signalhead_name]
-  turnout_red = turnout_by_user_name[signalhead_obj.red_turnout]
-  turnout_green = turnout_by_user_name[signalhead_obj.green_turnout]
-  AddJsBinding(signalhead_binding_template.substitute(
-    id=ident,
-    event_red_on=turnout_red.event_on, event_red_off=turnout_red.event_off,
-    event_green_on=turnout_green.event_on, event_green_off=turnout_green.event_off,
-    dark_icon=ResourceToUrl(dark_icon),
-    red_icon=ResourceToUrl(red_icon),
-    yellow_icon=ResourceToUrl(yellow_icon),
-    green_icon=ResourceToUrl(green_icon)))
-
+  signalhead_obj.Bind(id=ident,
+                      dark_icon=ResourceToUrl(dark_icon),
+                      red_icon=ResourceToUrl(red_icon),
+                      yellow_icon=ResourceToUrl(yellow_icon),
+                      green_icon=ResourceToUrl(green_icon))
 
 track_occupancy_binding_template = string.Template('addTrackBinding("${id}", "${event_on}", "${color_on}", "${event_off}", "${color_off}");');
 
