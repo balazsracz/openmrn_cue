@@ -17,6 +17,7 @@ webpage_template = """
 
 <body>
 
+<script id="settings" type="text/javascript"/>
 <script type="text/javascript" src="js_client.js"></script>
 
 <div style="text:grey">See the <a href="about.html" target="abt">about</a> page for information and copyright notes.</div>
@@ -220,9 +221,11 @@ alljsbindings = []
 def AddJsBinding(js_text):
   alljsbindings.append(js_text)
 
-def RenderJsBindings(html_root):
+def RenderJsBindings(html_root, server_url):
   script_element = html_root.find('.//script[@id="jsbindings"]')
   script_element.text = '\n'.join(alljsbindings)
+  script_element = html_root.find('.//script[@id="settings"]')
+  script_element.text = 'var openmrn_websocket_server_url = "%s"\n' % (server_url)
 
 class Sensor:
   def __init__(self, system_name, user_name):
@@ -1447,8 +1450,8 @@ def ProcessPanel(panel_root, output_html):
   all_touchpoints.render(touch_el)
 
 def main():
-  if len(sys.argv) < 2:
-    print(("Usage: %s jmri-infile.xml panel-outfile.html" % sys.argv[0]), file=sys.stderr)
+  if len(sys.argv) < 3:
+    print(("Usage: %s jmri-infile.xml panel-outfile.html server_url" % sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
   xml_tree = ET.parse(sys.argv[1])
@@ -1466,7 +1469,7 @@ def main():
     raise Exception("Desired panel not found")
   ProcessPanel(panel, html_tree)
 
-  RenderJsBindings(html_root)
+  RenderJsBindings(html_root, argv[3])
   html_tree.write(sys.argv[2], method="html")
 
 
