@@ -290,10 +290,8 @@ class SingleSignalHead:
   def Bind(self, **kwargs):
     """Adds the JS binding for this type of signal head. Keyword arguments should contain id, dark_icon red_icon, yellow_icon, green_icon"""
     AddJsBinding(self.binding_template.substitute( 
-      event_red_on=turnout_by_user_name[self.red_turnout].event_on,
-      event_red_off=turnout_by_user_name[self.red_turnout].event_off,
-      event_green_on=turnout_by_user_name[self.green_turnout].event_on,
-      event_green_off=turnout_by_user_name[self.green_turnout].event_off,
+      event_on=turnout_by_user_name[self.turnout_name].event_on,
+      event_off=turnout_by_user_name[self.turnout_name].event_off,
       **kwargs))
 
 def FindOrInsert(element, tag):
@@ -1227,10 +1225,11 @@ def AddSignalheadIcon(svg_root, jmri_icon):
   ih = 12
   img.set('width', str(iw))  # TODO: figure out proper W and H
   img.set('height', str(ih))
-  dark_icon = jmri_icon.find('./icons/dark').attrib['url']
-  red_icon = jmri_icon.find('./icons/red').attrib['url']
-  yellow_icon = jmri_icon.find('./icons/yellow').attrib['url']
-  green_icon = jmri_icon.find('./icons/green').attrib['url']
+  dark_icon = ResourceToUrl(jmri_icon.find('./icons/dark').attrib['url'])
+  red_icon = ResourceToUrl(jmri_icon.find('./icons/red').attrib['url'])
+  yellow_node = jmri_icon.find('./icons/yellow')
+  yellow_icon = None if yellow_node is None else ResourceToUrl(yellow_node.attrib['url'])
+  green_icon = ResourceToUrl(jmri_icon.find('./icons/green').attrib['url'])
   rotations = {}
   for entry in jmri_icon.findall('.//rotation'):
     rotations[entry.text] = rotations.get(entry.text, 0) + 1
@@ -1246,7 +1245,7 @@ def AddSignalheadIcon(svg_root, jmri_icon):
       img.set('transform', "rotate(180 %d %d)" % (midx, midy))
     if rot == "3":
       img.set('transform', "rotate(90 %d %d)" % (midx, midy))
-  img.set('xlink:href', ResourceToUrl(dark_icon))
+  img.set('xlink:href', dark_icon)
   ident = GetSvgId()
   img.set('id', ident)
   signalhead_name = jmri_icon.attrib['signalhead']
@@ -1254,10 +1253,10 @@ def AddSignalheadIcon(svg_root, jmri_icon):
     raise Exception('Panel is referncing a non-existing signalhead "%s"' % signalhead_name)
   signalhead_obj = signalhead_by_name[signalhead_name]
   signalhead_obj.Bind(id=ident,
-                      dark_icon=ResourceToUrl(dark_icon),
-                      red_icon=ResourceToUrl(red_icon),
-                      yellow_icon=ResourceToUrl(yellow_icon),
-                      green_icon=ResourceToUrl(green_icon))
+                      dark_icon=dark_icon,
+                      red_icon=red_icon,
+                      yellow_icon=yellow_icon,
+                      green_icon=green_icon)
 
 track_occupancy_binding_template = string.Template('addTrackBinding("${id}", "${event_on}", "${color_on}", "${event_off}", "${color_off}");');
 
