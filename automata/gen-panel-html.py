@@ -1450,7 +1450,7 @@ def ProcessPanel(panel_root, output_html):
   all_touchpoints.render(touch_el)
 
 def main():
-  if len(sys.argv) < 3:
+  if len(sys.argv) < 4:
     print(("Usage: %s jmri-infile.xml panel-outfile.html server_url" % sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
@@ -1469,7 +1469,7 @@ def main():
     raise Exception("Desired panel not found")
   ProcessPanel(panel, html_tree)
 
-  RenderJsBindings(html_root, argv[3])
+  RenderJsBindings(html_root, sys.argv[3])
   html_tree.write(sys.argv[2], method="html")
 
 
