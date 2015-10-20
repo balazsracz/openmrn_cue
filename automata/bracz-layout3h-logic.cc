@@ -740,7 +740,7 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
 }
 
 void MiddleSignal(Automata* aut, StandardMiddleSignal* piece, SignalVariable* main_sgn, SignalVariable* adv_sgn) {
-  BlockSignalDir(aut, piece->side_a(), piece->side_b(), main_sgn, adv_sgn, nullptr, aut->ImportVariable(piece->route_out()));
+  BlockSignalDir(aut, piece->side_b(), piece->side_a(), main_sgn, adv_sgn, nullptr, aut->ImportVariable(piece->route_out()));
 }
 
 void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {

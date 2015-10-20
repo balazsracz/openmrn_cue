@@ -515,7 +515,9 @@ class StandardMiddleSignal : public StraightTrackInterface {
  public:
   StandardMiddleSignal(Board *brd, const AllocatorPtr &parent_alloc,
                        const string &base_name)
-      : alloc_(parent_alloc->Allocate(base_name, 32)), base_name_(base_name) {
+      : alloc_(parent_alloc->Allocate(base_name, 32)),
+        base_name_(base_name),
+        aut_signal_(name() + ".signal", brd, &signal_) {
     signal_.AddAutomataPlugin(
         131, NewCallbackPtr(this, &StandardMiddleSignal::InitSignalNoStop));
   }
@@ -524,6 +526,11 @@ class StandardMiddleSignal : public StraightTrackInterface {
   CtrlTrackInterface *side_b() override { return signal_.side_b(); }
 
   const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
+
+  /** Returns the full name of the block (including path). */
+  const string& name() {
+    return alloc_->name();
+  }
 
  private:
   void InitSignalNoStop(Automata* aut) {
@@ -539,6 +546,8 @@ class StandardMiddleSignal : public StraightTrackInterface {
 
   SignalPiece signal_{alloc_->Allocate("signal", 24, 8), request_green_.get(),
                       signal_out_.get(),                 no_stop_.get()};
+
+  StandardPluginAutomata aut_signal_;
 };
 
 class StandardBlock : public StraightTrackInterface {
