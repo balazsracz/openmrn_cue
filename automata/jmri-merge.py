@@ -608,7 +608,7 @@ def GetAllLocationList():
   """Returns a list of strings, with each location name."""
   locations = []
   for sensor in all_sensors:
-    m = re.match('logic[.](.*)[.]signal.route_set_ab', sensor.user_name)
+    m = re.match('logic[.](.*)[.]rsignal.route_set_ab', sensor.user_name)
     if m:
       locations.append(m.group(1))
   return locations
