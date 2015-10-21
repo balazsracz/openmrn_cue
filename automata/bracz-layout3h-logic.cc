@@ -693,13 +693,12 @@ void BlockSignalDir(Automata* aut, CtrlTrackInterface* side_front,
   if (main_sgn) {
     auto* sgn = aut->ImportVariable(main_sgn);
     Def().IfReg0(green).ActSetValue(sgn, 1, A_STOP);
-    const auto& sg1 =
-        aut->ImportVariable(*side_back->binding()->in_next_signal_1);
-    const auto& sg2 =
-        aut->ImportVariable(*side_back->binding()->in_next_signal_2);
-    Def().IfReg1(green).IfReg0(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_40);
-    Def().IfReg1(green).IfReg1(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_60);
-    Def().IfReg1(green).IfReg1(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_90);
+    const auto& sg1 = aut->ImportVariable(*side_front->in_next_signal_1);
+    const auto& sg2 = aut->ImportVariable(*side_front->in_next_signal_2);
+    Def().IfReg1(green).IfReg0(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_40);
+    Def().IfReg1(green).IfReg0(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_60);
+    Def().IfReg1(green).IfReg1(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_90);
+    Def().IfReg1(green).IfReg1(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_GO);
   }
   if (in_adv_sgn) {
     auto* sgn = aut->ImportVariable(in_adv_sgn);
