@@ -207,7 +207,7 @@ PhysicalSignal A360(&bb.InBrownBrown, &bb.Rel0, &signal_A360_main.signal,
 PhysicalSignal A347(&bd.In3, &bd.Rel1, &signal_A347_main.signal,
                     &signal_A347_adv.signal, &signal_B360_main.signal, nullptr,
                     nullptr, nullptr);
-PhysicalSignal A321(&bd.In5, &bd.Rel3, &signal_A321_main.signal,
+PhysicalSignal A321(&bd.In7, &bd.Rel3, &signal_A321_main.signal,
                     &signal_A321_adv.signal, &signal_B347_main.signal,
                     &signal_B347_adv.signal, nullptr, nullptr);
 PhysicalSignal A301(&bc.In2, &bc.LedYellow, &signal_A301_main.signal,
@@ -807,6 +807,11 @@ DefAut(signalaut3, brd, {
   ClearUsedVariables();
   MiddleSignal(this, &Sig_480, &signal_A480_main.signal, &signal_A480_adv.signal);
   MiddleSignal(this, &Sig_380, &signal_A380_main.signal, &signal_A380_adv.signal);
+
+  Def()
+      .IfState(StInit)
+      .ActReg1(aut->ImportVariable(Block_B475.rsignal_no_stop()))
+      .ActState(StBase);
 });
 
 FlipFlopAutomata loop_flipflop(&brd, "loop_flipflop", logic, 32);
@@ -899,7 +904,8 @@ void IfWWB2ExitFree(Automata::Op* op) {
 
 void IfB460OutNotBlocked(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*g_stop_b460));
+  op->IfReg0(op->parent()->ImportVariable(*g_stop_b460))
+      .IfReg0(op->parent()->ImportVariable(*Turnout_W459.b.any_route()));
 }
 
 void IfB360OutNotBlocked(Automata::Op* op) {
@@ -996,12 +1002,13 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(&Block_B447, &Block_B460);
     SwitchTurnout(Turnout_W447.b.magnet(), false);
     AddDirectBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked, true);
+    ClearAutomataVariables(aut);
   }
 
   // Runs in ZZ into the stub track and reverses direction.
   void RunStubZZ(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZZ);
-    AddDirectBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free);
+    AddDirectBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free, true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     StopAndReverseAtStub(&Block_ZZA2);
@@ -1012,11 +1019,12 @@ class LayoutSchedule : public TrainSchedule {
 
   void RunStub2ZZ(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZZ);
-    AddDirectBlockTransition(&Block_B475, &Block_ZZA3.b_, &g_zzw1_free);
+    AddDirectBlockTransition(&Block_B475, &Block_ZZA3.b_, &g_zzw1_free, true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), false);
     StopAndReverseAtStub(&Block_ZZA3);
 
     AddDirectBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
+    SwitchTurnout(Turnout_W459.b.magnet(), true);
     auto* stop_b460 = aut->ImportVariable(g_stop_b460.get());
     auto* stop_b360 = aut->ImportVariable(g_stop_b360.get());
     Def().IfReg0(current_block_permaloc_).ActReg0(stop_b460).ActReg0(stop_b360);
