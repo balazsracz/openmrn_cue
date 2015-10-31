@@ -124,7 +124,11 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
         BitEventConsumer(this),
         memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
 
-  bool GetCurrentState() OVERRIDE { return (*memory_) ? true : false; }
+  nmranet::EventState GetCurrentState() OVERRIDE {
+    return (*memory_) ? nmranet::EventState::VALID
+                      : nmranet::EventState::INVALID;
+  }
+
   void SetState(bool new_value) OVERRIDE {
     if (new_value) {
       *memory_ = 0xff;
@@ -144,8 +148,10 @@ class LoggingBit : public nmranet::BitEventInterface {
   LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
       : BitEventInterface(event_on, event_off), name_(name), state_(false) {}
 
-  virtual bool GetCurrentState() { return state_; }
-  virtual void SetState(bool new_value) {
+  nmranet::EventState GetCurrentState() override {
+    return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+  }
+  void SetState(bool new_value) override {
     state_ = new_value;
 // HASSERT(0);
 #ifdef __linux__
@@ -206,12 +212,12 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
                                               (((unsigned)port_bit) << 2))),
         display_(display) {}
 
-  bool GetCurrentState() OVERRIDE {
+  nmranet::EventState GetCurrentState() OVERRIDE {
     bool result = *ptr_;
     if (display_) {
       Debug::DetectRepeat::set(result);
     }
-    return result;
+    return result ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
   }
 
   void SetState(bool new_value) OVERRIDE {
