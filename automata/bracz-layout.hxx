@@ -330,7 +330,7 @@ struct NativeIO {
 
 struct AccBoard {
   AccBoard(int a)
-      : name_(StringPrintf("A%d", a-0x2a)),
+      : name_(StringPrintf("b%1x.", a-0x20)),
         address_(a),
         signal_offset_(0),
         LedRed(
