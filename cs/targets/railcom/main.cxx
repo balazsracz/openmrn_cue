@@ -79,13 +79,13 @@ nmranet::ConfiguredConsumer consumer_blue(stack.node(),
                                           cfg.seg().consumers().entry<2>(),
                                           OUTPUT_EN1_Pin());
 
-nmranet::ConfiguredConsumer consumer_shadow0(stack.node(),
+/*nmranet::ConfiguredConsumer consumer_shadow0(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
                                            STAT5_Pin());
 
 nmranet::ConfiguredConsumer consumer_shadow1(stack.node(),
                                            cfg.seg().consumers().entry<2>(),
-                                           STAT4_Pin());
+                                           STAT4_Pin());*/
 
 nmranet::ConfiguredProducer producer_sw1(stack.node(),
                                          cfg.seg().producers().entry<0>(),
@@ -402,10 +402,12 @@ DacSettings dac_railcom = dac_occupancy;
 
 volatile uint32_t ch0_count, ch1_count;
 
+extern unsigned* stat_led_ptr();
+
 class DACThread : public OSThread {
  public:
   void *entry() OVERRIDE {
-    const int kPeriod = 1000000;
+    const int kPeriod = 300000;
     while (true) {
       nmranet::WriteHelper h;
       /*      usleep(kPeriod);
@@ -425,6 +427,10 @@ class DACThread : public OSThread {
       ch0_count = 0;
       ch1_count = 0;
       n.wait_for_notification();
+      *stat_led_ptr() <<= 1;
+      if (*stat_led_ptr() >= (1<<6)) {
+        *stat_led_ptr() = 1;
+      }
     }
     return nullptr;
   }
@@ -436,18 +442,19 @@ class DACThread : public OSThread {
  * @return 0, should never return
  */
 int appl_main(int argc, char *argv[]) {
-  stack.add_can_port_select("/dev/can0");
+  //stack.add_can_port_select("/dev/can0");
   dac_thread.start("dac", 0, 600);
   dac.set_pwm(1, 18);
   dac.set_div(true);
 
+  *stat_led_ptr() = 4;
   OUTPUT_EN0_Pin::set(false);
-  STAT5_Pin::set(false);
+  //STAT5_Pin::set(false);
 
-  STAT4_Pin::set(true);
+  //STAT4_Pin::set(true);
   OUTPUT_EN1_Pin::set(false);
 
-  STAT3_Pin::set(true);
+  //STAT3_Pin::set(true);
 
   // we need to enable the dcc receiving driver.
   ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
