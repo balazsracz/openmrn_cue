@@ -442,7 +442,7 @@ class DACThread : public OSThread {
  * @return 0, should never return
  */
 int appl_main(int argc, char *argv[]) {
-  //stack.add_can_port_select("/dev/can0");
+  stack.add_can_port_select("/dev/can0");
   dac_thread.start("dac", 0, 600);
   dac.set_pwm(1, 18);
   dac.set_div(true);
