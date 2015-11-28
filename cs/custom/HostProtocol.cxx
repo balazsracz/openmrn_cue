@@ -110,13 +110,13 @@ StateFlowBase::Action HostClient::HostClientHandler::ok_response_sent() {
 StateFlowBase::Action HostClient::HostClientHandler::dg_client_ready() {
   dg_client_ = full_allocation_result(dg_service()->client_allocator());
   return allocate_and_call(
-      dg_service()->interface()->addressed_message_write_flow(),
+      dg_service()->iface()->addressed_message_write_flow(),
       STATE(response_buf_ready));
 }
 
 StateFlowBase::Action HostClient::HostClientHandler::response_buf_ready() {
   auto* b = get_allocation_result(
-      dg_service()->interface()->addressed_message_write_flow());
+      dg_service()->iface()->addressed_message_write_flow());
   b->data()->reset(Defs::MTI_DATAGRAM, message()->data()->dst->node_id(),
                    message()->data()->src, std::move(response_payload_));
   release();
@@ -180,13 +180,13 @@ StateFlowBase::Action HostClient::HostClientSend::entry() {
 StateFlowBase::Action HostClient::HostClientSend::dg_client_ready() {
   dg_client_ = full_allocation_result(dg_service()->client_allocator());
   return allocate_and_call(
-      dg_service()->interface()->addressed_message_write_flow(),
+      dg_service()->iface()->addressed_message_write_flow(),
       STATE(response_buf_ready));
 }
 
 StateFlowBase::Action HostClient::HostClientSend::response_buf_ready() {
   auto* b = get_allocation_result(
-      dg_service()->interface()->addressed_message_write_flow());
+      dg_service()->iface()->addressed_message_write_flow());
   b->data()->reset(Defs::MTI_DATAGRAM, parent()->node()->node_id(),
                    g_host_address,
                    std::move(static_cast<string&>(*message()->data())));

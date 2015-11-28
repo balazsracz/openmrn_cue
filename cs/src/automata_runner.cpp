@@ -452,22 +452,22 @@ bool AutomataRunner::eval_condition(insn_t insn) {
     switch (insn) {
       case _IF_EMERGENCY_STOP: {
         auto* b =
-            openmrn_node_->interface()->global_message_write_flow()->alloc();
+            openmrn_node_->iface()->global_message_write_flow()->alloc();
         b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT,
                          openmrn_node_->node_id(),
                          nmranet::eventid_to_buffer(
                              nmranet::TractionDefs::EMERGENCY_STOP_EVENT));
-        openmrn_node_->interface()->global_message_write_flow()->send(b);
+        openmrn_node_->iface()->global_message_write_flow()->send(b);
         return true;
       }
       case _IF_EMERGENCY_START: {
         auto* b =
-            openmrn_node_->interface()->global_message_write_flow()->alloc();
+            openmrn_node_->iface()->global_message_write_flow()->alloc();
         b->data()->reset(
             nmranet::Defs::MTI_EVENT_REPORT, openmrn_node_->node_id(),
             nmranet::eventid_to_buffer(
                 nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
-        openmrn_node_->interface()->global_message_write_flow()->send(b);
+        openmrn_node_->iface()->global_message_write_flow()->send(b);
         return true;
       }
       case _GET_TRAIN_SPEED: {
@@ -687,18 +687,18 @@ void AutomataRunner::eval_action2(insn_t insn, insn_t arg) {
 }
 
 bool AutomataRunner::set_train_speed(nmranet::Velocity v) {
-  auto* b = openmrn_node_->interface()->addressed_message_write_flow()->alloc();
+  auto* b = openmrn_node_->iface()->addressed_message_write_flow()->alloc();
   b->data()->reset(nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND,
                    openmrn_node_->node_id(),
                    {aut_eventids_[0], 0},
                    nmranet::TractionDefs::speed_set_payload(v));
-  openmrn_node_->interface()->addressed_message_write_flow()->send(b);
+  openmrn_node_->iface()->addressed_message_write_flow()->send(b);
   return true;
 }
 
 nmranet::Velocity AutomataRunner::get_train_speed() {
   HASSERT(traction_.get());
-  auto* b = openmrn_node_->interface()->addressed_message_write_flow()->alloc();
+  auto* b = openmrn_node_->iface()->addressed_message_write_flow()->alloc();
   b->data()->reset(nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND,
                    openmrn_node_->node_id(),
                    {aut_eventids_[0], 0},
@@ -711,7 +711,7 @@ nmranet::Velocity AutomataRunner::get_train_speed() {
   traction_->resp_handler_.wait_for_response(b->data()->dst,
                                              b->data()->payload[0],
                                              &traction_->timer_);
-  openmrn_node_->interface()->addressed_message_write_flow()->send(b);
+  openmrn_node_->iface()->addressed_message_write_flow()->send(b);
   traction_->timer_.wait_for_notification();
   traction_->resp_handler_.wait_timeout();
   if (!traction_->resp_handler_.response()) {
@@ -773,7 +773,7 @@ void AutomataRunner::InitializeState() {
 class AutomataTick : public Timer {
  public:
   AutomataTick(AutomataRunner* runner)
-      : Timer(runner->node()->interface()->executor()->active_timers()),
+      : Timer(runner->node()->iface()->executor()->active_timers()),
         runner_(runner), count_(0), exit_(false) {
     start(MSEC_TO_NSEC(100)); // 10 Hz
   }
@@ -798,7 +798,7 @@ class AutomataTick : public Timer {
       OSMutexLock l(&lock_);
       exit_ = true;
     }
-    runner_->node()->interface()->executor()->sync_run([this]() {
+    runner_->node()->iface()->executor()->sync_run([this]() {
         Timer::trigger();
       });
   }
@@ -844,8 +844,8 @@ void* automata_thread(void* arg) {
 }
 
 AutomataRunner::Traction::Traction(nmranet::Node* node)
-    : resp_handler_(node->interface(), node),
-      timer_(node->interface()->executor()->active_timers()) {}
+    : resp_handler_(node->iface(), node),
+      timer_(node->iface()->executor()->active_timers()) {}
 
 AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
                                bool with_thread)

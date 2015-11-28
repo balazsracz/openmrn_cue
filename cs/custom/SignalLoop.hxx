@@ -64,7 +64,7 @@ class SignalLoop : public StateFlowBase,
 
   SignalLoop(SignalPacketBaseInterface* bus, nmranet::Node* node,
              uint64_t event_base, int num_signals)
-      : StateFlowBase(node->interface()),
+      : StateFlowBase(node->iface()),
         ByteRangeEventC(node, event_base, backingStore_ = static_cast<uint8_t*>(
                                               malloc(num_signals * 2)),
                         num_signals * 2),
