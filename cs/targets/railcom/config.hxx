@@ -24,7 +24,7 @@ namespace nmranet
 /// - the ACDI memory space will contain this data.
 extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
     4,               "Balazs Racz", "Railcom IO board",
-    "ek-tm4c123gxl", "2015-07-30"};
+    "ek-tm4c123gxl", "2015-10-25"};
 
 #define NUM_OUTPUTS 3
 #define NUM_INPUTS 2
@@ -36,6 +36,26 @@ extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
 using AllConsumers = RepeatedGroup<ConsumerConfig, NUM_OUTPUTS>;
 using AllProducers = RepeatedGroup<ProducerConfig, NUM_INPUTS>;
 
+
+CDI_GROUP(CountingDebouncerOpts);
+CDI_GROUP_ENTRY(count_total, Uint8ConfigEntry, Name("Window length"), Description("How many consecutive samples to count"));
+CDI_GROUP_ENTRY(min_active, Uint8ConfigEntry, Name("Min Active"), Description("How many active samples in the window to consider the window active"));
+CDI_GROUP_END();
+
+CDI_GROUP(DacSettingsConfig, Description("Configures reference voltage"));
+CDI_GROUP_ENTRY(nominator, Uint8ConfigEntry, Name("Nominator"), Description("Number of CPU cycles to drive output high"));
+CDI_GROUP_ENTRY(denom, Uint8ConfigEntry, Name("Denominator"), Description("PWM length in cycle count"));
+CDI_GROUP_ENTRY(divide, Uint8ConfigEntry, Name("DivBy100"), Description("If non-zero, divides output voltage by 100."));
+CDI_GROUP_END();
+
+CDI_GROUP(CurrentParams, Name("Tuning params"), Description("Parameters for tuning the current detector"));
+CDI_GROUP_ENTRY(occupancy, CountingDebouncerOpts, Name("Occupancy debouncer"));
+CDI_GROUP_ENTRY(overcurrent, CountingDebouncerOpts, Name("Overcurrent debouncer"));
+CDI_GROUP_ENTRY(dac_occupancy, DacSettingsConfig, Name("DAC occupancy"));
+CDI_GROUP_ENTRY(dac_overcurrent, DacSettingsConfig, Name("DAC overcurrent"));
+CDI_GROUP_ENTRY(dac_railcom, DacSettingsConfig, Name("DAC railcom"));
+CDI_GROUP_END();
+
 /// Defines the main segment in the configuration CDI. This is laid out at
 /// origin 128 to give space for the ACDI user data at the beginning.
 CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
@@ -43,6 +63,7 @@ CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
 /// optional arguments list.
 CDI_GROUP_ENTRY(consumers, AllConsumers, Name("Output LEDs"));
 CDI_GROUP_ENTRY(producers, AllProducers, Name("Input buttons"));
+CDI_GROUP_ENTRY(current, CurrentParams);
 CDI_GROUP_END();
 
 /// This segment is only needed temporarily until there is program code to set
