@@ -90,7 +90,7 @@ class TivaBypassControl {
       RCBYPASS_NON_Pin::set(false);
     } else {
       RCBYPASS_NON_Pin::set(true);
-      //SysCtlDelay(kDelayCrossover2);
+      SysCtlDelay(kDelayCrossover2);
       RCBYPASS_OFF_Pin::set(true);
     }
   }
