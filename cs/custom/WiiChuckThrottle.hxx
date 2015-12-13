@@ -11,7 +11,7 @@ typedef StateFlow<Buffer<WiiChuckData>, QList<1> > WiiChuckFlow;
 class WiiChuckThrottle : public WiiChuckFlow {
  public:
   WiiChuckThrottle(nmranet::Node* node, nmranet::NodeID dst_id)
-    : WiiChuckFlow(node->interface()), node_(node), dst_{dst_id, 0} {}
+    : WiiChuckFlow(node->iface()), node_(node), dst_{dst_id, 0} {}
 
   Action entry() OVERRIDE {
     ParsedGesture g = axis_to_gesture(message()->data()->joy_x());
@@ -24,18 +24,18 @@ class WiiChuckThrottle : public WiiChuckFlow {
  private:
   static constexpr float MAX_SPEED_MPH = 30.0;
 
-  nmranet::If* interface() { return static_cast<nmranet::If*>(service()); }
+  nmranet::If* iface() { return static_cast<nmranet::If*>(service()); }
 
   Action call_update(Callback c) {
-    return allocate_and_call(interface()->addressed_message_write_flow(), c);
+    return allocate_and_call(iface()->addressed_message_write_flow(), c);
   }
 
   Action send_message(const nmranet::Payload& p) {
     auto* b =
-        get_allocation_result(interface()->addressed_message_write_flow());
+        get_allocation_result(iface()->addressed_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND, node_->node_id(), dst_,
                      p);
-    interface()->addressed_message_write_flow()->send(b);
+    iface()->addressed_message_write_flow()->send(b);
     return call_immediately(STATE(entry));
   }
 

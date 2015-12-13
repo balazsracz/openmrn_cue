@@ -316,25 +316,25 @@ class DccPacketDebugFlow : public StateFlow<Buffer<dcc::Packet>, QList<1>> {
  public:
   DccPacketDebugFlow(nmranet::Node* node)
       : StateFlow<Buffer<dcc::Packet>, QList<1>>(
-            node->interface()->dispatcher()->service()),
+            node->iface()->dispatcher()->service()),
         node_(node) {}
 
  private:
   Action entry() override {
     Debug::DccPacketDelay::set(false);
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(msg_allocated));
   }
 
   Action msg_allocated() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
 
     b->data()->reset(
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 1),
         node_->node_id(),
         string((char*)message()->data()->payload, message()->data()->dlc));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     return release_and_exit();
   }
 
@@ -407,7 +407,7 @@ class RailcomProxy : public RailcomHubPort {
       return exit();
     }
     if (message()->data()->ch1Size) {
-      return allocate_and_call(node_->interface()->global_message_write_flow(),
+      return allocate_and_call(node_->iface()->global_message_write_flow(),
                                STATE(ch1_msg_allocated));
     } else {
       return call_immediately(STATE(maybe_send_ch2));
@@ -416,7 +416,7 @@ class RailcomProxy : public RailcomHubPort {
 
   Action ch1_msg_allocated() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
 
     b->data()->reset(
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 3),
@@ -424,14 +424,14 @@ class RailcomProxy : public RailcomHubPort {
     b->data()->payload.push_back(message()->data()->channel | 0x10);
     b->data()->payload.append((char*)message()->data()->ch1Data,
                               message()->data()->ch1Size);
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
 
     return call_immediately(STATE(maybe_send_ch2));
   }
 
   Action maybe_send_ch2() {
     if (message()->data()->ch2Size) {
-      return allocate_and_call(node_->interface()->global_message_write_flow(),
+      return allocate_and_call(node_->iface()->global_message_write_flow(),
                                STATE(ch2_msg_allocated));
     } else {
       return release_and_exit();
@@ -440,7 +440,7 @@ class RailcomProxy : public RailcomHubPort {
 
   Action ch2_msg_allocated() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
 
     b->data()->reset(
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 4),
@@ -448,7 +448,7 @@ class RailcomProxy : public RailcomHubPort {
     b->data()->payload.push_back(message()->data()->channel | 0x20);
     b->data()->payload.append((char*)message()->data()->ch2Data,
                               message()->data()->ch2Size);
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
 
     return release_and_exit();
   }
@@ -494,36 +494,36 @@ class RailcomBroadcastFlow : public RailcomHubPort {
       return release_and_exit();
     }
     // Now: the visible address has changed. Send event reports.
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(send_invalid));
   }
 
   Action send_invalid() {
     auto channel = message()->data()->channel;
     auto& decoder = channels_[channel];
-    auto* b = get_allocation_result(node_->interface()->global_message_write_flow());
+    auto* b = get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(
         Defs::MTI_PRODUCER_IDENTIFIED_INVALID, node_->node_id(),
         eventid_to_buffer(address_to_eventid(channel, decoder.lastAddress_)));
     b->set_done(n_.reset(this));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     return wait_and_call(STATE(allocate_for_event));
   }
 
   Action allocate_for_event() {
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(send_event));
   }
 
   Action send_event() {
     auto channel = message()->data()->channel;
     auto& decoder = channels_[channel];
-    auto* b = get_allocation_result(node_->interface()->global_message_write_flow());
+    auto* b = get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(Defs::MTI_EVENT_REPORT, node_->node_id(),
                      eventid_to_buffer(address_to_eventid(
                          channel, decoder.current_address())));
     b->set_done(n_.reset(this));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     decoder.lastAddress_ = decoder.current_address();
     release();
     return wait_and_call(STATE(finish));
@@ -557,7 +557,7 @@ class FeedbackBasedOccupancy : public RailcomHubPort {
  public:
   FeedbackBasedOccupancy(Node* node, uint64_t event_base,
                          unsigned channel_count)
-      : RailcomHubPort(node->interface()),
+      : RailcomHubPort(node->iface()),
         currentValues_(0),
         eventHandler_(node, event_base, &currentValues_, channel_count) {}
 
