@@ -275,13 +275,13 @@ class HostPacketQueue : public PacketQueueFlow {
   Action dg_client_ready() {
     dg_client_ = full_allocation_result(dg_service()->client_allocator());
     return allocate_and_call(
-        dg_service()->interface()->addressed_message_write_flow(),
+        dg_service()->iface()->addressed_message_write_flow(),
         STATE(buf_ready));
   }
 
   Action buf_ready() {
     auto* b = get_allocation_result(
-        dg_service()->interface()->addressed_message_write_flow());
+        dg_service()->iface()->addressed_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_DATAGRAM, impl()->node()->node_id(),
                      impl()->client_dst_, Payload());
     b->data()->payload.reserve(1 + message()->data()->size());
@@ -399,7 +399,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
   TrainControlService::Impl* impl() { return service()->impl(); }
   DatagramService* dg_service() { return impl()->dg_service(); }
 
-  nmranet::If* interface() { return dg_service()->interface(); }
+  nmranet::If* iface() { return dg_service()->iface(); }
 
   void packet_arrived(Buffer<string>* b) OVERRIDE {
     if (packet_filter_(*b->data())) {

@@ -139,7 +139,7 @@ template <class HW>
 class TivaShortDetectionModule : public ADCFlowBase<HW> {
  public:
   TivaShortDetectionModule(nmranet::Node* node)
-      : ADCFlowBase<HW>(node->interface(), MSEC_TO_NSEC(1)),
+      : ADCFlowBase<HW>(node->iface(), MSEC_TO_NSEC(1)),
         num_disable_tries_(0),
         num_overcurrent_tests_(0),
         node_(node) {
@@ -190,16 +190,16 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   Action shorted() {
     num_disable_tries_ = 0;
     LOG(INFO, "short detected");
-    return this->allocate_and_call(node_->interface()->global_message_write_flow(), STATE(send_short_message));
+    return this->allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_short_message));
   }
 
   Action send_short_message() {
     auto* b = this->get_allocation_result(
-        node_->interface()->global_message_write_flow());
+        node_->iface()->global_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      nmranet::eventid_to_buffer(
                          nmranet::TractionDefs::EMERGENCY_STOP_EVENT));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
 
     return call_immediately(STATE(start_timer));
   }
@@ -292,44 +292,44 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
   }
 
   Action shorted() {
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(send_shorted));
   }
 
   Action send_shorted() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      nmranet::eventid_to_buffer(HW::EVENT_SHORT));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     return call_immediately(STATE(off));
   }
 
   Action overcurrent() {
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(send_overcurrent));
   }
 
   Action send_overcurrent() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     return call_immediately(STATE(off));
   }
 
   Action off() {
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(send_off));
   }
 
   Action send_off() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      nmranet::eventid_to_buffer(HW::EVENT_OFF));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     return this->start_timer();
   }
 
@@ -406,14 +406,14 @@ class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
     if (!HW::ACC_ENABLE_Pin::get() && new_value) {
       // We are turning power on.
       // sends some event reports to clear off the shorted and overcurrent bits.
-      auto* b = node()->interface()->global_message_write_flow()->alloc();
+      auto* b = node()->iface()->global_message_write_flow()->alloc();
       b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
                        nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT ^ 1));
-      node()->interface()->global_message_write_flow()->send(b);
-      b = node()->interface()->global_message_write_flow()->alloc();
+      node()->iface()->global_message_write_flow()->send(b);
+      b = node()->iface()->global_message_write_flow()->alloc();
       b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
                        nmranet::eventid_to_buffer(HW::EVENT_SHORT ^ 1));
-      node()->interface()->global_message_write_flow()->send(b);
+      node()->iface()->global_message_write_flow()->send(b);
     }
     HW::ACC_ENABLE_Pin::set(new_value);
   }

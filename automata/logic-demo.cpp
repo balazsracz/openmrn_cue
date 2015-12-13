@@ -16,8 +16,6 @@ using namespace std;
 using namespace automata;
 
 
-#define BRACZ_LAYOUT 0x0501010114FF0000ULL
-
 
 StateRef StateInit(0);
 StateRef StateBase(1);

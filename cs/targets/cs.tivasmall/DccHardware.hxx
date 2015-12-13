@@ -56,7 +56,7 @@ struct RailcomDefs
 
     static const auto OS_INTERRUPT = INT_UART1;
 
-    GPIO_HWPIN(CH1, GpioHwPin, B, 0, U1RX);
+  GPIO_HWPIN(CH1, GpioHwPin, B, 0, U1RX, UART);
 
     static void hw_init() {
          CH1_Pin::hw_init();
@@ -68,6 +68,15 @@ struct RailcomDefs
 
     static void set_hw() {
         CH1_Pin::set_hw();
+    }
+
+    static void enable_measurement() {}
+    static void disable_measurement() {}
+
+    static bool need_ch1_cutout() { return true; }
+
+    static uint8_t get_feedback_channel() {
+        return 0xff;
     }
 
     /** @returns a bitmask telling which pins are active. Bit 0 will be set if

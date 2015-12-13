@@ -42,10 +42,10 @@
 #include "utils/Hub.hxx"
 #include "utils/CanIf.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "nmranet/SimpleStack.hxx"
 
 /// @TODO(balazs.racz) this is not nice.
-extern nmranet::DefaultNode g_node;
+extern nmranet::SimpleCanStack stack;
 
 namespace bracz_custom {
 
@@ -84,7 +84,7 @@ class TrackPowerOnOffBit : public nmranet::BitEventInterface {
 
   virtual nmranet::Node* node()
   {
-    return &g_node;
+    return stack.node();
   }
 
  private:

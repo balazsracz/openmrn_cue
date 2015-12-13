@@ -65,7 +65,8 @@ I2CSignal signal_XXB2_adv(&b3, 9, "XX.B2.adv");
 I2CSignal signal_YYC23_main(&b3, 26, "YY.C23.main");
 I2CSignal signal_YYC23_adv(&b3, 27, "YY.C23.adv");
 
-EventBlock logic(&brd, BRACZ_LAYOUT | 0xE000, "logic");
+EventBlock logic_block(&brd, BRACZ_LAYOUT | 0xE000, "logic");
+const AllocatorPtr& logic(logic_block.allocator());
 
 struct ConventionBlock {
  public:
@@ -78,7 +79,7 @@ struct ConventionBlock {
       , green(signal_green)
       , button(_button)
       , raw_block(sensor_raw, relay, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr)
-      , block(&brd, &raw_block, logic.allocator(), name) {}
+      , block(&brd, &raw_block, logic, name) {}
 
   GlobalVariable* sensor_raw;
   GlobalVariable* relay;
@@ -219,14 +220,12 @@ void SimpleFollowStrategy(
       .ActReg1(aut->ImportVariable(src->request_green()));*/
 }
 
-MagnetCommandAutomata g_magnet_aut(&brd, *logic.allocator());
+MagnetCommandAutomata g_magnet_aut(&brd, logic);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
-StandardFixedTurnout Turnout_In(&brd, EventBlock::Allocator(logic.allocator(),
-                                                            "WIn", 40),
+StandardFixedTurnout Turnout_In(&brd, logic->Allocate("WIn", 40),
                                 FixedTurnout::TURNOUT_CLOSED);
-StandardFixedTurnout Turnout_Out(&brd, EventBlock::Allocator(logic.allocator(),
-                                                             "WOut", 40),
+StandardFixedTurnout Turnout_Out(&brd, logic->Allocate("WOut", 40),
                                  FixedTurnout::TURNOUT_CLOSED);
 
 bool ign =
