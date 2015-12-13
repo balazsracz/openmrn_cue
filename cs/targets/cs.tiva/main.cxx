@@ -45,6 +45,8 @@
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/HostProtocol.hxx"
 #include "custom/TivaShortDetection.hxx"
+#include "custom/LoggingBit.hxx"
+#include "custom/BlinkerFlow.hxx"
 #include "dcc/LocalTrackIf.hxx"
 #include "dcc/RailCom.hxx"
 #include "dcc/RailcomHub.hxx"
@@ -162,80 +164,6 @@ OVERRIDE_CONST(local_nodes_count, 30);
 OVERRIDE_CONST(local_alias_cache_size, 30);
 OVERRIDE_CONST(num_memory_spaces, 5);
 
-
-static const uint64_t EVENT_ID = 0x0501010114FF2B08ULL;
-
-extern "C" { void resetblink(uint32_t pattern); }
-
-class BlinkerFlow : public StateFlowBase
-{
-public:
-    BlinkerFlow(nmranet::Node* node)
-        : StateFlowBase(node->interface()),
-          state_(1),
-          bit_(node, EVENT_ID, EVENT_ID + 1, &state_, (uint8_t)1),
-          producer_(&bit_),
-          sleepData_(this)
-    {
-        start_flow(STATE(blinker));
-    }
-
-private:
-    Action blinker()
-    {
-        state_ = !state_;
-#ifdef __linux__
-        LOG(INFO, "blink produce %d", state_);
-#endif
-        producer_.Update(&helper_, n_.reset(this));
-        return wait_and_call(STATE(handle_sleep));
-    }
-
-    Action handle_sleep()
-    {
-        return sleep_and_call(&sleepData_, MSEC_TO_NSEC(1000), STATE(blinker));
-    }
-
-    uint8_t state_;
-    nmranet::MemoryBit<uint8_t> bit_;
-    nmranet::BitEventProducer producer_;
-    nmranet::WriteHelper helper_;
-    StateFlowTimer sleepData_;
-    BarrierNotifiable n_;
-};
-
-class LoggingBit : public nmranet::BitEventInterface
-{
-public:
-    LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
-        : BitEventInterface(event_on, event_off), name_(name), state_(false)
-    {
-    }
-
-    nmranet::EventState GetCurrentState() OVERRIDE
-    {
-        return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
-    }
-    virtual void SetState(bool new_value)
-    {
-        state_ = new_value;
-#ifdef __linux__
-        LOG(INFO, "bit %s set to %d", name_, state_);
-#else
-        resetblink(state_ ? 1 : 0);
-#endif
-    }
-
-    virtual nmranet::Node* node()
-    {
-      return stack.node();
-    }
-
-private:
-    const char* name_;
-    bool state_;
-};
-
 class TivaGPIOProducerBit : public nmranet::BitEventInterface {
  public:
   TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
@@ -294,7 +222,7 @@ PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.p
 TivaTrackPowerOnOffBit on_off(stack.node(), nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                               nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
 nmranet::BitEventConsumer powerbit(&on_off);
-nmranet::TrainService traction_service(stack.interface());
+nmranet::TrainService traction_service(stack.iface());
 
 TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(stack.node(), BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
 nmranet::BitEventConsumer accpowerbit(&acc_on_off);
@@ -333,7 +261,7 @@ bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 mobilestation::TrainDb train_db;
 CanIf can1_interface(stack.service(), &can_hub1);
-mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.interface(), &train_db, stack.node());
+mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
 
@@ -471,7 +399,8 @@ int appl_main(int argc, char* argv[])
     ASSERT(fd >= 0);
     dcc_can_init(fd);*/
 
-    LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
+    static const uint64_t BLINKER_EVENT_ID = 0x0501010114FF2B08ULL;
+    LoggingBit logger(BLINKER_EVENT_ID, BLINKER_EVENT_ID + 1, "blinker");
     nmranet::BitEventConsumer consumer(&logger);
 
     stack.memory_config_handler()->registry()->insert(stack.node(), 0xA0, &automata_space);

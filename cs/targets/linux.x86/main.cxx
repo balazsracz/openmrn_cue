@@ -56,7 +56,7 @@ nmranet::MockSNIPUserFile snip_user_file("Default user name",
 const char* const nmranet::SNIP_DYNAMIC_FILENAME =
     nmranet::MockSNIPUserFile::snip_user_file_path;
 
-nmranet::TrainService traction_service(stack.interface());
+nmranet::TrainService traction_service(stack.iface());
 
 nmranet::LoggingTrain train_a(43);
 nmranet::LoggingTrain train_b(22);
@@ -69,7 +69,7 @@ CanHubFlow can_hub1(stack.service());
 CanIf can_if1(stack.service(), &can_hub1);
 
 mobilestation::TrainDb train_db;
-mobilestation::MobileStationTraction mosta_traction(&can_if1, stack.interface(),
+mobilestation::MobileStationTraction mosta_traction(&can_if1, stack.iface(),
                                                     &train_db, stack.node());
 
 namespace mobilestation {

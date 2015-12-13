@@ -59,14 +59,18 @@
 #include "mobilestation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "custom/HostLogging.hxx"
+#include "nmranet/SimpleStack.hxx"
+#include "custom/LoggingBit.hxx"
+#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 
-NO_THREAD nt;
-Executor<5> g_executor(nt);
-Service g_service(&g_executor);
-CanHubFlow can_hub0(&g_service);
-CanHubFlow can_hub1(&g_service);
 
 static const nmranet::NodeID NODE_ID = 0x050101011435ULL;
+nmranet::SimpleCanStack stack(NODE_ID);
+CanHubFlow can_hub1(stack.service());
+
+nmranet::MockSNIPUserFile snip_user_file("Default user name",
+                                         "Default user description");
+const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
 
 /*void log_output(char* buf, int size) {
     if (size <= 0) return;
@@ -82,55 +86,17 @@ void send_host_log_event(HostLogEvent e) {
 }
 }
 
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 2, 30, 2);
-static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventService g_event_service(&g_if_can);
-
+OVERRIDE_CONST(local_nodes_count, 30);
+OVERRIDE_CONST(local_alias_cache_size, 30);
 OVERRIDE_CONST(main_thread_priority, 2);
 OVERRIDE_CONST(main_stack_size, 1500);
 
-extern "C" { void resetblink(uint32_t pattern); }
-
-class LoggingBit : public nmranet::BitEventInterface
-{
-public:
-    LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
-        : BitEventInterface(event_on, event_off), name_(name), state_(false)
-    {
-    }
-
-    virtual bool GetCurrentState()
-    {
-        return state_;
-    }
-    virtual void SetState(bool new_value)
-    {
-        state_ = new_value;
-        //HASSERT(0);
-#ifdef __linux__
-        LOG(INFO, "bit %s set to %d", name_, state_);
-#else
-        resetblink(state_ ? 1 : 0);
-#endif
-    }
-
-    virtual nmranet::Node* node()
-    {
-        return &g_node;
-    }
-
-private:
-    const char* name_;
-    bool state_;
-};
-
 // Command station objects.
-CanIf can1_interface(&g_service, &can_hub1);
+CanIf can1_interface(stack.service(), &can_hub1);
 
-mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
+mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
 mobilestation::TrainDb train_db;
-mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
+mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -142,16 +108,13 @@ int appl_main(int argc, char* argv[])
   //start_watchdog(5000);
   // add_watchdog_reset_timer(500);
 
-    HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+  stack.add_can_port_async("/dev/can0");
     HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
 
     static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     nmranet::BitEventConsumer consumer(&logger);
-    g_if_can.add_addressed_message_support();
-    // Bootstraps the alias allocation process.
-    g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-    g_executor.thread_body();
+    stack.loop_executor();
     return 0;
 }

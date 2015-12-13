@@ -75,6 +75,7 @@
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/UpdateProcessor.hxx"
 #include "nmranet/TractionTrain.hxx"
+#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "dcc/Loco.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "dcc/LocalTrackIf.hxx"
@@ -83,6 +84,8 @@
 #include "custom/TivaShortDetection.hxx"
 #include "custom/WiiChuckThrottle.hxx"
 #include "custom/WiiChuckReader.hxx"
+#include "custom/BlinkerFlow.hxx"
+#include "custom/LoggingBit.hxx"
 
 #include "inc/hw_types.h"
 #include "inc/hw_memmap.h"
@@ -134,19 +137,20 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 }  // namespace mobilestation
 */
-NO_THREAD nt;
-Executor<1> g_executor(nt);
-Service g_service(&g_executor);
-CanHubFlow can_hub0(&g_service);
-CanHubFlow can_hub1(&g_service);  // this CANbus will have no hardware.
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
+nmranet::SimpleCanStack stack(NODE_ID);
+CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
+nmranet::MockSNIPUserFile snip_user_file("Default user name",
+                                         "Default user description");
+const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+
 
 extern "C" {
 extern insn_t automata_code[];
 }
 
-HubFlow stdout_hub(&g_service);
+HubFlow stdout_hub(stack.service());
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
 extern "C" {
@@ -184,98 +188,23 @@ void send_host_log_event(HostLogEvent e) {
 }
 #endif
 
-static const int kLocalNodesCount = 30;
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, kLocalNodesCount, 3,
-                        kLocalNodesCount);
-nmranet::InitializeFlow g_init_flow{&g_service};
-static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventService g_event_service(&g_if_can);
+OVERRIDE_CONST(local_nodes_count, 30);
+OVERRIDE_CONST(local_alias_cache_size, 30);
+OVERRIDE_CONST(num_memory_spaces, 5);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 0;
 
 #ifdef USE_WII_CHUCK
-bracz_custom::WiiChuckThrottle wii_throttle(&g_node, 0x060100000000ULL | 51);
+bracz_custom::WiiChuckThrottle wii_throttle(stack.node(), 0x060100000000ULL | 51);
 #endif
-
-extern "C" { void resetblink(uint32_t pattern); }
-
-class BlinkerFlow : public StateFlowBase
-{
-public:
-    BlinkerFlow(nmranet::Node* node)
-        : StateFlowBase(node->interface()),
-          state_(1),
-          bit_(node, EVENT_ID, EVENT_ID + 1, &state_, (uint8_t)1),
-          producer_(&bit_),
-          sleepData_(this)
-    {
-        start_flow(STATE(blinker));
-    }
-
-private:
-    Action blinker()
-    {
-        state_ = !state_;
-#ifdef __linux__
-        LOG(INFO, "blink produce %d", state_);
-#endif
-        producer_.Update(&helper_, n_.reset(this));
-        return wait_and_call(STATE(handle_sleep));
-    }
-
-    Action handle_sleep()
-    {
-        return sleep_and_call(&sleepData_, MSEC_TO_NSEC(1000), STATE(blinker));
-    }
-
-    uint8_t state_;
-    nmranet::MemoryBit<uint8_t> bit_;
-    nmranet::BitEventProducer producer_;
-    nmranet::WriteHelper helper_;
-    StateFlowTimer sleepData_;
-    BarrierNotifiable n_;
-};
-
-class LoggingBit : public nmranet::BitEventInterface
-{
-public:
-    LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
-        : BitEventInterface(event_on, event_off), name_(name), state_(false)
-    {
-    }
-
-    virtual bool GetCurrentState()
-    {
-        return state_;
-    }
-    virtual void SetState(bool new_value)
-    {
-        state_ = new_value;
-#ifdef __linux__
-        LOG(INFO, "bit %s set to %d", name_, state_);
-#else
-        resetblink(state_ ? 1 : 0);
-#endif
-    }
-
-    virtual nmranet::Node* node()
-    {
-        return &g_node;
-    }
-
-private:
-    const char* name_;
-    bool state_;
-};
 
 extern TivaDCC<DccHwDefs> dcc_hw;
 
 /*
 class RailcomDebugFlow : public StateFlowBase {
  public:
-  RailcomDebugFlow() : StateFlowBase(&g_service) {
+  RailcomDebugFlow() : StateFlowBase(&stack.service()) {
     start_flow(STATE(register_and_sleep));
   }
 
@@ -323,13 +252,14 @@ class RailcomDebugFlow : public StateFlowBase {
 } railcom_debug;
 */
 
-dcc::LocalTrackIf track_if(&g_service, 2);
-commandstation::UpdateProcessor cs_loop(&g_service, &track_if);
-PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(&g_service, track_if.pool(), &cs_loop);
-TivaTrackPowerOnOffBit on_off(nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+dcc::LocalTrackIf track_if(stack.service(), 2);
+commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
+PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
+TivaTrackPowerOnOffBit on_off(stack.node(),
+                              nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                               nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
 nmranet::BitEventConsumer powerbit(&on_off);
-nmranet::TrainService traction_service(&g_if_can);
+nmranet::TrainService traction_service(stack.iface());
 
 //dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
 //nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
@@ -337,10 +267,10 @@ nmranet::TrainService traction_service(&g_if_can);
 //dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
 //nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
 
-//mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
+//mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
 mobilestation::TrainDb train_db;
-CanIf can1_interface(&g_service, &can_hub1);
-mobilestation::MobileStationTraction mosta_traction(&can1_interface, &g_if_can, &train_db, &g_node);
+CanIf can1_interface(stack.service(), &can_hub1);
+mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 //mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
 
@@ -352,7 +282,7 @@ void mydisable()
   asm("BKPT 0");
 }
 
-TivaShortDetectionModule<DccHwDefs> g_short_detector(&g_service);
+TivaShortDetectionModule<DccHwDefs> g_short_detector(stack.node());
 
 extern "C" {
 void adc0_seq3_interrupt_handler(void) {
@@ -361,7 +291,7 @@ void adc0_seq3_interrupt_handler(void) {
 }
 }
 
-BlinkerFlow blinker(&g_node);
+BlinkerFlow blinker(stack.node(), EVENT_ID);
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -377,7 +307,7 @@ int appl_main(int argc, char* argv[])
     setblink(0x800A02);
 #ifdef STANDALONE
 #else
-    PacketQueue::initialize("/dev/serUSB0", true);
+    PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0", true);
 #endif
     setblink(0);
     //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
@@ -410,13 +340,8 @@ int appl_main(int argc, char* argv[])
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
     nmranet::BitEventConsumer consumer(&logger);
-    g_if_can.add_addressed_message_support();
-    g_if_can.set_alias_allocator(
-        new nmranet::AliasAllocator(NODE_ID, &g_if_can));
-    // Bootstraps the alias allocation process.
-    g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-    //AutomataRunner runner(&g_node, automata_code);
+    //AutomataRunner runner(stack.node(), automata_code);
     //resume_all_automata();
 
 #ifdef STANDALONE
@@ -427,6 +352,6 @@ int appl_main(int argc, char* argv[])
     disable_dcc();
 #endif
 
-    g_executor.thread_body();
+    stack.loop_executor();
     return 0;
 }
