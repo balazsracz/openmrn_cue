@@ -470,7 +470,7 @@ TEST_F(AutomataTests, EventVar) {
   runner_->RunAllAutomata();
 }
 
-GcPacketPrinter printer(&can_hub0);
+GcPacketPrinter printer(&can_hub0, false);
 
 TEST_F(AutomataTests, EventVar2) {
   Board brd;
