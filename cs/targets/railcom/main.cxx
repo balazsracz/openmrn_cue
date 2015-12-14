@@ -183,6 +183,73 @@ void set_output_en(unsigned port, bool enable) {
   DIE("Setting unknown output_en port.");
 }
 
+class PortLogic : public StateFlowBase {
+ public:
+  PortLogic(uint8_t channel) : StateFlowBase(stack.service()), channel_(channel) {
+    start_flow(STATE(init_wait));
+  }
+
+  void set_overcurrent(bool value);
+
+  void set_occupancy(bool value);
+
+ private:
+  Action init_wait() {
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(100 * channel_), init_try_turnon);
+  }
+
+  Action init_try_turnon() {
+
+  }
+
+
+  StateFlowTimer timer_{this};
+
+};
+
+
+template <class Debouncer>
+class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
+ public:
+  /// Creates an occupancy decoder port.
+  ///
+  /// @param channel is the railcom channe to listen to. Usually 0xff for
+  /// occupancy or 0xfe for overcurrent.
+  /// @param channel_count tells how many bits are available to check.
+  /// @param update_function will be called with the channel number and the
+  /// channel's (debounced) value whenever the debounced value changes.
+  /// @param args... are forwarded to the debouncer.
+  template <typename... Args>
+  RailcomOccupancyDecoder(uint8_t channel, unsigned channel_count,
+                          std::function<void(unsigned, bool)> update_function,
+                          Args... args)
+      : updateFunction_(std::move(update_function)), channel_(channel) {
+    for (unsigned i = 0; i < channel_count; ++i) {
+      debouncers_.emplace_back(args...);
+      debouncers_.back().initialize(false);
+    }
+  }
+
+  void send(Buffer<RailcomHubData>* entry, unsigned prio) override {
+    AutoReleaseBuffer<RailcomHubData> rb(entry);
+    if (entry->data()->channel != channel_) return;
+    uint8_t new_payload = message()->data()->ch1Data[0];
+    for (unsigned i = 0; i < debouncers_.size(); ++i) {
+      bool new_state_input = new_payload & (1 << i);
+      auto& debouncer = debouncers_[i];
+      if (debouncer.update_state(new_state_input)) {
+        // Need to produce new value to network.
+        updateFunction_(i, debouncer.current_state());
+      }
+    }
+  }
+
+ private:
+  std::function<void(unsigned, bool)> updateFunction_;
+  std::vector<Debouncer> debouncers_;
+  uint8_t channel_;
+};
+
 template <class Debouncer>
 class OvercurrentFlow : public dcc::RailcomHubPort {
  public:
