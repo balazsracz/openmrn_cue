@@ -11,7 +11,6 @@ SUBDIRS = \
 	cue.linux \
 	cue.mbed \
 	cue.tiva \
-	dcctest.129 \
 	host \
 	linux.x86 \
 	marklinproxy.panda \
