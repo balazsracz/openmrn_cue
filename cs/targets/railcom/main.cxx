@@ -46,6 +46,7 @@
 #include "config.hxx"
 #include "custom/TivaDAC.hxx"
 #include "custom/TivaGNDControl.hxx"
+#include "custom/RailcomBroadcastFlow.hxx"
 #include "freertos_drivers/common/BlinkerGPIO.hxx"
 #include "freertos_drivers/ti/TivaGPIO.hxx"
 #include "hardware.hxx"
@@ -247,134 +248,6 @@ class OvercurrentFlow : public dcc::RailcomHubPort {
   BarrierNotifiable n_;
 };
 
-class RailcomBroadcastFlow : public dcc::RailcomHubPort {
- public:
-  RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, nmranet::Node* node,
-                       dcc::RailcomHubPort* occupancy_port,
-                       dcc::RailcomHubPort* overcurrent_port,
-                       dcc::RailcomHubPort* debug_port, unsigned channel_count)
-      : dcc::RailcomHubPort(parent->service()),
-        parent_(parent),
-        node_(node),
-        occupancyPort_(occupancy_port),
-        overcurrentPort_(overcurrent_port),
-        debugPort_(debug_port),
-        size_(channel_count),
-        channels_(new dcc::RailcomBroadcastDecoder[channel_count]) {
-    parent_->register_port(this);
-  }
-
-  ~RailcomBroadcastFlow() {
-    parent_->unregister_port(this);
-    delete[] channels_;
-  }
-
-  Action entry() {
-    auto channel = message()->data()->channel;
-    if (channel == 0xff) {
-      uint32_t new_values = message()->data()->ch1Data[0];
-      for (unsigned i = 0; i < size_; ++i) {
-        channels_[i].set_occupancy(new_values & (1 << i));
-        auto& decoder = channels_[i];
-        if (decoder.current_address() != decoder.lastAddress_) {
-          // We need to send a fake railcom packet to ourselves to allow the
-          // channel empty events to be generated.
-          auto* b = alloc();
-          b->data()->reset(0);
-          b->data()->channel = i;
-          send(b);
-        }
-      }
-      if (occupancyPort_) {
-        occupancyPort_->send(transfer_message());
-      } else {
-        release();
-      }
-      return exit();
-    }
-    if (channel == 0xfe) {
-      if (overcurrentPort_) {
-        overcurrentPort_->send(transfer_message());
-      } else {
-        release();
-      }
-      return exit();
-    }
-    if (channel >= size_ ||
-        !channels_[channel].process_packet(*message()->data())) {
-      if (debugPort_) {
-        debugPort_->send(transfer_message());
-      } else {
-        release();
-      }
-      return exit();
-    }
-    auto& decoder = channels_[channel];
-    if (decoder.current_address() == decoder.lastAddress_) {
-      return release_and_exit();
-    }
-    // Now: the visible address has changed. Send event reports.
-    return allocate_and_call(node_->iface()->global_message_write_flow(),
-                             STATE(send_invalid));
-  }
-
-  Action send_invalid() {
-    auto channel = message()->data()->channel;
-    auto& decoder = channels_[channel];
-    auto* b =
-        get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
-                     node_->node_id(),
-                     nmranet::eventid_to_buffer(
-                         address_to_eventid(channel, decoder.lastAddress_)));
-    b->set_done(n_.reset(this));
-    node_->iface()->global_message_write_flow()->send(b);
-    return wait_and_call(STATE(allocate_for_event));
-  }
-
-  Action allocate_for_event() {
-    return allocate_and_call(node_->iface()->global_message_write_flow(),
-                             STATE(send_event));
-  }
-
-  Action send_event() {
-    auto channel = message()->data()->channel;
-    auto& decoder = channels_[channel];
-    auto* b =
-        get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
-                     nmranet::eventid_to_buffer(address_to_eventid(
-                         channel, decoder.current_address())));
-    b->set_done(n_.reset(this));
-    node_->iface()->global_message_write_flow()->send(b);
-    decoder.lastAddress_ = decoder.current_address();
-    release();
-    return wait_and_call(STATE(finish));
-  }
-
-  Action finish() { return exit(); }
-
- private:
-  static const uint64_t FEEDBACK_EVENTID_BASE;
-  uint64_t address_to_eventid(unsigned channel, uint16_t address) {
-    uint64_t ret = FEEDBACK_EVENTID_BASE;
-    ret |= uint64_t(channel & 0xff) << 48;
-    ret |= address;
-    return ret;
-  }
-
-  dcc::RailcomHubFlow* parent_;
-  nmranet::Node* node_;
-  dcc::RailcomHubPort* occupancyPort_;
-  dcc::RailcomHubPort* overcurrentPort_;
-  dcc::RailcomHubPort* debugPort_;
-  unsigned size_;
-  dcc::RailcomBroadcastDecoder* channels_;
-  BarrierNotifiable n_;
-};
-
-const uint64_t RailcomBroadcastFlow::FEEDBACK_EVENTID_BASE =
-    (0x09ULL << 56) | nmranet::TractionDefs::NODE_ID_DCC;
 
 uint8_t dac_next_packet_mode = 0;
 

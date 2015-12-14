@@ -76,97 +76,28 @@
 #include "SimpleLog.hxx"
 #include "custom/WiiChuckThrottle.hxx"
 #include "custom/WiiChuckReader.hxx"
+#include "custom/TivaGPIOConsumer.hxx"
+#include "custom/TivaGPIOProducerBit.hxx"
+#include "custom/LoggingBit.hxx"
+#include "nmranet/DccDebugFlow.hxx"
 
-NO_THREAD nt;
-Executor<5> g_executor(nt);
-Service g_service(&g_executor);
-CanHubFlow can_hub0(&g_service);
 
 extern const nmranet::NodeID NODE_ID;
-// const nmranet::NodeID NODE_ID = 0x05010101144aULL;
-
-// OVERRIDE_CONST(can_tx_buffer_size, 2);
-// OVERRIDE_CONST(can_rx_buffer_size, 1);
+nmranet::SimpleCanStack stack(NODE_ID);
 
 OVERRIDE_CONST(main_thread_stack_size, 2048);
 
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
-nmranet::InitializeFlow g_init_flow{&g_service};
-static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventService g_event_service(&g_if_can);
-nmranet::CanDatagramService g_datagram_service(&g_if_can, 2, 2);
-nmranet::MemoryConfigHandler g_memory_config_handler(&g_datagram_service,
-                                                     &g_node, 1);
-
 #ifdef USE_WII_CHUCK
-bracz_custom::WiiChuckThrottle wii_throttle(&g_node, 0x060100000000ULL | 51);
+bracz_custom::WiiChuckThrottle wii_throttle(stack.node(), 0x060100000000ULL | 51);
 #endif
 
-namespace nmranet {
-Pool* const g_incoming_datagram_allocator = mainBufferPool;
-}
-
-bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
+bracz_custom::TivaSignalPacketSender g_signalbus(stack.service(), 15625,
                                                  SYSCTL_PERIPH_UART1,
                                                  UART1_BASE,
                                                  INT_RESOLVE(INT_UART1_, 0));
 
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
-
-class TivaGPIOConsumer : public nmranet::BitEventInterface,
-                         public nmranet::BitEventConsumer {
- public:
-  TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port,
-                   uint8_t pin)
-      : BitEventInterface(event_on, event_off),
-        BitEventConsumer(this),
-        memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
-
-  nmranet::EventState GetCurrentState() OVERRIDE {
-    return (*memory_) ? nmranet::EventState::VALID
-                      : nmranet::EventState::INVALID;
-  }
-
-  void SetState(bool new_value) OVERRIDE {
-    if (new_value) {
-      *memory_ = 0xff;
-    } else {
-      *memory_ = 0;
-    }
-  }
-
-  nmranet::Node* node() OVERRIDE { return &g_node; }
-
- private:
-  volatile uint8_t* memory_;
-};
-
-class LoggingBit : public nmranet::BitEventInterface {
- public:
-  LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
-      : BitEventInterface(event_on, event_off), name_(name), state_(false) {}
-
-  nmranet::EventState GetCurrentState() override {
-    return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
-  }
-  void SetState(bool new_value) override {
-    state_ = new_value;
-// HASSERT(0);
-#ifdef __linux__
-    LOG(INFO, "bit %s set to %d", name_, state_);
-#else
-    resetblink(state_ ? 1 : 0);
-#endif
-  }
-
-  virtual nmranet::Node* node() { return &g_node; }
-
- private:
-  const char* name_;
-  bool state_;
-};
 
 LoggingBit led_red_bit(R_EVENT_ID + 0, R_EVENT_ID + 1, nullptr);
 nmranet::BitEventConsumer red_consumer(&led_red_bit);
@@ -203,34 +134,6 @@ TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12,
 TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14,
                       OUT7_Pin::GPIO_BASE, OUT7_Pin::GPIO_PIN);
 
-class TivaGPIOProducerBit : public nmranet::BitEventInterface {
- public:
-  TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
-                      uint8_t port_bit, bool display = false)
-      : BitEventInterface(event_on, event_off),
-        ptr_(reinterpret_cast<const uint8_t*>(port_base +
-                                              (((unsigned)port_bit) << 2))),
-        display_(display) {}
-
-  nmranet::EventState GetCurrentState() OVERRIDE {
-    bool result = *ptr_;
-    if (display_) {
-      Debug::DetectRepeat::set(result);
-    }
-    return result ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
-  }
-
-  void SetState(bool new_value) OVERRIDE {
-    DIE("cannot set state of input producer");
-  }
-
-  nmranet::Node* node() OVERRIDE { return &g_node; }
-
- private:
-  const uint8_t* ptr_;
-  bool display_;
-};
-
 typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
 QuiesceDebouncer::Options opts(8);
@@ -252,131 +155,22 @@ TivaGPIOProducer in6(opts, R_EVENT_ID + 48 + 12, R_EVENT_ID + 49 + 12,
 TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14,
                      IN7_Pin::GPIO_BASE, IN7_Pin::GPIO_PIN);
 
-nmranet::RefreshLoop loop(&g_node,
+nmranet::RefreshLoop loop(stack.node(),
                           {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
 #define NUM_SIGNALS 32
 
-bracz_custom::SignalLoop signal_loop(&g_signalbus, &g_node,
+bracz_custom::SignalLoop signal_loop(&g_signalbus, stack.node(),
                                      (R_EVENT_ID & ~0xffffff) |
                                      ((R_EVENT_ID & 0xff00) << 8),
                                      NUM_SIGNALS);
 
-bracz_custom::SignalServer signal_server(&g_datagram_service, &g_node,
+bracz_custom::SignalServer signal_server(stack.dg_service(), stack.node(),
                                          &g_signalbus);
 
-struct RailcomReaderParams {
-  const char* file_path;
-  uint32_t base;
-  char packetbuf[8];
-  int len;
-  nmranet::WriteHelper h;
-  SyncNotifiable n;
-};
 
-void* railcom_uart_thread(void* arg) {
-  auto* opts = static_cast<RailcomReaderParams*>(arg);
-
-  int async_fd = ::open(opts->file_path, O_NONBLOCK | O_RDONLY);
-  int sync_fd = ::open(opts->file_path, O_RDONLY);
-
-  MAP_UARTConfigSetExpClk(
-      opts->base, configCPU_CLOCK_HZ, 250000,
-      UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE);
-
-  HASSERT(async_fd > 0);
-  HASSERT(sync_fd > 0);
-  nmranet::WriteHelper::payload_type p;
-  while (true) {
-    int count = 0;
-    p.clear();
-    count += ::read(sync_fd, opts->packetbuf, 1);
-    Debug::RailcomUartReceived::set(true);
-    if (dcc::railcom_decode[(int)opts->packetbuf[0]] == dcc::RailcomDefs::INV) {
-      // continue;
-    }
-    usleep(1000);
-    count += ::read(async_fd, opts->packetbuf + 1, 7);
-    HASSERT(count >= 1);
-    // disables the uart until the next packet is here.
-    HWREG(UART2_BASE + UART_O_CTL) &= ~UART_CTL_RXE;
-    Debug::RailcomUartReceived::set(false);
-
-    p.assign(opts->packetbuf, count);
-    opts->h.WriteAsync(&g_node, nmranet::Defs::MTI_XPRESSNET, opts->h.global(),
-                       p, &opts->n);
-    opts->n.wait_for_notification();
-  }
-  return nullptr;
-}
-
-RailcomReaderParams r1{"/dev/ser2", UART2_BASE};
-
-class DccPacketDebugFlow : public StateFlow<Buffer<dcc::Packet>, QList<1>> {
- public:
-  DccPacketDebugFlow(nmranet::Node* node)
-      : StateFlow<Buffer<dcc::Packet>, QList<1>>(
-            node->interface()->dispatcher()->service()),
-        node_(node) {}
-
- private:
-  Action entry() override {
-    Debug::DccPacketDelay::set(false);
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
-                             STATE(msg_allocated));
-  }
-
-  Action msg_allocated() {
-    auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
-
-    b->data()->reset(
-        static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 1),
-        node_->node_id(),
-        string((char*)message()->data()->payload, message()->data()->dlc));
-    node_->interface()->global_message_write_flow()->send(b);
-    return release_and_exit();
-  }
-
-  nmranet::Node* node_;
-} g_packet_debug_flow(&g_node);
-
-class DccDecodeFlow : public dcc::DccDecodeFlow {
- public:
-  DccDecodeFlow() : dcc::DccDecodeFlow(&g_service, "/dev/nrz0") {}
-
- private:
-  void dcc_packet_finished(const uint8_t* payload, size_t len) override {
-    auto* b = g_packet_debug_flow.alloc();
-    b->data()->dlc = len;
-    memcpy(b->data()->payload, payload, len);
-    g_packet_debug_flow.send(b);
-  }
-
-  void mm_packet_finished(const uint8_t* payload, size_t len) override {
-    auto* b = g_packet_debug_flow.alloc();
-    b->data()->dlc = len;
-    memcpy(b->data()->payload, payload, len);
-    b->data()->payload[0] |= 0xFC;
-    g_packet_debug_flow.send(b);
-  }
-
-  void debug_data(uint32_t value) override {
-    value /= (configCPU_CLOCK_HZ / 1000000);
-    log(decoder_.state());
-    log(value);
-  }
-
-  void log(uint8_t value) {
-    dbuffer[ptr] = value;
-    ++ptr;
-    if (ptr >= sizeof(dbuffer)) ptr = 0;
-  }
-  uint8_t dbuffer[1024];
-  uint16_t ptr = 0;
-};
-
-DccDecodeFlow* g_decode_flow;
+nmranet::DccPacketDebugFlow g_packet_debug_flow(stack.node());
+nmranet::DccDebugDecodeFlow* g_decode_flow;
 
 typedef StructContainer<dcc::Feedback> RailcomHubContainer;
 typedef HubContainer<RailcomHubContainer> RailcomHubData;
@@ -407,7 +201,7 @@ class RailcomProxy : public RailcomHubPort {
       return exit();
     }
     if (message()->data()->ch1Size) {
-      return allocate_and_call(node_->interface()->global_message_write_flow(),
+      return allocate_and_call(node_->iface()->global_message_write_flow(),
                                STATE(ch1_msg_allocated));
     } else {
       return call_immediately(STATE(maybe_send_ch2));
@@ -416,7 +210,7 @@ class RailcomProxy : public RailcomHubPort {
 
   Action ch1_msg_allocated() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
 
     b->data()->reset(
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 3),
@@ -424,14 +218,14 @@ class RailcomProxy : public RailcomHubPort {
     b->data()->payload.push_back(message()->data()->channel | 0x10);
     b->data()->payload.append((char*)message()->data()->ch1Data,
                               message()->data()->ch1Size);
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
 
     return call_immediately(STATE(maybe_send_ch2));
   }
 
   Action maybe_send_ch2() {
     if (message()->data()->ch2Size) {
-      return allocate_and_call(node_->interface()->global_message_write_flow(),
+      return allocate_and_call(node_->iface()->global_message_write_flow(),
                                STATE(ch2_msg_allocated));
     } else {
       return release_and_exit();
@@ -440,7 +234,7 @@ class RailcomProxy : public RailcomHubPort {
 
   Action ch2_msg_allocated() {
     auto* b =
-        get_allocation_result(node_->interface()->global_message_write_flow());
+        get_allocation_result(node_->iface()->global_message_write_flow());
 
     b->data()->reset(
         static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 4),
@@ -448,7 +242,7 @@ class RailcomProxy : public RailcomHubPort {
     b->data()->payload.push_back(message()->data()->channel | 0x20);
     b->data()->payload.append((char*)message()->data()->ch2Data,
                               message()->data()->ch2Size);
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
 
     return release_and_exit();
   }
@@ -494,36 +288,36 @@ class RailcomBroadcastFlow : public RailcomHubPort {
       return release_and_exit();
     }
     // Now: the visible address has changed. Send event reports.
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(send_invalid));
   }
 
   Action send_invalid() {
     auto channel = message()->data()->channel;
     auto& decoder = channels_[channel];
-    auto* b = get_allocation_result(node_->interface()->global_message_write_flow());
+    auto* b = get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(
         Defs::MTI_PRODUCER_IDENTIFIED_INVALID, node_->node_id(),
         eventid_to_buffer(address_to_eventid(channel, decoder.lastAddress_)));
     b->set_done(n_.reset(this));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     return wait_and_call(STATE(allocate_for_event));
   }
 
   Action allocate_for_event() {
-    return allocate_and_call(node_->interface()->global_message_write_flow(),
+    return allocate_and_call(node_->iface()->global_message_write_flow(),
                              STATE(send_event));
   }
 
   Action send_event() {
     auto channel = message()->data()->channel;
     auto& decoder = channels_[channel];
-    auto* b = get_allocation_result(node_->interface()->global_message_write_flow());
+    auto* b = get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(Defs::MTI_EVENT_REPORT, node_->node_id(),
                      eventid_to_buffer(address_to_eventid(
                          channel, decoder.current_address())));
     b->set_done(n_.reset(this));
-    node_->interface()->global_message_write_flow()->send(b);
+    node_->iface()->global_message_write_flow()->send(b);
     decoder.lastAddress_ = decoder.current_address();
     release();
     return wait_and_call(STATE(finish));
@@ -557,7 +351,7 @@ class FeedbackBasedOccupancy : public RailcomHubPort {
  public:
   FeedbackBasedOccupancy(Node* node, uint64_t event_base,
                          unsigned channel_count)
-      : RailcomHubPort(node->interface()),
+      : RailcomHubPort(node->iface()),
         currentValues_(0),
         eventHandler_(node, event_base, &currentValues_, channel_count) {}
 
@@ -617,7 +411,7 @@ int appl_main(int argc, char* argv[]) {
   // Bootstraps the alias allocation process.
   g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-  // g_decode_flow = new DccDecodeFlow();
+  // g_decode_flow = new DccDebugDecodeFlow(stack.service(), "/dev/nrz0");
   g_executor.thread_body();
   return 0;
 }
