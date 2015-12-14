@@ -36,6 +36,7 @@ extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
 using AllConsumers = RepeatedGroup<ConsumerConfig, NUM_OUTPUTS>;
 using AllProducers = RepeatedGroup<ProducerConfig, NUM_INPUTS>;
 
+using EnableConsumers = RepeatedGroup<ConsumerConfig, 6>;
 
 CDI_GROUP(CountingDebouncerOpts);
 CDI_GROUP_ENTRY(count_total, Uint8ConfigEntry, Name("Window length"), Description("How many consecutive samples to count"));
@@ -64,6 +65,8 @@ CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
 CDI_GROUP_ENTRY(consumers, AllConsumers, Name("Output LEDs"));
 CDI_GROUP_ENTRY(producers, AllProducers, Name("Input buttons"));
 CDI_GROUP_ENTRY(current, CurrentParams);
+CDI_GROUP_ENTRY(enables, EnableConsumers, Name("Channel enable"),
+                Description("Consumers to turn channels on and off."));
 CDI_GROUP_END();
 
 /// This segment is only needed temporarily until there is program code to set

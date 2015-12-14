@@ -44,7 +44,7 @@ class TivaGNDControl {
     GNDACTRL_NOFF_Pin::set(true);
     GNDACTRL_NON_Pin::set(true);
     GNDBCTRL_NOFF_Pin::set(true);
-    GNDBCTRL_NON_Pin::set(true);
+    // TODO GNDBCTRL_NON_Pin::set(true);
     SysCtlDelay(10);
     GNDBCTRL_NOFF_Pin::set(false);
     SysCtlDelay(10);
@@ -60,10 +60,10 @@ class TivaGNDControl {
       GNDACTRL_NOFF_Pin::set(false);
       GNDBCTRL_NOFF_Pin::set(true);
       SysCtlDelay(kDelayCrossover);
-      GNDBCTRL_NON_Pin::set(false);
+      // TODO GNDBCTRL_NON_Pin::set(false);
     } else {
       // switch to A
-      GNDBCTRL_NON_Pin::set(true);
+      // TODO GNDBCTRL_NON_Pin::set(true);
       GNDBCTRL_NOFF_Pin::set(false);
       GNDACTRL_NOFF_Pin::set(true);
       SysCtlDelay(kDelayCrossover);
@@ -74,8 +74,8 @@ class TivaGNDControl {
 
 class TivaBypassControl {
  public:
-  static const int kDelayCrossover1 = 3;
-  static const int kDelayCrossover2 = 3;
+  static const int kDelayCrossover1 = 5;
+  static const int kDelayCrossover2 = 5;
 
   TivaBypassControl() {
     RCBYPASS_OFF_Pin::set(false);

@@ -173,7 +173,6 @@ bracz_custom::SignalLoop signal_loop(&g_signalbus, stack.node(),
 bracz_custom::SignalServer signal_server(stack.dg_service(), stack.node(),
                                          &g_signalbus);
 
-
 nmranet::DccPacketDebugFlow g_packet_debug_flow(stack.node());
 nmranet::DccDebugDecodeFlow* g_decode_flow;
 

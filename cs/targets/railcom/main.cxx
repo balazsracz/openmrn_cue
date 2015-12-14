@@ -42,6 +42,7 @@
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/TractionDefs.hxx"
+#include "nmranet/MultiConfiguredConsumer.hxx"
 
 #include "config.hxx"
 #include "custom/TivaDAC.hxx"
@@ -94,6 +95,19 @@ nmranet::ConfiguredProducer producer_sw1(stack.node(),
 nmranet::ConfiguredProducer producer_sw2(stack.node(),
                                          cfg.seg().producers().entry<1>(),
                                          SW2_Pin());
+
+constexpr const Gpio* enable_ptrs[] = {
+  OUTPUT_EN0_Pin::instance(),
+  OUTPUT_EN1_Pin::instance(),
+  OUTPUT_EN2_Pin::instance(),
+  OUTPUT_EN3_Pin::instance(),
+  OUTPUT_EN4_Pin::instance(),
+  OUTPUT_EN5_Pin::instance(),
+};
+
+nmranet::MultiConfiguredConsumer consumer_enables(stack.node(), enable_ptrs,
+                                                  ARRAYSIZE(enable_ptrs),
+                                                  cfg.seg().enables());
 
 nmranet::RefreshLoop loop(stack.node(),
                           {producer_sw1.polling(), producer_sw2.polling()});
@@ -158,7 +172,7 @@ class FeedbackBasedOccupancy : public dcc::RailcomHubPort {
   BarrierNotifiable n_;
 };
 
-void set_output_en(unsigned port, bool enable) {
+void set_output_disable(unsigned port, bool enable) {
   extern unsigned* stat_led_ptr();
   unsigned* leds = stat_led_ptr();
   if (enable) {
@@ -189,21 +203,42 @@ class PortLogic : public StateFlowBase {
     start_flow(STATE(init_wait));
   }
 
-  void set_overcurrent(bool value);
+  void set_overcurrent(bool value) {
+    if (value) {
+      // enable ptr is inverted.
+      enable_ptrs[channel_]->set();
+    }
+    inOvercurrent_ = value ? 1 : 0;
+    if (is_terminated()) {
+      start_flow(STATE(test_again));
+    }
+  }
 
-  void set_occupancy(bool value);
+  void set_occupancy(bool value) {
+    inOccupancy_ = value ? 1 : 0;
+    if (is_terminated()) {
+      start_flow(STATE(test_again));
+    }
+  }
 
  private:
   Action init_wait() {
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(100 * channel_), init_try_turnon);
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(100 * channel_), STATE(init_try_turnon));
   }
 
   Action init_try_turnon() {
-
+    return set_terminated();
   }
 
+  Action test_again() {
+    return set_terminated();
+  }
 
   StateFlowTimer timer_{this};
+  uint8_t channel_;
+  uint8_t inOvercurrent_ : 1;
+  uint8_t inOccupancy_ : 1;
+
 
 };
 
@@ -230,10 +265,10 @@ class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
     }
   }
 
-  void send(Buffer<RailcomHubData>* entry, unsigned prio) override {
-    AutoReleaseBuffer<RailcomHubData> rb(entry);
+  void send(Buffer<dcc::RailcomHubData>* entry, unsigned prio) override {
+    AutoReleaseBuffer<dcc::RailcomHubData> rb(entry);
     if (entry->data()->channel != channel_) return;
-    uint8_t new_payload = message()->data()->ch1Data[0];
+    uint8_t new_payload = entry->data()->ch1Data[0];
     for (unsigned i = 0; i < debouncers_.size(); ++i) {
       bool new_state_input = new_payload & (1 << i);
       auto& debouncer = debouncers_[i];
@@ -288,7 +323,7 @@ class OvercurrentFlow : public dcc::RailcomHubPort {
         if (debouncer.current_state()) {
           // Overcurrent detected. Turn off output port.
           // OUTPUT_EN is inverted.
-          set_output_en(nextOffset_, true);
+          set_output_disable(nextOffset_, true);
         }
         eventHandler_.Set(nextOffset_, debouncer.current_state(), &h_,
                           n_.reset(this));
@@ -343,6 +378,8 @@ class DACThread : public OSThread {
  public:
   void* entry() OVERRIDE {
     const int kPeriod = 300000;
+    unsigned startup = 0;
+    usleep(kPeriod * 2);
     while (true) {
       nmranet::WriteHelper h;
       /*      usleep(kPeriod);
@@ -369,21 +406,20 @@ class DACThread : public OSThread {
       sample_count = 0;
       n.wait_for_notification();
 
-      unsigned* leds = stat_led_ptr();
-      if (OUTPUT_EN0_Pin::get()) {
-        *leds &= ~4;
-      } else {
-        *leds |= 4;
+      if (startup < 6) {
+        set_output_disable(startup, false);
+        ++startup;
       }
-      if (OUTPUT_EN1_Pin::get()) {
-        *leds &= ~8;
-      } else {
-        *leds |= 8;
+
+      volatile unsigned* leds = stat_led_ptr();
+      for (int i = 0; i < 6; ++i) {
+        // enable pins are inverted
+        if (enable_ptrs[i]->is_set()) {
+          *leds &= ~(1<<i);
+        } else {
+          *leds |= (1<<i);
+        }
       }
-      /**stat_led_ptr() <<= 1;
-      if (*stat_led_ptr() >= (1<<6)) {
-        *stat_led_ptr() = 1;
-        }*/
     }
     return nullptr;
   }
@@ -451,8 +487,8 @@ int appl_main(int argc, char* argv[]) {
   CHARLIE2_Pin::set(false);*/
 
   *stat_led_ptr() = 0;
-  set_output_en(0, false);
-  set_output_en(1, false);
+  set_output_disable(0, false);
+  set_output_disable(1, false);
 
   // we need to enable the dcc receiving driver.
   ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
