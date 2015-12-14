@@ -37,6 +37,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "hardware.hxx"
+#include "DummyGPIO.hxx"
+
+namespace Debug {
+typedef DummyPin DetectRepeat;
+}
 
 #include "nmranet/SimpleStack.hxx"
 
@@ -53,7 +59,7 @@
 #include "custom/TivaGPIOProducerBit.hxx"
 #include "custom/TivaGPIOConsumer.hxx"
 
-#include "hardware.hxx"
+
 
 
 OVERRIDE_CONST(automata_init_backoff, 20000);

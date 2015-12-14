@@ -113,7 +113,7 @@ const int main_priority = 0;
 
 DigitalIn startpin(p20);
 
-bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const insn_t*) __automata_start);
+bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const insn_t*) automata_code);
 
 /** Entry point to application.
  * @param argc number of command line arguments
