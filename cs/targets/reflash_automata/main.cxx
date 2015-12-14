@@ -200,7 +200,7 @@ class WriteResponseHandler : public nmranet::DefaultDatagramHandler {
     LOG(INFO, "response handler: %.6lf", get_time());
 
     if (datagram->dst != stack.node() ||
-        !stack.node()->interface()->matching_node(dst_, datagram->src) ||
+        !stack.node()->iface()->matching_node(dst_, datagram->src) ||
         datagram->payload.size() < 6 ||
         datagram->payload[0] != DatagramDefs::CONFIGURATION ||
         ((datagram->payload[1] & MemoryConfigDefs::COMMAND_MASK) !=

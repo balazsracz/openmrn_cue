@@ -70,6 +70,11 @@ struct RailcomDefs
     static void enable_measurement() {}
     static void disable_measurement() {}
 
+    static bool need_ch1_cutout() { return true; }
+    static uint8_t get_feedback_channel() {
+        return 0xff;
+    }
+
     /** @returns a bitmask telling which pins are active. Bit 0 will be set if
      * channel 0 is active (drawing current).*/
     static uint8_t sample() {

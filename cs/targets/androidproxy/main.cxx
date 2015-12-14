@@ -111,7 +111,7 @@ server::TrainControlService control_server(stack.executor());
 mobilestation::TrainDb train_db;
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 CanIf can1_interface(stack.service(), &can_hub1);
-mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.interface(), &train_db, stack.node());
+mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
 
 void usage(const char *e) {

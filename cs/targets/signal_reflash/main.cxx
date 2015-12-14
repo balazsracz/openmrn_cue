@@ -231,7 +231,7 @@ class Crc32 {
 };
 
 void FlashSignal(unsigned request_offset, const string& data) {
-  LOG(INFO, "Flashing %u bytes at offset 0x%x", data.size(), request_offset);
+  LOG(INFO, "Flashing %u bytes at offset 0x%x", (unsigned)data.size(), request_offset);
   const int kNumBytesPerRequest = 8;
   const int kNumBytesPerRow = 32;
   unsigned current = 0;

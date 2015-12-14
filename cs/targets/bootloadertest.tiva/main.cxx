@@ -26,7 +26,9 @@
  *
  * \file main.cxx
  *
- * A simple application to demonstrate asynchronous interfaces.
+ * This is a standalone application that runs the bootloader firmware in a
+ * physical target node, but using the device driver layer instead of a
+ * separate HAL. Flash writing is implemented as a NOP.
  *
  * @author Balazs Racz
  * @date 7 Dec 2013
@@ -45,6 +47,9 @@
 #include "executor/Executor.hxx"
 #include "can_frame.h"
 #include "nmranet_config.h"
+#include "hardware.hxx"
+
+#include "nmranet/Bootloader.hxx"
 
 //#define STANDALONE
 
@@ -154,6 +159,16 @@ bool try_send_can_frame(const struct can_frame &frame)
     b->data()->skipMember_ = &g_bootloader_port;
     can_hub0.send(b);
     return true;
+}
+
+void bootloader_led(enum BootloaderLed id, bool value) {
+  switch(id) {
+  case LED_ACTIVE: LED_B1_Pin::set(value); return;
+  case LED_WRITING: LED_B2_Pin::set(value); return;
+  case LED_CSUM_ERROR: LED_B3_Pin::set(value); return;
+  case LED_REQUEST: LED_B4_Pin::set(value); return;
+  default: ; /* ignore */
+  }
 }
 
 #define FLASH_SIZE (256 * 1024)

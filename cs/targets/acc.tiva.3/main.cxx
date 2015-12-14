@@ -80,10 +80,15 @@
 #include "custom/TivaGPIOProducerBit.hxx"
 #include "custom/LoggingBit.hxx"
 #include "nmranet/DccDebugFlow.hxx"
+#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 
 
 extern const nmranet::NodeID NODE_ID;
 nmranet::SimpleCanStack stack(NODE_ID);
+
+nmranet::MockSNIPUserFile snip_user_file("Default user name",
+                                         "Default user description");
+const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
 
 OVERRIDE_CONST(main_thread_stack_size, 2048);
 
@@ -178,7 +183,7 @@ typedef FlowInterface<Buffer<RailcomHubData>> RailcomHubPortInterface;
 typedef StateFlow<Buffer<RailcomHubData>, QList<1>> RailcomHubPort;
 typedef GenericHubFlow<RailcomHubData> RailcomHubFlow;
 
-RailcomHubFlow railcom_hub(&g_service);
+RailcomHubFlow railcom_hub(stack.service());
 
 namespace nmranet {
 class RailcomProxy : public RailcomHubPort {
@@ -380,8 +385,8 @@ class FeedbackBasedOccupancy : public RailcomHubPort {
   BarrierNotifiable n_;
 };
 }
-nmranet::FeedbackBasedOccupancy railcom_occupancy(&g_node, R_EVENT_ID + 24, 4);
-nmranet::RailcomProxy railcom_proxy(&railcom_hub, &g_node, &railcom_occupancy);
+nmranet::FeedbackBasedOccupancy railcom_occupancy(stack.node(), R_EVENT_ID + 24, 4);
+nmranet::RailcomProxy railcom_proxy(&railcom_hub, stack.node(), &railcom_occupancy);
 // TODO(balazs.racz) reenable this
 //nmranet::RailcomBroadcastFlow railcom_broadcast(&railcom_hub, &g_node,
 //                                                &railcom_occupancy,
@@ -396,7 +401,7 @@ int appl_main(int argc, char* argv[]) {
   LED_GREEN_Pin::set(false);
   LED_YELLOW_Pin::set(false);
   LED_BLUE_Pin::set(false);
-  HubDeviceSelect<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
+  stack.add_can_port_select("/dev/can0");
 #ifdef HAVE_RAILCOM
   // we need to enable the dcc receiving driver.
   ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
@@ -408,10 +413,7 @@ int appl_main(int argc, char* argv[]) {
   bracz_custom::WiiChuckReader wii_reader("/dev/i2c4", &wii_throttle);
   wii_reader.start();
 #endif
-  // Bootstraps the alias allocation process.
-  g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
 
-  // g_decode_flow = new DccDebugDecodeFlow(stack.service(), "/dev/nrz0");
-  g_executor.thread_body();
+  stack.loop_executor();
   return 0;
 }

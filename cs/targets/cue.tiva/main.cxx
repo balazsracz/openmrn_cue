@@ -50,6 +50,8 @@
 #include "os/watchdog.h"
 #include "utils/HubDeviceSelect.hxx"
 #include "utils/Debouncer.hxx"
+#include "custom/TivaGPIOProducerBit.hxx"
+#include "custom/TivaGPIOConsumer.hxx"
 
 #include "hardware.hxx"
 
@@ -116,51 +118,6 @@ OVERRIDE_CONST(local_alias_cache_size, 30);
 OVERRIDE_CONST(num_memory_spaces, 5);
 
 extern "C" { void resetblink(uint32_t pattern); }
-
-
-class TivaGPIOProducerBit : public nmranet::BitEventInterface {
- public:
-  TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
-                      uint8_t port_bit)
-      : BitEventInterface(event_on, event_off),
-        ptr_(reinterpret_cast<const uint8_t*>(port_base +
-                                              (((unsigned)port_bit) << 2))) {}
-
-  bool GetCurrentState() OVERRIDE { return *ptr_; }
-
-  void SetState(bool new_value) OVERRIDE {
-    DIE("cannot set state of input producer");
-  }
-
-  nmranet::Node* node() OVERRIDE { return stack.node(); }
-
- private:
-  const uint8_t* ptr_;
-};
-
-class TivaGPIOConsumer : public nmranet::BitEventInterface,
-                         public nmranet::BitEventConsumer {
- public:
-  TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port,
-                   uint8_t pin)
-      : BitEventInterface(event_on, event_off),
-        BitEventConsumer(this),
-        memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
-
-  bool GetCurrentState() OVERRIDE { return (*memory_) ? true : false; }
-  void SetState(bool new_value) OVERRIDE {
-    if (new_value) {
-      *memory_ = 0xff;
-    } else {
-      *memory_ = 0;
-    }
-  }
-
-  nmranet::Node* node() OVERRIDE { return stack.node(); }
-
- private:
-  volatile uint8_t* memory_;
-};
 
 typedef nmranet::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
                                 TivaGPIOProducerBit> TivaSwitchProducer;
