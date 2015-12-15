@@ -40,14 +40,14 @@
 #include "nmranet/ConfiguredConsumer.hxx"
 #include "nmranet/ConfiguredProducer.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/MultiConfiguredConsumer.hxx"
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/TractionDefs.hxx"
-#include "nmranet/MultiConfiguredConsumer.hxx"
 
 #include "config.hxx"
+#include "custom/RailcomBroadcastFlow.hxx"
 #include "custom/TivaDAC.hxx"
 #include "custom/TivaGNDControl.hxx"
-#include "custom/RailcomBroadcastFlow.hxx"
 #include "freertos_drivers/common/BlinkerGPIO.hxx"
 #include "freertos_drivers/ti/TivaGPIO.hxx"
 #include "hardware.hxx"
@@ -97,12 +97,9 @@ nmranet::ConfiguredProducer producer_sw2(stack.node(),
                                          SW2_Pin());
 
 constexpr const Gpio* enable_ptrs[] = {
-  OUTPUT_EN0_Pin::instance(),
-  OUTPUT_EN1_Pin::instance(),
-  OUTPUT_EN2_Pin::instance(),
-  OUTPUT_EN3_Pin::instance(),
-  OUTPUT_EN4_Pin::instance(),
-  OUTPUT_EN5_Pin::instance(),
+    OUTPUT_EN0_Pin::instance(), OUTPUT_EN1_Pin::instance(),
+    OUTPUT_EN2_Pin::instance(), OUTPUT_EN3_Pin::instance(),
+    OUTPUT_EN4_Pin::instance(), OUTPUT_EN5_Pin::instance(),
 };
 
 nmranet::MultiConfiguredConsumer consumer_enables(stack.node(), enable_ptrs,
@@ -199,7 +196,8 @@ void set_output_disable(unsigned port, bool enable) {
 
 class PortLogic : public StateFlowBase {
  public:
-  PortLogic(uint8_t channel) : StateFlowBase(stack.service()), channel_(channel) {
+  PortLogic(uint8_t channel)
+      : StateFlowBase(stack.service()), channel_(channel) {
     start_flow(STATE(init_wait));
   }
 
@@ -223,25 +221,19 @@ class PortLogic : public StateFlowBase {
 
  private:
   Action init_wait() {
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(100 * channel_), STATE(init_try_turnon));
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(100 * channel_),
+                          STATE(init_try_turnon));
   }
 
-  Action init_try_turnon() {
-    return set_terminated();
-  }
+  Action init_try_turnon() { return set_terminated(); }
 
-  Action test_again() {
-    return set_terminated();
-  }
+  Action test_again() { return set_terminated(); }
 
   StateFlowTimer timer_{this};
   uint8_t channel_;
   uint8_t inOvercurrent_ : 1;
   uint8_t inOccupancy_ : 1;
-
-
 };
-
 
 template <class Debouncer>
 class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
@@ -350,7 +342,6 @@ class OvercurrentFlow : public dcc::RailcomHubPort {
   BarrierNotifiable n_;
 };
 
-
 uint8_t dac_next_packet_mode = 0;
 
 uint8_t RailcomDefs::feedbackChannel_ = 0xff;
@@ -415,9 +406,9 @@ class DACThread : public OSThread {
       for (int i = 0; i < 6; ++i) {
         // enable pins are inverted
         if (enable_ptrs[i]->is_set()) {
-          *leds &= ~(1<<i);
+          *leds &= ~(1 << i);
         } else {
-          *leds |= (1<<i);
+          *leds |= (1 << i);
         }
       }
     }
@@ -425,7 +416,8 @@ class DACThread : public OSThread {
   }
 } dac_thread;
 
-void read_dac_settings(int fd, nmranet::DacSettingsConfig cfg, DacSettings* out) {
+void read_dac_settings(int fd, nmranet::DacSettingsConfig cfg,
+                       DacSettings* out) {
   uint16_t n = cfg.nominator().read(fd);
   uint16_t d = cfg.denom().read(fd);
   uint8_t div = cfg.divide().read(fd) ? true : false;
