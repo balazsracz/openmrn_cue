@@ -32,6 +32,8 @@
  * @date 5 Jun 2015
  */
 
+#include <functional>
+
 #include "os/os.h"
 #include "nmranet_config.h"
 
@@ -43,6 +45,7 @@
 #include "nmranet/MultiConfiguredConsumer.hxx"
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/TractionDefs.hxx"
+#include "nmranet/CallbackEventHandler.hxx"
 
 #include "config.hxx"
 #include "custom/RailcomBroadcastFlow.hxx"
@@ -194,10 +197,27 @@ void set_output_disable(unsigned port, bool enable) {
   DIE("Setting unknown output_en port.");
 }
 
+namespace sp = std::placeholders;
+
 class PortLogic : public StateFlowBase {
  public:
-  PortLogic(uint8_t channel, int config_fd, )
-      : StateFlowBase(stack.service()), channel_(channel) {
+  PortLogic(Node* node, uint8_t channel, int config_fd)
+      : StateFlowBase(stack.service()),
+        channel_(channel),
+        killedOutputDueToOvercurrent_(0),
+        sensedOccupancy_(0),
+        networkOvercurrent_(0),
+        networkOccupancy_(0),
+        commandedEnable_(0),
+        networkEnable_(0),
+        isInitialTurnon_(0),
+        reqEnable_(0),
+        turnonTryCount_(0),
+        node_(node),
+        eventHandler_(
+            node,
+            std::bind(&PortLogic::event_report, this, sp::_1, sp::_2, sp::_3),
+            std::bind(&PortLogic::get_event_state, this, sp::_1, sp::_2)) {
     start_flow(STATE(init_wait));
   }
 
@@ -234,43 +254,105 @@ class PortLogic : public StateFlowBase {
   }
 
   void set_network_enable(bool value) {
-    networkEnable_ = to_u(value);
-    if (is_terminated()) {
-      start_flow(STATE(test_again));
+    if (value && !networkEnable_) {
+      // turn on
+      networkEnable_ = 1;
+      reqEnable_ = 1;
+    }
+    if (!value && networkEnable_) {
+      // turn off
+      networkEnable_ = 0;
+      set_output_enable(false);
     }
   }
 
  private:
+  void event_report(const nmranet::EventRegistryEntry& registry_entry,
+                    nmranet::EventReport* report, BarrierNotifiable* done) {
+    uint32_t user_arg = registry_entry.user_arg;
+    switch (user_arg & MASK_FOR_BIT) {
+      case ENABLE_BIT:
+        set_network_enable(user_arg & ARG_ON);
+        return;
+      case OVERCURRENT_BIT:
+        set_network_overcurrent(user_arg & ARG_ON);
+        return;
+      case OCCUPANCY_BIT:
+        set_network_occupancy(user_arg & ARG_ON);
+        return;
+    };
+  }
+
+  nmranet::EventState get_event_state(
+      const nmranet::EventRegistryEntry& registry_entry,
+      nmranet::EventReport* report) {
+    nmranet::EventState st = nmranet::EventState::UNKNOWN;
+    switch (registry_entry.user_arg & MASK_FOR_BIT) {
+      case ENABLE_BIT:
+        st = nmranet::to_event_state(networkEnable_);
+        break;
+      case OVERCURRENT_BIT:
+        st = nmranet::to_event_state(killedOutputDueToOvercurrent_);
+        break;
+      case OCCUPANCY_BIT:
+        st = nmranet::to_event_state(networkOccupancy_);
+        break;
+    };
+    if (!(registry_entry.user_arg & ARG_ON)) {
+      st = invert_event_state(st);
+    }
+    return nmranet::EventState::VALID;
+  }
+
+  /// Defines what we use the user_args bits for the registered event handlers.
+  enum EventArgs {
+    ENABLE_BIT = 1,
+    OCCUPANCY_BIT = 2,
+    OVERCURRENT_BIT = 3,
+    MASK_FOR_BIT = 3,
+    ARG_ON = 16,
+  };
+
+  /// How much do we wait between retrying shorted outputs. This also defines
+  /// how long we wait after enabling an output to see if it shorted.
   static const int SHORT_RETRY_WAIT_MSEC = 300;
+  /// Number of times we try to enable an output and find it shorted before
+  /// declaring the output shorted.
   static const int SHORT_RETRY_COUNT = 3;
 
-  unsigned to_u(bool b) {
-    return b ? 1 : 0;
-  }
+  unsigned to_u(bool b) { return b ? 1 : 0; }
 
   /// @param value is true if the output should be provided with power, false
   /// if the output should have no power.
   void set_output_enable(bool value) {
     commandedEnable_ = to_u(value);
-    enable_ptrs[channel_]->write(!value); // inverted
+    enable_ptrs[channel_]->write(!value);  // inverted
     if (value) {
       killedOutputDueToOvercurrent_ = to_u(false);
     }
   }
 
   Action init_wait() {
+    isInitialTurnon_ = 1;
     return sleep_and_call(&timer_, MSEC_TO_NSEC(100 * channel_),
                           STATE(init_try_turnon));
   }
 
   Action init_try_turnon() {
     turnonTryCount_ = 0;
+    networkEnable_ = 1;
     return call_immediately(STATE(try_turnon));
   }
 
   Action try_turnon() {
+    if (!networkEnable_) {
+      // Someone turned off the output in the meantime.
+      set_output_enable(false); // this should be redundant
+      return call_immediately(STATE(test_again));
+    }
     set_output_enable(true);
-    return sleep_and_call(&timer, MSEC_TO_NSEC(SHORT_RETRY_WAIT_MSEC), STATE(eval_turnon));
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(SHORT_RETRY_WAIT_MSEC),
+                          STATE(eval_turnon));
   }
 
   Action eval_turnon() {
@@ -278,11 +360,12 @@ class PortLogic : public StateFlowBase {
       // Turnon failed. try again.
       if (turnonTryCount_ < SHORT_RETRY_COUNT) {
         turnonTryCount_++;
-        return call_immediately(try_turnon);
+        return call_immediately(STATE(try_turnon));
       }
       // Turnon failed, no more tries left.
       if (!networkOvercurrent_ || isInitialTurnon_) {
         networkOvercurrent_ = to_u(true);
+        isInitialTurnon_ = 0;
         return produce_event(eventOvercurrentOn_);
       }
       // Network already knows we are in overcurrent -- Do nothing.
@@ -291,6 +374,7 @@ class PortLogic : public StateFlowBase {
     // now: not overcurrent -- we're successfully on.
     if (networkOvercurrent_ || isInitialTurnon_) {
       networkOvercurrent_ = to_u(false);
+      isInitialTurnon_ = 0;
       return produce_event(eventOvercurrentOff_);
     }
     return call_immediately(STATE(test_again));
@@ -311,17 +395,20 @@ class PortLogic : public StateFlowBase {
         }
       }
     }
-
+    if (reqEnable_) {
+      reqEnable_ = 0;
+      return call_immediately(STATE(init_try_turnon));
+    }
     if (isInitialTurnon_) {
       isInitialTurnon_ = 0;
     }
     return set_terminated();
   }
 
-
-  Action produce_event(nmranet::EventID event_id) {
-    writer->WriteAsync(node_, Defs::MTI_EVENT_REPORT, WriteHelper::global(),
-                       eventid_to_buffer(event_id), n_.reset(this));
+  Action produce_event(nmranet::EventId event_id) {
+    h_.WriteAsync(node_, nmranet::Defs::MTI_EVENT_REPORT,
+                  nmranet::WriteHelper::global(),
+                  nmranet::eventid_to_buffer(event_id), n_.reset(this));
     return wait_and_call(STATE(test_again));
   }
 
@@ -329,25 +416,33 @@ class PortLogic : public StateFlowBase {
   uint8_t channel_;
   /// set-once when overcurrent is detected.
   uint8_t killedOutputDueToOvercurrent_ : 1;
-  uint8_t sensedOccupancy_ : 1;    //< Current (debounced) sensor read
-  uint8_t networkOvercurrent_ : 1; //< Current network state
-  uint8_t networkOccupancy_ : 1;   //< Current network state
-  uint8_t commandedEnable_ : 1;    //< Current output pin state
-  uint8_t networkEnable_ : 1;      //< Current network state
-  uint8_t isInitialTurnon_ : 1;    //< true only for the first turnon try.
-  uint8_t isShorted_ : 1;    //< true when we are shut down due to short
+  uint8_t sensedOccupancy_ : 1;     //< Current (debounced) sensor read
+  uint8_t networkOvercurrent_ : 1;  //< Current network state
+  uint8_t networkOccupancy_ : 1;    //< Current network state
+  uint8_t commandedEnable_ : 1;     //< Current output pin state
+  uint8_t networkEnable_ : 1;       //< Current network state
+  uint8_t isInitialTurnon_ : 1;     //< true only for the first turnon try.
+  uint8_t reqEnable_ : 1;  //< 1 if a network request came in to enable the output.
+
+  /*
+  uint8_t reqOccupancyOn_ : 1;      //< produce event occ ON
+  uint8_t reqOccupancyOff_ : 1;      //< produce event occ OFF
+  uint8_t reqOvercurrentOn_ : 1;      //< produce event overcurrent ON
+  uint8_t reqOvercurrentOff_ : 1;      //< produce event overcurrent OFF
+  */
 
   /// how many tries we had yet for turning on output.
   uint8_t turnonTryCount_ : 3;
-  Node* node_;
-  nmranet::EventID eventOccupancyOn_;
-  nmranet::EventID eventOccupancyOff_;
-  nmranet::EventID eventOvercurrentOn_;
-  nmranet::EventID eventOvercurrentOff_;
-  nmranet::EventID eventEnableOn_;
-  nmranet::EventID eventEnableOff_;
+  nmranet::Node* node_;
+  nmranet::EventId eventOccupancyOn_;
+  nmranet::EventId eventOccupancyOff_;
+  nmranet::EventId eventOvercurrentOn_;
+  nmranet::EventId eventOvercurrentOff_;
+  nmranet::EventId eventEnableOn_;
+  nmranet::EventId eventEnableOff_;
   nmranet::WriteHelper h_;
   BarrierNotifiable n_;
+  nmranet::CallbackEventHandler eventHandler_;
 };
 
 template <class Debouncer>
