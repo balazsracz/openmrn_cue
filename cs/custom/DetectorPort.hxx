@@ -1,5 +1,5 @@
 /** \copyright
- * Copyright (c) 2013, Balazs Racz
+ * Copyright (c) 2015, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,190 +24,38 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file main.cxx
+ * \file DetectorPort.hxx
  *
- * Main file for the io board application on the Tiva Launchpad board.
+ * Business logic for one port of the railcom+occupancy detector.
  *
  * @author Balazs Racz
- * @date 5 Jun 2015
+ * @date 19 Dec 2015
  */
+
+#ifndef _BRACZ_CUSTOM_DETECTORPORT_HXX_
+#define _BRACZ_CUSTOM_DETECTORPORT_HXX_
 
 #include <functional>
 
-#include "os/os.h"
-#include "nmranet_config.h"
-
-#include "dcc/RailcomBroadcastDecoder.hxx"
-#include "dcc/RailcomHub.hxx"
-#include "nmranet/ConfiguredConsumer.hxx"
-#include "nmranet/ConfiguredProducer.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/MultiConfiguredConsumer.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/TractionDefs.hxx"
 #include "nmranet/CallbackEventHandler.hxx"
-
-#include "config.hxx"
-#include "custom/RailcomBroadcastFlow.hxx"
-#include "custom/TivaDAC.hxx"
-#include "custom/TivaGNDControl.hxx"
-#include "freertos_drivers/common/BlinkerGPIO.hxx"
-#include "freertos_drivers/ti/TivaGPIO.hxx"
 #include "hardware.hxx"
+#include "custom/DetectorPortConfig.hxx"
 
-extern TivaDAC<DACDefs> dac;
+extern const Gpio* const enable_ptrs[];
 
-OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const nmranet::NodeID NODE_ID = 0x050101011462ULL;
-nmranet::SimpleCanStack stack(NODE_ID);
-
-dcc::RailcomHubFlow railcom_hub(stack.service());
-
-nmranet::ConfigDef cfg(0);
-
-extern const char* const nmranet::CONFIG_FILENAME = "/dev/eeprom";
-extern const char* const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::CONFIG_FILENAME;
-extern const size_t nmranet::CONFIG_FILE_SIZE =
-    cfg.seg().size() + cfg.seg().offset();
-static_assert(nmranet::CONFIG_FILE_SIZE <= 512, "Need to adjust eeprom size");
-
-typedef BLINKER_Pin LED_RED_Pin;
-
-nmranet::ConfiguredConsumer consumer_red(stack.node(),
-                                         cfg.seg().consumers().entry<0>(),
-                                         LED_RED_Pin());
-nmranet::ConfiguredConsumer consumer_green(stack.node(),
-                                           cfg.seg().consumers().entry<1>(),
-                                           OUTPUT_EN0_Pin());
-nmranet::ConfiguredConsumer consumer_blue(stack.node(),
-                                          cfg.seg().consumers().entry<2>(),
-                                          OUTPUT_EN1_Pin());
-
-/*nmranet::ConfiguredConsumer consumer_shadow0(stack.node(),
-                                           cfg.seg().consumers().entry<1>(),
-                                           STAT5_Pin());
-
-nmranet::ConfiguredConsumer consumer_shadow1(stack.node(),
-                                           cfg.seg().consumers().entry<2>(),
-                                           STAT4_Pin());*/
-
-nmranet::ConfiguredProducer producer_sw1(stack.node(),
-                                         cfg.seg().producers().entry<0>(),
-                                         SW1_Pin());
-nmranet::ConfiguredProducer producer_sw2(stack.node(),
-                                         cfg.seg().producers().entry<1>(),
-                                         SW2_Pin());
-
-constexpr const Gpio* enable_ptrs[] = {
-    OUTPUT_EN0_Pin::instance(), OUTPUT_EN1_Pin::instance(),
-    OUTPUT_EN2_Pin::instance(), OUTPUT_EN3_Pin::instance(),
-    OUTPUT_EN4_Pin::instance(), OUTPUT_EN5_Pin::instance(),
-};
-
-nmranet::MultiConfiguredConsumer consumer_enables(stack.node(), enable_ptrs,
-                                                  ARRAYSIZE(enable_ptrs),
-                                                  cfg.seg().enables());
-
-nmranet::RefreshLoop loop(stack.node(),
-                          {producer_sw1.polling(), producer_sw2.polling()});
-
-template <class Debouncer>
-class FeedbackBasedOccupancy : public dcc::RailcomHubPort {
- public:
-  template <typename... Args>
-  FeedbackBasedOccupancy(nmranet::Node* node, uint64_t event_base,
-                         uint8_t channel, unsigned channel_count, Args... args)
-      : dcc::RailcomHubPort(node->iface()),
-        channel_(channel),
-        currentValues_(0),
-        eventHandler_(node, event_base, &currentValues_, channel_count) {
-    for (unsigned i = 0; i < channel_count; ++i) {
-      debouncers_.emplace_back(args...);
-      debouncers_.back().initialize(false);
-    }
-  }
-
-  Action entry() {
-    if (message()->data()->channel != channel_) return release_and_exit();
-    newPayload_ = message()->data()->ch1Data[0];
-    nextOffset_ = 0;
-    release();
-    return call_immediately(STATE(consume_bit));
-  }
-
-  Action consume_bit() {
-    while (nextOffset_ < eventHandler_.size()) {
-      auto& debouncer = debouncers_[nextOffset_];
-      bool last_state_deb = debouncer.current_state();
-      bool last_state_network = eventHandler_.Get(nextOffset_);
-      if (last_state_network != last_state_deb) {
-        debouncer.override(last_state_network);
-      }
-      bool new_state_input = newPayload_ & (1 << nextOffset_);
-      if (debouncer.update_state(new_state_input)) {
-        // Need to produce new value to network.
-        eventHandler_.Set(nextOffset_, debouncer.current_state(), &h_,
-                          n_.reset(this));
-        return wait_and_call(STATE(step_bit));
-      }
-      nextOffset_++;
-    }
-    return exit();
-  }
-
-  Action step_bit() {
-    nextOffset_++;
-    return call_immediately(STATE(consume_bit));
-  }
-
- private:
-  std::vector<Debouncer> debouncers_;
-  uint8_t newPayload_;  //< Packed data that came with the input.
-  uint8_t nextOffset_;  //< Which index we are evaluating now.
-  uint8_t channel_;
-  uint32_t currentValues_;
-  nmranet::BitRangeEventPC eventHandler_;
-  nmranet::WriteHelper h_;
-  BarrierNotifiable n_;
-};
-
-void set_output_disable(unsigned port, bool enable) {
-  extern unsigned* stat_led_ptr();
-  unsigned* leds = stat_led_ptr();
-  if (enable) {
-    *leds &= ~(1 << port);
-  } else {
-    (*leds |= (1 << port));
-  }
-  switch (port) {
-    case 0:
-      return OUTPUT_EN0_Pin::set(enable);
-    case 1:
-      return OUTPUT_EN1_Pin::set(enable);
-    case 2:
-      return OUTPUT_EN2_Pin::set(enable);
-    case 3:
-      return OUTPUT_EN3_Pin::set(enable);
-    case 4:
-      return OUTPUT_EN4_Pin::set(enable);
-    case 5:
-      return OUTPUT_EN5_Pin::set(enable);
-  }
-  DIE("Setting unknown output_en port.");
-}
+namespace bracz_custom {
 
 namespace sp = std::placeholders;
-
 
 /// TODO:
 /// - add readout of event IDs from config
 /// - add config itself
 /// - register the event IDs
-class PortLogic : public StateFlowBase {
+class DetectorPort : public StateFlowBase {
  public:
-  PortLogic(Node* node, uint8_t channel, int config_fd)
-      : StateFlowBase(stack.service()),
+  DetectorPort(nmranet::Node* node, uint8_t channel, int config_fd,
+               const DetectorPortConfig& cfg)
+    : StateFlowBase(node->iface()),
         channel_(channel),
         killedOutputDueToOvercurrent_(0),
         sensedOccupancy_(0),
@@ -221,9 +69,36 @@ class PortLogic : public StateFlowBase {
         node_(node),
         eventHandler_(
             node,
-            std::bind(&PortLogic::event_report, this, sp::_1, sp::_2, sp::_3),
-            std::bind(&PortLogic::get_event_state, this, sp::_1, sp::_2)) {
+            std::bind(&DetectorPort::event_report, this, sp::_1, sp::_2, sp::_3),
+            std::bind(&DetectorPort::get_event_state, this, sp::_1, sp::_2)) {
     start_flow(STATE(init_wait));
+    eventOccupancyOn_ = cfg.occupancy().occ_on().read(config_fd);
+    eventOccupancyOff_ = cfg.occupancy().occ_off().read(config_fd);
+    eventOvercurrentOn_ = cfg.overcurrent().over_on().read(config_fd);
+    eventOvercurrentOff_ = cfg.overcurrent().over_off().read(config_fd);
+    eventEnableOn_ = cfg.enable().enable_on().read(config_fd);
+    eventEnableOff_ = cfg.enable().enable_off().read(config_fd);
+
+    eventHandler_.add_entry(
+        eventOccupancyOn_,
+        OCCUPANCY_BIT | ARG_ON | nmranet::CallbackEventHandler::IS_PRODUCER);
+    eventHandler_.add_entry(
+        eventOccupancyOff_,
+        OCCUPANCY_BIT | nmranet::CallbackEventHandler::IS_PRODUCER);
+
+    eventHandler_.add_entry(
+        eventOvercurrentOn_,
+        OVERCURRENT_BIT | ARG_ON | nmranet::CallbackEventHandler::IS_PRODUCER);
+    eventHandler_.add_entry(
+        eventOvercurrentOff_,
+        OVERCURRENT_BIT | nmranet::CallbackEventHandler::IS_PRODUCER);
+
+    eventHandler_.add_entry(
+        eventEnableOn_,
+        ENABLE_BIT | ARG_ON | nmranet::CallbackEventHandler::IS_CONSUMER);
+    eventHandler_.add_entry(
+        eventEnableOff_,
+        ENABLE_BIT | nmranet::CallbackEventHandler::IS_CONSUMER);
   }
 
   void set_overcurrent(bool value) {
@@ -352,7 +227,7 @@ class PortLogic : public StateFlowBase {
   Action try_turnon() {
     if (!networkEnable_) {
       // Someone turned off the output in the meantime.
-      set_output_enable(false); // this should be redundant
+      set_output_enable(false);  // this should be redundant
       return call_immediately(STATE(test_again));
     }
     set_output_enable(true);
@@ -427,7 +302,8 @@ class PortLogic : public StateFlowBase {
   uint8_t commandedEnable_ : 1;     //< Current output pin state
   uint8_t networkEnable_ : 1;       //< Current network state
   uint8_t isInitialTurnon_ : 1;     //< true only for the first turnon try.
-  uint8_t reqEnable_ : 1;  //< 1 if a network request came in to enable the output.
+  uint8_t
+      reqEnable_ : 1;  //< 1 if a network request came in to enable the output.
 
   /*
   uint8_t reqOccupancyOn_ : 1;      //< produce event occ ON
@@ -450,260 +326,6 @@ class PortLogic : public StateFlowBase {
   nmranet::CallbackEventHandler eventHandler_;
 };
 
-template <class Debouncer>
-class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
- public:
-  /// Creates an occupancy decoder port.
-  ///
-  /// @param channel is the railcom channe to listen to. Usually 0xff for
-  /// occupancy or 0xfe for overcurrent.
-  /// @param channel_count tells how many bits are available to check.
-  /// @param update_function will be called with the channel number and the
-  /// channel's (debounced) value whenever the debounced value changes.
-  /// @param args... are forwarded to the debouncer.
-  template <typename... Args>
-  RailcomOccupancyDecoder(uint8_t channel, unsigned channel_count,
-                          std::function<void(unsigned, bool)> update_function,
-                          Args... args)
-      : updateFunction_(std::move(update_function)), channel_(channel) {
-    for (unsigned i = 0; i < channel_count; ++i) {
-      debouncers_.emplace_back(args...);
-      debouncers_.back().initialize(false);
-    }
-  }
+}  // namespace bracz_custom
 
-  void send(Buffer<dcc::RailcomHubData>* entry, unsigned prio) override {
-    AutoReleaseBuffer<dcc::RailcomHubData> rb(entry);
-    if (entry->data()->channel != channel_) return;
-    uint8_t new_payload = entry->data()->ch1Data[0];
-    for (unsigned i = 0; i < debouncers_.size(); ++i) {
-      bool new_state_input = new_payload & (1 << i);
-      auto& debouncer = debouncers_[i];
-      if (debouncer.update_state(new_state_input)) {
-        // Need to produce new value to network.
-        updateFunction_(i, debouncer.current_state());
-      }
-    }
-  }
-
- private:
-  std::function<void(unsigned, bool)> updateFunction_;
-  std::vector<Debouncer> debouncers_;
-  uint8_t channel_;
-};
-
-template <class Debouncer>
-class OvercurrentFlow : public dcc::RailcomHubPort {
- public:
-  template <typename... Args>
-  OvercurrentFlow(nmranet::Node* node, uint64_t event_base, uint8_t channel,
-                  unsigned channel_count, Args... args)
-      : dcc::RailcomHubPort(node->iface()),
-        channel_(channel),
-        currentValues_(0),
-        eventHandler_(node, event_base, &currentValues_, channel_count) {
-    for (unsigned i = 0; i < channel_count; ++i) {
-      debouncers_.emplace_back(args...);
-      debouncers_.back().initialize(false);
-    }
-  }
-
-  Action entry() {
-    if (message()->data()->channel != channel_) return release_and_exit();
-    newPayload_ = message()->data()->ch1Data[0];
-    nextOffset_ = 0;
-    release();
-    return call_immediately(STATE(consume_bit));
-  }
-
-  Action consume_bit() {
-    while (nextOffset_ < eventHandler_.size()) {
-      auto& debouncer = debouncers_[nextOffset_];
-      bool last_state_deb = debouncer.current_state();
-      bool last_state_network = eventHandler_.Get(nextOffset_);
-      if (last_state_network != last_state_deb) {
-        debouncer.override(last_state_network);
-      }
-      bool new_state_input = newPayload_ & (1 << nextOffset_);
-      if (debouncer.update_state(new_state_input)) {
-        // Need to produce new value to network.
-        if (debouncer.current_state()) {
-          // Overcurrent detected. Turn off output port.
-          // OUTPUT_EN is inverted.
-          set_output_disable(nextOffset_, true);
-        }
-        eventHandler_.Set(nextOffset_, debouncer.current_state(), &h_,
-                          n_.reset(this));
-        return wait_and_call(STATE(step_bit));
-      }
-      nextOffset_++;
-    }
-    return exit();
-  }
-
-  Action step_bit() {
-    nextOffset_++;
-    return call_immediately(STATE(consume_bit));
-  }
-
- private:
-  std::vector<Debouncer> debouncers_;
-  uint8_t newPayload_;  //< Packed data that came with the input.
-  uint8_t nextOffset_;  //< Which index we are evaluating now.
-  uint8_t channel_;
-  uint32_t currentValues_;
-  nmranet::BitRangeEventPC eventHandler_;
-  nmranet::WriteHelper h_;
-  BarrierNotifiable n_;
-};
-
-uint8_t dac_next_packet_mode = 0;
-
-uint8_t RailcomDefs::feedbackChannel_ = 0xff;
-
-DacSettings dac_occupancy = {5, 50, true};  // 1.9 mV
-// DacSettings dac_occupancy = { 5, 10, true };
-
-#if 1
-DacSettings dac_overcurrent = {5, 20, false};
-#else
-DacSettings dac_overcurrent = dac_occupancy;
-#endif
-
-#if 1
-DacSettings dac_railcom = {5, 10, true};  // 8.6 mV
-#else
-DacSettings dac_railcom = dac_occupancy;
-#endif
-
-volatile uint32_t ch0_count, ch1_count, sample_count;
-
-extern unsigned* stat_led_ptr();
-
-class DACThread : public OSThread {
- public:
-  void* entry() OVERRIDE {
-    const int kPeriod = 300000;
-    unsigned startup = 0;
-    usleep(kPeriod * 2);
-    while (true) {
-      nmranet::WriteHelper h;
-      /*      usleep(kPeriod);
-      dac.set_div(true);
-      STAT1_Pin::set(false);
-      LED_GREEN_Pin::set(false);
-      dac.set_pwm(3, 10);
-      usleep(kPeriod);
-      dac.set_div(false);
-      STAT1_Pin::set(true);
-      LED_GREEN_Pin::set(true);
-      dac.set_pwm(7, 10);*/
-
-      usleep(kPeriod);
-      SyncNotifiable n;
-      h.WriteAsync(
-          stack.node(), nmranet::Defs::MTI_EVENT_REPORT, h.global(),
-          nmranet::eventid_to_buffer(
-              0xFE00000000000000ULL | ((sample_count & 0xffffULL) << 32) |
-              ((ch0_count & 0xffff) << 16) | (ch1_count & 0xffff)),
-          &n);
-      ch0_count = 0;
-      ch1_count = 0;
-      sample_count = 0;
-      n.wait_for_notification();
-
-      if (startup < 6) {
-        set_output_disable(startup, false);
-        ++startup;
-      }
-
-      volatile unsigned* leds = stat_led_ptr();
-      for (int i = 0; i < 6; ++i) {
-        // enable pins are inverted
-        if (enable_ptrs[i]->is_set()) {
-          *leds &= ~(1 << i);
-        } else {
-          *leds |= (1 << i);
-        }
-      }
-    }
-    return nullptr;
-  }
-} dac_thread;
-
-void read_dac_settings(int fd, nmranet::DacSettingsConfig cfg,
-                       DacSettings* out) {
-  uint16_t n = cfg.nominator().read(fd);
-  uint16_t d = cfg.denom().read(fd);
-  uint8_t div = cfg.divide().read(fd) ? true : false;
-  if (n >= d || !(div == 0 || div == 1)) {
-    // corrupted data. overwrite with default
-    cfg.nominator().write(fd, out->nominator);
-    cfg.denom().write(fd, out->denominator);
-    cfg.divide().write(fd, out->divide ? 1 : 0);
-    return;
-  }
-  out->nominator = n;
-  out->denominator = d;
-  out->divide = div;
-}
-
-/** Entry point to application.
- * @param argc number of command line arguments
- * @param argv array of command line arguments
- * @return 0, should never return
- */
-int appl_main(int argc, char* argv[]) {
-  int fd = ::open(nmranet::CONFIG_FILENAME, O_RDWR);
-  HASSERT(fd >= 0);
-  read_dac_settings(fd, cfg.seg().current().dac_occupancy(), &dac_occupancy);
-  read_dac_settings(fd, cfg.seg().current().dac_overcurrent(),
-                    &dac_overcurrent);
-  read_dac_settings(fd, cfg.seg().current().dac_railcom(), &dac_railcom);
-
-  // default: 30, 10
-  CountingDebouncer::Options occupancy_debouncer_opts{
-      cfg.seg().current().occupancy().count_total().read(fd),
-      cfg.seg().current().occupancy().min_active().read(fd)};
-
-  static FeedbackBasedOccupancy<CountingDebouncer> occupancy_report(
-      stack.node(), (NODE_ID << 16) | 0x6000, 0xff, RailcomDefs::CHANNEL_COUNT,
-      occupancy_debouncer_opts);
-
-  // default: 20 10
-  CountingDebouncer::Options overcurrent_debouncer_opts{
-      cfg.seg().current().overcurrent().count_total().read(fd),
-      cfg.seg().current().overcurrent().min_active().read(fd)};
-
-  static OvercurrentFlow<CountingDebouncer> overcurrent_report(
-      stack.node(), (NODE_ID << 16) | 0x7000, 0xfe, RailcomDefs::CHANNEL_COUNT,
-      overcurrent_debouncer_opts);
-
-  static RailcomBroadcastFlow railcom_broadcast(
-      &railcom_hub, stack.node(), &occupancy_report, &overcurrent_report,
-      nullptr, 6);
-
-  stack.add_can_port_select("/dev/can0");
-  dac_thread.start("dac", 0, 600);
-  dac.set_pwm(1, 18);
-  dac.set_div(true);
-
-  /*CHARLIE0_Pin::instance()->set_direction(Gpio::Direction::INPUT);
-  CHARLIE1_Pin::instance()->set_direction(Gpio::Direction::INPUT);
-  CHARLIE2_Pin::instance()->set_direction(Gpio::Direction::OUTPUT);
-  CHARLIE2_Pin::set(false);*/
-
-  *stat_led_ptr() = 0;
-  set_output_disable(0, false);
-  set_output_disable(1, false);
-
-  // we need to enable the dcc receiving driver.
-  ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
-  HubDeviceNonBlock<dcc::RailcomHubFlow> railcom_port(&railcom_hub,
-                                                      "/dev/railcom");
-  // occupancy info will be proxied by the broadcast decoder
-  // railcom_hub.register_port(&occupancy_report);
-
-  stack.loop_executor();
-  return 0;
-}
+#endif  // _BRACZ_CUSTOM_DETECTORPORT_HXX_
