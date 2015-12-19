@@ -199,6 +199,11 @@ void set_output_disable(unsigned port, bool enable) {
 
 namespace sp = std::placeholders;
 
+
+/// TODO:
+/// - add readout of event IDs from config
+/// - add config itself
+/// - register the event IDs
 class PortLogic : public StateFlowBase {
  public:
   PortLogic(Node* node, uint8_t channel, int config_fd)
