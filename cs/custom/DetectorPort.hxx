@@ -138,6 +138,9 @@ class DetectorPort : public StateFlowBase {
       // turn on
       networkEnable_ = 1;
       reqEnable_ = 1;
+      if (is_terminated()) {
+        start_flow(STATE(test_again));
+      }
     }
     if (!value && networkEnable_) {
       // turn off
@@ -278,6 +281,10 @@ class DetectorPort : public StateFlowBase {
     if (reqEnable_) {
       reqEnable_ = 0;
       return call_immediately(STATE(init_try_turnon));
+    }
+    if (networkEnable_ && !turnonTryCount_ && killedOutputDueToOvercurrent_) {
+      return sleep_and_call(&timer_, MSEC_TO_NSEC(SHORT_RETRY_WAIT_MSEC),
+                            STATE(eval_turnon));
     }
     if (isInitialTurnon_) {
       isInitialTurnon_ = 0;
