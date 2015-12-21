@@ -248,6 +248,7 @@ void read_dac_settings(int fd, nmranet::DacSettingsConfig cfg,
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
+  stack.check_version_and_factory_reset(cfg.seg().internal(), nmranet::EXPECTED_VERSION);
   int fd = ::open(nmranet::CONFIG_FILENAME, O_RDWR);
   HASSERT(fd >= 0);
   read_dac_settings(fd, cfg.seg().current().dac_occupancy(), &dac_occupancy);
