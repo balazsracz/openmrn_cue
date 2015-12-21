@@ -349,16 +349,19 @@ class DACThread : public OSThread {
 
       usleep(kPeriod);
       SyncNotifiable n;
-      h.WriteAsync(
-          stack.node(), nmranet::Defs::MTI_EVENT_REPORT, h.global(),
-          nmranet::eventid_to_buffer(
-              0xFE00000000000000ULL | ((sample_count & 0xffffULL) << 32) |
-              ((ch0_count & 0xffff) << 16) | (ch1_count & 0xffff)),
-          &n);
+      bool send = false;
+      nmranet::EventId ev = 0xFE00000000000000ULL |
+                            ((sample_count & 0xffffULL) << 32) |
+                            ((ch0_count & 0xffff) << 16) | (ch1_count & 0xffff);
       ch0_count = 0;
       ch1_count = 0;
       sample_count = 0;
-      n.wait_for_notification();
+
+      if (send) {
+        h.WriteAsync(stack.node(), nmranet::Defs::MTI_EVENT_REPORT, h.global(),
+                     nmranet::eventid_to_buffer(ev), &n);
+        n.wait_for_notification();
+      }
 
       if (startup < 6) {
         set_output_disable(startup, false);
