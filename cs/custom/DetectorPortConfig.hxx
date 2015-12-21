@@ -42,7 +42,7 @@ namespace bracz_custom {
 CDI_GROUP(DetectorPortOccupancy);
 CDI_GROUP_ENTRY(
                 occ_on, nmranet::EventConfigEntry,  //
-    Name(">Occupied"),
+    Name("Occupied"),
     Description(
         "A train showed up in the segment."));
 CDI_GROUP_ENTRY(
@@ -54,7 +54,7 @@ CDI_GROUP_END();
 CDI_GROUP(DetectorPortOvercurrent);
 CDI_GROUP_ENTRY(
     over_on, nmranet::EventConfigEntry,  //
-    Name(">Shorted"),
+    Name("Shorted"),
     Description(
         "The output was turned off due to a short circuit."));
 CDI_GROUP_ENTRY(
@@ -66,11 +66,11 @@ CDI_GROUP_END();
 CDI_GROUP(DetectorPortEnable);
 CDI_GROUP_ENTRY(
     enable_on, nmranet::EventConfigEntry,  //
-    Name("<Turn On"),
+    Name("Turn On"),
     Description(
         "Turns on the output."));
 CDI_GROUP_ENTRY(
-    enable_off, nmranet::EventConfigEntry, Name("<Turn Off"),  //
+    enable_off, nmranet::EventConfigEntry, Name("Turn Off"),  //
     Description(
         "Turns off the output."));
 CDI_GROUP_END();
