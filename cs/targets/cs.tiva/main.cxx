@@ -73,6 +73,12 @@
 
 //#define STANDALONE
 
+#ifdef STANDALONE
+#define LOGTOSTDOUT
+#else
+#define LOGTOSTDOUT
+#endif
+
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
 
@@ -80,7 +86,7 @@
 OVERRIDE_CONST(mobile_station_train_count, 0);
 
 OVERRIDE_CONST(automata_init_backoff, 20000);
-OVERRIDE_CONST(node_init_identify, 0);
+//OVERRIDE_CONST(node_init_identify, 1);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 OVERRIDE_CONST(num_datagram_registry_entries, 3);
@@ -128,7 +134,7 @@ nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __auto
 bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
 
 extern "C" {
-#ifdef STANDALONE
+#ifdef LOGTOSTDOUT
 
 Executor<1> stdout_exec("logger", 1, 1000);
 Service stdout_service(&stdout_exec);
