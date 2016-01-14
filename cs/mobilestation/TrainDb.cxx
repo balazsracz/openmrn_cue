@@ -30,6 +30,13 @@ bool TrainDb::is_train_id_known(unsigned train_id) {
   return train_id < const_lokdb_size && (const_lokdb[train_id].address > 0);
 }
 
+const char* TrainDb::get_train_name(unsigned train_id) {
+  HASSERT(is_train_id_known(train_id));
+  const struct const_loco_db_t *entry = const_lokdb + train_id;
+  return entry->name;
+}
+
+
 nmranet::NodeID TrainDb::get_traction_node(unsigned train_id) {
   HASSERT(is_train_id_known(train_id));
   const struct const_loco_db_t *entry = const_lokdb + train_id;

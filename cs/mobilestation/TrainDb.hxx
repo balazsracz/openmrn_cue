@@ -104,6 +104,10 @@ class TrainDb {
     UNKNOWN_FUNCTION = 0xFFFFFFFF,
   };
 
+  /** Retrieves the name of the train. Currently the result is expected to be
+   * alive forever (point to read-only memory). */
+  const char* get_train_name(unsigned train_id);
+
   /** Retrieves the address of a function mapped to a specific fn_id.
    *
    * @param fn_id is a (dense) function identifier, starting at 2, of assigned
