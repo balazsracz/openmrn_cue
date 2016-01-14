@@ -263,7 +263,7 @@ mobilestation::TrainDb train_db;
 CanIf can1_interface(stack.service(), &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
-mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
+mobilestation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow());
 
 nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, 0xEF);
 

@@ -32,7 +32,10 @@
  * @date 20 May 2014
  */
 
+#include <memory>
 #include <vector>
+
+#include "nmranet/SimpleInfoProtocol.hxx"
 
 namespace nmranet {
 class Node;
@@ -45,16 +48,20 @@ class TrainDb;
 
 class AllTrainNodes {
  public:
-  AllTrainNodes(TrainDb* db, nmranet::TrainService* traction_service);
+  AllTrainNodes(TrainDb* db, nmranet::TrainService* traction_service,
+                nmranet::SimpleInfoFlow* info_flow);
   ~AllTrainNodes();
 
  private:
-  // Both of these vectors are parallel to the traindb. We own the objects in
-  // these vectors.
-  std::vector<nmranet::TrainImpl*> trainImpl_;
-  std::vector<nmranet::Node*> trainNode_;
+  // Externally owned.
+  TrainDb* db_;
+  nmranet::TrainService* tractionService_;
+
+  struct Impl;
+  std::vector<Impl*> trains_;
+  class TrainSnipHandler;
+  friend class TrainSnipHandler;
+  std::unique_ptr<TrainSnipHandler> snipHandler_;
 };
-
-
 
 }  // namespace mobilestation

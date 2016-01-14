@@ -36,53 +36,135 @@
 
 #include "dcc/Loco.hxx"
 #include "mobilestation/TrainDb.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/SimpleNodeInfo.hxx"
+#include "nmranet/TractionDefs.hxx"
 #include "nmranet/TractionTrain.hxx"
 
 namespace mobilestation {
 
+struct AllTrainNodes::Impl {
+ public:
+  ~Impl() {
+    delete eventHandler_;
+    delete node_;
+    delete train_;
+  }
+  int id;
+  nmranet::SimpleEventHandler* eventHandler_ = nullptr;
+  nmranet::Node* node_ = nullptr;
+  nmranet::TrainImpl* train_ = nullptr;
+};
+
+class AllTrainNodes::TrainSnipHandler
+    : public nmranet::IncomingMessageStateFlow {
+ public:
+  TrainSnipHandler(AllTrainNodes* parent, nmranet::SimpleInfoFlow* info_flow)
+      : IncomingMessageStateFlow(parent->tractionService_->iface()),
+        parent_(parent),
+        responseFlow_(info_flow) {
+    iface()->dispatcher()->register_handler(
+        this, nmranet::Defs::MTI_IDENT_INFO_REQUEST, nmranet::Defs::MTI_EXACT);
+  }
+  ~TrainSnipHandler() {
+    iface()->dispatcher()->unregister_handler(
+        this, nmranet::Defs::MTI_IDENT_INFO_REQUEST, nmranet::Defs::MTI_EXACT);
+  }
+
+  Action entry() OVERRIDE {
+    if (!nmsg()->dstNode) return release_and_exit();
+    // Let's find the train ID.
+    impl_ = nullptr;
+    for (auto* i : parent_->trains_) {
+      if (i->node_ == nmsg()->dstNode) {
+        impl_ = i;
+        break;
+      }
+    }
+    if (!impl_) return release_and_exit();
+    return allocate_and_call(responseFlow_, STATE(send_response_request));
+  }
+
+  Action send_response_request() {
+    auto* b = get_allocation_result(responseFlow_);
+    snipResponse_[6].data = parent_->db_->get_train_name(impl_->id);
+    b->data()->reset(nmsg(), snipResponse_,
+                     nmranet::Defs::MTI_IDENT_INFO_REPLY);
+    // We must wait for the data to be sent out because we have a static member
+    // that we are changing constantly.
+    b->set_done(n_.reset(this));
+    responseFlow_->send(b);
+    release();
+    return wait_and_call(STATE(send_done));
+  }
+
+  Action send_done() { return exit(); }
+
+ private:
+  AllTrainNodes* parent_;
+  nmranet::SimpleInfoFlow* responseFlow_;
+  AllTrainNodes::Impl* impl_;
+  BarrierNotifiable n_;
+  static nmranet::SimpleInfoDescriptor snipResponse_[];
+};
+
+nmranet::SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
+    {{nmranet::SimpleInfoDescriptor::LITERAL_BYTE, 4, 0, nullptr},
+     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0,
+      nmranet::SNIP_STATIC_DATA.manufacturer_name},
+     {nmranet::SimpleInfoDescriptor::C_STRING, 41, 0, "Virtual train node"},
+     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
+     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0,
+      nmranet::SNIP_STATIC_DATA.software_version},
+     {nmranet::SimpleInfoDescriptor::LITERAL_BYTE, 2, 0, nullptr},
+     {nmranet::SimpleInfoDescriptor::C_STRING, 63, 1, nullptr},
+     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
+     {nmranet::SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}};
+
 AllTrainNodes::AllTrainNodes(TrainDb* db,
-                             nmranet::TrainService* traction_service) {
-  trainImpl_.resize(const_lokdb_size);
-  trainNode_.resize(const_lokdb_size);
+                             nmranet::TrainService* traction_service,
+                             nmranet::SimpleInfoFlow* info_flow)
+    : db_(db),
+      tractionService_(traction_service),
+      snipHandler_(new TrainSnipHandler(this, info_flow)) {
   for (unsigned train_id = 0; train_id < const_lokdb_size; ++train_id) {
     if (!db->is_train_id_known(train_id)) continue;
+    Impl* impl = new Impl;
+    impl->id = train_id;
+    trains_.push_back(impl);
     unsigned address = db->get_traction_node(train_id) & 0xffffffff;
     unsigned mode = db->get_drive_mode(train_id);
     switch (mode & 7) {
       case MARKLIN_OLD: {
-        trainImpl_[train_id] = new dcc::MMOldTrain(dcc::MMAddress(address));
+        impl->train_ = new dcc::MMOldTrain(dcc::MMAddress(address));
         break;
       }
       case MARKLIN_NEW:
       case MFX: {
-        trainImpl_[train_id] = new dcc::MMNewTrain(dcc::MMAddress(address));
+        impl->train_ = new dcc::MMNewTrain(dcc::MMAddress(address));
         break;
       }
       case DCC_28: {
-        trainImpl_[train_id] =
-            new dcc::Dcc28Train(dcc::DccShortAddress(address));
+        impl->train_ = new dcc::Dcc28Train(dcc::DccShortAddress(address));
         break;
       }
-      case DCC_128:  {
-        trainImpl_[train_id] =
-            new dcc::Dcc128Train(dcc::DccShortAddress(address));
+      case DCC_128: {
+        impl->train_ = new dcc::Dcc128Train(dcc::DccShortAddress(address));
         break;
       }
       default:
         DIE("Unhandled train drive mode.");
     }
-    if (trainImpl_[train_id]) {
-      trainNode_[train_id] =
-          new nmranet::TrainNode(traction_service, trainImpl_[train_id]);
+    if (impl->train_) {
+      impl->node_ = new nmranet::TrainNode(traction_service, impl->train_);
+      impl->eventHandler_ = new nmranet::FixedEventProducer<
+          nmranet::TractionDefs::IS_TRAIN_EVENT>(impl->node_);
     }
   }
 }
 
 AllTrainNodes::~AllTrainNodes() {
-  for (auto* n : trainNode_) {
-    delete n;
-  }
-  for (auto* t : trainImpl_) {
+  for (auto* t : trains_) {
     delete t;
   }
 }
