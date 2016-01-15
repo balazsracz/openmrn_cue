@@ -40,9 +40,10 @@
 class RailcomBroadcastFlow : public dcc::RailcomHubPort {
  public:
   RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, nmranet::Node* node,
-                       dcc::RailcomHubPort* occupancy_port,
-                       dcc::RailcomHubPort* overcurrent_port,
-                       dcc::RailcomHubPort* debug_port, unsigned channel_count)
+                       dcc::RailcomHubPortInterface* occupancy_port,
+                       dcc::RailcomHubPortInterface* overcurrent_port,
+                       dcc::RailcomHubPortInterface* debug_port,
+                       unsigned channel_count)
       : dcc::RailcomHubPort(parent->service()),
         parent_(parent),
         node_(node),
@@ -155,9 +156,9 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
 
   dcc::RailcomHubFlow* parent_;
   nmranet::Node* node_;
-  dcc::RailcomHubPort* occupancyPort_;
-  dcc::RailcomHubPort* overcurrentPort_;
-  dcc::RailcomHubPort* debugPort_;
+  dcc::RailcomHubPortInterface* occupancyPort_;
+  dcc::RailcomHubPortInterface* overcurrentPort_;
+  dcc::RailcomHubPortInterface* debugPort_;
   unsigned size_;
   dcc::RailcomBroadcastDecoder* channels_;
   BarrierNotifiable n_;

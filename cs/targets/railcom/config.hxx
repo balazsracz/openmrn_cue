@@ -5,6 +5,7 @@
 #include "nmranet/ConfiguredProducer.hxx"
 #include "nmranet/ConfigRepresentation.hxx"
 #include "nmranet/MemoryConfig.hxx"
+#include "custom/DetectorPortConfig.hxx"
 
 namespace nmranet
 {
@@ -26,6 +27,8 @@ extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
     4,               "Balazs Racz", "Railcom IO board",
     "ek-tm4c123gxl", "2015-10-25"};
 
+static const uint16_t EXPECTED_VERSION = 0xf37b;
+
 #define NUM_OUTPUTS 3
 #define NUM_INPUTS 2
 
@@ -37,6 +40,8 @@ using AllConsumers = RepeatedGroup<ConsumerConfig, NUM_OUTPUTS>;
 using AllProducers = RepeatedGroup<ProducerConfig, NUM_INPUTS>;
 
 using EnableConsumers = RepeatedGroup<ConsumerConfig, 6>;
+
+using DetectorPorts = RepeatedGroup<bracz_custom::DetectorPortConfig, 6>;
 
 CDI_GROUP(CountingDebouncerOpts);
 CDI_GROUP_ENTRY(count_total, Uint8ConfigEntry, Name("Window length"), Description("How many consecutive samples to count"));
@@ -60,13 +65,15 @@ CDI_GROUP_END();
 /// Defines the main segment in the configuration CDI. This is laid out at
 /// origin 128 to give space for the ACDI user data at the beginning.
 CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
+CDI_GROUP_ENTRY(internal, InternalConfigData);
 /// Each entry declares the name of the current entry, then the type and then
 /// optional arguments list.
 CDI_GROUP_ENTRY(consumers, AllConsumers, Name("Output LEDs"));
 CDI_GROUP_ENTRY(producers, AllProducers, Name("Input buttons"));
 CDI_GROUP_ENTRY(current, CurrentParams);
-CDI_GROUP_ENTRY(enables, EnableConsumers, Name("Channel enable"),
-                Description("Consumers to turn channels on and off."));
+//CDI_GROUP_ENTRY(enables, EnableConsumers, Name("Channel enable"),
+//                Description("Consumers to turn channels on and off."));
+CDI_GROUP_ENTRY(detectors, DetectorPorts, Name("Channels"));
 CDI_GROUP_END();
 
 /// This segment is only needed temporarily until there is program code to set
@@ -93,6 +100,6 @@ CDI_GROUP_ENTRY(seg, IoBoardSegment);
 CDI_GROUP_ENTRY(version, VersionSeg);
 CDI_GROUP_END();
 
-} // namespace nmranet
+}  // namespace nmranet
 
 #endif // _APPLICATIONS_IO_BOARD_TARGET_CONFIG_HXX_
