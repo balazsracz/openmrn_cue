@@ -7,3 +7,6 @@ export TARGET
 EXECUTABLE := memorize
 
 include $(OPENMRNPATH)/etc/prog.mk
+
+install: $(EXECUTABLE)$(EXTENTION)
+	cp -f $< ~/bin/run-memorize
