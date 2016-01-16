@@ -35,8 +35,10 @@
 #include "mobilestation/AllTrainNodes.hxx"
 
 #include "dcc/Loco.hxx"
+#include "mobilestation/FdiXmlGenerator.hxx"
 #include "mobilestation/TrainDb.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
+#include "nmranet/MemoryConfig.hxx"
 #include "nmranet/SimpleNodeInfo.hxx"
 #include "nmranet/TractionDefs.hxx"
 #include "nmranet/TractionTrain.hxx"
@@ -120,6 +122,56 @@ nmranet::SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
      {nmranet::SimpleInfoDescriptor::C_STRING, 63, 1, nullptr},
      {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
      {nmranet::SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}};
+
+class AllTrainNodes::TrainFDISpace : nmranet::MemorySpace {
+ public:
+  TrainFDISpace(AllTrainNodes* parent) : parent_(parent), nodeOffset_(0) {}
+
+  bool set_node(nmranet::Node* node) override {
+    if (nodeOffset_ < parent_->trains_.size() &&
+        parent_->trains_[nodeOffset_]->node_ == node) {
+      // same node.
+      return true;
+    }
+    for (nodeOffset_ = 0; nodeOffset_ < parent_->trains_.size();
+         ++nodeOffset_) {
+      if (parent_->trains_[nodeOffset_]->node_ == node) {
+        // found it.
+        reset_file();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  address_t max_address() override {
+    // We don't really know how long this space is 16 MB is an upper bound.
+    return 16 << 20;
+  }
+
+  size_t read(address_t source, uint8_t* dst, size_t len, errorcode_t* error,
+              Notifiable* again) override {
+    if (source <= gen_.file_offset()) {
+      reset_file();
+    }
+    ssize_t result = gen_.read(source, dst, len);
+    if (result < 0) {
+      *error = nmranet::Defs::ERROR_PERMANENT;
+      return 0;
+    }
+    *error = 0;
+    return result;
+  }
+
+ private:
+  void reset_file() {
+    gen_.reset_for(const_lokdb + parent_->trains_[nodeOffset_]->id);
+  }
+
+  FdiXmlGenerator gen_;
+  AllTrainNodes* parent_;
+  unsigned nodeOffset_;
+};
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
                              nmranet::TrainService* traction_service,

@@ -50,6 +50,10 @@ class XmlGenerator {
   /// if EOF is reached.
   ssize_t read(size_t offset, void* buf, size_t len);
 
+  size_t file_offset() {
+    return fileOffset_;
+  }
+
  protected:
   struct GeneratorAction;
 

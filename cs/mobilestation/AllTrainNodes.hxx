@@ -62,6 +62,14 @@ class AllTrainNodes {
   class TrainSnipHandler;
   friend class TrainSnipHandler;
   std::unique_ptr<TrainSnipHandler> snipHandler_;
+
+  /*class TrainPipHandler;
+  friend class TrainPipHandler;
+  std::unique_ptr<TrainPipHandler> pipHandler_;*/
+
+  class TrainFDISpace;
+  friend class TrainFDISpace;
+  std::unique_ptr<TrainFDISpace> fdiSpace_;
 };
 
 }  // namespace mobilestation
