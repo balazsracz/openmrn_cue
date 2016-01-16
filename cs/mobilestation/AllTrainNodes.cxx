@@ -39,6 +39,7 @@
 #include "mobilestation/TrainDb.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/MemoryConfig.hxx"
+#include "nmranet/MemoryConfigDefs.hxx"
 #include "nmranet/SimpleNodeInfo.hxx"
 #include "nmranet/TractionDefs.hxx"
 #include "nmranet/TractionTrain.hxx"
@@ -175,9 +176,11 @@ class AllTrainNodes::TrainFDISpace : nmranet::MemorySpace {
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
                              nmranet::TrainService* traction_service,
-                             nmranet::SimpleInfoFlow* info_flow)
+                             nmranet::SimpleInfoFlow* info_flow,
+                             nmranet::MemoryConfigHandler* memory_config)
     : db_(db),
       tractionService_(traction_service),
+      memoryConfigService_(memory_config),
       snipHandler_(new TrainSnipHandler(this, info_flow)) {
   for (unsigned train_id = 0; train_id < const_lokdb_size; ++train_id) {
     if (!db->is_train_id_known(train_id)) continue;
@@ -213,12 +216,15 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
           nmranet::TractionDefs::IS_TRAIN_EVENT>(impl->node_);
     }
   }
+  fdiSpace_.reset(new TrainFDISpace(this));
+  memoryConfigService_->registry()->insert(nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
 }
 
 AllTrainNodes::~AllTrainNodes() {
   for (auto* t : trains_) {
     delete t;
   }
+  memoryConfigService_->registry()->remove(nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
 }
 
 }  // namespace mobilestation

@@ -1,5 +1,5 @@
 /** \copyright
- * Copyright (c) 2014, Balazs Racz
+ * Copyright (c) 2016, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,55 +24,20 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file AllTrainNodes.hxx
+ * \file AllTrainNodes.cxxtest
  *
- * A class that instantiates every train node from the TrainDb.
+ * Unit tests for the train FDI generator and AllTrainNodes.
  *
  * @author Balazs Racz
- * @date 20 May 2014
+ * @date 16 Jan 2016
  */
 
-#include <memory>
-#include <vector>
-
-#include "nmranet/SimpleInfoProtocol.hxx"
-
-namespace nmranet {
-class Node;
-class TrainService;
-class TrainImpl;
-class MemoryConfigHandler;
-}
+#include "mobilestation/AllTrainNodes.hxx"
+#include "utils/test_main.hxx"
 
 namespace mobilestation {
-class TrainDb;
 
-class AllTrainNodes {
- public:
-  AllTrainNodes(TrainDb* db, nmranet::TrainService* traction_service,
-                nmranet::SimpleInfoFlow* info_flow,
-                nmranet::MemoryConfigHandler* memory_config);
-  ~AllTrainNodes();
 
- private:
-  // Externally owned.
-  TrainDb* db_;
-  nmranet::TrainService* tractionService_;
-  nmranet::MemoryConfigHandler* memoryConfigService_;
 
-  struct Impl;
-  std::vector<Impl*> trains_;
-  class TrainSnipHandler;
-  friend class TrainSnipHandler;
-  std::unique_ptr<TrainSnipHandler> snipHandler_;
 
-  /*class TrainPipHandler;
-  friend class TrainPipHandler;
-  std::unique_ptr<TrainPipHandler> pipHandler_;*/
-
-  class TrainFDISpace;
-  friend class TrainFDISpace;
-  std::unique_ptr<TrainFDISpace> fdiSpace_;
-};
-
-}  // namespace mobilestation
+} // namespace mobilestation
