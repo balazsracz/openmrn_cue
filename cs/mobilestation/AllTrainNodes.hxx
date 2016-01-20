@@ -55,20 +55,30 @@ class AllTrainNodes {
   ~AllTrainNodes();
 
  private:
+  // ==== Interface for children ====
+  struct Impl;
+
+  /// A child can look up if a local node is actually a Train node. If so, the
+  /// Impl structure will be returned. If the node is not known (or not a train
+  /// node maintained by this object), we return nullptr.
+  Impl* find_node(nmranet::Node* node);
+
   // Externally owned.
   TrainDb* db_;
   nmranet::TrainService* tractionService_;
   nmranet::MemoryConfigHandler* memoryConfigService_;
 
-  struct Impl;
+  /// All train nodes that we know about.
   std::vector<Impl*> trains_;
+
+  // Implementation objects that we carry for various protocols.
   class TrainSnipHandler;
   friend class TrainSnipHandler;
   std::unique_ptr<TrainSnipHandler> snipHandler_;
 
-  /*class TrainPipHandler;
+  class TrainPipHandler;
   friend class TrainPipHandler;
-  std::unique_ptr<TrainPipHandler> pipHandler_;*/
+  std::unique_ptr<TrainPipHandler> pipHandler_;
 
   class TrainFDISpace;
   friend class TrainFDISpace;

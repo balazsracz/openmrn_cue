@@ -39,10 +39,12 @@
 #include "mobilestation/TrainDb.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/MemoryConfig.hxx"
-#include "nmranet/MemoryConfigDefs.hxx"
 #include "nmranet/SimpleNodeInfo.hxx"
 #include "nmranet/TractionDefs.hxx"
 #include "nmranet/TractionTrain.hxx"
+#ifndef __FreeRTOS__
+#include "nmranet/TractionTestTrain.hxx"
+#endif
 
 namespace mobilestation {
 
@@ -58,6 +60,15 @@ struct AllTrainNodes::Impl {
   nmranet::Node* node_ = nullptr;
   nmranet::TrainImpl* train_ = nullptr;
 };
+
+AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
+  for (auto* i : trains_) {
+    if (i->node_ == node) {
+      return i;
+    }
+  }
+  return nullptr;
+}
 
 class AllTrainNodes::TrainSnipHandler
     : public nmranet::IncomingMessageStateFlow {
@@ -75,15 +86,8 @@ class AllTrainNodes::TrainSnipHandler
   }
 
   Action entry() OVERRIDE {
-    if (!nmsg()->dstNode) return release_and_exit();
     // Let's find the train ID.
-    impl_ = nullptr;
-    for (auto* i : parent_->trains_) {
-      if (i->node_ == nmsg()->dstNode) {
-        impl_ = i;
-        break;
-      }
-    }
+    impl_ = parent_->find_node(nmsg()->dstNode);
     if (!impl_) return release_and_exit();
     return allocate_and_call(responseFlow_, STATE(send_response_request));
   }
@@ -124,29 +128,71 @@ nmranet::SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
      {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
      {nmranet::SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}};
 
-class AllTrainNodes::TrainFDISpace : nmranet::MemorySpace {
+class AllTrainNodes::TrainPipHandler
+    : public nmranet::IncomingMessageStateFlow {
  public:
-  TrainFDISpace(AllTrainNodes* parent) : parent_(parent), nodeOffset_(0) {}
+  TrainPipHandler(AllTrainNodes* parent)
+      : IncomingMessageStateFlow(parent->tractionService_->iface()),
+        parent_(parent) {
+    iface()->dispatcher()->register_handler(
+        this, nmranet::Defs::MTI_PROTOCOL_SUPPORT_INQUIRY,
+        nmranet::Defs::MTI_EXACT);
+  }
+
+  ~TrainPipHandler() {
+    iface()->dispatcher()->unregister_handler(
+        this, nmranet::Defs::MTI_PROTOCOL_SUPPORT_INQUIRY,
+        nmranet::Defs::MTI_EXACT);
+  }
+
+ private:
+  Action entry() {
+    if (parent_->find_node(nmsg()->dstNode) == nullptr) {
+      return release_and_exit();
+    }
+
+    return allocate_and_call(iface()->addressed_message_write_flow(),
+                             STATE(fill_response_buffer));
+  }
+
+  Action fill_response_buffer() {
+    // Grabs our allocated buffer.
+    auto* b = get_allocation_result(iface()->addressed_message_write_flow());
+    // Fills in response. We use node_id_to_buffer because that converts a
+    // 48-bit value to a big-endian byte string.
+    b->data()->reset(nmranet::Defs::MTI_PROTOCOL_SUPPORT_REPLY,
+                     nmsg()->dstNode->node_id(), nmsg()->src,
+                     nmranet::node_id_to_buffer(pipReply_));
+
+    // Passes the response to the addressed message write flow.
+    iface()->addressed_message_write_flow()->send(b);
+
+    return release_and_exit();
+  }
+
+  AllTrainNodes* parent_;
+  static constexpr uint64_t pipReply_ = 0;
+};
+
+class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
+ public:
+  TrainFDISpace(AllTrainNodes* parent) : parent_(parent) {}
 
   bool set_node(nmranet::Node* node) override {
-    if (nodeOffset_ < parent_->trains_.size() &&
-        parent_->trains_[nodeOffset_]->node_ == node) {
+    if (impl_ && impl_->node_ == node) {
       // same node.
       return true;
     }
-    for (nodeOffset_ = 0; nodeOffset_ < parent_->trains_.size();
-         ++nodeOffset_) {
-      if (parent_->trains_[nodeOffset_]->node_ == node) {
-        // found it.
-        reset_file();
-        return true;
-      }
+    impl_ = parent_->find_node(node);
+    if (impl_ != nullptr) {
+      reset_file();
+      return true;
     }
     return false;
   }
 
   address_t max_address() override {
-    // We don't really know how long this space is 16 MB is an upper bound.
+    // We don't really know how long this space is; 16 MB is an upper bound.
     return 16 << 20;
   }
 
@@ -160,18 +206,24 @@ class AllTrainNodes::TrainFDISpace : nmranet::MemorySpace {
       *error = nmranet::Defs::ERROR_PERMANENT;
       return 0;
     }
-    *error = 0;
+    if (result == 0) {
+      *error = nmranet::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+    } else {
+      *error = 0;
+    }
     return result;
   }
 
  private:
   void reset_file() {
-    gen_.reset_for(const_lokdb + parent_->trains_[nodeOffset_]->id);
+    memcpy(gen_.entry(), const_lokdb + impl_->id, sizeof(*gen_.entry()));
+    gen_.reset();
   }
 
   FdiXmlGenerator gen_;
   AllTrainNodes* parent_;
-  unsigned nodeOffset_;
+  // Train object structure.
+  Impl* impl_;
 };
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
@@ -207,6 +259,12 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
         impl->train_ = new dcc::Dcc128Train(dcc::DccShortAddress(address));
         break;
       }
+#ifndef __FreeRTOS__
+      case FAKE_DRIVE: {
+        impl->train_ = new nmranet::LoggingTrain(address);
+        break;
+      }
+#endif
       default:
         DIE("Unhandled train drive mode.");
     }
@@ -217,14 +275,16 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
     }
   }
   fdiSpace_.reset(new TrainFDISpace(this));
-  memoryConfigService_->registry()->insert(nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+  memoryConfigService_->registry()->insert(
+      nullptr, nmranet::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
 }
 
 AllTrainNodes::~AllTrainNodes() {
   for (auto* t : trains_) {
     delete t;
   }
-  memoryConfigService_->registry()->remove(nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+  memoryConfigService_->registry()->erase(
+      nullptr, nmranet::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
 }
 
 }  // namespace mobilestation

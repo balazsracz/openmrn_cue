@@ -63,6 +63,11 @@ class FdiXmlGeneratorTest : public testing::Test {
     } while(true);
   }
 
+  void load_lok(int n) {
+    memcpy(gen.entry(), my_lokdb + n, sizeof(*gen.entry()));
+    gen.reset();
+  }
+
   FdiXmlGenerator gen;
 };
 
@@ -70,15 +75,15 @@ const char kRe460Xml[] =
 R"(<?xml version='1.0' encoding='UTF-8'?>
 <?xml-stylesheet type='text/xsl' href='xslt/fdi.xsl'?>
 <fdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/trunk/prototypes/xml/schema/fdi.xsd'>
-<segment space='250'>
+<segment space='250'><group><name/>
 <function size='1' kind='binary'>
 <name>Light</name>
 <number>0</number>
 </function>
-</segment></fdi>)";
+</group></segment></fdi>)";
 
 TEST_F(FdiXmlGeneratorTest, GenSingleFn) {
-  gen.reset_for(my_lokdb + 3);
+  load_lok(3);
   EXPECT_EQ(kRe460Xml, generate_all());
 };
 
@@ -86,24 +91,24 @@ const char kFooXml[] =
 R"(<?xml version='1.0' encoding='UTF-8'?>
 <?xml-stylesheet type='text/xsl' href='xslt/fdi.xsl'?>
 <fdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/trunk/prototypes/xml/schema/fdi.xsd'>
-<segment space='250'>
-</segment></fdi>)";
+<segment space='250'><group><name/>
+</group></segment></fdi>)";
 
 TEST_F(FdiXmlGeneratorTest, GenZeroFn) {
-  gen.reset_for(my_lokdb + 2);
+  load_lok(2);
   EXPECT_EQ(kFooXml, generate_all());
 };
 
 TEST_F(FdiXmlGeneratorTest, GenMultiple) {
-  gen.reset_for(my_lokdb + 2);
+  load_lok(2);
   EXPECT_EQ(kFooXml, generate_all());
-  gen.reset_for(my_lokdb + 2);
+  load_lok(2);
   EXPECT_EQ(kFooXml, generate_all());
-  gen.reset_for(my_lokdb + 3);
+  load_lok(3);
   EXPECT_EQ(kRe460Xml, generate_all());
-  gen.reset_for(my_lokdb + 2);
+  load_lok(2);
   EXPECT_EQ(kFooXml, generate_all());
-  gen.reset_for(my_lokdb + 3);
+  load_lok(3);
   EXPECT_EQ(kRe460Xml, generate_all());
 };
 
@@ -111,7 +116,7 @@ const char kBr260Xml[] =
 R"(<?xml version='1.0' encoding='UTF-8'?>
 <?xml-stylesheet type='text/xsl' href='xslt/fdi.xsl'?>
 <fdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/trunk/prototypes/xml/schema/fdi.xsd'>
-<segment space='250'>
+<segment space='250'><group><name/>
 <function size='1' kind='binary'>
 <name>Light</name>
 <number>0</number>
@@ -132,10 +137,10 @@ R"(<?xml version='1.0' encoding='UTF-8'?>
 <name>F6</name>
 <number>6</number>
 </function>
-</segment></fdi>)";
+</group></segment></fdi>)";
 
 TEST_F(FdiXmlGeneratorTest, GenBr260) {
-  gen.reset_for(my_lokdb + 0);
+  load_lok(0);
   EXPECT_EQ(kBr260Xml, generate_all());
 };
 

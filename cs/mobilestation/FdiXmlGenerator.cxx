@@ -39,9 +39,9 @@ namespace mobilestation {
 static const char kFdiXmlHead[] = R"(<?xml version='1.0' encoding='UTF-8'?>
 <?xml-stylesheet type='text/xsl' href='xslt/fdi.xsl'?>
 <fdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/trunk/prototypes/xml/schema/fdi.xsd'>
-<segment space='250'>
+<segment space='250'><group><name/>
 )";
-static const char kFdiXmlTail[] = "</segment></fdi>";
+static const char kFdiXmlTail[] = "</group></segment></fdi>";
 
 static const char kFdiXmlBinaryFunction[] =
     R"(<function size='1' kind='binary'>
@@ -67,8 +67,7 @@ static const char* label_for_function(uint8_t type) {
   return nullptr;
 }
 
-void FdiXmlGenerator::reset_for(const const_loco_db_t* entry) {
-  entry_ = entry;
+void FdiXmlGenerator::reset() {
   state_ = STATE_START;
   internal_reset();
 }
@@ -83,8 +82,8 @@ void FdiXmlGenerator::generate_more() {
         return;
       }
       case STATE_START_FN: {
-        if (((unsigned)nextFunction_) >= sizeof(entry_->function_mapping) ||
-            entry_->function_mapping[nextFunction_] == 0xff) {
+        if (((unsigned)nextFunction_) >= sizeof(entry_.function_mapping) ||
+            entry_.function_mapping[nextFunction_] == 0xff) {
           state_ = STATE_NO_MORE_FN;
           continue;
         }
@@ -95,10 +94,10 @@ void FdiXmlGenerator::generate_more() {
       case STATE_FN_NAME: {
         add_to_output(from_const_string("<name>"));
         const char* label =
-            label_for_function(entry_->function_labels[nextFunction_]);
+            label_for_function(entry_.function_labels[nextFunction_]);
         if (!label) {
           add_to_output(from_const_string("F"));
-          add_to_output(from_integer(entry_->function_mapping[nextFunction_]));
+          add_to_output(from_integer(entry_.function_mapping[nextFunction_]));
         } else {
           add_to_output(from_const_string(label));
         }
@@ -108,7 +107,7 @@ void FdiXmlGenerator::generate_more() {
       }
       case STATE_FN_NUMBER: {
         add_to_output(from_const_string("<number>"));
-        add_to_output(from_integer(entry_->function_mapping[nextFunction_]));
+        add_to_output(from_integer(entry_.function_mapping[nextFunction_]));
         add_to_output(from_const_string("</number>\n</function>\n"));
         state_ = STATE_FN_END;
         return;

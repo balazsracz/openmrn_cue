@@ -39,7 +39,12 @@ namespace mobilestation {
 
 class FdiXmlGenerator : public XmlGenerator {
  public:
-  void reset_for(const const_loco_db_t* entry);
+  /// Call this after the lokdb on entry was overwritten with the new loco's
+  /// data.
+  void reset();
+
+  /// Fill in the current train's LokDb entry here.
+  const_loco_db_t* entry() { return &entry_; }
 
  private:
   void generate_more() override;
@@ -56,9 +61,8 @@ class FdiXmlGenerator : public XmlGenerator {
   };
 
   State state_;
-  const const_loco_db_t* entry_;
+  const_loco_db_t entry_{0, {0, }, {0, }, "", 0};
   int nextFunction_;
 };
 
-
-} // namespace mobilestation
+}  // namespace mobilestation
