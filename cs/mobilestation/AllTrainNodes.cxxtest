@@ -114,6 +114,7 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
     expect_train_start(0x442, const_lokdb[2].address);
     trainNodes_.reset(new AllTrainNodes{&trainDb_, &trainService_, &infoFlow_,
                                         &memoryConfigHandler_});
+    wait();
   }
 
   ~AllTrainNodesTest() { wait(); }
@@ -134,5 +135,13 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
 };
 
 TEST_F(AllTrainNodesTest, CreateDestroy) {}
+
+TEST_F(AllTrainNodesTest, PIPRequest) {
+  send_packet_and_expect_response(":X19828123N0441;",
+                                  ":X19668441N0123D41600000000;");
+  wait();
+}
+
+// TODO: add test for retrieving via memory config protocol.
 
 }  // namespace mobilestation

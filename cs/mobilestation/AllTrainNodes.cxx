@@ -171,7 +171,11 @@ class AllTrainNodes::TrainPipHandler
   }
 
   AllTrainNodes* parent_;
-  static constexpr uint64_t pipReply_ = 0;
+  static constexpr uint64_t pipReply_ =
+      nmranet::Defs::SIMPLE_PROTOCOL_SUBSET | nmranet::Defs::DATAGRAM |
+      nmranet::Defs::MEMORY_CONFIGURATION | nmranet::Defs::EVENT_EXCHANGE |
+      nmranet::Defs::SIMPLE_NODE_INFORMATION | nmranet::Defs::TRACTION_CONTROL |
+      nmranet::Defs::TRACTION_FDI;
 };
 
 class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
@@ -233,7 +237,8 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
     : db_(db),
       tractionService_(traction_service),
       memoryConfigService_(memory_config),
-      snipHandler_(new TrainSnipHandler(this, info_flow)) {
+      snipHandler_(new TrainSnipHandler(this, info_flow)),
+      pipHandler_(new TrainPipHandler(this)) {
   for (unsigned train_id = 0; train_id < const_lokdb_size; ++train_id) {
     if (!db->is_train_id_known(train_id)) continue;
     Impl* impl = new Impl;
