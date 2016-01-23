@@ -39,12 +39,16 @@ namespace mobilestation {
 static const char kFdiXmlHead[] = R"(<?xml version='1.0' encoding='UTF-8'?>
 <?xml-stylesheet type='text/xsl' href='xslt/fdi.xsl'?>
 <fdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/trunk/prototypes/xml/schema/fdi.xsd'>
-<segment space='250'><group><name/>
+<segment space='249'><group><name/>
 )";
 static const char kFdiXmlTail[] = "</group></segment></fdi>";
 
 static const char kFdiXmlBinaryFunction[] =
     R"(<function size='1' kind='binary'>
+)";
+
+static const char kFdiXmlMomentaryFunction[] =
+    R"(<function size='1' kind='momentary'>
 )";
 
 struct FunctionLabel {
@@ -87,7 +91,11 @@ void FdiXmlGenerator::generate_more() {
           state_ = STATE_NO_MORE_FN;
           continue;
         }
-        add_to_output(from_const_string(kFdiXmlBinaryFunction));
+        if (entry_.function_labels[nextFunction_] & 0x80) {
+          add_to_output(from_const_string(kFdiXmlMomentaryFunction));
+        } else {
+          add_to_output(from_const_string(kFdiXmlBinaryFunction));
+        }
         state_ = STATE_FN_NAME;
         return;
       }
