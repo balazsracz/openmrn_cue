@@ -96,7 +96,7 @@
 #include "dcc/RailCom.hxx"
 #include "hardware.hxx"
 
-//#define STANDALONE
+#define STANDALONE
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -109,20 +109,20 @@ OVERRIDE_CONST(node_init_identify, 0);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 
-/*namespace mobilestation {
+namespace mobilestation {
 
 extern const struct const_loco_db_t const_lokdb[];
 
 const struct const_loco_db_t const_lokdb[] = {
   // 0
-  { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
-    "Am 843 093-6", DCC_28 },
+  { 44, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
+    "Am3 843 093-6", DCC_28 },
   // 1
-  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
-    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
+  { 52, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
+    "BR3 260417", DCC_28 },  // ESU LokPilot 3.0
   // 2
-  { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
+  { 23, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+    "RE3 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
   // id 3
   { 38, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
     "BDe 4/4 1640", DCC_128 | PUSHPULL },  // Tams LD-G32, DC motor
@@ -136,7 +136,7 @@ extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 }  // namespace mobilestation
-*/
+
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
 nmranet::SimpleCanStack stack(NODE_ID);
@@ -272,7 +272,7 @@ mobilestation::TrainDb train_db;
 CanIf can1_interface(stack.service(), &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
-//mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
+mobilestation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
 
 void mydisable()
@@ -301,8 +301,8 @@ BlinkerFlow blinker(stack.node(), EVENT_ID);
 int appl_main(int argc, char* argv[])
 {
   disable_dcc();
-    start_watchdog(5000);
-    add_watchdog_reset_timer(500);
+  //start_watchdog(5000);
+  //  add_watchdog_reset_timer(500);
 
     setblink(0x800A02);
 #ifdef STANDALONE
@@ -310,13 +310,11 @@ int appl_main(int argc, char* argv[])
     PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0", true);
 #endif
     setblink(0);
+    stack.add_can_port_select("/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
     //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
-
-    nmranet::LoggingTrain train_log(51);
-    nmranet::TrainNode train_log_node(&traction_service, &train_log);
 
 #ifdef USE_WII_CHUCK
     bracz_custom::WiiChuckReader wii_reader("/dev/i2c1", &wii_throttle);
