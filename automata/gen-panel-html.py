@@ -175,7 +175,6 @@ function addSingleSignalheadBinding(signalhead_id, event_on, event_off, url_red,
 </html>
 """
 
-
 class PositionablePoint:
   pass
 
@@ -595,9 +594,86 @@ class TrainLocLogixConditional:
                          + str(int(coord.center[0]))+ ", "
                          + str(int(coord.center[1])) + ", HORIZONTAL)")
 
+class Point:
+  def __init__(self, x, y):
+    self.x = x * 1.0
+    self.y = y * 1.0
+
+  def clone(self):
+    return Point(self.x, self.y)
+
+  def middle_to(self, o):
+    """Returns a new point in the middle between self and o"""
+    return Point((self.x + o.x)/2, (self.y + o.y)/2)
+
+  def vector_to(self, o):
+    """Returns a vector pointing from self to o"""
+    return Point(o.x - self.x, o.y - self.y)
+
+  def cross_product(self, o):
+    """Returns the magnitude of the cross product of self x o"""
+    return self.x * o.y - self.y * o.x
+
+  def dot_product(self, o):
+    """Returns the dot product of vectors self and o"""
+    return self.x * o.x + self.y * o.y
+  
+  def mul(self, n):
+    """Multiplies this vector with a constant value"""
+    self.x *= n
+    self.y *= n
+
+  def add(self, o):
+    """Adds another vector to this vector"""
+    self.x += o.x
+    self.y += o.y
+
+  def length(self):
+    return math.sqrt(self.dot_product(self))
+
+  def is_parallel(self, o):
+    """Returns 1 is o is a vector parallel to self, -1 if antiparallel, 0 otherwise"""
+    dp = self.dot_product(o)
+    dp /= self.length()
+    dp /= o.length()
+    if dp >= 0.9999: return 1
+    if dp <= -0.9999: return -1
+    return 0
+    
+
+class SvgPoint(Point):
+  def __init__(self, x, y):
+    super(SvgPoint, self).__init__(x, y)
+    self.id = GetSvgId()
+
+class Line:
+  def __init__(self, point, normal):
+    self.point = point
+    self.normal = normal
+    self.dirvect = Point(normal.y, -normal.x)
+    """ const is the right-hand side ofthe line's equation in the form of
+    x * n_x + y * n_y = const"""
+    self.const = normal.dot_product(point)
+
+  def y_at(self, x):
+    return (self.const - x * self.normal.x) / self.normal.y
+
+  def intersect(self, oline):
+    if self.normal.y == 0:
+      res_x = self.const / self.normal.x
+      return Point(res_x, oline.y_at(res_x))
+    if oline.normal.y == 0:
+      res_x = oline.const / oline.normal.x
+      return Point(res_x, self.y_at(res_x))
+    
+
 class VoronoiCollection:
-  class Point:
-    pass
+  @property
+  def DIAM(self):
+    return 50
+  @property
+  def USECIRCLE(self):
+    return True
 
   def __init__(self):
     self.points = []
@@ -607,12 +683,68 @@ class VoronoiCollection:
     SVG ID to bind the OnClick entry upon.
 
     """
-    entry = self.Point()
-    entry.x = x
-    entry.y = y
-    entry.id = GetSvgId()
+    entry = SvgPoint(x, y)
     self.points.append(entry)
     return entry.id
+
+  def dist(a, b):
+    return math.sqrt((a.x-b.x)*(a.x-b.x) + (a.y-b.y)*(a.y-b.y))
+
+  def find_candidate_points(self, entry):
+    distlimit = self.DIAM * 2 * 1.42
+    candidates = []
+    for c in self.points:
+      if entry.x == c.x and entry.y == c.y: continue
+      if dist(entry, c) < distlimit:
+        candidates.append(c)
+
+  def calculate_border(self, entry, cand):
+    """Returns the line forming the border between the points entry and cand.
+    The normal vector of this line points "inwards" towards entry."""
+    return Line(entry.middle_to(cand), cand.vector_to(entry));
+
+  def render_voronoi_entry(self, entry):
+    cand = find_candidate_points(entry)
+    d = {}
+    for i in range(len(cand)):
+      d[i] = {}
+      d[i].c = cand[i]
+      d[i].border = self.calculate_border(entry, cand[i])
+      for j in d.keys():
+        if c[j].x == c[i].x and c[j].y == c[i].y:
+          # Duplicate point
+          del d[i]
+          break
+        par_state = d[i].border.normal.is_parallel(d[j].border.normal)
+        if par_state == 1:
+          if d[j].border.normal.length() < d[i].border.normal.length():
+            del d[i]
+            break
+          else:
+            del d[j]
+            continue
+        if par_state == -1:
+          # We don't want to try to intersect antiparallel half-planes
+          continue
+        xprod = d[i].border.normal.cross_product(d[j].border.normal)
+        if xprod > 0:
+           # From the intersection point towards negative infinity
+          intersect_is_max = True
+        else:
+          # From intersection point towards positive infinity
+          intersect_is_max = False
+      if i not in d:
+        # We pruned the current point
+        continue
+
+  def render_c_entry(self, entry, svg_group):
+    active_g = ET.SubElement(svg_group, 'g', opacity="0.1")
+    circle = ET.SubElement(active_g, 'circle')
+    circle.set('cx', '%.1f' % (entry.x))
+    circle.set('cy', '%.1f' % (entry.y))
+    circle.set('r', ("%d" % self.DIAM))
+    c_ident = entry.id
+    circle.set('id', c_ident)
 
   def render(self, svg_group):
     """Renders all entries as a voronoi-diagram into the SVG tree.
@@ -622,13 +754,10 @@ class VoronoiCollection:
 
     """
     for entry in self.points:
-      active_g = ET.SubElement(svg_group, 'g', opacity="0.0")
-      circle = ET.SubElement(active_g, 'circle')
-      circle.set('cx', '%.1f' % (entry.x))
-      circle.set('cy', '%.1f' % (entry.y))
-      circle.set('r', "30")
-      c_ident = entry.id
-      circle.set('id', c_ident)
+      if self.USECIRCLE:
+        self.render_c_entry(entry, svg_group)
+      else:
+        self.render_voronoi_entry(entry);
 
 all_sensors = []
 sensor_by_user_name = {}
@@ -653,7 +782,7 @@ layoutblocks_by_name = {}
 def ParseAllSensors(sensor_tree):
   """Reads all the sensor objects from the xml tree passed in, and fills out the global list all_sensors."""
   root = sensor_tree.getroot()
-  for entry in root.findall('sensors/sensor'):
+  for entry in root.findall('sensors[@class="jmri.jmrix.openlcb.configurexml.OlcbSensorManagerXml"]/sensor'):
     system_name = entry.get('systemName')
     user_name = entry.get('userName')
     s = Sensor(system_name, user_name)
@@ -1394,7 +1523,6 @@ def ProcessPanel(panel_root, output_html):
   svg = ET.SubElement(panel_div, 'svg')
   svg.set('width', panel_root.attrib['windowwidth'])
   svg.set('height', panel_root.attrib['windowheight'])
-  ET.SubElement(svg, 'g', id="turnout_buttons")
   unknown_count = {}
   points = {}
   track_is_mainline = {}
@@ -1426,6 +1554,7 @@ def ProcessPanel(panel_root, output_html):
       points[ident + "_5"] = r
   for entry in panel_root.findall('./tracksegment'):
     track_is_mainline[entry.attrib['ident']] = (entry.attrib['mainline'] == 'yes')
+  ET.SubElement(svg, 'g', id="turnout_buttons")
   for entry in panel_root:
     if entry.tag == 'sensoricon':
       AddSensorIcon(svg, entry)
@@ -1464,7 +1593,7 @@ def main():
   html_root = ET.fromstring(webpage_template)
   html_tree = ET.ElementTree(html_root)
 
-  panel = root.find('./LayoutEditor[@name="3H layout"]')
+  panel = root.find('./LayoutEditor[@name="LCC Demo"]')
   if not panel:
     raise Exception("Desired panel not found")
   ProcessPanel(panel, html_tree)
