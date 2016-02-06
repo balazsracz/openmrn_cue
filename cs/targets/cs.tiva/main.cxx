@@ -63,6 +63,7 @@
 #include "os/watchdog.h"
 #include "utils/Debouncer.hxx"
 #include "utils/HubDeviceSelect.hxx"
+#include "commandstation/TrackPowerBit.hxx"
 
 #include "hardware.hxx"
 
@@ -225,8 +226,8 @@ HubDeviceNonBlock<dcc::RailcomHubFlow>* railcom_reader_flow;
 dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
-TivaTrackPowerOnOffBit on_off(stack.node(), nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                              nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
+commandstation::TrackPowerBit on_off(stack.node(), nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                                     nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
 nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(stack.iface());
 

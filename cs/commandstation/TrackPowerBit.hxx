@@ -38,7 +38,7 @@ namespace commandstation {
 
 class TrackPowerBit : public nmranet::BitEventInterface {
  public:
-  TrackPowerOnOffBit(nmranet::Node* node, uint64_t event_on, uint64_t event_off)
+  TrackPowerBit(nmranet::Node* node, uint64_t event_on, uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
   nmranet::EventState GetCurrentState() OVERRIDE {

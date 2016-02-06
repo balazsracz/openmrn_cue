@@ -49,7 +49,7 @@
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/TractionDefs.hxx"
 #include "utils/logging.h"
-#include "dcc_control.hxx"
+#include "commandstation/dcc_control.hxx"
 #include "DccHardware.hxx"
 
 static const auto SHUTDOWN_CURRENT_AMPS = 1.5;
@@ -362,32 +362,6 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
   unsigned num_uv_ : 8;
   unsigned is_voltage_ : 1;
   unsigned count_report_;
-  nmranet::Node* node_;
-};
-
-class TivaTrackPowerOnOffBit : public nmranet::BitEventInterface {
- public:
-  TivaTrackPowerOnOffBit(nmranet::Node* node, uint64_t event_on,
-                         uint64_t event_off)
-      : BitEventInterface(event_on, event_off), node_(node) {}
-
-  nmranet::EventState GetCurrentState() OVERRIDE {
-    return query_dcc() ? nmranet::EventState::VALID
-                       : nmranet::EventState::INVALID;
-  }
-  void SetState(bool new_value) OVERRIDE {
-    if (new_value) {
-      LOG(WARNING, "enable dcc");
-      enable_dcc();
-    } else {
-      LOG(WARNING, "disable dcc");
-      disable_dcc();
-    }
-  }
-
-  nmranet::Node* node() OVERRIDE { return node_; }
-
- private:
   nmranet::Node* node_;
 };
 

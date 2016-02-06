@@ -90,7 +90,8 @@
 #include "inc/hw_types.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_ints.h"
-#include "dcc_control.hxx"
+#include "commandstation/dcc_control.hxx"
+#include "commandstation/TrackPowerBit.hxx"
 #include "DccHardware.hxx"
 #include "TivaDCC.hxx"
 #include "dcc/RailCom.hxx"
@@ -255,7 +256,7 @@ class RailcomDebugFlow : public StateFlowBase {
 dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
-TivaTrackPowerOnOffBit on_off(stack.node(),
+commandstation::TrackPowerBit on_off(stack.node(),
                               nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                               nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
 nmranet::BitEventConsumer powerbit(&on_off);
