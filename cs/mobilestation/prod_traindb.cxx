@@ -1,7 +1,7 @@
 #include "commandstation/TrainDb.hxx"
 #include "utils/constants.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 __attribute__((weak)) extern const struct const_loco_db_t const_lokdb[] = {
   // 0

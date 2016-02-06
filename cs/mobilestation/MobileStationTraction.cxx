@@ -147,7 +147,7 @@ class TractionImpl : public IncomingFrameFlow {
     if (frame().data[0] != TRACTION_SET_MOTOR_FN) {
       fn_address = service()->train_db()->get_function_address(train_id,
                                                                frame().data[0]);
-      if (fn_address == TrainDb::UNKNOWN_FUNCTION) {
+      if (fn_address == commandstation::TrainDb::UNKNOWN_FUNCTION) {
         LOG(VERBOSE, "unknown fn");
         // we don't know, sorry.
         b->unref();
@@ -366,7 +366,7 @@ void MobileStationTraction::set_estop_state(EstopSource source,
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
                                              nmranet::If* nmranet_if,
-                                             TrainDb* train_db,
+                                             commandstation::TrainDb* train_db,
                                              nmranet::Node* query_node)
     : Service(nmranet_if->dispatcher()->service()->executor()),
       estopState_(0),

@@ -46,13 +46,16 @@ class If;
 class Node;
 }
 
-namespace mobilestation {
+namespace commandstation {
 class TrainDb;
+}
+
+namespace mobilestation {
 
 class MobileStationTraction : public Service {
  public:
   MobileStationTraction(CanIf* mosta_if, nmranet::If* nmranet_if,
-                        TrainDb* train_db, nmranet::Node* query_node);
+                        commandstation::TrainDb* train_db, nmranet::Node* query_node);
   ~MobileStationTraction();
 
   nmranet::If* nmranet_if() {
@@ -63,7 +66,7 @@ class MobileStationTraction : public Service {
     return mostaIf_;
   }
 
-  TrainDb* train_db() {
+  commandstation::TrainDb* train_db() {
     return trainDb_;
   }
 
@@ -102,7 +105,7 @@ class MobileStationTraction : public Service {
   Impl* impl_;
   nmranet::If* nmranetIf_;
   CanIf* mostaIf_;
-  TrainDb* trainDb_;
+  commandstation::TrainDb* trainDb_;
   nmranet::Node* node_; //< will be used for traction query and set commands
 };
 
