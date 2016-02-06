@@ -37,7 +37,7 @@
 
 #include "nmranet/Defs.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 #define DCC_MAX_FN 22
 
@@ -136,6 +136,6 @@ class TrainDb {
   unsigned get_drive_mode(unsigned train_id);
 };
 
-}  // namespace mobilestation
+}  // namespace commandstation
 
 #endif // _MOBILESTATION_TRAINDB_HXX_

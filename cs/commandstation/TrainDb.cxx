@@ -4,7 +4,7 @@
 
 #include "nmranet/TractionDefs.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 static vector<uint8_t> compute_num_fn_per_train() {
   vector<uint8_t> ret;
@@ -78,4 +78,4 @@ unsigned TrainDb::get_drive_mode(unsigned train_id) {
   return entry->mode;
 }
 
-}  // namespace mobilestation
+}  // namespace commandstation

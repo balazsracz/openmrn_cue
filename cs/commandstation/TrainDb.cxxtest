@@ -7,7 +7,7 @@ void PrintTo(const nmranet::NodeID& id, std::ostream& o) {
 }
 }
 
-namespace mobilestation {
+namespace commandstation {
 
 TEST(TrainDbTest, getaddress) {
   TrainDb db;
@@ -35,4 +35,4 @@ TEST(TrainDbTest, fnaddress) {
   EXPECT_EQ(TrainDb::UNKNOWN_FUNCTION, db.get_function_address(1, 130));
 }
 
-}  // namespace mobilestation
+}  // namespace commandstation

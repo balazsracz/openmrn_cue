@@ -44,7 +44,7 @@ class TrainImpl;
 class MemoryConfigHandler;
 }
 
-namespace mobilestation {
+namespace commandstation {
 class TrainDb;
 
 class AllTrainNodes {
@@ -88,4 +88,4 @@ class AllTrainNodes {
   std::unique_ptr<TrainFDISpace> fdiSpace_;
 };
 
-}  // namespace mobilestation
+}  // namespace commandstation

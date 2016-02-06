@@ -49,7 +49,7 @@ namespace nmranet {
 extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 }
 
-namespace mobilestation {
+namespace commandstation {
 
 const struct const_loco_db_t const_lokdb[] = {
     // 0
@@ -144,4 +144,4 @@ TEST_F(AllTrainNodesTest, PIPRequest) {
 
 // TODO: add test for retrieving via memory config protocol.
 
-}  // namespace mobilestation
+}  // namespace commandstation

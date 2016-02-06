@@ -35,7 +35,7 @@
 #include "commandstation/FdiXmlGenerator.hxx"
 #include "utils/test_main.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 
 const struct const_loco_db_t my_lokdb[] = {
@@ -148,4 +148,4 @@ TEST_F(FdiXmlGeneratorTest, GenBr260) {
   EXPECT_EQ(kBr260Xml, generate_all());
 };
 
-} // namespace mobilestation
+} // namespace commandstation

@@ -38,7 +38,7 @@
 #include <stdio.h>
 #include "utils/SimpleQueue.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 
 class XmlGenerator {
@@ -126,6 +126,6 @@ class XmlGenerator {
   char buffer_[16];
 };
 
-}  // namespace mobilestation
+}  // namespace commandstation
 
 #endif // _BRACZ_MOBILESTATION_XMLGENERATOR_HXX_

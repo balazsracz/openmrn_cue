@@ -36,7 +36,7 @@
 
 #include "commandstation/XmlGenerator.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 class TestEmptyXmlGenerator : public XmlGenerator {
  public:
@@ -117,4 +117,4 @@ TEST(XmlGeneratorDynTest, IntegerToString) {
   EXPECT_EQ("aab3xyz", gen.read_all_by(40));
 }
 
-} // namespace mobilestation
+} // namespace commandstation

@@ -34,7 +34,7 @@
 
 #include "commandstation/FdiXmlGenerator.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 static const char kFdiXmlHead[] = R"(<?xml version='1.0' encoding='UTF-8'?>
 <?xml-stylesheet type='text/xsl' href='xslt/fdi.xsl'?>
@@ -137,4 +137,4 @@ void FdiXmlGenerator::generate_more() {
   }
 }
 
-}  // namespace mobilestation
+}  // namespace commandstation

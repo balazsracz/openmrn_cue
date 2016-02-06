@@ -34,7 +34,7 @@
 
 #include "commandstation/XmlGenerator.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 ssize_t XmlGenerator::read(size_t offset, void* buf, size_t len) {
   if (offset < fileOffset_) {
@@ -140,4 +140,4 @@ void XmlGenerator::internal_reset() {
   }
 }
 
-}  // namespace mobilestation
+}  // namespace commandstation

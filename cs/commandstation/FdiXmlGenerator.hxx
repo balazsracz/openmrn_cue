@@ -35,7 +35,7 @@
 #include "commandstation/TrainDb.hxx"
 #include "commandstation/XmlGenerator.hxx"
 
-namespace mobilestation {
+namespace commandstation {
 
 class FdiXmlGenerator : public XmlGenerator {
  public:
@@ -65,4 +65,4 @@ class FdiXmlGenerator : public XmlGenerator {
   int nextFunction_;
 };
 
-}  // namespace mobilestation
+}  // namespace commandstation

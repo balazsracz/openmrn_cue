@@ -46,7 +46,7 @@
 #include "nmranet/TractionTestTrain.hxx"
 #endif
 
-namespace mobilestation {
+namespace commandstation {
 
 struct AllTrainNodes::Impl {
  public:
@@ -298,4 +298,4 @@ AllTrainNodes::~AllTrainNodes() {
       nullptr, nmranet::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
 }
 
-}  // namespace mobilestation
+}  // namespace commandstation
