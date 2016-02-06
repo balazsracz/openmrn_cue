@@ -268,11 +268,11 @@ nmranet::TrainService traction_service(stack.iface());
 //nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
 
 //mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
-mobilestation::TrainDb train_db;
+commandstation::TrainDb train_db;
 CanIf can1_interface(stack.service(), &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
-mobilestation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
+commandstation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
 
 void mydisable()

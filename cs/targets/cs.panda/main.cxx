@@ -144,8 +144,8 @@ nmranet::TrainNode train_Re465_node(&traction_service, &train_Re465);*/
 OVERRIDE_CONST(automata_init_backoff, 10000);
 
 mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
-mobilestation::TrainDb train_db;
-mobilestation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
+commandstation::TrainDb train_db;
+commandstation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 /** Entry point to application.

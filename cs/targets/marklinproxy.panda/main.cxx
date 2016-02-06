@@ -95,7 +95,7 @@ OVERRIDE_CONST(main_stack_size, 1500);
 CanIf can1_interface(stack.service(), &can_hub1);
 
 mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
-mobilestation::TrainDb train_db;
+commandstation::TrainDb train_db;
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 /** Entry point to application.

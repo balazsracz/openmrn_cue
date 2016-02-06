@@ -73,11 +73,11 @@ nmranet::TrainNode node_c(&traction_service, &train_c);
 CanHubFlow can_hub1(stack.service());
 CanIf can_if1(stack.service(), &can_hub1);
 
-mobilestation::TrainDb train_db;
+commandstation::TrainDb train_db;
 mobilestation::MobileStationTraction mosta_traction(&can_if1, stack.iface(),
                                                     &train_db, stack.node());
 
-mobilestation::AllTrainNodes all_train_nodes(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
+commandstation::AllTrainNodes all_train_nodes(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
 namespace commandstation {
 const struct const_loco_db_t const_lokdb[] = {

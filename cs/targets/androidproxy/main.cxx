@@ -114,7 +114,7 @@ const SimpleNodeStaticValues SNIP_STATIC_DATA = {
 server::TrainControlService control_server(stack.executor());
 
 // This is the mobile station proxy.
-mobilestation::TrainDb train_db;
+commandstation::TrainDb train_db;
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 CanIf can1_interface(stack.service(), &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
