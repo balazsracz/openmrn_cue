@@ -51,9 +51,9 @@
 #include "dcc/RailCom.hxx"
 #include "dcc/RailcomHub.hxx"
 #include "executor/PoolToQueueFlow.hxx"
-#include "mobilestation/AllTrainNodes.hxx"
+#include "commandstation/AllTrainNodes.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/PolledProducer.hxx"
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
@@ -269,7 +269,7 @@ mobilestation::TrainDb train_db;
 CanIf can1_interface(stack.service(), &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
-mobilestation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow());
+mobilestation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
 nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, 0xEF);
 

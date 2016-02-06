@@ -56,7 +56,7 @@
 #include "nmranet/DefaultNode.hxx"
 
 #include "mobilestation/MobileStationSlave.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "custom/HostLogging.hxx"
 #include "nmranet/SimpleStack.hxx"

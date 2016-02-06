@@ -37,8 +37,8 @@
 
 #include "commandstation/UpdateProcessor.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
-#include "mobilestation/TrainDb.hxx"
-#include "mobilestation/AllTrainNodes.hxx"
+#include "commandstation/TrainDb.hxx"
+#include "commandstation/AllTrainNodes.hxx"
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "nmranet/SimpleStack.hxx"
 #include "nmranet/TractionTestTrain.hxx"

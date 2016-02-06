@@ -44,7 +44,7 @@
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "custom/HostProtocol.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "utils/socket_listener.hxx"
 #include "utils/StringPrintf.hxx"
 #include "utils/HubDevice.hxx"

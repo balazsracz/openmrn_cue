@@ -74,9 +74,9 @@
 #include "custom/LoggingBit.hxx"
 #include "custom/AutomataControl.hxx"
 #include "mobilestation/MobileStationSlave.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
-#include "mobilestation/AllTrainNodes.hxx"
+#include "commandstation/AllTrainNodes.hxx"
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 
 static const nmranet::NodeID NODE_ID = 0x050101011431ULL;
@@ -145,7 +145,7 @@ OVERRIDE_CONST(automata_init_backoff, 10000);
 
 mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
 mobilestation::TrainDb train_db;
-mobilestation::AllTrainNodes all_trains(&train_db, &traction_service);
+mobilestation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 /** Entry point to application.

@@ -39,7 +39,7 @@
 
 #include <inttypes.h>
 
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "nmranet/Defs.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/If.hxx"
