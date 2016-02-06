@@ -50,6 +50,7 @@
 #include "dcc/LocalTrackIf.hxx"
 #include "dcc/RailCom.hxx"
 #include "dcc/RailcomHub.hxx"
+#include "dcc/RailcomPortDebug.hxx"
 #include "executor/PoolToQueueFlow.hxx"
 #include "commandstation/AllTrainNodes.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
@@ -303,67 +304,6 @@ void adc0_seq2_interrupt_handler(void) {
 }
 }
 
-class RailcomDebugFlow : public dcc::RailcomHubPortInterface {
- public:
-  RailcomDebugFlow(dcc::RailcomHubFlow* source) {
-    source->register_port(this);
-  }
-
- private:
-  string display_railcom_data(const uint8_t* data, int len) {
-    static char buf[200];
-    int ofs = 0;
-    HASSERT(len <= 6);
-    for (int i = 0; i < len; ++i) {
-      ofs += sprintf(buf+ofs, "0x%02x (0x%02x), ", data[i],
-                     dcc::railcom_decode[data[i]]);
-    }
-    uint8_t type = (dcc::railcom_decode[data[0]] >> 2);
-    if (len == 2) {
-      uint8_t payload = dcc::railcom_decode[data[0]] & 0x3;
-      payload <<= 6;
-      payload |= dcc::railcom_decode[data[1]];
-      switch(type) {
-        case dcc::RMOB_ADRLOW:
-          ofs += sprintf(buf+ofs, "adrlow=%d", payload);
-          break;
-        case dcc::RMOB_ADRHIGH:
-          ofs += sprintf(buf+ofs, "adrhigh=%d", payload);
-          break;
-        case dcc::RMOB_EXT:
-          ofs += sprintf(buf+ofs, "ext=%d", payload);
-          break;
-        case dcc::RMOB_DYN:
-          ofs += sprintf(buf+ofs, "dyn=%d", payload);
-          break;
-        case dcc::RMOB_SUBID:
-          ofs += sprintf(buf+ofs, "subid=%d", payload);
-          break;
-        default:
-          ofs += sprintf(buf+ofs, "type-%d=%d", type, payload);
-      }
-    }
-    return string(buf, ofs);
-  }
-
-  void send(Buffer<dcc::RailcomHubData>* d, unsigned prio) OVERRIDE {
-    AutoReleaseBuffer<dcc::RailcomHubData> rb(d);
-    dcc::Feedback& fb = *d->data();
-    if (fb.feedbackKey <= 1000) return;
-    if (fb.ch1Size && fb.channel != 0xff) {
-      LOG(INFO, "Railcom %x CH1 data(%" PRIu32 "): %s",
-          fb.channel,
-          fb.feedbackKey,
-          display_railcom_data(fb.ch1Data, fb.ch1Size).c_str());
-    }
-    if (fb.ch2Size && fb.channel != 0xff) {
-      LOG(INFO, "Railcom %x CH2 data(%" PRIu32 "): %s",
-          fb.channel,
-          fb.feedbackKey,
-          display_railcom_data(fb.ch2Data, fb.ch2Size).c_str());
-    }
-  }
-};
 
 HubDeviceSelect<HubFlow>* usb_port;
 
@@ -392,7 +332,7 @@ int appl_main(int argc, char* argv[])
         new HubDeviceNonBlock<dcc::RailcomHubFlow>(&railcom_hub, "/dev/railcom");
     //int railcom_fd = open("/dev/railcom", O_RDWR);
     //HASSERT(railcom_fd > 0);
-    RailcomDebugFlow railcom_debug(&railcom_hub);
+    dcc::RailcomPrintfFlow railcom_debug(&railcom_hub);
 
 
     nmranet::Velocity v;
