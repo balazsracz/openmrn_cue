@@ -1,5 +1,5 @@
 #include "utils/test_main.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 
 namespace nmranet {
 void PrintTo(const nmranet::NodeID& id, std::ostream& o) {

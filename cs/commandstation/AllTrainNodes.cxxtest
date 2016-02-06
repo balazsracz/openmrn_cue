@@ -32,8 +32,8 @@
  * @date 16 Jan 2016
  */
 
-#include "mobilestation/AllTrainNodes.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/AllTrainNodes.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "utils/async_traction_test_helper.hxx"
 #include "nmranet/SimpleInfoProtocol.hxx"
 #include "nmranet/DatagramCan.hxx"

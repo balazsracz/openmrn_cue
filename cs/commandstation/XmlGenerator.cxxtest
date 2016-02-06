@@ -34,7 +34,7 @@
 
 #include "utils/test_main.hxx"
 
-#include "mobilestation/XmlGenerator.hxx"
+#include "commandstation/XmlGenerator.hxx"
 
 namespace mobilestation {
 

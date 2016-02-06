@@ -32,8 +32,8 @@
  * @date 16 Jan 2016
  */
 
-#include "mobilestation/TrainDb.hxx"
-#include "mobilestation/XmlGenerator.hxx"
+#include "commandstation/TrainDb.hxx"
+#include "commandstation/XmlGenerator.hxx"
 
 namespace mobilestation {
 

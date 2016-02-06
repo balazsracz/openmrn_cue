@@ -1,4 +1,4 @@
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 
 #include <vector>
 

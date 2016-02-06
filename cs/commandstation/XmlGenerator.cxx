@@ -32,7 +32,7 @@
  * @date 16 Jan 2016
  */
 
-#include "mobilestation/XmlGenerator.hxx"
+#include "commandstation/XmlGenerator.hxx"
 
 namespace mobilestation {
 

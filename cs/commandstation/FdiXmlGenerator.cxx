@@ -32,7 +32,7 @@
  * @date 16 Jan 2016
  */
 
-#include "mobilestation/FdiXmlGenerator.hxx"
+#include "commandstation/FdiXmlGenerator.hxx"
 
 namespace mobilestation {
 

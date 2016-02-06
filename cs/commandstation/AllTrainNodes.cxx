@@ -32,11 +32,11 @@
  * @date 20 May 2014
  */
 
-#include "mobilestation/AllTrainNodes.hxx"
+#include "commandstation/AllTrainNodes.hxx"
 
 #include "dcc/Loco.hxx"
-#include "mobilestation/FdiXmlGenerator.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/FdiXmlGenerator.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/MemoryConfig.hxx"
 #include "nmranet/SimpleNodeInfo.hxx"
