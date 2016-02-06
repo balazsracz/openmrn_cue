@@ -54,6 +54,9 @@ class AllTrainNodes {
                 nmranet::MemoryConfigHandler* memory_config);
   ~AllTrainNodes();
 
+  // Used for debugging purposes
+  nmranet::TrainImpl* get_train_impl(int id);
+
  private:
   // ==== Interface for children ====
   struct Impl;

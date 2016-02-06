@@ -61,6 +61,12 @@ struct AllTrainNodes::Impl {
   nmranet::TrainImpl* train_ = nullptr;
 };
 
+nmranet::TrainImpl* AllTrainNodes::get_train_impl(int id) {
+  if (id >= (int)trains_.size()) return nullptr;
+  return trains_[id]->train_;
+}
+
+
 AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
   for (auto* i : trains_) {
     if (i->node_ == node) {
@@ -227,7 +233,7 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
   FdiXmlGenerator gen_;
   AllTrainNodes* parent_;
   // Train object structure.
-  Impl* impl_;
+  Impl* impl_{nullptr};
 };
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
