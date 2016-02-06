@@ -79,7 +79,7 @@ mobilestation::MobileStationTraction mosta_traction(&can_if1, stack.iface(),
 
 mobilestation::AllTrainNodes all_train_nodes(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
-namespace mobilestation {
+namespace commandstation {
 const struct const_loco_db_t const_lokdb[] = {
     // 0
   { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },

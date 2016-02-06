@@ -109,7 +109,7 @@ OVERRIDE_CONST(node_init_identify, 0);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 
-namespace mobilestation {
+namespace commandstation {
 
 extern const struct const_loco_db_t const_lokdb[];
 
@@ -135,7 +135,7 @@ const struct const_loco_db_t const_lokdb[] = {
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
-}  // namespace mobilestation
+}  // namespace commandstation
 
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
