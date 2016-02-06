@@ -44,7 +44,7 @@ class TrainLightBlinkBit : public nmranet::BitEventInterface {
       : BitEventInterface(event_on, event_off), train_(train), node_(node) {}
 
   nmranet::EventState GetCurrentState() OVERRIDE {
-    return nmranet::to_event_state(train_V60.get_fn(0));
+    return nmranet::to_event_state(train_->get_fn(0));
   }
 
   void SetState(bool new_value) OVERRIDE {
