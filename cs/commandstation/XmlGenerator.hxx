@@ -101,10 +101,6 @@ class XmlGenerator {
     RENDER_INT,
   };
 
-  /// Fills in buffer with a zero-terminated decimal rendering of the given
-  /// value.
-  void integer_to_buffer(int value);
-
   /// Sets up the internal structures needed based on the action in the front
   /// of the pendingQueue_.
   void init_front_action();

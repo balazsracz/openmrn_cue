@@ -34,26 +34,22 @@
 
 #include "utils/test_main.hxx"
 
+#include "utils/format_utils.hxx"
 #include "commandstation/XmlGenerator.hxx"
 
 namespace commandstation {
 
-class TestEmptyXmlGenerator : public XmlGenerator {
- public:
-  static string i2a(int num) {
-    TestEmptyXmlGenerator gen;
-    gen.integer_to_buffer(num);
-    return gen.buffer_;
-  }
- protected:
-  void generate_more() {}
-};
+static string i2a(int num) {
+  char buf[10];
+  integer_to_buffer(num, buf);
+  return buf;
+}
 
 TEST(XmlGeneratorStaticTest, IntegerToString) {
-  EXPECT_EQ("123", TestEmptyXmlGenerator::i2a(123));
-  EXPECT_EQ("0", TestEmptyXmlGenerator::i2a(0));
-  EXPECT_EQ("9", TestEmptyXmlGenerator::i2a(9));
-  EXPECT_EQ("10", TestEmptyXmlGenerator::i2a(10));
+  EXPECT_EQ("123", i2a(123));
+  EXPECT_EQ("0", i2a(0));
+  EXPECT_EQ("9", i2a(9));
+  EXPECT_EQ("10", i2a(10));
 }
 
 

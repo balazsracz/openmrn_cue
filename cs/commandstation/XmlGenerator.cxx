@@ -33,6 +33,7 @@
  */
 
 #include "commandstation/XmlGenerator.hxx"
+#include "utils/format_utils.hxx"
 
 namespace commandstation {
 
@@ -105,7 +106,7 @@ void XmlGenerator::init_front_action() {
   bufferOffset_ = 0;
   switch (pendingActions_.front()->type) {
     case RENDER_INT: {
-      integer_to_buffer(pendingActions_.front()->integer);
+      integer_to_buffer(pendingActions_.front()->integer, buffer_);
       break;
     }
     case CONST_LITERAL: {
@@ -114,23 +115,6 @@ void XmlGenerator::init_front_action() {
     default:
       DIE("Unknown XML generation action.");
   }
-}
-
-void XmlGenerator::integer_to_buffer(int value) {
-  int num_digits = 0;
-  int tmp = value;
-  do {
-    num_digits++;
-    tmp /= 10;
-  } while (tmp > 0);
-  buffer_[num_digits--] = 0;
-  tmp = value;
-  do {
-    HASSERT(num_digits >= 0);
-    buffer_[num_digits--] = '0' + (tmp % 10);
-    tmp /= 10;
-  } while (tmp);
-  HASSERT(num_digits == -1);
 }
 
 void XmlGenerator::internal_reset() {
