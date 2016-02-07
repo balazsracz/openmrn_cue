@@ -84,12 +84,13 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   /** Looks through all nodes that exist in the train DB and tries to find one
    * with the given legacy address. */
   Action try_find_in_db() {
-    for (int train_id = 0; trainDb_->is_train_id_known(train_id); ++train_id) {
-      if (input()->address != trainDb_->get_legacy_address(train_id)) {
+    for (unsigned train_id = 0; train_id < allTrainNodes_->size(); ++train_id) {
+      auto* e = allTrainNodes_->get_traindb_entry(train_id);
+      if (!e || input()->address != e->address) {
         continue;
       }
       // TODO: check drive mode.
-      return return_ok(trainDb_->get_traction_node(train_id));
+      return return_ok(allTrainNodes_->get_train_node_id(train_id));
     }
     return call_immediately(STATE(allocate_new_train));
   }

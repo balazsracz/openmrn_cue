@@ -79,6 +79,27 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
   return nullptr;
 }
 
+/// Returns a traindb entry or nullptr if the id is too high.
+const const_loco_db_t* AllTrainNodes::get_traindb_entry(int id) {
+    if (id >= (int)trains_.size()) return nullptr;
+  if (trains_[id]->lokdb_entry_) {
+    return trains_[id]->lokdb_entry_;
+  }
+  if (db_->is_train_id_known(id)) {
+    return const_lokdb + id;
+  }
+  return nullptr;
+}
+
+/// Returns a node id or 0 if the id is not known to be a train.
+nmranet::NodeID AllTrainNodes::get_train_node_id(int id) {
+    if (id >= (int)trains_.size()) return 0;
+  if (trains_[id]->node_) {
+    return trains_[id]->node_->node_id();
+  }
+  return 0;
+}
+
 class AllTrainNodes::TrainSnipHandler
     : public nmranet::IncomingMessageStateFlow {
  public:
@@ -104,9 +125,9 @@ class AllTrainNodes::TrainSnipHandler
   Action send_response_request() {
     auto* b = get_allocation_result(responseFlow_);
     if (impl_->id >= 0) {
-        snipResponse_[6].data = parent_->db_->get_train_name(impl_->id);
+      snipResponse_[6].data = parent_->db_->get_train_name(impl_->id);
     } else {
-        snipResponse_[6].data = impl_->lokdb_entry_->name;
+      snipResponse_[6].data = impl_->lokdb_entry_->name;
     }
     b->data()->reset(nmsg(), snipResponse_,
                      nmranet::Defs::MTI_IDENT_INFO_REPLY);
@@ -338,6 +359,7 @@ nmranet::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
   memset(entry, 0, sizeof(*entry));
   integer_to_buffer(impl->train_->legacy_address(),
                     const_cast<char*>(entry->name));
+  *const_cast<uint16_t*>(&entry->address) = address;
   uint8_t* fnmap = const_cast<uint8_t*>(entry->function_mapping);
   uint8_t* fnlab = const_cast<uint8_t*>(entry->function_labels);
   for (int i = 0; i < DCC_MAX_FN - 1; ++i) {
