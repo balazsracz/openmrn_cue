@@ -36,6 +36,17 @@ const char* TrainDb::get_train_name(unsigned train_id) {
   return entry->name;
 }
 
+int TrainDb::get_legacy_address(unsigned train_id) {
+  HASSERT(is_train_id_known(train_id));
+  const struct const_loco_db_t *entry = const_lokdb + train_id;
+  return entry->address;
+}
+
+DccMode TrainDb::get_legacy_drive_mode(unsigned train_id) {
+  HASSERT(is_train_id_known(train_id));
+  const struct const_loco_db_t *entry = const_lokdb + train_id;
+  return static_cast<DccMode>(entry->mode);
+}
 
 nmranet::NodeID TrainDb::get_traction_node(unsigned train_id) {
   HASSERT(is_train_id_known(train_id));
@@ -72,10 +83,10 @@ unsigned TrainDb::get_function_label(unsigned train_id, unsigned fn_id) {
   return entry->function_labels[fn_id];
 }
 
-unsigned TrainDb::get_drive_mode(unsigned train_id) {
+DccMode TrainDb::get_drive_mode(unsigned train_id) {
   HASSERT(is_train_id_known(train_id));
   const struct const_loco_db_t *entry = const_lokdb + train_id;
-  return entry->mode;
+  return static_cast<DccMode>(entry->mode);
 }
 
 }  // namespace commandstation

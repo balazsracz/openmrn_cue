@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "nmranet/SimpleInfoProtocol.hxx"
+#include "commandstation/TrainDb.hxx"
 
 namespace nmranet {
 class Node;
@@ -57,6 +58,9 @@ class AllTrainNodes {
   // Used for debugging purposes
   nmranet::TrainImpl* get_train_impl(int id);
 
+  // Creates a new train node based on the given address and drive mode.
+  nmranet::NodeID allocate_node(DccMode drive_type, int address);
+
  private:
   // ==== Interface for children ====
   struct Impl;
@@ -65,6 +69,10 @@ class AllTrainNodes {
   /// Impl structure will be returned. If the node is not known (or not a train
   /// node maintained by this object), we return nullptr.
   Impl* find_node(nmranet::Node* node);
+
+  /// Helper function to create lok objects. Adds a new Impl structure to
+  /// impl_.
+  Impl* create_impl(int train_id, DccMode mode, int address);
 
   // Externally owned.
   TrainDb* db_;
@@ -82,7 +90,7 @@ class AllTrainNodes {
   class TrainPipHandler;
   friend class TrainPipHandler;
   std::unique_ptr<TrainPipHandler> pipHandler_;
-
+  
   class TrainFDISpace;
   friend class TrainFDISpace;
   std::unique_ptr<TrainFDISpace> fdiSpace_;

@@ -101,6 +101,7 @@ class AllTrainNodesTestBase : public nmranet::TractionTest {
     inject_allocated_alias(0x440);
     inject_allocated_alias(0x441);
     inject_allocated_alias(0x442);
+    inject_allocated_alias(0x443);
     inject_allocated_alias(0x33A);
   }
 };
@@ -139,6 +140,15 @@ TEST_F(AllTrainNodesTest, CreateDestroy) {}
 TEST_F(AllTrainNodesTest, PIPRequest) {
   send_packet_and_expect_response(":X19828123N0441;",
                                   ":X19668441N0123D41600000000;");
+  wait();
+}
+
+TEST_F(AllTrainNodesTest, CreateNode) {
+  expect_train_start(0x443, 183);
+  trainNodes_->allocate_node(FAKE_DRIVE, 183);
+  wait();
+  send_packet_and_expect_response(":X19828123N0443;",
+                                  ":X19668443N0123D41600000000;");
   wait();
 }
 

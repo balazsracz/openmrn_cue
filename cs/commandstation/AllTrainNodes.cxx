@@ -35,6 +35,7 @@
 #include "commandstation/AllTrainNodes.hxx"
 
 #include "dcc/Loco.hxx"
+#include "utils/format_utils.hxx"
 #include "commandstation/FdiXmlGenerator.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
@@ -54,18 +55,20 @@ struct AllTrainNodes::Impl {
     delete eventHandler_;
     delete node_;
     delete train_;
+    delete lokdb_entry_;
   }
   int id;
   nmranet::SimpleEventHandler* eventHandler_ = nullptr;
   nmranet::Node* node_ = nullptr;
   nmranet::TrainImpl* train_ = nullptr;
+  // Filled in only for anonymous trains.
+  const_loco_db_t* lokdb_entry_ = nullptr;
 };
 
 nmranet::TrainImpl* AllTrainNodes::get_train_impl(int id) {
   if (id >= (int)trains_.size()) return nullptr;
   return trains_[id]->train_;
 }
-
 
 AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
   for (auto* i : trains_) {
@@ -100,7 +103,11 @@ class AllTrainNodes::TrainSnipHandler
 
   Action send_response_request() {
     auto* b = get_allocation_result(responseFlow_);
-    snipResponse_[6].data = parent_->db_->get_train_name(impl_->id);
+    if (impl_->id >= 0) {
+        snipResponse_[6].data = parent_->db_->get_train_name(impl_->id);
+    } else {
+        snipResponse_[6].data = impl_->lokdb_entry_->name;
+    }
     b->data()->reset(nmsg(), snipResponse_,
                      nmranet::Defs::MTI_IDENT_INFO_REPLY);
     // We must wait for the data to be sent out because we have a static member
@@ -226,7 +233,11 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
 
  private:
   void reset_file() {
-    memcpy(gen_.entry(), const_lokdb + impl_->id, sizeof(*gen_.entry()));
+    if (impl_->id >= 0) {
+      memcpy(gen_.entry(), const_lokdb + impl_->id, sizeof(*gen_.entry()));
+    } else {
+      memcpy(gen_.entry(), impl_->lokdb_entry_, sizeof(*gen_.entry()));
+    }
     gen_.reset();
   }
 
@@ -247,47 +258,98 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
       pipHandler_(new TrainPipHandler(this)) {
   for (unsigned train_id = 0; train_id < const_lokdb_size; ++train_id) {
     if (!db->is_train_id_known(train_id)) continue;
-    Impl* impl = new Impl;
-    impl->id = train_id;
-    trains_.push_back(impl);
-    unsigned address = db->get_traction_node(train_id) & 0xffffffff;
-    unsigned mode = db->get_drive_mode(train_id);
-    switch (mode & 7) {
-      case MARKLIN_OLD: {
-        impl->train_ = new dcc::MMOldTrain(dcc::MMAddress(address));
-        break;
-      }
-      case MARKLIN_NEW:
-      case MFX: {
-        impl->train_ = new dcc::MMNewTrain(dcc::MMAddress(address));
-        break;
-      }
-      case DCC_28: {
-        impl->train_ = new dcc::Dcc28Train(dcc::DccShortAddress(address));
-        break;
-      }
-      case DCC_128: {
-        impl->train_ = new dcc::Dcc128Train(dcc::DccShortAddress(address));
-        break;
-      }
-#ifndef __FreeRTOS__
-      case FAKE_DRIVE: {
-        impl->train_ = new nmranet::LoggingTrain(address);
-        break;
-      }
-#endif
-      default:
-        DIE("Unhandled train drive mode.");
-    }
-    if (impl->train_) {
-      impl->node_ = new nmranet::TrainNode(traction_service, impl->train_);
-      impl->eventHandler_ = new nmranet::FixedEventProducer<
-          nmranet::TractionDefs::IS_TRAIN_EVENT>(impl->node_);
-    }
+    create_impl(train_id, db->get_drive_mode(train_id),
+                db->get_legacy_address(train_id));
   }
   fdiSpace_.reset(new TrainFDISpace(this));
   memoryConfigService_->registry()->insert(
       nullptr, nmranet::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+}
+
+AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
+                                                int address) {
+  Impl* impl = new Impl;
+  impl->id = train_id;
+  trains_.push_back(impl);
+  switch (mode & 7) {
+    case MARKLIN_OLD: {
+      impl->train_ = new dcc::MMOldTrain(dcc::MMAddress(address));
+      break;
+    }
+    case MARKLIN_NEW:
+    case MFX: {
+      impl->train_ = new dcc::MMNewTrain(dcc::MMAddress(address));
+      break;
+    }
+    case DCC_28: {
+      if ((mode & DCC_LONG_ADDRESS) || address >= 128) {
+        impl->train_ = new dcc::Dcc28Train(dcc::DccLongAddress(address));
+      } else {
+        impl->train_ = new dcc::Dcc28Train(dcc::DccShortAddress(address));
+      }
+      break;
+    }
+    case DCC_128: {
+      if ((mode & DCC_LONG_ADDRESS) || address >= 128) {
+        impl->train_ = new dcc::Dcc128Train(dcc::DccLongAddress(address));
+      } else {
+        impl->train_ = new dcc::Dcc128Train(dcc::DccShortAddress(address));
+      }
+      break;
+    }
+#ifndef __FreeRTOS__
+    case FAKE_DRIVE: {
+      impl->train_ = new nmranet::LoggingTrain(address);
+      break;
+    }
+#endif
+    default:
+      DIE("Unhandled train drive mode.");
+  }
+  if (impl->train_) {
+    impl->node_ = new nmranet::TrainNode(tractionService_, impl->train_);
+    impl->eventHandler_ =
+        new nmranet::FixedEventProducer<nmranet::TractionDefs::IS_TRAIN_EVENT>(
+            impl->node_);
+  }
+  return impl;
+}
+
+/// TODO(balazs.racz) this should be filled in properly.
+static const struct const_loco_db_t anonymous_train_entry = {
+    12,
+    {
+     0, 2, 3, 4, 0xff,
+    },
+    {
+     LIGHT, BEAMER, HORN, ABV, 0xff,
+    },
+    "",
+    MFX};
+
+nmranet::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
+  if ((drive_type & 7) == 0) {
+    drive_type = static_cast<DccMode>(drive_type | DCC_28);
+  }
+  Impl* impl = create_impl(-1, drive_type, address);
+
+  impl->lokdb_entry_ = new const_loco_db_t(anonymous_train_entry);
+  const_loco_db_t* entry = impl->lokdb_entry_;
+  memset(entry, 0, sizeof(*entry));
+  integer_to_buffer(impl->train_->legacy_address(),
+                    const_cast<char*>(entry->name));
+  uint8_t* fnmap = const_cast<uint8_t*>(entry->function_mapping);
+  uint8_t* fnlab = const_cast<uint8_t*>(entry->function_labels);
+  for (int i = 0; i < DCC_MAX_FN - 1; ++i) {
+    fnmap[i] = i;
+    fnlab[i] = FN_UNKNOWN;
+  }
+  fnmap[DCC_MAX_FN] = 0xff;
+  fnlab[DCC_MAX_FN] = 0xff;
+  fnlab[0] = LIGHT;
+  fnlab[2] = HORN;
+  fnlab[3] = BELL;
+  return impl->node_->node_id();
 }
 
 AllTrainNodes::~AllTrainNodes() {

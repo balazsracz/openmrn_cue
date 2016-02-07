@@ -58,19 +58,23 @@ extern const size_t const_lokdb_size;
 enum Symbols {
   LIGHT = 1,
   BEAMER = 2,
+  BELL = 3,
+  HORN = 128 + 4,
   SHUNT = 5,
   TELEX = 6,
+  PANTO = 6,
+  SMOKE = 7,
   ABV = 8,
-  SMOKE = 10,
+  WHISTLE = 128 + 9,
+  SOUND = 10,
   FNT11 = 11,
-  FNT12 = 12,
+  SPEECH = 128 + 12,
   ENGINE = 13,
   LIGHT1 = 14,
   LIGHT2 = 15,
-  HONK = 132,
-  WHISTLE = 133,
+  FN_UNKNOWN = 127,
+  MOMENTARY = 128,
   FNP = 139,
-  SPEECH = 140,
   SOUNDP = 141
 };
 
@@ -87,7 +91,8 @@ enum DccMode {
 
   PUSHPULL = 8,
   MARKLIN_TWOADDR = 16,
-  OLCBUSER = 32
+  OLCBUSER = 32,
+  DCC_LONG_ADDRESS = 64
 };
 
 class TrainDb {
@@ -112,6 +117,14 @@ class TrainDb {
    * alive forever (point to read-only memory). */
   const char* get_train_name(unsigned train_id);
 
+  /** Retrieves the legacy address of the train. Requires:
+   * is_train_id_known(train_id) */
+  int get_legacy_address(unsigned train_id);
+
+  /** Retrieves the traction drive mode of the train. Requires:
+   * is_train_id_known(train_id) */
+  DccMode get_legacy_drive_mode(unsigned train_id);
+
   /** Retrieves the address of a function mapped to a specific fn_id.
    *
    * @param fn_id is a (dense) function identifier, starting at 2, of assigned
@@ -133,7 +146,7 @@ class TrainDb {
    * @param train_id must be a valid train id.
    * @returns a DccMode enum value -- low 3 bits are an enum, bit 3 and 4 are
    * bitmasks. */
-  unsigned get_drive_mode(unsigned train_id);
+  DccMode get_drive_mode(unsigned train_id);
 };
 
 }  // namespace commandstation

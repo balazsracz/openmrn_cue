@@ -36,6 +36,7 @@
 #define _BRACZ_COMMANDSTATION_FINDTRAINNODE_HXX_
 
 #include "commandstation/TrainDb.hxx"
+#include "commandstation/AllTrainNodes.hxx"
 #include "executor/StateFlow.hxx"
 #include "nmranet/If.hxx"
 #include "nmranet/Node.hxx"
@@ -43,76 +44,90 @@
 namespace commandstation {
 
 struct FindTrainNodeRequest {
-    
-    enum TrainType {
-        UNKNOWN = 0,
-        DCC_SHORT,
-        DCC_LONG,
-        MARKLIN_OLD,
-        MARKLIN_NEW,
-    };
+  /** Requests finding a train node with a given address or cab number.
+      DccMode should be set to the expected drive type (bits 0..2) if the
+      train node needs to be freshly allocated. Set the bit OLCBUSER if the
+      expected drive type is not known or don't care. Set the
+      DCC_LONG_ADDRESS bit if the inbound address should be interpreted as a
+      long address (even if it is a small number). */
+  void reset(DccMode type, int address) {
+    this->address = address;
+    this->type = type;
+  }
 
-    void reset(TrainType type, int address) {
-        this->address = address;
-        this->type = type;
-    }
-    
-    TrainType type;
-    int address;
+  DccMode type;
+  int address;
 
-    BarrierNotifiable done;
+  BarrierNotifiable done;
 
-    int resultCode;
-    nmranet::NodeID nodeId;
+  int resultCode;
+  nmranet::NodeID nodeId;
 };
 
 class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
-public:
-    /// @param node is a local node from which queries can be sent out to the
-    /// network. @param train_db is the allocated local train store.
-    FindTrainNode(nmranet::Node* node, TrainDb* train_db)
-        : StateFlow<Buffer<FindTrainNodeRequest>, QList<1>>(node->iface()),
+ public:
+  /// @param node is a local node from which queries can be sent out to the
+  /// network. @param train_db is the allocated local train store.
+  FindTrainNode(nmranet::Node* node, TrainDb* train_db,
+                AllTrainNodes* local_train_nodes)
+      : StateFlow<Buffer<FindTrainNodeRequest>, QList<1>>(node->iface()),
         trainDb_(train_db),
+        allTrainNodes_(local_train_nodes),
         node_(node) {}
 
-private:
-    Action entry() {
-        return return_with_error(nmranet::Defs::ERROR_UNIMPLEMENTED);
-    }
+ private:
+  Action entry() {
+    return call_immediately(STATE(try_find_in_db));
+    return return_with_error(nmranet::Defs::ERROR_UNIMPLEMENTED);
+  }
 
-    Action return_ok(nmranet::NodeID nodeId)
-    {
-        input()->nodeId = nodeId;
-        return return_with_error(0);
+  /** Looks through all nodes that exist in the train DB and tries to find one
+   * with the given legacy address. */
+  Action try_find_in_db() {
+    for (int train_id = 0; trainDb_->is_train_id_known(train_id); ++train_id) {
+      if (input()->address != trainDb_->get_legacy_address(train_id)) {
+        continue;
+      }
+      // TODO: check drive mode.
+      return return_ok(trainDb_->get_traction_node(train_id));
     }
+    return call_immediately(STATE(allocate_new_train));
+  }
 
-    Action return_with_error(int error)
-    {
-        if (error) {
-            input()->nodeId = 0;
-        }
-        input()->resultCode = error;
-        return_buffer();
-        return exit();
+  /** Asks the AllTrainNodes structure to allocate a new train node. */
+  Action allocate_new_train() {
+    nmranet::NodeID n =
+        allTrainNodes_->allocate_node(input()->type, input()->address);
+    return return_ok(n);
+  }
+
+  Action return_ok(nmranet::NodeID nodeId) {
+    input()->nodeId = nodeId;
+    return return_with_error(0);
+  }
+
+  Action return_with_error(int error) {
+    if (error) {
+      input()->nodeId = 0;
     }
+    input()->resultCode = error;
+    return_buffer();
+    return exit();
+  }
 
-    FindTrainNodeRequest *input()
-    {
-        return message()->data();
-    }
+  FindTrainNodeRequest* input() { return message()->data(); }
 
-    nmranet::If *iface()
-    {
-        // We know that the service pointer is the node's interface from the
-        // constructor.
-        return static_cast<nmranet::If *>(service());
-    }
+  nmranet::If* iface() {
+    // We know that the service pointer is the node's interface from the
+    // constructor.
+    return static_cast<nmranet::If*>(service());
+  }
 
-    TrainDb* trainDb_;
-    nmranet::Node* node_;
+  TrainDb* trainDb_;
+  AllTrainNodes* allTrainNodes_;
+  nmranet::Node* node_;
 };
 
 }  // namespace commandstation
 
-#endif // _BRACZ_COMMANDSTATION_FINDTRAINNODE_HXX_
-
+#endif  // _BRACZ_COMMANDSTATION_FINDTRAINNODE_HXX_
