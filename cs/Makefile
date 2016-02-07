@@ -11,3 +11,6 @@ include $(OPENMRNPATH)/etc/recurse.mk
 docs:
 	make -C doc docs || exit 1;
 
+
+tests:
+	make -C targets/linux.x86 tests

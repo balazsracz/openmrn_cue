@@ -38,7 +38,7 @@
 #include "server/rpc_test_helper.hxx"
 #include "custom/HostProtocol.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
-#include "mobilestation/TrainDb.hxx"
+#include "commandstation/TrainDb.hxx"
 #include "utils/MockTrain.hxx"
 #include "utils/Clock.hxx"
 
@@ -47,7 +47,7 @@ using nmranet::AsyncDatagramTest;
 using nmranet::TrainService;
 using nmranet::MockTrain;
 using nmranet::TrainNode;
-using mobilestation::TrainDb;
+using commandstation::TrainDb;
 using mobilestation::MobileStationTraction;
 
 namespace server {
@@ -406,7 +406,7 @@ TEST_F(TrainControlServiceTest, GetLokDb) {
 
 OVERRIDE_CONST(mobile_station_train_count, 0);
 
-namespace mobilestation {
+namespace commandstation {
 const struct const_loco_db_t const_lokdb[] = {
     // 0
     {0x57,

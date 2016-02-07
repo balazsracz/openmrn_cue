@@ -102,7 +102,8 @@ TEST_F(UpdateProcessorTest, RefreshThrottle) {
   send_empty_packet();qwait();
   // idle packet and the host log will show up.
   EXPECT_CALL(trackSendQueue_, arrived(0x04, ElementsAre(0xFF, 0, 0xFF)));
-  EXPECT_CALL(host_packet_queue_, TransmitPacket(_));
+  // We removed the idle packet host logging.
+  //EXPECT_CALL(host_packet_queue_, TransmitPacket(_));
   // if we send too many packets quickly.
   send_empty_packet(); wait();
 }
