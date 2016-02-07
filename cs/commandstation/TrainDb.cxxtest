@@ -9,6 +9,21 @@ void PrintTo(const nmranet::NodeID& id, std::ostream& o) {
 
 namespace commandstation {
 
+
+const struct const_loco_db_t const_lokdb[] = {
+  // 0
+  { 2 , { 0, 2, 3, 4,  0xff, }, { LIGHT, HONK, SPEECH, ABV,  0xff, },
+    "ICE 2", DCC_128 }, // todo: check fnbits
+  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
+    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
+  { 0, {0, }, {0,}, "", 0},
+  //  { 0, {0, }, {0,}, "", 0},
+  //{ 0, {0, }, {0,}, "", 0},
+};
+
+const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+
+
 TEST(TrainDbTest, getaddress) {
   TrainDb db;
   ASSERT_TRUE(db.is_train_id_known(1));
@@ -18,8 +33,8 @@ TEST(TrainDbTest, getaddress) {
 TEST(TrainDbTest, isknown) {
   TrainDb db;
   EXPECT_TRUE(db.is_train_id_known(1));
-  EXPECT_TRUE(db.is_train_id_known(26));
-  EXPECT_FALSE(db.is_train_id_known(27));
+  EXPECT_TRUE(db.is_train_id_known(0));
+  EXPECT_FALSE(db.is_train_id_known(2));
   EXPECT_FALSE(db.is_train_id_known(150));
 }
 
