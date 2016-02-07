@@ -1,0 +1,3 @@
+#include "utils/async_traction_test_helper.hxx"
+
+#include "commandstation/FindTrainNode.hxx"
