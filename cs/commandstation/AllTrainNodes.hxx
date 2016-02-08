@@ -32,6 +32,9 @@
  * @date 20 May 2014
  */
 
+#ifndef _BRACZ_COMMANDSTATION_ALLTRAINNODES_HXX_
+#define _BRACZ_COMMANDSTATION_ALLTRAINNODES_HXX_
+
 #include <memory>
 #include <vector>
 
@@ -103,3 +106,5 @@ class AllTrainNodes {
 };
 
 }  // namespace commandstation
+
+#endif /* _BRACZ_COMMANDSTATION_ALLTRAINNODES_HXX_ */
