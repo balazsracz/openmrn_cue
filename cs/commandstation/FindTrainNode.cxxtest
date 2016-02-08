@@ -1,3 +1,66 @@
 #include "utils/async_traction_test_helper.hxx"
 
 #include "commandstation/FindTrainNode.hxx"
+#include "nmranet/DatagramCan.hxx"
+#include "commandstation/AllTrainNodes.hxx"
+#include "nmranet/SimpleInfoProtocol.hxx"
+#include "nmranet/MemoryConfig.hxx"
+
+
+namespace nmranet {
+extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
+
+extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
+
+}
+
+namespace commandstation {
+
+const struct const_loco_db_t const_lokdb[] = {
+  // 0
+  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
+    "BR 260417", FAKE_DRIVE },  // ESU LokPilot 3.0
+  { 2 , { 0, 2, 3, 4,  0xff, }, { LIGHT, HORN, SPEECH, ABV,  0xff, },
+    "ICE 2", FAKE_DRIVE }, // todo: check fnbits
+  { 0, {0, }, {0,}, "", 0},
+  //  { 0, {0, }, {0,}, "", 0},
+  //{ 0, {0, }, {0,}, "", 0},
+};
+
+extern const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+
+
+class FindTrainNodeTestBase : public nmranet::TractionTest {
+protected:
+    FindTrainNodeTestBase() {
+        inject_allocated_alias(0x340);
+        inject_allocated_alias(0x341);
+        inject_allocated_alias(0x342);
+    }
+
+    ~FindTrainNodeTestBase() {
+        wait();
+    }
+};
+
+
+class FindTrainNodeTest : public FindTrainNodeTestBase {
+protected:
+    ~FindTrainNodeTest() {
+        wait();
+    }
+
+
+    nmranet::CanDatagramService dgHandler_{ifCan_.get(), 5, 2};
+    nmranet::MemoryConfigHandler memCfgHandler_{&dgHandler_, node_, 5};
+    nmranet::SimpleInfoFlow infoFlow_{&g_service};
+    TrainDb db_;
+    AllTrainNodes allTrainNodes_{&db_, &trainService_, &infoFlow_, &memCfgHandler_};
+};
+
+TEST_F(FindTrainNodeTest, CreateDestroy) {
+    wait();
+}
+
+
+}  // namespace commandstation
