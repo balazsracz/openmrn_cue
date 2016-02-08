@@ -35,6 +35,7 @@
 #include "commandstation/AllTrainNodes.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "utils/async_traction_test_helper.hxx"
+#include "utils/format_utils.hxx"
 #include "nmranet/SimpleInfoProtocol.hxx"
 #include "nmranet/DatagramCan.hxx"
 #include "nmranet/MemoryConfig.hxx"
@@ -150,6 +151,17 @@ TEST_F(AllTrainNodesTest, CreateNode) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41600000000;");
   wait();
+  auto* db_entry = trainNodes_->get_traindb_entry(3);
+  ASSERT_TRUE(db_entry);
+  EXPECT_EQ(183, db_entry->address);
+  EXPECT_EQ(string("183"), db_entry->name);
+}
+
+TEST(bufferrender, T183) {
+    char buf[16];
+    memset(buf, 0, sizeof(buf));
+    integer_to_buffer(183, buf);
+    EXPECT_EQ(string("183"), buf);
 }
 
 // TODO: add test for retrieving via memory config protocol.

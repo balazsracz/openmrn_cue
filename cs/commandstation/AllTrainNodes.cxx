@@ -366,8 +366,8 @@ nmranet::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
     fnmap[i] = i;
     fnlab[i] = FN_UNKNOWN;
   }
-  fnmap[DCC_MAX_FN] = 0xff;
-  fnlab[DCC_MAX_FN] = 0xff;
+  fnmap[DCC_MAX_FN - 1] = 0xff;
+  fnlab[DCC_MAX_FN - 1] = 0xff;
   fnlab[0] = LIGHT;
   fnlab[2] = HORN;
   fnlab[3] = BELL;
