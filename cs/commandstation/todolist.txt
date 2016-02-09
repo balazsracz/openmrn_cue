@@ -1,0 +1,11 @@
+
+
+const_traindb_t is in the following places:
+- AllTrainNodes.cxxtest
+- FdiXmlGenerator.test
+- FindTrainNode.cxxtest
+- TrainDb.cxxtest
+
+- need to get rid of the lokdb entry in the AllTrainNodes object for anonymous trains.
+- remove function numbers from const loco db t.
+
