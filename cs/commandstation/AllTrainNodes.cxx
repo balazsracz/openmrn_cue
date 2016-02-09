@@ -112,8 +112,6 @@ struct AllTrainNodes::Impl {
   nmranet::SimpleEventHandler* eventHandler_ = nullptr;
   nmranet::Node* node_ = nullptr;
   nmranet::TrainImpl* train_ = nullptr;
-  // Filled in only for anonymous trains.
-  std::shared_ptr<DccTrainDbEntry> lokdb_entry_;
 };
 
 nmranet::TrainImpl* AllTrainNodes::get_train_impl(int id) {
@@ -133,11 +131,6 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
 /// Returns a traindb entry or nullptr if the id is too high.
 std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(int id) {
   if (id >= (int)trains_.size()) return nullptr;
-  /// TODO(balazs.racz) really all traindb entries should be handled by the
-  /// actual traindb.
-  if (trains_[id]->lokdb_entry_) {
-    return trains_[id]->lokdb_entry_;
-  }
   return db_->get_entry(id);
 }
 
@@ -381,12 +374,12 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
 }
 
 nmranet::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
+  // The default drive type is DCC_28.
   if ((drive_type & 7) == 0) {
     drive_type = static_cast<DccMode>(drive_type | DCC_28);
   }
   Impl* impl = create_impl(-1, drive_type, address);
-
-  impl->lokdb_entry_.reset(new DccTrainDbEntry(address, drive_type));
+  impl->id = db_->add_dynamic_entry(new DccTrainDbEntry(address, drive_type));
   return impl->node_->node_id();
 }
 

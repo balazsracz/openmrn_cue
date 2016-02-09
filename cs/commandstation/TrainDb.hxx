@@ -103,6 +103,8 @@ enum DccMode {
 
 class TrainDbEntry {
 public:
+  virtual ~TrainDbEntry();
+
   /** Retrieves the NMRAnet NodeID for the virtual node that represents a
    * particular train known to the database.
    */
@@ -124,12 +126,6 @@ public:
   /** Returns the largest valid function ID for this train, or -1 if the train
       has no functions. */
   virtual int get_max_fn() = 0;
-
-protected:
-  /** Only the TrainDB is allowed to delete entry objects. */
-  virtual ~TrainDbEntry();
-
-  friend class std::shared_ptr<TrainDbEntry>;
 };
 
 /// Used for testing code that depends on traindb entries.
@@ -154,6 +150,16 @@ class TrainDb {
   std::shared_ptr<TrainDbEntry> get_entry(unsigned train_id) {
     if (train_id < entries_.size()) return entries_[train_id];
     return nullptr;
+  }
+
+  /** Inserts a given entry into the train database. @param entry is the new
+      traindsb entry. Transfers ownership to the TrainDb class. @returns the
+      new train_id for the given entry. */
+  unsigned add_dynamic_entry(TrainDbEntry* entry) {
+    unsigned s = entries_.size();
+    std::shared_ptr<TrainDbEntry> e(entry);
+    entries_.push_back(e);
+    return s;
   }
 
 private:
