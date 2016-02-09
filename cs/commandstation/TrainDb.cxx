@@ -3,6 +3,8 @@
 #include <vector>
 
 #include "nmranet/TractionDefs.hxx"
+#include "commandstation/TrainDbCdi.hxx"
+
 
 namespace commandstation {
 
