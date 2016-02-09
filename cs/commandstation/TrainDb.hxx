@@ -40,12 +40,10 @@
 
 namespace commandstation {
 
-#define DCC_MAX_FN 22
+#define DCC_MAX_FN 29
 
 struct const_traindb_entry_t {
   const uint16_t address;
-  // Maps the logical function numbers ot F bits. 0xff terminates the array.
-  const uint8_t function_mapping[DCC_MAX_FN];
   // MoSta function definition, parallel to function_mapping.
   const uint8_t function_labels[DCC_MAX_FN];
   // Any zero character ends, but preferable to pad it with zeroes.
