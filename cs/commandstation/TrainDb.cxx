@@ -6,87 +6,95 @@
 
 namespace commandstation {
 
-static vector<uint8_t> compute_num_fn_per_train() {
-  vector<uint8_t> ret;
-  ret.reserve(const_lokdb_size);
-  for (unsigned i = 0; i < const_lokdb_size; ++i) {
-    const struct const_loco_db_t *entry = const_lokdb + i;
-    int n = 0;
-    if (entry->address) {
-      while (n < DCC_MAX_FN && entry->function_mapping[n] != 0xff &&
-             entry->function_labels[n] != 0xff)
-        ++n;
-      HASSERT(n < DCC_MAX_FN && entry->function_mapping[n] == 0xff &&
-              entry->function_labels[n] == 0xff);
+TrainDbEntry::~TrainDbEntry() {}
+
+class PtrTrainDbEntry : public TrainDbEntry {
+ public:
+  /** Retrieves the NMRAnet NodeID for the virtual node that represents a
+   * particular train known to the database.
+   */
+  virtual nmranet::NodeID get_traction_node() {
+    if (entry()->mode & OLCBUSER) {
+      return 0x050101010000ULL | static_cast<nmranet::NodeID>(legacy_address());
+    } else {
+      return nmranet::TractionDefs::NODE_ID_DCC |
+             static_cast<nmranet::NodeID>(legacy_address());
     }
-    ret.push_back(n);
   }
-  return ret;
+
+  /** Retrieves the name of the train. */
+  virtual string get_train_name() { return entry()->name; }
+
+  /** Retrieves the legacy address of the train. */
+  virtual int get_legacy_address() { return legacy_address(); }
+
+  /** Retrieves the traction drive mode of the train. */
+  virtual DccMode get_legacy_drive_mode() { return static_cast<DccMode>(entry()->mode); }
+
+  /** Retrieves the label assigned to a given function, or FN_UNUSED if the
+      function does not exist. */
+  virtual unsigned get_function_label(unsigned fn_id) {
+    if (fn_id >= DCC_MAX_FN) return FN_NONEXISTANT;
+    if (fn_id > maxFn_) return FN_NONEXISTANT;
+    return entry()->function_labels[fn_id];
+  }
+
+  /** Returns the largest valid function ID for this train, or -1 if the train
+      has no functions. */
+  virtual int get_max_fn() { return ((int)maxFn_) - 1; }
+
+ protected:
+  /** Child classes must call tis once after creation. */
+  void init() {
+    maxFn_ = 0;
+    for (int i = 0; i < DCC_MAX_FN; ++i) {
+      if (entry()->function_labels[i] != FN_NONEXISTANT) {
+        maxFn_ = i + 1;
+      }
+    }
+  }
+
+  virtual const const_traindb_entry_t *entry() = 0;
+
+ private:
+  uint16_t legacy_address() { return entry()->address; }
+
+  uint8_t maxFn_;  // Largest valid function ID for this train.
+};
+
+class ConstTrainDbEntry : public PtrTrainDbEntry {
+ public:
+  ConstTrainDbEntry(uint8_t offset) : offset_(offset) { init(); }
+  virtual const const_traindb_entry_t *entry() { return const_lokdb + offset_; }
+
+ private:
+  uint8_t offset_;  // which offset this entry is in the const_lokdb structure.
+};
+
+class ExtPtrTrainDbEntry : public PtrTrainDbEntry {
+ public:
+  ExtPtrTrainDbEntry(const const_traindb_entry_t* e) : entry_(e) { init(); }
+  virtual const const_traindb_entry_t *entry() { return entry_; }
+
+ private:
+  const const_traindb_entry_t *entry_;
+};
+
+
+std::shared_ptr<TrainDbEntry> create_lokdb_entry(const const_traindb_entry_t* e) {
+  return std::shared_ptr<TrainDbEntry>(new ExtPtrTrainDbEntry(e));
 }
 
-static const vector<uint8_t> g_num_fn_per_train = compute_num_fn_per_train();
 
-bool TrainDb::is_train_id_known(unsigned train_id) {
-  return train_id < const_lokdb_size && (const_lokdb[train_id].address > 0);
-}
-
-const char* TrainDb::get_train_name(unsigned train_id) {
-  HASSERT(is_train_id_known(train_id));
-  const struct const_loco_db_t *entry = const_lokdb + train_id;
-  return entry->name;
-}
-
-int TrainDb::get_legacy_address(unsigned train_id) {
-  HASSERT(is_train_id_known(train_id));
-  const struct const_loco_db_t *entry = const_lokdb + train_id;
-  return entry->address;
-}
-
-DccMode TrainDb::get_legacy_drive_mode(unsigned train_id) {
-  HASSERT(is_train_id_known(train_id));
-  const struct const_loco_db_t *entry = const_lokdb + train_id;
-  return static_cast<DccMode>(entry->mode);
-}
-
-nmranet::NodeID TrainDb::get_traction_node(unsigned train_id) {
-  HASSERT(is_train_id_known(train_id));
-  const struct const_loco_db_t *entry = const_lokdb + train_id;
-  if (entry->mode & OLCBUSER) {
-    return 0x050101010000ULL | static_cast<nmranet::NodeID>(entry->address);
-  } else {
-    return nmranet::TractionDefs::NODE_ID_DCC | static_cast<nmranet::NodeID>(entry->address);
+TrainDb::TrainDb() {
+  for (unsigned i = 0; i < const_lokdb_size; ++i) {
+    std::shared_ptr<TrainDbEntry> e(new ConstTrainDbEntry(i));
+    if (e->get_legacy_address()) {
+      entries_.emplace_back(std::move(e));
+    }
   }
 }
 
-unsigned TrainDb::get_function_address(unsigned train_id, unsigned fn_id) {
-  HASSERT(is_train_id_known(train_id));
-  const struct const_loco_db_t *entry = const_lokdb + train_id;
-  if (fn_id < 2) return UNKNOWN_FUNCTION;
-  fn_id -= 2;
-  // Pause and reverse should be just above the dcc function space.
-  if (fn_id == 30) return 29;
-  if (fn_id == 31) return 30;
-  if (fn_id >= DCC_MAX_FN) return UNKNOWN_FUNCTION;
-  if (fn_id >= g_num_fn_per_train[train_id]) return UNKNOWN_FUNCTION;
-  if (entry->function_mapping[fn_id] == 0xff) return UNKNOWN_FUNCTION;
-  return entry->function_mapping[fn_id];
-}
-
-unsigned TrainDb::get_function_label(unsigned train_id, unsigned fn_id) {
-  HASSERT(is_train_id_known(train_id));
-  const struct const_loco_db_t *entry = const_lokdb + train_id;
-  if (fn_id < 2) return UNKNOWN_FUNCTION;
-  fn_id -= 2;
-  if (fn_id >= DCC_MAX_FN) return UNKNOWN_FUNCTION;
-  if (fn_id >= g_num_fn_per_train[train_id]) return UNKNOWN_FUNCTION;
-  if (entry->function_labels[fn_id] == 0xff) return UNKNOWN_FUNCTION;
-  return entry->function_labels[fn_id];
-}
-
-DccMode TrainDb::get_drive_mode(unsigned train_id) {
-  HASSERT(is_train_id_known(train_id));
-  const struct const_loco_db_t *entry = const_lokdb + train_id;
-  return static_cast<DccMode>(entry->mode);
-}
+TrainDb::~TrainDb() {}
 
 }  // namespace commandstation

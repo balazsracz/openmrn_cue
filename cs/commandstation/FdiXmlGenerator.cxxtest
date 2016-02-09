@@ -38,15 +38,18 @@
 namespace commandstation {
 
 
-const struct const_loco_db_t my_lokdb[] = {
-  { 51, { 0, 1, 2, 3, 4, 6, 0xff, }, { LIGHT, TELEX, HORN, SHUNT, ABV, 0x3e, 0xff, },
+const struct const_traindb_entry_t const_lokdb[] = {
+  { 51, { 0, 1, 2, 3, 4, 6, 0xff, }, { LIGHT, TELEX, HORN, SHUNT, ABV, 0, 0x3e, },
     "BR 260417", DCC_28 },  // ESU LokPilot 3.0
   { 50, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0xff} , { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_128 | PUSHPULL },  // ESU loksound V4.0 MM/DCC
-  { 22, { 0xff, }, { 0xff, },
+  { 22, {  }, {  },
     "Fooo", DCC_128 }, // todo: there is no beamer here // LD-32 decoder
-  { 22, { 0, 0xff, }, { LIGHT, 0xff, },
+  { 22, { 0, }, { LIGHT, },
     "RE 460 TSR", DCC_128 }, // todo: there is no beamer here // LD-32 decoder
 };
+
+extern const size_t const_lokdb_size =
+    sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 class FdiXmlGeneratorTest : public testing::Test {
  protected:
@@ -64,8 +67,7 @@ class FdiXmlGeneratorTest : public testing::Test {
   }
 
   void load_lok(int n) {
-    memcpy(gen.entry(), my_lokdb + n, sizeof(*gen.entry()));
-    gen.reset();
+    gen.reset(create_lokdb_entry(const_lokdb + n));
   }
 
   FdiXmlGenerator gen;

@@ -41,10 +41,7 @@ class FdiXmlGenerator : public XmlGenerator {
  public:
   /// Call this after the lokdb on entry was overwritten with the new loco's
   /// data.
-  void reset();
-
-  /// Fill in the current train's LokDb entry here.
-  const_loco_db_t* entry() { return &entry_; }
+  void reset(std::shared_ptr<TrainDbEntry> entry);
 
  private:
   void generate_more() override;
@@ -61,7 +58,7 @@ class FdiXmlGenerator : public XmlGenerator {
   };
 
   State state_;
-  const_loco_db_t entry_{0, {0, }, {0, }, "", 0};
+  std::shared_ptr<TrainDbEntry> entry_;
   int nextFunction_;
 };
 

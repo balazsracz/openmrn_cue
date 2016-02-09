@@ -84,8 +84,9 @@ static const char* label_for_function(uint8_t type) {
   return nullptr;
 }
 
-void FdiXmlGenerator::reset() {
+void FdiXmlGenerator::reset(std::shared_ptr<TrainDbEntry> lok) {
   state_ = STATE_START;
+  entry_ = lok;
   internal_reset();
 }
 
@@ -99,12 +100,15 @@ void FdiXmlGenerator::generate_more() {
         return;
       }
       case STATE_START_FN: {
-        if (((unsigned)nextFunction_) >= sizeof(entry_.function_mapping) ||
-            entry_.function_mapping[nextFunction_] == 0xff) {
+        while (nextFunction_ <= entry_->get_max_fn() &&
+               entry_->get_function_label(nextFunction_) == FN_NONEXISTANT) {
+          ++nextFunction_;
+        }
+        if (nextFunction_ > entry_->get_max_fn()) {
           state_ = STATE_NO_MORE_FN;
           continue;
         }
-        if (entry_.function_labels[nextFunction_] & 0x80) {
+        if (entry_->get_function_label(nextFunction_) & 0x80) {
           add_to_output(from_const_string(kFdiXmlMomentaryFunction));
         } else {
           add_to_output(from_const_string(kFdiXmlBinaryFunction));
@@ -115,10 +119,10 @@ void FdiXmlGenerator::generate_more() {
       case STATE_FN_NAME: {
         add_to_output(from_const_string("<name>"));
         const char* label =
-            label_for_function(entry_.function_labels[nextFunction_]);
+          label_for_function(entry_->get_function_label(nextFunction_));
         if (!label) {
           add_to_output(from_const_string("F"));
-          add_to_output(from_integer(entry_.function_mapping[nextFunction_]));
+          add_to_output(from_integer(nextFunction_));
         } else {
           add_to_output(from_const_string(label));
         }
@@ -128,7 +132,7 @@ void FdiXmlGenerator::generate_more() {
       }
       case STATE_FN_NUMBER: {
         add_to_output(from_const_string("<number>"));
-        add_to_output(from_integer(entry_.function_mapping[nextFunction_]));
+        add_to_output(from_integer(nextFunction_));
         add_to_output(from_const_string("</number>\n</function>\n"));
         state_ = STATE_FN_END;
         return;

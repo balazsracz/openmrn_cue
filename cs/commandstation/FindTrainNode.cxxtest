@@ -16,7 +16,7 @@ extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
 
 namespace commandstation {
 
-const struct const_loco_db_t const_lokdb[] = {
+const struct const_traindb_entry_t const_lokdb[] = {
   // 0
   { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
     "BR 260417", FAKE_DRIVE },  // ESU LokPilot 3.0

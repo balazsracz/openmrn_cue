@@ -52,7 +52,7 @@ extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 
 namespace commandstation {
 
-const struct const_loco_db_t const_lokdb[] = {
+const struct const_traindb_entry_t const_lokdb[] = {
     // 0
     {43,
      {
@@ -151,10 +151,10 @@ TEST_F(AllTrainNodesTest, CreateNode) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41600000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3);
+  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
   ASSERT_TRUE(db_entry);
-  EXPECT_EQ(183, db_entry->address);
-  EXPECT_EQ(string("183"), db_entry->name);
+  EXPECT_EQ(183, db_entry->get_legacy_address());
+  EXPECT_EQ(string("183"), db_entry->get_train_name());
 }
 
 TEST(bufferrender, T183) {

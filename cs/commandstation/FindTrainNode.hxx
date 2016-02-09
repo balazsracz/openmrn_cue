@@ -85,8 +85,8 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
    * with the given legacy address. */
   Action try_find_in_db() {
     for (unsigned train_id = 0; train_id < allTrainNodes_->size(); ++train_id) {
-      auto* e = allTrainNodes_->get_traindb_entry(train_id);
-      if (!e || input()->address != e->address) {
+      auto e = allTrainNodes_->get_traindb_entry(train_id);
+      if (!e.get() || input()->address != e->get_legacy_address()) {
         continue;
       }
       // TODO: check drive mode.

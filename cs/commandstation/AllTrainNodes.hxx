@@ -60,7 +60,7 @@ class AllTrainNodes {
   nmranet::TrainImpl* get_train_impl(int id);
 
   /// Returns a traindb entry or nullptr if the id is too high.
-  const const_loco_db_t* get_traindb_entry(int id);
+  std::shared_ptr<TrainDbEntry> get_traindb_entry(int id);
 
   /// Returns a node id or 0 if the id is not known to be a train.
   nmranet::NodeID get_train_node_id(int id);
