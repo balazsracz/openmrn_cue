@@ -87,8 +87,12 @@ CDI_GROUP_ENTRY(name, nmranet::StringConfigEntry<16>, Name("Name"), Description(
 CDI_GROUP_ENTRY(all_functions, TrainDbCdiAllFunctionGroup);
 CDI_GROUP_END();
 
+CDI_GROUP(TrainConfigDef, MainCdi());
+// We do not support ACDI and we do not support adding the <identification>
+// information in here because both of these vary train by train.
+CDI_GROUP_ENTRY(train, TrainDbCdiEntry);
+CDI_GROUP_END();
+
 };
 
 #endif // _BRACZ_COMMANDSTATION_TRAINDBCDI_HXX_
-
-
