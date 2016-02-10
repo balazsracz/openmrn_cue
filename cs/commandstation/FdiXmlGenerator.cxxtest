@@ -51,6 +51,29 @@ const struct const_traindb_entry_t const_lokdb[] = {
 extern const size_t const_lokdb_size =
     sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
+TEST(FdiDataTest, FunctionLabelTest) {
+  extern const char* label_for_function(uint8_t type);
+#define EXPECT_FUNCTION(text, fnlabel)                    \
+  if (text == nullptr)                                    \
+    EXPECT_FALSE(label_for_function(fnlabel));            \
+  else {                                                  \
+    ASSERT_TRUE(label_for_function(fnlabel));             \
+    EXPECT_EQ(string(text), label_for_function(fnlabel)); \
+  }
+
+  EXPECT_FUNCTION(nullptr, 37);
+  EXPECT_FUNCTION(nullptr, FNT11);
+  EXPECT_FUNCTION("Bell", BELL);
+  EXPECT_FUNCTION("Horn", HORN);
+  EXPECT_FUNCTION("Horn", HORN & 0x7f);
+  EXPECT_FUNCTION("Horn", HORN | MOMENTARY);
+  EXPECT_FUNCTION("Engine", ENGINE);
+  EXPECT_FUNCTION("Pantgr", PANTO);
+  EXPECT_FUNCTION("Coupler", TELEX);
+
+#undef EXPECT_FUNCTION
+}
+
 class FdiXmlGeneratorTest : public testing::Test {
  protected:
   string generate_all() {

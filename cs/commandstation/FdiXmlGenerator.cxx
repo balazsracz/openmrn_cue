@@ -33,6 +33,7 @@
  */
 
 #include "commandstation/FdiXmlGenerator.hxx"
+#include "commandstation/TrainDb.hxx"
 
 namespace commandstation {
 
@@ -57,28 +58,28 @@ struct FunctionLabel {
 };
 
 static const FunctionLabel labels[] = {  //
-    {1, "Light"},
-    {2, "Beamer"},
-    {3, "Bell"},
-    {5, "Shunt"},
-    {6, "Coupler"},
-    {7, "Smoke"},
-    {8, "ABV"},
-    {10, "Smoke"},
-    {13, "Sound"},
-    {14, "Light1"},
-    {15, "Light2"},
-    {132, "Horn"},
-    {133, "Whistle"},
-    {139, "P"},
-    {140, "Announce"},
-    {141, "Sound"},
+    {LIGHT, "Light"},
+    {BEAMER, "Beamer"},
+    {BELL, "Bell"},
+    {HORN, "Horn"},
+    {SHUNT, "Shunt"},
+    {PANTO, "Pantgr"},
+    {SMOKE, "Smoke"},
+    {ABV, "ABV"},
+    {WHISTLE, "Whistle"},
+    {SOUND, "Sound"},
+    // FNT11 is skipped, rendered as "F<n>"
+    {SPEECH, "Announce"},
+    {ENGINE, "Engine"},
+    {LIGHT1, "Light1"},
+    {LIGHT2, "Light2"},
+    {TELEX, "Coupler"},
     {0, nullptr}};
 
-static const char* label_for_function(uint8_t type) {
+const char* label_for_function(uint8_t type) {
   const FunctionLabel* r = labels;
   while (r->fn) {
-    if (r->fn == type) return r->label;
+    if ((r->fn & ~MOMENTARY) == (type & ~MOMENTARY)) return r->label;
     ++r;
   }
   return nullptr;
