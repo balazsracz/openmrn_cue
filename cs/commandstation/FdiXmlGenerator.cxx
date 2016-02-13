@@ -101,8 +101,10 @@ void FdiXmlGenerator::generate_more() {
         return;
       }
       case STATE_START_FN: {
-        while (nextFunction_ <= entry_->get_max_fn() &&
-               entry_->get_function_label(nextFunction_) == FN_NONEXISTANT) {
+        while (
+            nextFunction_ <= entry_->get_max_fn() &&
+            (entry_->get_function_label(nextFunction_) == FN_NONEXISTANT ||
+             entry_->get_function_label(nextFunction_) == FN_UNINITIALIZED)) {
           ++nextFunction_;
         }
         if (nextFunction_ > entry_->get_max_fn()) {

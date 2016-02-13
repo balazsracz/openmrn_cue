@@ -62,6 +62,8 @@ enum Symbols {
   MOMENTARY = 128,
   FNP = 139,
   SOUNDP = 141,
+  // Empty eeprom will have these bytes.
+  FN_UNINITIALIZED = 255,
 };
 
 enum DccMode {

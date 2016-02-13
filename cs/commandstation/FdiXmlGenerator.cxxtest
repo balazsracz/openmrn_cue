@@ -40,12 +40,12 @@ namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
   { 51, { LIGHT, TELEX, HORN, SHUNT, ABV, 0, 0x3e, },
-    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
-  { 50, { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_128 | PUSHPULL },  // ESU loksound V4.0 MM/DCC
+    "BR 260417", DCC_28 },
+  { 50, { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_128 | PUSHPULL },
   { 22, {  },
-    "Fooo", DCC_128 }, // todo: there is no beamer here // LD-32 decoder
-  { 22, { LIGHT, },
-    "RE 460 TSR", DCC_128 }, // todo: there is no beamer here // LD-32 decoder
+    "Fooo", DCC_128 },
+  { 22, { LIGHT, 0xff, 0xff, LIGHT },
+    "RE 460 TSR", DCC_128 },
 };
 
 extern const size_t const_lokdb_size =
@@ -104,6 +104,10 @@ R"(<?xml version='1.0' encoding='UTF-8'?>
 <function size='1' kind='binary'>
 <name>Light</name>
 <number>0</number>
+</function>
+<function size='1' kind='binary'>
+<name>Light</name>
+<number>3</number>
 </function>
 </group></segment></fdi>)";
 

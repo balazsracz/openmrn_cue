@@ -64,11 +64,12 @@ static const char FNDISPLAY_MAP[] =
   "<relation><property>13</property><value>Engine</value></relation>"
   "<relation><property>14</property><value>Light1</value></relation>"
   "<relation><property>15</property><value>Light2</value></relation>"
-  "<relation><property>17</property><value>Uncouple</value></relation>";
+  "<relation><property>17</property><value>Uncouple</value></relation>"
+  "<relation><property>255</property><value>Unavailable_</value></relation>";
 
 
 CDI_GROUP(TrainDbCdiFunctionGroup, Name("Functions"), Description("Defines what each function button does."));
-CDI_GROUP_ENTRY(icon, nmranet::Uint8ConfigEntry, Name("Display"), Description("Defines how throttles display this function."), Default(FN_NONEXISTANT));
+CDI_GROUP_ENTRY(icon, nmranet::Uint8ConfigEntry, Name("Display"), Description("Defines how throttles display this function."), Default(FN_NONEXISTANT), MapValues(FNDISPLAY_MAP));
 CDI_GROUP_ENTRY(is_momentary, nmranet::Uint8ConfigEntry, Name("Momentary"), Description("Momentary functions are automatically turned off when you release the respective button on the throttles."), MapValues(MOMENTARY_MAP), Default(0));
 CDI_GROUP_END();
 
