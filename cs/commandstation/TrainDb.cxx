@@ -83,6 +83,58 @@ class ExtPtrTrainDbEntry : public PtrTrainDbEntry {
 };
 
 
+class FileTrainDbEntry : public TrainDbEntry {
+ public:
+  /** Retrieves the NMRAnet NodeID for the virtual node that represents a
+   * particular train known to the database.
+   */
+  virtual nmranet::NodeID get_traction_node() {
+    return nmranet::TractionDefs::NODE_ID_DCC |
+      static_cast<nmranet::NodeID>(legacy_address());
+  }
+
+  /** Retrieves the name of the train. */
+  virtual string get_train_name() { return entry()->name; }
+
+  /** Retrieves the legacy address of the train. */
+  virtual int get_legacy_address() { return legacy_address(); }
+
+  /** Retrieves the traction drive mode of the train. */
+  virtual DccMode get_legacy_drive_mode() { return static_cast<DccMode>(entry()->mode); }
+
+  /** Retrieves the label assigned to a given function, or FN_UNUSED if the
+      function does not exist. */
+  virtual unsigned get_function_label(unsigned fn_id) {
+    if (fn_id >= DCC_MAX_FN) return FN_NONEXISTANT;
+    if (fn_id > maxFn_) return FN_NONEXISTANT;
+    return entry()->function_labels[fn_id];
+  }
+
+  /** Returns the largest valid function ID for this train, or -1 if the train
+      has no functions. */
+  virtual int get_max_fn() { return ((int)maxFn_) - 1; }
+
+ protected:
+  /** Child classes must call tis once after creation. */
+  void init() {
+    maxFn_ = 0;
+    for (int i = 0; i < cdiEntry_.all_functions().num_repeats(); ++i) {
+      if (cdiEntry_.all_functions().entry(i).icon().read(fd_) !=
+          FN_NONEXISTANT) {
+        maxFn_ = i + 1;
+      }
+    }
+  }
+
+ private:
+  uint16_t legacy_address() { return cdiEntry_.address().read(fd_); }
+
+  TrainDbCdiEntry cdiEntry_;
+  int fd_;
+  uint8_t maxFn_;  // Largest valid function ID for this train.
+};
+
+
 std::shared_ptr<TrainDbEntry> create_lokdb_entry(const const_traindb_entry_t* e) {
   return std::shared_ptr<TrainDbEntry>(new ExtPtrTrainDbEntry(e));
 }
