@@ -91,7 +91,12 @@ StateFlowBase::Action UpdateProcessor::entry() {
     // found a priority entry.
     s = b->data()->source;
     code = b->data()->code;
-    if (lastPacketTime_[s] >
+    auto it = lastPacketTime_.find(s);
+    if (it == lastPacketTime_.end()) {
+      // This packet source has been removed. Do not call it!
+      b->unref();
+      s = nullptr;
+    } else if (it->second >
         now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms())) {
       // Last update for this loco is too recent. Let's put it back to the
       // queue.
