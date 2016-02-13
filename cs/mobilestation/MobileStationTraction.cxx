@@ -136,25 +136,19 @@ class TractionImpl : public IncomingFrameFlow {
         service()->nmranet_if()->addressed_message_write_flow());
 
     unsigned train_id = this->train_id();
+    auto entry = service()->train_db()->get_entry(train_id);
+    if (!entry) {
+      LOG(VERBOSE, "unknown train");
+      // we don't know, sorry.
+      b->unref();
+      return release_and_exit();
+    }
 
     b->data()->src.id = service()->node()->node_id();
     b->data()->src.alias = 0;
-    b->data()->dst.id = service()->train_db()->get_traction_node(train_id);
+    b->data()->dst.id = entry->get_traction_node();
     b->data()->dst.alias = 0;
     b->data()->mti = nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND;
-
-    unsigned fn_address = 0;
-    if (frame().data[0] != TRACTION_SET_MOTOR_FN) {
-      fn_address = service()->train_db()->get_function_address(train_id,
-                                                               frame().data[0]);
-      if (fn_address == commandstation::TrainDb::UNKNOWN_FUNCTION) {
-        LOG(VERBOSE, "unknown fn");
-        // we don't know, sorry.
-        b->unref();
-        return release_and_exit();
-      }
-    }
-    LOG(VERBOSE, "in send query");
 
     if (frame().can_dlc == 3 && frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a set speed.
@@ -174,8 +168,7 @@ class TractionImpl : public IncomingFrameFlow {
       }
     } else if (frame().can_dlc == 3) {
       // We are doing a set function.
-      unsigned fn_address = service()->train_db()->get_function_address(
-          train_id, frame().data[0]);
+      unsigned fn_address = frame().data[0] - 2;
       b->data()->payload =
           nmranet::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
@@ -199,6 +192,7 @@ class TractionImpl : public IncomingFrameFlow {
     } else if (frame().can_dlc == 2) {
       // We are doing a get fn.
       LOG(VERBOSE, "sending fn get");
+      unsigned fn_address = frame().data[0] - 2;
       b->data()->payload = nmranet::TractionDefs::fn_get_payload(fn_address);
       Action a = sleep_and_call(&timer_, MSEC_TO_NSEC(TRACTION_TIMEOUT_MSEC),
                                 STATE(handle_get_fn_response));
