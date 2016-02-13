@@ -96,6 +96,17 @@ public:
     return nmranet::TractionDefs::NODE_ID_DCC | address_;
   }
 
+  string identifier() override {
+    string ret("dcc/");
+    char buf[10];
+    integer_to_buffer(mode_, buf);
+    ret.append(buf);
+    ret.push_back('/');
+    integer_to_buffer(address_, buf);
+    ret.append(buf);
+    return ret;
+  }
+
 private:
   uint16_t address_;
   DccMode mode_;

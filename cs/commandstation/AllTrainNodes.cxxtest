@@ -40,6 +40,7 @@
 #include "nmranet/DatagramCan.hxx"
 #include "nmranet/MemoryConfig.hxx"
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "nmranet/ConfigUpdateFlow.hxx"
 
 nmranet::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
@@ -49,6 +50,8 @@ const char* const nmranet::SNIP_DYNAMIC_FILENAME =
 namespace nmranet {
 extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 }
+
+nmranet::ConfigUpdateFlow cfgflow(&g_service);
 
 namespace commandstation {
 

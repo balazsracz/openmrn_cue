@@ -5,6 +5,7 @@
 #include "commandstation/AllTrainNodes.hxx"
 #include "nmranet/SimpleInfoProtocol.hxx"
 #include "nmranet/MemoryConfig.hxx"
+#include "nmranet/ConfigUpdateFlow.hxx"
 
 
 namespace nmranet {
@@ -13,6 +14,8 @@ extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
 extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
 
 }
+
+nmranet::ConfigUpdateFlow cfgflow(&g_service);
 
 namespace commandstation {
 

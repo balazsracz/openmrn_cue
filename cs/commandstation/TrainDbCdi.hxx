@@ -36,10 +36,12 @@
 #define _BRACZ_COMMANDSTATION_TRAINDBCDI_HXX_
 
 #include "nmranet/ConfigRepresentation.hxx"
-#include "commandstation/TrainDb.hxx"
+#include "commandstation/TrainDbDefs.hxx"
 
 namespace commandstation {
 
+static constexpr uint8_t TRAIN_CONFIG_SEGMENT = 0xe0;
+static constexpr unsigned STORED_TRAIN_COUNT = 16;
 
 static const char MOMENTARY_MAP[] =
   "<relation><property>0</property><value>Latching</value></relation>"
@@ -81,17 +83,23 @@ static const char DCC_DRIVE_MODE_MAP[] =
 "<relation><property>70</property><value>DCC 128-step (forced long address)</value></relation>";
 
 CDI_GROUP(TrainDbCdiEntry, Description("Configures a single train"));
-CDI_GROUP_ENTRY(address, nmranet::Uint16ConfigEntry, Name("Address"), Description("Track protocol address of the train."), Default(3));
+CDI_GROUP_ENTRY(address, nmranet::Uint16ConfigEntry, Name("Address"), Description("Track protocol address of the train."), Default(0));
 CDI_GROUP_ENTRY(mode, nmranet::Uint8ConfigEntry, Name("Protocol"), Description("Protocol to use on the track for driving this train."), MapValues(DCC_DRIVE_MODE_MAP), Default(DCC_28));
 CDI_GROUP_ENTRY(name, nmranet::StringConfigEntry<16>, Name("Name"), Description("Identifies the train node on the LCC bus."));
 CDI_GROUP_ENTRY(all_functions, TrainDbCdiAllFunctionGroup);
 CDI_GROUP_END();
 
+CDI_GROUP(TrainSegment, Segment(TRAIN_CONFIG_SEGMENT));
+CDI_GROUP_ENTRY(train, TrainDbCdiEntry);
+CDI_GROUP_END();
+
 CDI_GROUP(TrainConfigDef, MainCdi());
 // We do not support ACDI and we do not support adding the <identification>
 // information in here because both of these vary train by train.
-CDI_GROUP_ENTRY(train, TrainDbCdiEntry);
+CDI_GROUP_ENTRY(train, TrainSegment);
 CDI_GROUP_END();
+
+using TrainDbConfig = nmranet::RepeatedGroup<TrainDbCdiEntry, STORED_TRAIN_COUNT>;
 
 };
 
