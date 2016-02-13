@@ -85,6 +85,10 @@ public:
   /** Returns the largest valid function ID for this train, or -1 if the train
       has no functions. */
   virtual int get_max_fn() = 0;
+
+  /** If non-negative, represents a file offset in the nmranet CONFIG_FILENAME
+   * file where this train has its data stored. */
+  virtual int file_offset() { return -1; }
 };
 
 /// Used for testing code that depends on traindb entries.

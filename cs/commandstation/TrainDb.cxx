@@ -146,6 +146,10 @@ class FileTrainDbEntry : public TrainDbEntry {
     return ret;
   }
 
+  int file_offset() override {
+    return cdiEntry_.offset();
+  }
+
  private:
   /** Computes maxFn_. */
   void init() {

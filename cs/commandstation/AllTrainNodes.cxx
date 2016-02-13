@@ -253,11 +253,17 @@ class AllTrainNodes::TrainPipHandler
   Action fill_response_buffer() {
     // Grabs our allocated buffer.
     auto* b = get_allocation_result(iface()->addressed_message_write_flow());
+    auto reply = pipReply_;
+    Impl* impl = parent_->find_node(nmsg()->dstNode);
+    if (parent_->db_->is_train_id_known(impl->id) &&
+        parent_->db_->get_entry(impl->id)->file_offset() >= 0) {
+      reply |= nmranet::Defs::CDI;
+    }
     // Fills in response. We use node_id_to_buffer because that converts a
     // 48-bit value to a big-endian byte string.
     b->data()->reset(nmranet::Defs::MTI_PROTOCOL_SUPPORT_REPLY,
                      nmsg()->dstNode->node_id(), nmsg()->src,
-                     nmranet::node_id_to_buffer(pipReply_));
+                     nmranet::node_id_to_buffer(reply));
 
     // Passes the response to the addressed message write flow.
     iface()->addressed_message_write_flow()->send(b);
@@ -322,6 +328,43 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
   Impl* impl_{nullptr};
 };
 
+class AllTrainNodes::TrainConfigSpace : public nmranet::FileMemorySpace {
+ public:
+  TrainConfigSpace(int fd, AllTrainNodes* parent) : FileMemorySpace(fd, TrainDbCdiEntry::size()), parent_(parent) {}
+
+  bool set_node(nmranet::Node* node) override {
+    if (impl_ && impl_->node_ == node) {
+      // same node.
+      return true;
+    }
+    impl_ = parent_->find_node(node);
+    if (impl_ == nullptr) return false;
+    auto entry = parent_->db_->get_entry(impl_->id);
+    if (!entry) return false;
+    int offset = entry->file_offset();
+    if (offset < 0) return false;
+    offset_ = offset;
+    return true;
+  }
+
+  size_t read(address_t source, uint8_t* dst, size_t len, errorcode_t* error,
+              Notifiable* again) override {
+    return FileMemorySpace::read(source + offset_, dst, len, error, again);
+  }
+
+  size_t write(address_t destination, const uint8_t *data, size_t len,
+               errorcode_t *error, Notifiable *again) override {
+    return FileMemorySpace::write(destination + offset_, data, len, error,
+                                  again);
+  }
+
+ private:
+  unsigned offset_;
+  AllTrainNodes* parent_;
+  // Train object structure.
+  Impl* impl_{nullptr};
+};
+
 class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
  public:
   TrainNodesUpdater(AllTrainNodes* parent) : parent_(parent) {}
@@ -332,6 +375,12 @@ class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
     AutoNotify n(done);
     parent_->db_->load_from_file(fd, initial_load);
     parent_->update_config();
+    if (initial_load) {
+      parent_->configSpace_.reset(new TrainConfigSpace(fd, parent_));
+      parent_->memoryConfigService_->registry()->insert(
+          nullptr, nmranet::MemoryConfigDefs::SPACE_CONFIG,
+          parent_->configSpace_.get());
+    }
     return UPDATED;
   }
 

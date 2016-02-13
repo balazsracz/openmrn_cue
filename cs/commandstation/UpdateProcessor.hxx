@@ -64,6 +64,7 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
     AtomicHolder h(this);
     refreshSources_.push_back(source);
     hasRefreshSource_ = 1;
+    lastPacketTime_[source] = 0;
   }
   /** Deletes a packet refresh source. */
   void remove_refresh_source(dcc::PacketSource* source) OVERRIDE {
@@ -74,6 +75,7 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
     if (refreshSources_.empty()) {
       hasRefreshSource_ = 0;
     }
+    lastPacketTime_.erase(source);
   }
 
   /** Notifies that a packet source has an urgent packet. */
