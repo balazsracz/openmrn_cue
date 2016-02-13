@@ -212,7 +212,8 @@ ConfigUpdateListener::UpdateAction TrainDb::TrainDbUpdater::apply_configuration(
   }
   if (initial_load) {
     for (unsigned i = 0; i < cfg.num_repeats(); ++i) {
-      if (cfg.entry(i).address().read(fd) != 0) {
+      uint16_t address = cfg.entry(i).address().read(fd);
+      if (address != 0 && address != 0xffffu) {
         parent_->entries_.emplace_back(
             new FileTrainDbEntry(fd, cfg.entry(i).offset()));
       }
