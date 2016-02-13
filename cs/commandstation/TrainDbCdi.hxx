@@ -66,7 +66,7 @@ static const char FNDISPLAY_MAP[] =
 
 
 CDI_GROUP(TrainDbCdiFunctionGroup, Name("Functions"), Description("Defines what each function button does."));
-CDI_GROUP_ENTRY(icon, nmranet::Uint8ConfigEntry, Name("Display"), Description("Defines how throttles display this function."), Default(FNT11));
+CDI_GROUP_ENTRY(icon, nmranet::Uint8ConfigEntry, Name("Display"), Description("Defines how throttles display this function."), Default(FN_NONEXISTANT));
 CDI_GROUP_ENTRY(is_momentary, nmranet::Uint8ConfigEntry, Name("Momentary"), Description("Momentary functions are automatically turned off when you release the respective button on the throttles."), MapValues(MOMENTARY_MAP), Default(0));
 CDI_GROUP_END();
 
