@@ -99,6 +99,18 @@ class TrainDb {
   TrainDb(const TrainDbConfig cfg);
   ~TrainDb();
 
+  /** @return true if this traindsb is backed by a file. */
+  bool has_file();
+  /** Loads the train database from the given file. The file must stay open so
+   * long as *this is alive. */
+  void load_from_file(int fd, bool initial_load);
+
+  /** @returns the number of traindb entries. The valid train IDs will then be
+   * 0 <= id < size(). */
+  size_t size() {
+    return entries_.size();
+  }
+
   /** Returns true if a train of a specific identifier is known to the
    * traindb.
    * @param id is the train identifier. Valid values: anything. Typical values:
@@ -114,8 +126,24 @@ class TrainDb {
     return nullptr;
   }
 
+  /** Searches for an entry by the traction node ID. Returns nullptr if not
+   * found. @param hint is a train_id that might be a match. */
+  std::shared_ptr<TrainDbEntry> find_entry(nmranet::NodeID traction_node_id,
+                                           unsigned hint = 0) {
+    if (hint <= entries_.size() &&
+        entries_[hint]->get_traction_node() == traction_node_id) {
+      return entries_[hint];
+    }
+    for (const auto& e : entries_) {
+      if (e->get_traction_node() == traction_node_id) {
+        return e;
+      }
+    }
+    return nullptr;
+  }
+
   /** Inserts a given entry into the train database. @param entry is the new
-      traindsb entry. Transfers ownership to the TrainDb class. @returns the
+      traindb entry. Transfers ownership to the TrainDb class. @returns the
       new train_id for the given entry. */
   unsigned add_dynamic_entry(TrainDbEntry* entry) {
     unsigned s = entries_.size();
@@ -128,11 +156,6 @@ private:
   /** Creates all entries for the compiled-in train database. */
   void init_const_lokdb();
 
-  /// This class is used when there is a config file and we shall be listening
-  /// to the changes in it.
-  class TrainDbUpdater;
-  friend class TrainDbUpdater;
-  std::unique_ptr<TrainDbUpdater> updater_;
   TrainDbConfig cfg_;
   vector<std::shared_ptr<TrainDbEntry> > entries_;
 };

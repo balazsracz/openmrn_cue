@@ -78,10 +78,15 @@ class AllTrainNodes {
   /// Impl structure will be returned. If the node is not known (or not a train
   /// node maintained by this object), we return nullptr.
   Impl* find_node(nmranet::Node* node);
+  Impl* find_node(nmranet::NodeID node_id);
 
   /// Helper function to create lok objects. Adds a new Impl structure to
   /// impl_.
   Impl* create_impl(int train_id, DccMode mode, int address);
+
+  /// Callback from the updater to notify that the traindb config should be
+  /// consulted.
+  void update_config();
 
   // Externally owned.
   TrainDb* db_;
@@ -90,6 +95,12 @@ class AllTrainNodes {
 
   /// All train nodes that we know about.
   std::vector<Impl*> trains_;
+
+  // Listens to configuration update done commands coming in, and checks if the
+  // train database has changed.
+  class TrainNodesUpdater;
+  friend class TrainNodesUpdater;
+  std::unique_ptr<TrainNodesUpdater> trainUpdater_;
 
   // Implementation objects that we carry for various protocols.
   class TrainSnipHandler;

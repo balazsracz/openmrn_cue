@@ -170,26 +170,12 @@ std::shared_ptr<TrainDbEntry> create_lokdb_entry(
   return std::shared_ptr<TrainDbEntry>(new ExtPtrTrainDbEntry(e));
 }
 
-class TrainDb::TrainDbUpdater : private DefaultConfigUpdateListener {
- public:
-  TrainDbUpdater(TrainDb *parent) : parent_(parent) {}
-
- private:
-  // ConfigUpdate interface
-  UpdateAction apply_configuration(int fd, bool initial_load,
-                                   BarrierNotifiable *done) override;
-
-  void factory_reset(int fd) override;
-
-  TrainDb *parent_;
-};
-
 static constexpr unsigned NONEX_OFFSET = 0xDEADBEEF;
 
 TrainDb::TrainDb() : cfg_(NONEX_OFFSET) { init_const_lokdb(); }
 
 TrainDb::TrainDb(const TrainDbConfig cfg)
-    : updater_(new TrainDb::TrainDbUpdater(this)), cfg_(cfg.offset()) {
+    : cfg_(cfg.offset()) {
   init_const_lokdb();
 }
 
@@ -204,24 +190,25 @@ void TrainDb::init_const_lokdb() {
 
 TrainDb::~TrainDb() {}
 
-ConfigUpdateListener::UpdateAction TrainDb::TrainDbUpdater::apply_configuration(
-    int fd, bool initial_load, BarrierNotifiable *done) {
-  auto &cfg = parent_->cfg_;
-  if (cfg.offset() == NONEX_OFFSET) {
-    return UPDATED;
+/** @return true if this traindb is backed by a file. */
+bool TrainDb::has_file() {
+  return (cfg_.offset() != NONEX_OFFSET);
+}
+
+/** Loads the train database from the given file. The file must stay open so
+ * long as *this is alive. */
+void TrainDb::load_from_file(int fd, bool initial_load) {
+  if (cfg_.offset() == NONEX_OFFSET) {
+    return;
   }
   if (initial_load) {
-    for (unsigned i = 0; i < cfg.num_repeats(); ++i) {
-      uint16_t address = cfg.entry(i).address().read(fd);
+    for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
+      uint16_t address = cfg_.entry(i).address().read(fd);
       if (address != 0 && address != 0xffffu) {
-        parent_->entries_.emplace_back(
-            new FileTrainDbEntry(fd, cfg.entry(i).offset()));
+        entries_.emplace_back(new FileTrainDbEntry(fd, cfg_.entry(i).offset()));
       }
     }
   }
-  return UPDATED;
 }
-
-void TrainDb::TrainDbUpdater::factory_reset(int fd) {}
 
 }  // namespace commandstation

@@ -34,15 +34,15 @@
 
 #include "commandstation/AllTrainNodes.hxx"
 
-#include "dcc/Loco.hxx"
-#include "utils/format_utils.hxx"
 #include "commandstation/FdiXmlGenerator.hxx"
 #include "commandstation/TrainDb.hxx"
+#include "dcc/Loco.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/MemoryConfig.hxx"
 #include "nmranet/SimpleNodeInfo.hxx"
 #include "nmranet/TractionDefs.hxx"
 #include "nmranet/TractionTrain.hxx"
+#include "utils/format_utils.hxx"
 #ifndef __FreeRTOS__
 #include "nmranet/TractionTestTrain.hxx"
 #endif
@@ -50,28 +50,24 @@
 namespace commandstation {
 
 class DccTrainDbEntry : public TrainDbEntry {
-public:
+ public:
   DccTrainDbEntry(unsigned address, DccMode mode)
-    : address_(address), mode_(mode) {}
-  
+      : address_(address), mode_(mode) {}
+
   /** Retrieves the name of the train. */
   string get_train_name() override {
     string ret(10, 0);
     char* s = &ret[0];
     char* e = integer_to_buffer(get_legacy_address(), s);
-    ret.resize(e-s);
+    ret.resize(e - s);
     return ret;
   }
 
   /** Retrieves the legacy address of the train. */
-  int get_legacy_address() override {
-    return address_;
-  }
+  int get_legacy_address() override { return address_; }
 
   /** Retrieves the traction drive mode of the train. */
-  DccMode get_legacy_drive_mode() override {
-    return mode_;
-  }
+  DccMode get_legacy_drive_mode() override { return mode_; }
 
   /** Retrieves the label assigned to a given function, or FN_UNUSED if the
       function does not exist. */
@@ -107,7 +103,7 @@ public:
     return ret;
   }
 
-private:
+ private:
   uint16_t address_;
   DccMode mode_;
 };
@@ -139,15 +135,23 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
   return nullptr;
 }
 
+AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::NodeID node_id) {
+  for (auto* i : trains_) {
+    if (i->node_->node_id() == node_id) {
+      return i;
+    }
+  }
+  return nullptr;
+}
+
 /// Returns a traindb entry or nullptr if the id is too high.
 std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(int id) {
-  if (id >= (int)trains_.size()) return nullptr;
   return db_->get_entry(id);
 }
 
 /// Returns a node id or 0 if the id is not known to be a train.
 nmranet::NodeID AllTrainNodes::get_train_node_id(int id) {
-    if (id >= (int)trains_.size()) return 0;
+  if (id >= (int)trains_.size()) return 0;
   if (trains_[id]->node_) {
     return trains_[id]->node_->node_id();
   }
@@ -178,7 +182,12 @@ class AllTrainNodes::TrainSnipHandler
 
   Action send_response_request() {
     auto* b = get_allocation_result(responseFlow_);
-    snipName_ = parent_->get_traindb_entry(impl_->id)->get_train_name();
+    auto entry = parent_->get_traindb_entry(impl_->id);
+    if (entry.get()) {
+      snipName_ = entry->get_train_name();
+    } else {
+      snipName_.clear();
+    }
     snipResponse_[6].data = snipName_.c_str();
     b->data()->reset(nmsg(), snipResponse_,
                      nmranet::Defs::MTI_IDENT_INFO_REPLY);
@@ -305,14 +314,31 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
   }
 
  private:
-  void reset_file() {
-    gen_.reset(parent_->get_traindb_entry(impl_->id));
-  }
+  void reset_file() { gen_.reset(parent_->get_traindb_entry(impl_->id)); }
 
   FdiXmlGenerator gen_;
   AllTrainNodes* parent_;
   // Train object structure.
   Impl* impl_{nullptr};
+};
+
+class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
+ public:
+  TrainNodesUpdater(AllTrainNodes* parent) : parent_(parent) {}
+
+  // ConfigUpdate interface
+  UpdateAction apply_configuration(int fd, bool initial_load,
+                                   BarrierNotifiable* done) override {
+    AutoNotify n(done);
+    parent_->db_->load_from_file(fd, initial_load);
+    parent_->update_config();
+    return UPDATED;
+  }
+
+  void factory_reset(int fd) override {}
+
+ private:
+  AllTrainNodes* parent_;
 };
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
@@ -333,6 +359,42 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
   fdiSpace_.reset(new TrainFDISpace(this));
   memoryConfigService_->registry()->insert(
       nullptr, nmranet::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+  if (db_->has_file()) {
+    trainUpdater_.reset(new TrainNodesUpdater(this));
+  }
+}
+
+void AllTrainNodes::update_config() {
+  // First delete all implementations of trains that do not exist anymore.
+  for (unsigned id = 0; id < trains_.size(); ++id) {
+    Impl* impl = trains_[id];
+    auto entry = db_->find_entry(impl->node_->node_id(), impl->id);
+    if (entry) continue;
+    // Delete current node.
+    trains_[id] = nullptr;
+    impl->node_->iface()->delete_local_node(impl->node_);
+    delete impl;
+    impl = trains_.back();
+    trains_.pop_back();
+    if (impl) {
+      trains_[id] = impl;
+      --id;  // to be incremented by the loop
+      continue;
+    }  // else we're at the end of the loop anyway
+  }
+  // Now create new implementations for all new trains.
+  for (unsigned train_id = 0; train_id < db_->size(); ++train_id) {
+    auto entry = db_->get_entry(train_id);
+    if (!entry) continue;
+    Impl* impl = find_node(entry->get_traction_node());
+    if (impl) {
+      impl->id = train_id;
+      continue;
+    }
+    // Add a new entry.
+    create_impl(train_id, entry->get_legacy_drive_mode(),
+                entry->get_legacy_address());
+  }
 }
 
 AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
