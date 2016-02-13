@@ -170,11 +170,26 @@ std::shared_ptr<TrainDbEntry> create_lokdb_entry(
   return std::shared_ptr<TrainDbEntry>(new ExtPtrTrainDbEntry(e));
 }
 
+class TrainDb::TrainDbUpdater : private DefaultConfigUpdateListener {
+ public:
+  TrainDbUpdater(TrainDb *parent) : parent_(parent) {}
+
+ private:
+  // ConfigUpdate interface
+  UpdateAction apply_configuration(int fd, bool initial_load,
+                                   BarrierNotifiable *done) override;
+
+  void factory_reset(int fd) override;
+
+  TrainDb *parent_;
+};
+
 static constexpr unsigned NONEX_OFFSET = 0xDEADBEEF;
 
 TrainDb::TrainDb() : cfg_(NONEX_OFFSET) { init_const_lokdb(); }
 
-TrainDb::TrainDb(const TrainDbConfig cfg) : cfg_(cfg.offset()) {
+TrainDb::TrainDb(const TrainDbConfig cfg)
+    : updater_(new TrainDb::TrainDbUpdater(this)), cfg_(cfg.offset()) {
   init_const_lokdb();
 }
 
@@ -189,21 +204,23 @@ void TrainDb::init_const_lokdb() {
 
 TrainDb::~TrainDb() {}
 
-ConfigUpdateListener::UpdateAction TrainDb::apply_configuration(
+ConfigUpdateListener::UpdateAction TrainDb::TrainDbUpdater::apply_configuration(
     int fd, bool initial_load, BarrierNotifiable *done) {
-  if (cfg_.offset() == NONEX_OFFSET) {
+  auto &cfg = parent_->cfg_;
+  if (cfg.offset() == NONEX_OFFSET) {
     return UPDATED;
   }
   if (initial_load) {
-    for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
-      if (cfg_.entry(i).address().read(fd) != 0) {
-        entries_.emplace_back(new FileTrainDbEntry(fd, cfg_.entry(i).offset()));
+    for (unsigned i = 0; i < cfg.num_repeats(); ++i) {
+      if (cfg.entry(i).address().read(fd) != 0) {
+        parent_->entries_.emplace_back(
+            new FileTrainDbEntry(fd, cfg.entry(i).offset()));
       }
     }
   }
   return UPDATED;
 }
 
-void TrainDb::factory_reset(int fd) {}
+void TrainDb::TrainDbUpdater::factory_reset(int fd) {}
 
 }  // namespace commandstation

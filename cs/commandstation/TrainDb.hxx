@@ -91,7 +91,7 @@ public:
 std::shared_ptr<TrainDbEntry> create_lokdb_entry(
     const const_traindb_entry_t* e);
 
-class TrainDb : private DefaultConfigUpdateListener {
+class TrainDb {
  public:
   /** Use this constructor if there is no file-based train database. */
   TrainDb();
@@ -125,15 +125,14 @@ class TrainDb : private DefaultConfigUpdateListener {
   }
 
 private:
-  // ConfigUpdate interface
-  UpdateAction apply_configuration(int fd, bool initial_load,
-                                   BarrierNotifiable *done) override;
-
-  void factory_reset(int fd) override;
-
   /** Creates all entries for the compiled-in train database. */
   void init_const_lokdb();
 
+  /// This class is used when there is a config file and we shall be listening
+  /// to the changes in it.
+  class TrainDbUpdater;
+  friend class TrainDbUpdater;
+  std::unique_ptr<TrainDbUpdater> updater_;
   TrainDbConfig cfg_;
   vector<std::shared_ptr<TrainDbEntry> > entries_;
 };
