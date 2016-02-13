@@ -53,29 +53,22 @@
 
 namespace commandstation {
 
-extern const struct const_loco_db_t const_lokdb[];
+extern const struct const_traindb_entry_t const_lokdb[];
 
-const struct const_loco_db_t const_lokdb[] = {
-  { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
+const struct const_traindb_entry_t const_lokdb[] = {
+  { 43, //{ 0, 1, 3, 4,  0xff, },
+    { LIGHT, TELEX, FN_NONEXISTANT, FNT11, ABV,  0xff, },
     "Am 843 093-6", DCC_28 },
-  // 2
-  { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
-    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
-  // id 3
-  { 465, { 0, 1, 0xff, }, { LIGHT, SPEECH,  0xff, },
-    "Jim's steam", DCC_28 | PUSHPULL },
-  { 0, {0, }, {0,}, "", 0},
-
-  { 38, { 0, 3, 4, 0xff, }, { LIGHT, FNT11, ABV, 0xff, },
-    "BDe 4/4 1640", DCC_128 | PUSHPULL },  // Tams LD-G32, DC motor
-  // 3 (jim's)
-  { 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
   // 1
-  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
-    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
+  { 22, //{ 0, 3, 4,  0xff, },
+    { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,  0xff, },
+    "RE 460 TSR", MARKLIN_NEW }, // todo: there is no beamer here
+  // 2 (jim's)
+  { 0x0761, //{ 0, 3, 0xff },
+    { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
+  { 0, {0,}, "", 0},
+  { 0, {0,}, "", 0},
+  { 0, {0,}, "", 0},
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);

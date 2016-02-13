@@ -80,15 +80,15 @@ mobilestation::MobileStationTraction mosta_traction(&can_if1, stack.iface(),
 commandstation::AllTrainNodes all_train_nodes(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
 namespace commandstation {
-const struct const_loco_db_t const_lokdb[] = {
+const struct const_traindb_entry_t const_lokdb[] = {
     // 0
-  { 43, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, FNT11, ABV,  0xff, },
+  { 43, { LIGHT, TELEX, FN_NONEXISTANT, FNT11, ABV, },
     "Am 843 093-6", FAKE_DRIVE },
-  { 22, { 0, 3, 4,  0xff, }, { LIGHT, FNT11, ABV,  0xff, },
+  { 22, { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV, },
     "RE 460 TSR", FAKE_DRIVE }, // todo: there is no beamer here // LD-32 decoder
-  { 465, { 0, 1, 0xff, }, { LIGHT, SPEECH,  0xff, },
+  { 465, { LIGHT, SPEECH, },
     "Jim's steam", FAKE_DRIVE | PUSHPULL },
-  {0, {0, }, {0, }, "", 0}, };
+  {0, {0, }, "", 0}, };
 
 extern const size_t const_lokdb_size =
     sizeof(const_lokdb) / sizeof(const_lokdb[0]);
