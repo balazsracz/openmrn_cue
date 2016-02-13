@@ -67,13 +67,14 @@
 #include "commandstation/TrackPowerBit.hxx"
 
 #include "hardware.hxx"
+#include "config.hxx"
 
 // for logging implementation
 #include "src/host_packet.h"
 #include "src/usb_proto.h"
 
 
-//#define STANDALONE
+#define STANDALONE
 
 #ifdef STANDALONE
 #define LOGTOSTDOUT
@@ -92,29 +93,26 @@ OVERRIDE_CONST(automata_init_backoff, 20000);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 OVERRIDE_CONST(num_datagram_registry_entries, 3);
+OVERRIDE_CONST(num_memory_spaces, 8);
 
 
 namespace commandstation {
 
-/*
-extern const struct const_loco_db_t const_lokdb[];
-
-const struct const_loco_db_t const_lokdb[] = {
+extern const struct const_traindb_entry_t const_lokdb[];
+const struct const_traindb_entry_t const_lokdb[] = {
   // 0
-  { 51, { 0, 1, 3, 4,  0xff, }, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
+  { 51, { LIGHT, TELEX, FN_NONEXISTANT, SHUNT, ABV },
     "BR 260417", DCC_28 },  // ESU LokPilot 3.0
   // 1
-  { 46, { 0, 0xff, }, { LIGHT, 0xff, },
+  { 66, { LIGHT },
     "Re 6/6 11665", DCC_128 },
-  // 2 (jim's)
-  //{ 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
-  { 0, {0, }, {0,}, "", 0},
+  { 0, {0,}, "", 0},
+  { 0, {0,}, "", 0},
+  { 0, {0,}, "", 0},
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
-*/
+
 }  // namespace commandstation
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
@@ -122,9 +120,13 @@ static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
 nmranet::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
-                                         "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+nmranet::ConfigDef cfg(0);
+
+extern const char *const nmranet::CONFIG_FILENAME = "/dev/eeprom";
+extern const size_t nmranet::CONFIG_FILE_SIZE =
+    cfg.trains().size() + cfg.trains().offset();
+extern const char *const nmranet::SNIP_DYNAMIC_FILENAME =
+    nmranet::CONFIG_FILENAME;
 
 extern char __automata_start[];
 extern char __automata_end[];
@@ -170,7 +172,6 @@ void send_host_log_event(HostLogEvent e) {
 
 OVERRIDE_CONST(local_nodes_count, 30);
 OVERRIDE_CONST(local_alias_cache_size, 30);
-OVERRIDE_CONST(num_memory_spaces, 5);
 
 class TivaGPIOProducerBit : public nmranet::BitEventInterface {
  public:
@@ -267,13 +268,13 @@ bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const
 
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
-commandstation::TrainDb train_db;
+commandstation::TrainDb train_db(cfg.trains().all_trains());
 CanIf can1_interface(stack.service(), &can_hub1);
 mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 commandstation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
-nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, 0xEF);
+nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, 0xEE);
 
 typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;

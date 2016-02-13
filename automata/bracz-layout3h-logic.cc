@@ -1217,7 +1217,7 @@ class ICEPushPull : public LayoutSchedule {
   }
 };
 
-StraightOnlyPushPull train_icn("icn", 50, 16);
+/*StraightOnlyPushPull train_icn("icn", 50, 16);
 CircleTrain train_re66("re_6_6", 66, 32);
 CircleTrain train_rts("rts_railtraction", 32, 20);
 CircleTrain train_re460hag("Re460_HAG", 26, 32);
@@ -1231,7 +1231,7 @@ CircleTrain train_wle("wle_er20", 27, 30);
 CircleTrain train_re474("Re474", 12, 30);
 CircleTrain train_krokodil("Krokodil", 68, 35);
 CircleTrain train_rheingold("Rheingold", 19, 35);
-CircleTrain train_re10_10("Re_10_10", 5, 35);
+CircleTrain train_re10_10("Re_10_10", 5, 35);*/
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
