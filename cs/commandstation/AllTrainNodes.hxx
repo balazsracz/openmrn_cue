@@ -114,6 +114,10 @@ class AllTrainNodes {
   class TrainFDISpace;
   friend class TrainFDISpace;
   std::unique_ptr<TrainFDISpace> fdiSpace_;
+
+  class TrainConfigSpace;
+  friend class TrainConfigSpace;
+  std::unique_ptr<TrainConfigSpace> configSpace_;
 };
 
 }  // namespace commandstation
