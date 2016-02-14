@@ -22,4 +22,7 @@ $(EXECUTABLE)$(EXTENTION): $(AUTOMATA).o
 
 all: $(AUTOMATA).cout
 
+SYSLIBRARIES += -Wl,--wrap=malloc \
+
+
 endif
