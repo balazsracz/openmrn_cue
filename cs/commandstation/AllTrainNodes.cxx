@@ -254,11 +254,12 @@ class AllTrainNodes::TrainPipHandler
     // Grabs our allocated buffer.
     auto* b = get_allocation_result(iface()->addressed_message_write_flow());
     auto reply = pipReply_;
+    /* All trains now support CDI.
     Impl* impl = parent_->find_node(nmsg()->dstNode);
     if (parent_->db_->is_train_id_known(impl->id) &&
         parent_->db_->get_entry(impl->id)->file_offset() >= 0) {
       reply |= nmranet::Defs::CDI;
-    }
+      }*/
     // Fills in response. We use node_id_to_buffer because that converts a
     // 48-bit value to a big-endian byte string.
     b->data()->reset(nmranet::Defs::MTI_PROTOCOL_SUPPORT_REPLY,
@@ -276,7 +277,7 @@ class AllTrainNodes::TrainPipHandler
       nmranet::Defs::SIMPLE_PROTOCOL_SUBSET | nmranet::Defs::DATAGRAM |
       nmranet::Defs::MEMORY_CONFIGURATION | nmranet::Defs::EVENT_EXCHANGE |
       nmranet::Defs::SIMPLE_NODE_INFORMATION | nmranet::Defs::TRACTION_CONTROL |
-      nmranet::Defs::TRACTION_FDI;
+      nmranet::Defs::TRACTION_FDI | nmranet::Defs::CDI;
 };
 
 class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
@@ -330,7 +331,8 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
 
 class AllTrainNodes::TrainConfigSpace : public nmranet::FileMemorySpace {
  public:
-  TrainConfigSpace(int fd, AllTrainNodes* parent) : FileMemorySpace(fd, TrainDbCdiEntry::size()), parent_(parent) {}
+  TrainConfigSpace(int fd, AllTrainNodes* parent)
+      : FileMemorySpace(fd, TrainDbCdiEntry::size()), parent_(parent) {}
 
   bool set_node(nmranet::Node* node) override {
     if (impl_ && impl_->node_ == node) {
@@ -352,8 +354,8 @@ class AllTrainNodes::TrainConfigSpace : public nmranet::FileMemorySpace {
     return FileMemorySpace::read(source + offset_, dst, len, error, again);
   }
 
-  size_t write(address_t destination, const uint8_t *data, size_t len,
-               errorcode_t *error, Notifiable *again) override {
+  size_t write(address_t destination, const uint8_t* data, size_t len,
+               errorcode_t* error, Notifiable* again) override {
     return FileMemorySpace::write(destination + offset_, data, len, error,
                                   again);
   }
@@ -363,6 +365,51 @@ class AllTrainNodes::TrainConfigSpace : public nmranet::FileMemorySpace {
   AllTrainNodes* parent_;
   // Train object structure.
   Impl* impl_{nullptr};
+};
+
+extern const char TRAINCDI_DATA[];
+extern const size_t TRAINCDI_SIZE;
+extern const char TRAINTMPCDI_DATA[];
+extern const size_t TRAINTMPCDI_SIZE;
+
+class AllTrainNodes::TrainCDISpace : public nmranet::MemorySpace {
+ public:
+  TrainCDISpace(AllTrainNodes* parent)
+      : parent_(parent),
+        dbCdi_(TRAINCDI_DATA, TRAINCDI_SIZE),
+        tmpCdi_(TRAINTMPCDI_DATA, TRAINTMPCDI_SIZE) {}
+
+  bool set_node(nmranet::Node* node) override {
+    if (impl_ && impl_->node_ == node) {
+      // same node.
+      return true;
+    }
+    impl_ = parent_->find_node(node);
+    if (impl_ == nullptr) return false;
+    auto entry = parent_->db_->get_entry(impl_->id);
+    if (!entry) return false;
+    int offset = entry->file_offset();
+    if (offset < 0) {
+      proxySpace_ = &tmpCdi_;
+    } else {
+      proxySpace_ = &dbCdi_;
+    }
+    return true;
+  }
+
+  address_t max_address() override { return proxySpace_->max_address(); }
+
+  size_t read(address_t source, uint8_t* dst, size_t len, errorcode_t* error,
+              Notifiable* again) override {
+    return proxySpace_->read(source, dst, len, error, again);
+  }
+
+  AllTrainNodes* parent_;
+  // Train object structure.
+  Impl* impl_{nullptr};
+  nmranet::MemorySpace* proxySpace_;
+  nmranet::ReadOnlyMemoryBlock dbCdi_;
+  nmranet::ReadOnlyMemoryBlock tmpCdi_;
 };
 
 class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
@@ -411,6 +458,9 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
   if (db_->has_file()) {
     trainUpdater_.reset(new TrainNodesUpdater(this));
   }
+  cdiSpace_.reset(new TrainCDISpace(this));
+  memoryConfigService_->registry()->insert(
+      nullptr, nmranet::MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
 }
 
 void AllTrainNodes::update_config() {
