@@ -18,7 +18,7 @@ CDI_GROUP(BaseSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
 CDI_GROUP_ENTRY(internal_config, InternalConfigData);
 CDI_GROUP_END();
 
-CDI_GROUP(TrainSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(1024));
+CDI_GROUP(TrainSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(256));
 CDI_GROUP_ENTRY(all_trains, commandstation::TrainDbConfig);
 CDI_GROUP_END();
 
