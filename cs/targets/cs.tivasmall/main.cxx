@@ -146,10 +146,14 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
 nmranet::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
-                                         "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
 
+nmranet::ConfigDef cfg(0);
+
+extern const char *const nmranet::CONFIG_FILENAME = "/dev/eeprom";
+extern const size_t nmranet::CONFIG_FILE_SIZE =
+    cfg.trains().size() + cfg.trains().offset();
+extern const char *const nmranet::SNIP_DYNAMIC_FILENAME =
+    nmranet::CONFIG_FILENAME;
 
 extern "C" {
 extern insn_t automata_code[];
