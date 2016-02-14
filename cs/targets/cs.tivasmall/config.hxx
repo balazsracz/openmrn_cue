@@ -11,7 +11,7 @@ namespace nmranet {
 
 extern const SimpleNodeStaticValues SNIP_STATIC_DATA =
 {
-    4, "Balazs Racz", "CS.Tiva", "v2015.01.02", "1.0.2"
+    4, "Balazs Racz", "CS.Tiva123", "generic", "1.0.3"
 };
 
 CDI_GROUP(BaseSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
