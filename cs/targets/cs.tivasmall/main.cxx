@@ -96,8 +96,14 @@
 #include "TivaDCC.hxx"
 #include "dcc/RailCom.hxx"
 #include "hardware.hxx"
+#include "config.hxx"
 
 #define STANDALONE
+
+//#define SNIFF_ON_SERIAL
+//#define SNIFF_ON_USB
+#define HAVE_PHYSICAL_CAN_PORT
+
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -107,6 +113,7 @@ OVERRIDE_CONST(mobile_station_train_count, 0);
 
 OVERRIDE_CONST(automata_init_backoff, 20000);
 OVERRIDE_CONST(node_init_identify, 0);
+OVERRIDE_CONST(main_thread_stack_size, 2048);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 
@@ -199,7 +206,7 @@ void send_host_log_event(HostLogEvent e) {
 
 OVERRIDE_CONST(local_nodes_count, 30);
 OVERRIDE_CONST(local_alias_cache_size, 30);
-OVERRIDE_CONST(num_memory_spaces, 5);
+OVERRIDE_CONST(num_memory_spaces, 8);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
 const int main_priority = 0;
@@ -319,11 +326,25 @@ int appl_main(int argc, char* argv[])
     PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0", true);
 #endif
     setblink(0);
+
+#if defined(HAVE_PHYSICAL_CAN_PORT)
     stack.add_can_port_select("/dev/can0");
+#endif
+#if defined(SNIFF_ON_USB) && defined(STANDALONE)
+    stack.add_gridconnect_port("/dev/serUSB0");
+#endif
+#if defined(SNIFF_ON_SERIAL)
+    stack.add_gridconnect_port("/dev/ser0");
+#endif
+
     //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
+    //HubDeviceSelect<HubFlow> stdout_port(&stdout_hub, "/dev/ser0");
     //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
+    extern char *heap_end;
+    extern char __cs3_heap_start;
+    LOG_ERROR("Hello, world, heap start=%p, heap_end=%p", &__cs3_heap_start, heap_end);
 
 #ifdef USE_WII_CHUCK
     bracz_custom::WiiChuckReader wii_reader("/dev/i2c1", &wii_throttle);
