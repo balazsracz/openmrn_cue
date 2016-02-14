@@ -7,7 +7,7 @@
 #define LED_GREEN GPIO_PORTF_BASE, GPIO_PIN_3
 #define LED_BLUE GPIO_PORTF_BASE, GPIO_PIN_2
 
-#define USE_WII_CHUCK
+//#define USE_WII_CHUCK
 
 GPIO_PIN(SW1, GpioInputPU, F, 4);
 
