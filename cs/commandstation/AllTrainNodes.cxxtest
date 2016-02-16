@@ -86,6 +86,12 @@ const struct const_traindb_entry_t const_lokdb[] = {
 extern const size_t const_lokdb_size =
     sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
+
+extern const char TRAINCDI_DATA[] = "Test cdi data";
+extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
+extern const char TRAINTMPCDI_DATA[] = "Test cdi tmp data";
+extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
+
 class AllTrainNodesTestBase : public nmranet::TractionTest {
  protected:
   AllTrainNodesTestBase() {
@@ -131,7 +137,7 @@ TEST_F(AllTrainNodesTest, CreateDestroy) {}
 
 TEST_F(AllTrainNodesTest, PIPRequest) {
   send_packet_and_expect_response(":X19828123N0441;",
-                                  ":X19668441N0123D41600000000;");
+                                  ":X19668441N0123D41E00000000;");
   wait();
 }
 
@@ -140,7 +146,7 @@ TEST_F(AllTrainNodesTest, CreateNode) {
   trainNodes_->allocate_node(FAKE_DRIVE, 183);
   wait();
   send_packet_and_expect_response(":X19828123N0443;",
-                                  ":X19668443N0123D41600000000;");
+                                  ":X19668443N0123D41E00000000;");
   wait();
   auto* db_entry = trainNodes_->get_traindb_entry(3).get();
   ASSERT_TRUE(db_entry);
