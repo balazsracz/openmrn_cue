@@ -241,7 +241,7 @@ class AllTrainNodes::TrainPipHandler
   }
 
  private:
-  Action entry() {
+  Action entry() override {
     if (parent_->find_node(nmsg()->dstNode) == nullptr) {
       return release_and_exit();
     }

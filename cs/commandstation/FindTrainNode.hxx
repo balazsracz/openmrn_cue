@@ -76,7 +76,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
         node_(node) {}
 
  private:
-  Action entry() {
+  Action entry() override {
     return call_immediately(STATE(try_find_in_db));
     return return_with_error(nmranet::Defs::ERROR_UNIMPLEMENTED);
   }

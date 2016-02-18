@@ -47,11 +47,11 @@ public:
     {
     }
 
-    nmranet::EventState GetCurrentState() OVERRIDE
+    nmranet::EventState GetCurrentState() override
     {
         return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
     }
-    virtual void SetState(bool new_value)
+    virtual void SetState(bool new_value) override
     {
         state_ = new_value;
 #ifdef __linux__
@@ -61,7 +61,7 @@ public:
 #endif
     }
 
-    virtual nmranet::Node* node()
+    virtual nmranet::Node* node() override
     {
       extern nmranet::SimpleCanStack stack;
       return stack.node();

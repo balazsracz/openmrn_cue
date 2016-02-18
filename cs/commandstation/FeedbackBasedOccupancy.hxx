@@ -49,7 +49,7 @@ class FeedbackBasedOccupancy : public dcc::RailcomHubPort {
         currentValues_(0),
         eventHandler_(node, event_base, &currentValues_, channel_count) {}
 
-  Action entry() {
+  Action entry() override {
     if (message()->data()->channel != 0xff) return release_and_exit();
     uint32_t new_values = message()->data()->ch1Data[0];
     release();
