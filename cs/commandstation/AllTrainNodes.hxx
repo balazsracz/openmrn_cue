@@ -96,6 +96,8 @@ class AllTrainNodes {
   /// All train nodes that we know about.
   std::vector<Impl*> trains_;
 
+  friend class FindProtocolServer;
+
   // Listens to configuration update done commands coming in, and checks if the
   // train database has changed.
   class TrainNodesUpdater;
