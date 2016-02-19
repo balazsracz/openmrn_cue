@@ -35,37 +35,41 @@
 #ifndef _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
 #define _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
 
+#include "nmranet/EventHandler.hxx"
+
 namespace commandstation {
 
+class TrainDbEntry;
+
 struct FindProtocolDefs {
-  //static constexpr EventID
+  // static constexpr EventID
   enum {
     TRAIN_FIND_BASE = 0x090099FF00000000U,
   };
 
-
   // Command byte definitions
   enum {
     // What is the mask value for the event registry entry.
-    TRAIN_FIND_MASK = 40,
+    TRAIN_FIND_MASK = 32,
     // Where does the command byte start.
     TRAIN_FIND_MASK_LOW = 8,
 
     ALLOCATE = 0x80,
-    //SEARCH = 0x00,
+    // SEARCH = 0x00,
 
     EXACT = 0x40,
-    //SUBSTRING = 0x00,
+    // SUBSTRING = 0x00,
 
     ADDRESS_ONLY = 0x20,
-    //ADDRESS_NAME_CABNUMBER = 0x00
+    // ADDRESS_NAME_CABNUMBER = 0x00
 
     DCC_FORCE_LONG = 0x10,
 
     // Bits 0-2 are a DccMode enum.
   };
 
-  static_assert(TRAIN_FIND_BASE & ((1ULL << TRAIN_FIND_MASK) - 1), "TRAIN_FIND_BASE is not all zero on the bottom");
+  static_assert((TRAIN_FIND_BASE & ((1ULL << TRAIN_FIND_MASK) - 1)) == 0,
+                "TRAIN_FIND_BASE is not all zero on the bottom");
 
   // Search nibble definitions.
   enum {
@@ -76,6 +80,10 @@ struct FindProtocolDefs {
     NIBBLE_HASH = 0xb,
   };
 
+  static int address_from_query(nmranet::EventId event);
+
+  static bool match_query_to_node(nmranet::EventId event, TrainDbEntry* train);
+
  private:
   // Not instantiatable class.
   FindProtocolDefs();
@@ -83,4 +91,4 @@ struct FindProtocolDefs {
 
 }  // namespace commandstation
 
-#endif // _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
+#endif  // _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
