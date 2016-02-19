@@ -4,14 +4,34 @@
 namespace commandstation {
 
 template <typename T>
-T* CHECK_NOTNULL(T* d) {
+static T* CHECK_NOTNULL(T* d) {
   HASSERT(d);
   return d;
+}
+
+static nmranet::EventId create_query(uint64_t nibbles, uint8_t settings) {
+  return FindProtocolDefs::TRAIN_FIND_BASE |
+         ((nibbles << FindProtocolDefs::TRAIN_FIND_MASK_LOW) &
+          ((1ULL << FindProtocolDefs::TRAIN_FIND_MASK) - 1)) |
+         (settings & 0xff);
+  static_assert(FindProtocolDefs::TRAIN_FIND_MASK_LOW == 8,
+                "The code above expects settings to be 8-bit.");
 }
 
 class FindProtocolTest : public AllTrainNodesTest {
  protected:
   ~FindProtocolTest() { wait(); }
+
+
+  void find_nodes(uint64_t nibbles, uint8_t settings, std::initializer_list<uint16_t> results) {
+    clear_expect(true);
+    uint64_t event = create_query(nibbles, settings);
+    LOG(INFO, "query event: %016" PRIX64, event);
+    for (uint16_t alias : results) {
+      expect_packet(StringPrintf(":X19544%03XN%016" PRIX64 ";", alias, event));
+    }
+    send_packet_and_flush_expect(StringPrintf(":X19914123N%016" PRIX64 ";", event));
+  }
 
   FindProtocolServer handler_{CHECK_NOTNULL(trainNodes_.get())};
 };
@@ -38,6 +58,35 @@ TEST_F(FindProtocolTest, AddressedIdentify) {
   }
   send_packet(":X19968123N0441;");
   wait();
+}
+
+TEST_F(FindProtocolTest, FindOneNode) {
+  for (uint16_t alias : {0x441}) {
+    // producer identified valid for the train finder protocol
+    expect_packet(StringPrintf(":X19544%03XN090099FFFFFF2200;", alias));
+  }
+  send_packet(":X19914123N090099FFFFFF2200;");
+  wait();
+}
+
+TEST_F(FindProtocolTest, FindOneNodeInfra) {
+  find_nodes(0xFFFF22, 0, {0x441});
+}
+
+TEST_F(FindProtocolTest, BunchOfQueries) {
+  find_nodes(0xFFFF23, 0, {});
+  find_nodes(0xFFFF22, 0, {0x441});
+  find_nodes(0xF43FFF, 0, {0x440});
+  find_nodes(0xF843FF, 0, {0x440});
+  find_nodes(0xF460FF, 0, {0x441});
+  find_nodes(0xFFF460, 0, {0x441});
+  find_nodes(0xFFF465, 0, {0x442});
+  find_nodes(0x000465, 0, {0x442});
+  find_nodes(0xFFFF46, 0, {0x442, 0x441});
+  find_nodes(0xFFFFF4, 0, {0x442, 0x441, 0x440});
+  /// TODO: it's not clear why the empty query matches these two trains. It
+  /// probably shouldn't. Need to debug.
+  find_nodes(0xFFFFFF, 0, {0x440, 0x441});
 }
 
 class FakeTrain : public TrainDbEntry {
@@ -79,13 +128,7 @@ class MatchNodeTest : public ::testing::Test {
   bool check_match(uint64_t nibbles, uint8_t settings, const string& name,
                    int address) {
     FakeTrain tr(name, address);
-    nmranet::EventId event =
-        FindProtocolDefs::TRAIN_FIND_BASE |
-        ((nibbles << FindProtocolDefs::TRAIN_FIND_MASK_LOW) &
-         ((1ULL << FindProtocolDefs::TRAIN_FIND_MASK) - 1)) |
-        (settings & 0xff);
-    static_assert(FindProtocolDefs::TRAIN_FIND_MASK_LOW == 8,
-                  "The code above expects settings to be 8-bit.");
+    nmranet::EventId event = create_query(nibbles, settings);
     return FindProtocolDefs::match_query_to_node(event, &tr);
   }
 };
