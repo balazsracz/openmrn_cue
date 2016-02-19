@@ -15,7 +15,7 @@ class PtrTrainDbEntry : public TrainDbEntry {
   /** Retrieves the NMRAnet NodeID for the virtual node that represents a
    * particular train known to the database.
    */
-  virtual nmranet::NodeID get_traction_node() {
+  virtual nmranet::NodeID get_traction_node() override {
     if (entry()->mode & OLCBUSER) {
       return 0x050101010000ULL | static_cast<nmranet::NodeID>(legacy_address());
     } else {
@@ -25,19 +25,19 @@ class PtrTrainDbEntry : public TrainDbEntry {
   }
 
   /** Retrieves the name of the train. */
-  virtual string get_train_name() { return entry()->name; }
+  virtual string get_train_name() override { return entry()->name; }
 
   /** Retrieves the legacy address of the train. */
-  virtual int get_legacy_address() { return legacy_address(); }
+  virtual int get_legacy_address() override { return legacy_address(); }
 
   /** Retrieves the traction drive mode of the train. */
-  virtual DccMode get_legacy_drive_mode() {
+  virtual DccMode get_legacy_drive_mode() override {
     return static_cast<DccMode>(entry()->mode);
   }
 
   /** Retrieves the label assigned to a given function, or FN_UNUSED if the
       function does not exist. */
-  virtual unsigned get_function_label(unsigned fn_id) {
+  virtual unsigned get_function_label(unsigned fn_id) override {
     if (fn_id >= DCC_MAX_FN) return FN_NONEXISTANT;
     if (fn_id > maxFn_) return FN_NONEXISTANT;
     return entry()->function_labels[fn_id];
@@ -45,7 +45,7 @@ class PtrTrainDbEntry : public TrainDbEntry {
 
   /** Returns the largest valid function ID for this train, or -1 if the train
       has no functions. */
-  virtual int get_max_fn() { return ((int)maxFn_) - 1; }
+  virtual int get_max_fn() override { return ((int)maxFn_) - 1; }
 
  protected:
   /** Child classes must call tis once after creation. */
@@ -87,7 +87,7 @@ class ConstTrainDbEntry : public PtrTrainDbEntry {
 class ExtPtrTrainDbEntry : public PtrTrainDbEntry {
  public:
   ExtPtrTrainDbEntry(const const_traindb_entry_t *e) : entry_(e) { init(); }
-  virtual const const_traindb_entry_t *entry() { return entry_; }
+  virtual const const_traindb_entry_t *entry() override { return entry_; }
 
   string identifier() override {
     char buf[10];
