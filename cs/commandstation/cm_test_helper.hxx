@@ -88,6 +88,8 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
     expect_packet(StringPrintf(":X19100%03XN060100%06X;", alias, address));
     expect_packet(
         StringPrintf(":X19547%03XN0101000000000303;", alias));
+    expect_packet(
+        StringPrintf(":X19524%03XN090099FF00000000;", alias));
   }
 
   TrainDb trainDb_;

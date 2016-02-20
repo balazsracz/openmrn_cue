@@ -35,6 +35,7 @@
 #include "commandstation/AllTrainNodes.hxx"
 
 #include "commandstation/FdiXmlGenerator.hxx"
+#include "commandstation/FindProtocolServer.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "dcc/Loco.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
@@ -461,6 +462,7 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
   cdiSpace_.reset(new TrainCDISpace(this));
   memoryConfigService_->registry()->insert(
       nullptr, nmranet::MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
+  findProtocolServer_.reset(new FindProtocolServer(this));
 }
 
 void AllTrainNodes::update_config() {

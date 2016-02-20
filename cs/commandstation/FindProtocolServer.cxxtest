@@ -10,18 +10,17 @@ static T* CHECK_NOTNULL(T* d) {
 }
 
 static nmranet::EventId create_query(uint64_t nibbles, uint8_t settings) {
+  static_assert(FindProtocolDefs::TRAIN_FIND_MASK_LOW == 8,
+                "The code above expects settings to be 8-bit.");
   return FindProtocolDefs::TRAIN_FIND_BASE |
          ((nibbles << FindProtocolDefs::TRAIN_FIND_MASK_LOW) &
           ((1ULL << FindProtocolDefs::TRAIN_FIND_MASK) - 1)) |
          (settings & 0xff);
-  static_assert(FindProtocolDefs::TRAIN_FIND_MASK_LOW == 8,
-                "The code above expects settings to be 8-bit.");
 }
 
 class FindProtocolTest : public AllTrainNodesTest {
  protected:
   ~FindProtocolTest() { wait(); }
-
 
   void find_nodes(uint64_t nibbles, uint8_t settings, std::initializer_list<uint16_t> results) {
     clear_expect(true);
@@ -33,7 +32,8 @@ class FindProtocolTest : public AllTrainNodesTest {
     send_packet_and_flush_expect(StringPrintf(":X19914123N%016" PRIX64 ";", event));
   }
 
-  FindProtocolServer handler_{CHECK_NOTNULL(trainNodes_.get())};
+  // This handler has been moved into AllTrainNodes.
+  // FindProtocolServer handler_{CHECK_NOTNULL(trainNodes_.get())};
 };
 
 TEST_F(FindProtocolTest, CreateDestroy) {}
