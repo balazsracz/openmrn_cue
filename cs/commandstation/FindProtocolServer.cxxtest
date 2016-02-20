@@ -84,9 +84,8 @@ TEST_F(FindProtocolTest, BunchOfQueries) {
   find_nodes(0x000465, 0, {0x442});
   find_nodes(0xFFFF46, 0, {0x442, 0x441});
   find_nodes(0xFFFFF4, 0, {0x442, 0x441, 0x440});
-  /// TODO: it's not clear why the empty query matches these two trains. It
-  /// probably shouldn't. Need to debug.
-  find_nodes(0xFFFFFF, 0, {0x440, 0x441});
+  find_nodes(0xFFFFFF, 0, {});
+  find_nodes(0xFFFFFF, FindProtocolDefs::ADDRESS_ONLY, {});
 }
 
 class FakeTrain : public TrainDbEntry {
@@ -192,6 +191,10 @@ TEST_F(MatchNodeTest, prefix) {
   EXPECT_TRUE(check_match(0xFFF12F, 0, "BR 123", 555));
   EXPECT_TRUE(check_match(0xFFFF1F, 0, "BR 123", 555));
   EXPECT_FALSE(check_match(0xFFF12F, FindProtocolDefs::EXACT, "BR 123", 555));
+}
+
+TEST_F(MatchNodeTest, emptyqry) {
+  EXPECT_FALSE(check_match(0xFFFFFF, 0, "BR 123", 555));
 }
 
 }  // namespace commandstation

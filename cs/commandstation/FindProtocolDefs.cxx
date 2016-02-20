@@ -41,6 +41,7 @@ namespace {
 bool is_number(char c) { return ('0' <= c) && (c <= '9'); }
 
 bool attempt_match(const string name, unsigned pos, nmranet::EventId event) {
+  int count_matches = 0;
   for (int shift = FindProtocolDefs::TRAIN_FIND_MASK - 4;
        shift >= FindProtocolDefs::TRAIN_FIND_MASK_LOW; shift -= 4) {
     uint8_t nibble = (event >> shift) & 0xf;
@@ -49,6 +50,7 @@ bool attempt_match(const string name, unsigned pos, nmranet::EventId event) {
       if (pos > name.size()) return false;
       if ((name[pos] - '0') != nibble) return false;
       ++pos;
+      ++count_matches;
       continue;
     } else {
       continue;
@@ -59,7 +61,7 @@ bool attempt_match(const string name, unsigned pos, nmranet::EventId event) {
     while (pos < name.size() && !is_number(name[pos])) ++pos;
     if (pos < name.size()) return false;
   }
-  return true;
+  return count_matches > 0;
 }
 }
 
