@@ -96,12 +96,14 @@ class MemorizingHandlerManager : public EventHandler {
                             EventReport* event,
                             BarrierNotifiable* done) OVERRIDE;
   void HandleIdentifyConsumer(const EventRegistryEntry& registry_entry,
-                              EventReport* event, BarrierNotifiable* done) {
+                              EventReport* event,
+                              BarrierNotifiable* done) override {
     // These are handled by individual blocks TODO: what if there is no block
     return done->notify();
   }
   void HandleIdentifyProducer(const EventRegistryEntry& registry_entry,
-                              EventReport* event, BarrierNotifiable* done) {
+                              EventReport* event,
+                              BarrierNotifiable* done) override {
     // These are handled by individual blocks TODO: what if there is no block
     return done->notify();
   }

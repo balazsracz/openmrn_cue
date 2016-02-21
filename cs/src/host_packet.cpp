@@ -71,7 +71,7 @@ class VCOMPipeMember : public HubPort {
 public:
   VCOMPipeMember(Service* service, int packet_id) : HubPort(service), packet_id_(packet_id) {}
 
-    virtual Action entry() {
+    Action entry() override {
       int count = message()->data()->size();
       PacketBase out_pkt(count + 1);
       out_pkt[0] = packet_id_;

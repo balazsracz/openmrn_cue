@@ -214,12 +214,12 @@ class EventBit : public ReadWriteBit {
     if (0) fprintf(stderr, "event bit create on node %p\n", node);
   }
 
-  virtual void Initialize(nmranet::Node*) {
+  void Initialize(nmranet::Node*) override {
     pc_.SendQuery(&automata_write_helper, get_notifiable());
     wait_for_notification();
   }
 
-  virtual bool Read(uint16_t, nmranet::Node*, Automata* aut) {
+  bool Read(uint16_t, nmranet::Node*, Automata* aut) override {
     // TODO(balazs.racz): we should consider CHECK failing here if
     // !defined. That will force us to explicitly reset every bit in StInit.
     auto state = bit_.GetCurrentState();
@@ -229,7 +229,7 @@ class EventBit : public ReadWriteBit {
     return false;
   }
 
-  virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
+  void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) override {
     if (0) fprintf(stderr, "event bit write to node %p\n", node);
     auto state = bit_.GetCurrentState();
     if (state == nmranet::EventState::VALID && defined_ && value) return;
@@ -260,11 +260,11 @@ class EventBlockBit : public ReadWriteBit {
 
   ~EventBlockBit() { delete[] storage_; }
 
-  virtual bool Read(uint16_t arg, nmranet::Node*, Automata* aut) {
+  bool Read(uint16_t arg, nmranet::Node*, Automata* aut) override {
     return handler_->Get(arg);
   }
 
-  virtual void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) {
+  void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) override {
     handler_->Set(arg, value, &automata_write_helper, get_notifiable());
     wait_for_notification();
   }
@@ -291,15 +291,15 @@ class EventByteBlock : public ReadWriteBit {
 
   ~EventByteBlock() { delete[] storage_; }
 
-  virtual bool Read(uint16_t arg, nmranet::Node*, Automata* aut) { HASSERT(0); }
+  bool Read(uint16_t arg, nmranet::Node*, Automata* aut) override { HASSERT(0); }
 
-  virtual void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) {
+  void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) override {
     HASSERT(0);
   }
 
-  virtual uint8_t GetState(uint16_t arg) { return storage_[arg]; }
+  uint8_t GetState(uint16_t arg) override { return storage_[arg]; }
 
-  virtual void SetState(uint16_t arg, uint8_t state) {
+  void SetState(uint16_t arg, uint8_t state) override {
     if (storage_[arg] != state) {
       storage_[arg] = state;
       handler_->Update(arg, &automata_write_helper, get_notifiable());
@@ -329,15 +329,15 @@ class EventByteBlockConsumer : public ReadWriteBit {
 
   ~EventByteBlockConsumer() { delete[] storage_; }
 
-  virtual bool Read(uint16_t arg, nmranet::Node*, Automata* aut) { HASSERT(0); }
+  bool Read(uint16_t arg, nmranet::Node*, Automata* aut) override { HASSERT(0); }
 
-  virtual void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) {
+  void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) override {
     HASSERT(0);
   }
 
-  virtual uint8_t GetState(uint16_t arg) { return storage_[arg]; }
+  uint8_t GetState(uint16_t arg) override { return storage_[arg]; }
 
-  virtual void SetState(uint16_t arg, uint8_t state) {
+  void SetState(uint16_t arg, uint8_t state) override {
     storage_[arg] = state;
   }
 
@@ -403,14 +403,14 @@ class LockBit : public ReadWriteBit {
   LockBit(unsigned offset) : lock_id_(offset) { ASSERT(offset < MAX_LOCK_ID); }
   virtual ~LockBit();
 
-  virtual bool Read(uint16_t, nmranet::Node* node, Automata* aut) {
+  bool Read(uint16_t, nmranet::Node* node, Automata* aut) override {
     int existing_id = locks[lock_id_];
     if (!existing_id) return false;
     if (existing_id == aut->GetId()) return false;
     return true;
   }
 
-  virtual void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) {
+  void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) override {
     if (locks[lock_id_] == 0 && value) {
       locks[lock_id_] = aut->GetId();
     } else if (locks[lock_id_] == aut->GetId() && !value) {

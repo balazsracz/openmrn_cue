@@ -55,7 +55,7 @@ public:
 
   UpdateQueue *queue() { return &queue_; }
 
-  virtual void Run() {
+  void Run() override {
     exit_state_ = RUN;
     while (exit_state_ == RUN) {
       Step();

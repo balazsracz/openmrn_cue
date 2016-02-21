@@ -290,16 +290,16 @@ class TrackPowerOnOffBit : public nmranet::BitEventInterface {
                           nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT),
         service_(s) {}
 
-  virtual nmranet::EventState GetCurrentState() {
+  nmranet::EventState GetCurrentState() override {
     return service_->get_estop_state(MobileStationTraction::ESTOP_FROM_OPENLCB) ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
   }
 
-  virtual void SetState(bool new_value) {
+  void SetState(bool new_value) override {
     service_->set_estop_state(MobileStationTraction::ESTOP_FROM_OPENLCB,
                               new_value);
   }
 
-  virtual nmranet::Node* node() { return service_->node(); }
+  nmranet::Node* node() override { return service_->node(); }
 
  private:
   MobileStationTraction* service_;

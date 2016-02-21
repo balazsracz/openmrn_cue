@@ -9,7 +9,7 @@ class ListenerToEventProxy : public UpdateListener {
   ListenerToEventProxy(nmranet::BitRangeEventPC* proxy)
       : proxy_(proxy) {}
 
-  virtual uint8_t OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value);
+  uint8_t OnChanged(uint8_t offset, uint8_t previous_value, uint8_t new_value) override;
 
  private:
   nmranet::BitRangeEventPC* proxy_;

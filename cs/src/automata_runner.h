@@ -94,10 +94,10 @@ private:
           HASSERT(0 <= id && id <= 255);
         }
 	virtual ~TimerBit() {}
-        virtual bool Read(uint16_t, nmranet::Node*, Automata* aut) {
+        bool Read(uint16_t, nmranet::Node*, Automata* aut) override {
             return timer_;
 	}
-	virtual void Write(uint16_t, nmranet::Node*, Automata* aut, bool value) {
+	void Write(uint16_t, nmranet::Node*, Automata* aut, bool value) override {
 	    diewith(CS_DIE_AUT_WRITETIMERBIT);
 	}
         void Initialize(nmranet::Node*) OVERRIDE {}
