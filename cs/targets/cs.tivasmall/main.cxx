@@ -309,6 +309,26 @@ void adc0_seq3_interrupt_handler(void) {
 
 BlinkerFlow blinker(stack.node(), EVENT_ID);
 
+class FactoryResetHelper : public DefaultConfigUpdateListener {
+public:
+  UpdateAction apply_configuration(int fd, bool initial_load,
+                                   BarrierNotifiable *done) override {
+    return UPDATED;
+  }
+  
+  void factory_reset(int fd) override {
+    // Clears out all train entries with zeros.
+    char block[cfg.trains().all_trains().entry<0>().size()];
+    memset(block, 0, sizeof(block));
+    for (unsigned i = 0; i < cfg.trains().all_trains().num_repeats(); ++i) {
+      const auto& p = cfg.trains().all_trains().entry(i);
+      lseek(fd, p.offset(), SEEK_SET);
+      ::write(fd, block, sizeof(block));
+    }
+  }
+} g_reset_helper;
+
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -321,6 +341,10 @@ int appl_main(int argc, char* argv[])
   //  add_watchdog_reset_timer(500);
 
     setblink(0x800A02);
+
+    stack.check_version_and_factory_reset(cfg.seg().internal_config(), nmranet::CANONICAL_VERSION, false);
+
+
 #ifdef STANDALONE
 #else
     PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0", true);
