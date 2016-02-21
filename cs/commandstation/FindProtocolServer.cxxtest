@@ -1,0 +1,200 @@
+#include "commandstation/FindProtocolServer.hxx"
+#include "commandstation/cm_test_helper.hxx"
+
+namespace commandstation {
+
+template <typename T>
+static T* CHECK_NOTNULL(T* d) {
+  HASSERT(d);
+  return d;
+}
+
+static nmranet::EventId create_query(uint64_t nibbles, uint8_t settings) {
+  static_assert(FindProtocolDefs::TRAIN_FIND_MASK_LOW == 8,
+                "The code above expects settings to be 8-bit.");
+  return FindProtocolDefs::TRAIN_FIND_BASE |
+         ((nibbles << FindProtocolDefs::TRAIN_FIND_MASK_LOW) &
+          ((1ULL << FindProtocolDefs::TRAIN_FIND_MASK) - 1)) |
+         (settings & 0xff);
+}
+
+class FindProtocolTest : public AllTrainNodesTest {
+ protected:
+  ~FindProtocolTest() { wait(); }
+
+  void find_nodes(uint64_t nibbles, uint8_t settings, std::initializer_list<uint16_t> results) {
+    clear_expect(true);
+    uint64_t event = create_query(nibbles, settings);
+    LOG(INFO, "query event: %016" PRIX64, event);
+    for (uint16_t alias : results) {
+      expect_packet(StringPrintf(":X19544%03XN%016" PRIX64 ";", alias, event));
+    }
+    send_packet_and_flush_expect(StringPrintf(":X19914123N%016" PRIX64 ";", event));
+  }
+
+  // This handler has been moved into AllTrainNodes.
+  // FindProtocolServer handler_{CHECK_NOTNULL(trainNodes_.get())};
+};
+
+TEST_F(FindProtocolTest, CreateDestroy) {}
+
+TEST_F(FindProtocolTest, GlobalIdentify) {
+  for (uint16_t alias : {0x440, 0x441, 0x442}) {
+    // is train
+    expect_packet(StringPrintf(":X19547%03XN0101000000000303;", alias));
+    // producer identified range for the train finder protocol
+    expect_packet(StringPrintf(":X19524%03XN090099FF00000000;", alias));
+  }
+  send_packet(":X19970123N;");
+  wait();
+}
+
+TEST_F(FindProtocolTest, AddressedIdentify) {
+  for (uint16_t alias : {0x441}) {
+    // is train
+    expect_packet(StringPrintf(":X19547%03XN0101000000000303;", alias));
+    // producer identified range for the train finder protocol
+    expect_packet(StringPrintf(":X19524%03XN090099FF00000000;", alias));
+  }
+  send_packet(":X19968123N0441;");
+  wait();
+}
+
+TEST_F(FindProtocolTest, FindOneNode) {
+  for (uint16_t alias : {0x441}) {
+    // producer identified valid for the train finder protocol
+    expect_packet(StringPrintf(":X19544%03XN090099FFFFFF2200;", alias));
+  }
+  send_packet(":X19914123N090099FFFFFF2200;");
+  wait();
+}
+
+TEST_F(FindProtocolTest, FindOneNodeInfra) {
+  find_nodes(0xFFFF22, 0, {0x441});
+}
+
+TEST_F(FindProtocolTest, BunchOfQueries) {
+  find_nodes(0xFFFF23, 0, {});
+  find_nodes(0xFFFF22, 0, {0x441});
+  find_nodes(0xF43FFF, 0, {0x440});
+  find_nodes(0xF843FF, 0, {0x440});
+  find_nodes(0xF460FF, 0, {0x441});
+  find_nodes(0xFFF460, 0, {0x441});
+  find_nodes(0xFFF465, 0, {0x442});
+  find_nodes(0x000465, 0, {0x442});
+  find_nodes(0xFFFF46, 0, {0x442, 0x441});
+  find_nodes(0xFFFFF4, 0, {0x442, 0x441, 0x440});
+  find_nodes(0xFFFFFF, 0, {});
+  find_nodes(0xFFFFFF, FindProtocolDefs::ADDRESS_ONLY, {});
+}
+
+class FakeTrain : public TrainDbEntry {
+ public:
+  FakeTrain(const string& name, int address) : name_(name), address_(address) {}
+
+  /** Returns an internal identifier that uniquely defines where this traindb
+   * entry was allocated from. */
+  string identifier() override { return ""; }
+
+  /** Retrieves the NMRAnet NodeID for the virtual node that represents a
+   * particular train known to the database.
+   */
+  nmranet::NodeID get_traction_node() override { return 0; }
+
+  /** Retrieves the name of the train. */
+  string get_train_name() override { return name_; }
+
+  /** Retrieves the legacy address of the train. */
+  int get_legacy_address() override { return address_; }
+
+  /** Retrieves the traction drive mode of the train. */
+  DccMode get_legacy_drive_mode() override { return MARKLIN_OLD; }
+
+  /** Retrieves the label assigned to a given function, or FN_NONEXISTANT if
+      the function does not exist. */
+  unsigned get_function_label(unsigned fn_id) override { return 0; }
+
+  /** Returns the largest valid function ID for this train, or -1 if the train
+      has no functions. */
+  int get_max_fn() override { return 0; }
+
+  string name_;
+  int address_;
+};
+
+class MatchNodeTest : public ::testing::Test {
+ protected:
+  bool check_match(uint64_t nibbles, uint8_t settings, const string& name,
+                   int address) {
+    FakeTrain tr(name, address);
+    nmranet::EventId event = create_query(nibbles, settings);
+    return FindProtocolDefs::match_query_to_node(event, &tr);
+  }
+};
+
+TEST_F(MatchNodeTest, simple) {
+  EXPECT_TRUE(check_match(0x123, 0, "Foo", 123));
+
+  EXPECT_FALSE(check_match(0x124, 0, "Foo", 123));
+}
+
+TEST_F(MatchNodeTest, middle) {
+  EXPECT_TRUE(check_match(0xF123F, 0, "Foo", 123));
+  EXPECT_TRUE(check_match(0xFF123F, 0, "Foo", 123));
+  EXPECT_TRUE(check_match(0xF123FF, 0, "Foo", 123));
+
+  EXPECT_FALSE(check_match(0xF124F, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0xFF124F, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0xF124FF, 0, "Foo", 123));
+}
+
+TEST_F(MatchNodeTest, begin) {
+  EXPECT_TRUE(check_match(0x123F, 0, "Foo", 123));
+  EXPECT_TRUE(check_match(0x123FF, 0, "Foo", 123));
+  EXPECT_TRUE(check_match(0x123FFF, 0, "Foo", 123));
+
+  EXPECT_FALSE(check_match(0x124F, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0x124FF, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0x124FFF, 0, "Foo", 123));
+}
+
+TEST_F(MatchNodeTest, toolong) {
+  EXPECT_FALSE(check_match(0x123FFFF, 0, "Foo", 123));
+}
+
+TEST_F(MatchNodeTest, scattered) {
+  // In this test we put in unused characters into the middle of the query
+  EXPECT_TRUE(check_match(0x1F23F, 0, "Foo", 123));
+  EXPECT_TRUE(check_match(0xF12F3F, 0, "Foo", 123));
+  EXPECT_TRUE(check_match(0x1F2F3F, 0, "Foo", 123));
+
+  EXPECT_FALSE(check_match(0x1F24F, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0xF12F4F, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0x1F2F4F, 0, "Foo", 123));
+}
+
+TEST_F(MatchNodeTest, label) {
+  EXPECT_TRUE(check_match(0xFFF123, 0, "123", 555));
+  EXPECT_TRUE(check_match(0xFFF123, 0, "BR123", 555));
+  EXPECT_FALSE(
+      check_match(0xFFF123, FindProtocolDefs::ADDRESS_ONLY, "BR123", 555));
+  EXPECT_FALSE(check_match(0xFFF124, 0, "BR123", 555));
+}
+
+TEST_F(MatchNodeTest, prefix) {
+  EXPECT_TRUE(check_match(0x123, FindProtocolDefs::EXACT, "Foo", 123));
+  EXPECT_TRUE(check_match(0x12, 0, "Foo", 123));
+  EXPECT_TRUE(check_match(0x1, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0x12, FindProtocolDefs::EXACT, "Foo", 123));
+
+  EXPECT_TRUE(check_match(0xFFF123, FindProtocolDefs::EXACT, "BR 123", 555));
+  EXPECT_TRUE(check_match(0xFFF12F, 0, "BR 123", 555));
+  EXPECT_TRUE(check_match(0xFFFF1F, 0, "BR 123", 555));
+  EXPECT_FALSE(check_match(0xFFF12F, FindProtocolDefs::EXACT, "BR 123", 555));
+}
+
+TEST_F(MatchNodeTest, emptyqry) {
+  EXPECT_FALSE(check_match(0xFFFFFF, 0, "BR 123", 555));
+}
+
+}  // namespace commandstation

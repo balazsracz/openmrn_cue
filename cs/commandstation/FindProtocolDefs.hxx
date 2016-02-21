@@ -1,5 +1,5 @@
 /** \copyright
- * Copyright (c) 2016, Balazs Racz
+ * Copyright (c) 2014-2016, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,47 +24,71 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file AllTrainNodes.cxxtest
+ * \file FindProtocolDefs.hxx
  *
- * Unit tests for the train FDI generator and AllTrainNodes.
+ * Definitions for the train node find protocol.
  *
  * @author Balazs Racz
- * @date 16 Jan 2016
+ * @date 18 Feb 2016
  */
 
-#include "commandstation/cm_test_helper.hxx"
-#include "utils/format_utils.hxx"
+#ifndef _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
+#define _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
+
+#include "nmranet/EventHandler.hxx"
 
 namespace commandstation {
 
-TEST_F(AllTrainNodesTest, CreateDestroy) {}
+class TrainDbEntry;
 
-TEST_F(AllTrainNodesTest, PIPRequest) {
-  send_packet_and_expect_response(":X19828123N0441;",
-                                  ":X19668441N0123D41E00000000;");
-  wait();
-}
+struct FindProtocolDefs {
+  // static constexpr EventID
+  enum {
+    TRAIN_FIND_BASE = 0x090099FF00000000U,
+  };
 
-TEST_F(AllTrainNodesTest, CreateNode) {
-  expect_train_start(0x443, 183);
-  trainNodes_->allocate_node(FAKE_DRIVE, 183);
-  wait();
-  send_packet_and_expect_response(":X19828123N0443;",
-                                  ":X19668443N0123D41E00000000;");
-  wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
-  EXPECT_EQ(183, db_entry->get_legacy_address());
-  EXPECT_EQ(string("183"), db_entry->get_train_name());
-}
+  // Command byte definitions
+  enum {
+    // What is the mask value for the event registry entry.
+    TRAIN_FIND_MASK = 32,
+    // Where does the command byte start.
+    TRAIN_FIND_MASK_LOW = 8,
 
-TEST(bufferrender, T183) {
-    char buf[16];
-    memset(buf, 0, sizeof(buf));
-    integer_to_buffer(183, buf);
-    EXPECT_EQ(string("183"), buf);
-}
+    ALLOCATE = 0x80,
+    // SEARCH = 0x00,
 
-// TODO: add test for retrieving via memory config protocol.
+    EXACT = 0x40,
+    // SUBSTRING = 0x00,
+
+    ADDRESS_ONLY = 0x20,
+    // ADDRESS_NAME_CABNUMBER = 0x00
+
+    DCC_FORCE_LONG = 0x10,
+
+    // Bits 0-2 are a DccMode enum.
+  };
+
+  static_assert((TRAIN_FIND_BASE & ((1ULL << TRAIN_FIND_MASK) - 1)) == 0,
+                "TRAIN_FIND_BASE is not all zero on the bottom");
+
+  // Search nibble definitions.
+  enum {
+    NIBBLE_UNUSED = 0xf,
+    NIBBLE_SPACE = 0xe,
+    NIBBLE_STAR = 0xd,
+    NIBBLE_QN = 0xc,
+    NIBBLE_HASH = 0xb,
+  };
+
+  static int address_from_query(nmranet::EventId event);
+
+  static bool match_query_to_node(nmranet::EventId event, TrainDbEntry* train);
+
+ private:
+  // Not instantiatable class.
+  FindProtocolDefs();
+};
 
 }  // namespace commandstation
+
+#endif  // _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_

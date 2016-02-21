@@ -32,6 +32,10 @@ const struct const_traindb_entry_t const_lokdb[] = {
 
 extern const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
+extern const char TRAINCDI_DATA[] = "Test cdi data";
+extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
+extern const char TRAINTMPCDI_DATA[] = "Test cdi tmp data";
+extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
 
 class FindTrainNodeTestBase : public nmranet::TractionTest {
 protected:

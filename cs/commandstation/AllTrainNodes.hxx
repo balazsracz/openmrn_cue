@@ -49,6 +49,8 @@ class MemoryConfigHandler;
 }
 
 namespace commandstation {
+class FindProtocolServer;
+
 class AllTrainNodes {
  public:
   AllTrainNodes(TrainDb* db, nmranet::TrainService* traction_service,
@@ -95,6 +97,9 @@ class AllTrainNodes {
 
   /// All train nodes that we know about.
   std::vector<Impl*> trains_;
+
+  friend class FindProtocolServer;
+  std::unique_ptr<FindProtocolServer> findProtocolServer_;
 
   // Listens to configuration update done commands coming in, and checks if the
   // train database has changed.

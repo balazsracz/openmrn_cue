@@ -47,7 +47,7 @@ public:
     {
     }
 
-    nmranet::EventState GetCurrentState() OVERRIDE
+    nmranet::EventState GetCurrentState() override
     {
         return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
     }
