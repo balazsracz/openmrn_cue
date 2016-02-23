@@ -22,7 +22,8 @@ class FindProtocolTest : public AllTrainNodesTest {
  protected:
   ~FindProtocolTest() { wait(); }
 
-  void find_nodes(uint64_t nibbles, uint8_t settings, std::initializer_list<uint16_t> results) {
+  void find_nodes(uint64_t nibbles, uint8_t settings,
+                  std::initializer_list<uint16_t> results) {
     clear_expect(true);
     uint64_t event = create_query(nibbles, settings);
     LOG(INFO, "query event: %016" PRIX64, event);
@@ -30,7 +31,8 @@ class FindProtocolTest : public AllTrainNodesTest {
       LOG(INFO, "expected result: %x", (unsigned)alias);
       expect_packet(StringPrintf(":X19544%03XN%016" PRIX64 ";", alias, event));
     }
-    send_packet_and_flush_expect(StringPrintf(":X19914123N%016" PRIX64 ";", event));
+    send_packet_and_flush_expect(
+        StringPrintf(":X19914123N%016" PRIX64 ";", event));
   }
 
   // This handler has been moved into AllTrainNodes.
@@ -70,9 +72,7 @@ TEST_F(FindProtocolTest, FindOneNode) {
   wait();
 }
 
-TEST_F(FindProtocolTest, FindOneNodeInfra) {
-  find_nodes(0xFFFF22, 0, {0x441});
-}
+TEST_F(FindProtocolTest, FindOneNodeInfra) { find_nodes(0xFFFF22, 0, {0x441}); }
 
 TEST_F(FindProtocolTest, BunchOfQueries) {
   find_nodes(0xFFFF23, 0, {});
@@ -125,24 +125,34 @@ class FakeTrain : public TrainDbEntry {
 
 class MatchNodeTest : public ::testing::Test {
  protected:
-  bool check_match(uint64_t nibbles, uint8_t settings, const string& name,
-                   int address) {
+  uint8_t check_match(uint64_t nibbles, uint8_t settings, const string& name,
+                      int address) {
     FakeTrain tr(name, address);
     nmranet::EventId event = create_query(nibbles, settings);
     return FindProtocolDefs::match_query_to_node(event, &tr);
   }
+
+  enum {
+    MATCH_ANY = FindProtocolDefs::MATCH_ANY,
+    ADDRESS_ONLY = FindProtocolDefs::ADDRESS_ONLY,
+    EXACT = FindProtocolDefs::EXACT,
+  };
 };
 
 TEST_F(MatchNodeTest, simple) {
-  EXPECT_TRUE(check_match(0x123, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0x123, 0, "Foo", 123));
 
   EXPECT_FALSE(check_match(0x124, 0, "Foo", 123));
 }
 
 TEST_F(MatchNodeTest, middle) {
-  EXPECT_TRUE(check_match(0xF123F, 0, "Foo", 123));
-  EXPECT_TRUE(check_match(0xFF123F, 0, "Foo", 123));
-  EXPECT_TRUE(check_match(0xF123FF, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xF123F, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xFF123F, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xF123FF, 0, "Foo", 123));
 
   EXPECT_FALSE(check_match(0xF124F, 0, "Foo", 123));
   EXPECT_FALSE(check_match(0xFF124F, 0, "Foo", 123));
@@ -150,9 +160,12 @@ TEST_F(MatchNodeTest, middle) {
 }
 
 TEST_F(MatchNodeTest, begin) {
-  EXPECT_TRUE(check_match(0x123F, 0, "Foo", 123));
-  EXPECT_TRUE(check_match(0x123FF, 0, "Foo", 123));
-  EXPECT_TRUE(check_match(0x123FFF, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0x123F, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0x123FF, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0x123FFF, 0, "Foo", 123));
 
   EXPECT_FALSE(check_match(0x124F, 0, "Foo", 123));
   EXPECT_FALSE(check_match(0x124FF, 0, "Foo", 123));
@@ -165,9 +178,12 @@ TEST_F(MatchNodeTest, toolong) {
 
 TEST_F(MatchNodeTest, scattered) {
   // In this test we put in unused characters into the middle of the query
-  EXPECT_TRUE(check_match(0x1F23F, 0, "Foo", 123));
-  EXPECT_TRUE(check_match(0xF12F3F, 0, "Foo", 123));
-  EXPECT_TRUE(check_match(0x1F2F3F, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0x1F23F, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xF12F3F, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0x1F2F3F, 0, "Foo", 123));
 
   EXPECT_FALSE(check_match(0x1F24F, 0, "Foo", 123));
   EXPECT_FALSE(check_match(0xF12F4F, 0, "Foo", 123));
@@ -183,15 +199,74 @@ TEST_F(MatchNodeTest, label) {
 }
 
 TEST_F(MatchNodeTest, prefix) {
-  EXPECT_TRUE(check_match(0x123, FindProtocolDefs::EXACT, "Foo", 123));
-  EXPECT_TRUE(check_match(0x12, 0, "Foo", 123));
-  EXPECT_TRUE(check_match(0x1, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0x123, FindProtocolDefs::EXACT, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY, check_match(0x12, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY, check_match(0x1, 0, "Foo", 123));
   EXPECT_FALSE(check_match(0x12, FindProtocolDefs::EXACT, "Foo", 123));
 
-  EXPECT_TRUE(check_match(0xFFF123, FindProtocolDefs::EXACT, "BR 123", 555));
-  EXPECT_TRUE(check_match(0xFFF12F, 0, "BR 123", 555));
-  EXPECT_TRUE(check_match(0xFFFF1F, 0, "BR 123", 555));
+  EXPECT_EQ(MATCH_ANY | EXACT,
+            check_match(0xFFF123, FindProtocolDefs::EXACT, "BR 123", 555));
+  EXPECT_EQ(MATCH_ANY, check_match(0xFFF12F, 0, "BR123", 555));
+  EXPECT_EQ(MATCH_ANY, check_match(0xFFFF1F, 0, "BR123", 555));
   EXPECT_FALSE(check_match(0xFFF12F, FindProtocolDefs::EXACT, "BR 123", 555));
+}
+
+TEST_F(MatchNodeTest, select_best) {
+  // An exact name match is better than a partial address match.
+  EXPECT_EQ(MATCH_ANY | EXACT, check_match(0xFFF123, 0, "BR 123", 1234));
+  // But if we are restricted to addresses, then we get a partial match back.
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+            check_match(0xFFF123, ADDRESS_ONLY, "BR 123", 1234));
+
+  // Of two partial matches the address wins, even if not restricted to it
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+            check_match(0xFFF123, 0, "BR 1234", 1234));
+  // But also when it is
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+            check_match(0xFFF123, ADDRESS_ONLY, "BR 1234", 1234));
+}
+
+TEST_F(MatchNodeTest, no_digit_in_name) {
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY, check_match(0xFFF123, 0, "BR", 1234));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+            check_match(0xFFF123, ADDRESS_ONLY, "BR", 1234));
+  EXPECT_FALSE(check_match(0xFFF123, EXACT, "BR", 1234));
+  EXPECT_FALSE(check_match(0xFFF123, EXACT | ADDRESS_ONLY, "BR", 1234));
+
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xFF1234, 0, "BR", 1234));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xFF1234, ADDRESS_ONLY, "BR", 1234));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xFF1234, ADDRESS_ONLY | EXACT, "BR", 1234));
+}
+
+TEST_F(MatchNodeTest, multi_part_name) {
+  // An exact name match can start in the middle of the name tag.
+  EXPECT_EQ(MATCH_ANY | EXACT, check_match(0xFFF123, 0, "BR 260 123", 555));
+  // Another case
+  EXPECT_EQ(MATCH_ANY | EXACT, check_match(0xFFF123, 0, "Re 4/4 123", 555));
+  // Another case
+  EXPECT_EQ(MATCH_ANY | EXACT, check_match(0xFFF123, 0, "Re 4/4 123b", 555));
+  // Just a partial name match here
+  EXPECT_EQ(MATCH_ANY, check_match(0xFFF123, 0, "Re 4/4 123b2", 555));
+
+  // Also works for exact name match
+  EXPECT_EQ(MATCH_ANY | EXACT,
+            check_match(0xFFF123, EXACT, "Re 4/4 123", 1234));
+  // Even works for multiple prefix matches
+  EXPECT_EQ(MATCH_ANY | EXACT,
+            check_match(0xFFF123, EXACT, "Re 12 1234 123", 1234));
+  // But the reverse is not an exact match.
+  EXPECT_FALSE(check_match(0xFFF123, EXACT, "Re 12 123 1234", 1234));
+  // Without exact we match on the address.
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+            check_match(0xFFF123, 0, "Re 12 123 1234", 1234));
+  // It the address is wrong, we remain at the partial name match.
+  EXPECT_EQ(MATCH_ANY, check_match(0xFFF123, 0, "Re 12 123 1234", 555));
+  // Doesn't help if we're looking for address matches only.
+  EXPECT_FALSE(check_match(0xFFF123, ADDRESS_ONLY, "BR 260 123", 555));
 }
 
 TEST_F(MatchNodeTest, emptyqry) {
