@@ -66,6 +66,11 @@ struct FindProtocolDefs {
     DCC_FORCE_LONG = 0x10,
 
     // Bits 0-2 are a DccMode enum.
+    
+    // Match response information. This bit is not used in the network
+    // protocol. The bit will be set in the matched result, while cleared for a
+    // no-match.
+    MATCH_ANY = 0x01,
   };
 
   static_assert((TRAIN_FIND_BASE & ((1ULL << TRAIN_FIND_MASK) - 1)) == 0,
@@ -80,9 +85,11 @@ struct FindProtocolDefs {
     NIBBLE_HASH = 0xb,
   };
 
-  static int address_from_query(nmranet::EventId event);
-
-  static bool match_query_to_node(nmranet::EventId event, TrainDbEntry* train);
+  /** Compares an incoming search query to a given train node. Returns 0 for a
+      no-match. Returns a bitfield of match types for a match. valid bits are
+      MATCH_ANY (always set), ADDRESS_ONLY (set when the match occurred in the
+      address), EXACT (clear for prefix match). */
+  static uint8_t match_query_to_node(nmranet::EventId event, TrainDbEntry* train);
 
  private:
   // Not instantiatable class.

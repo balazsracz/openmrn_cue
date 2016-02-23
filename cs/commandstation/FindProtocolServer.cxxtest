@@ -27,6 +27,7 @@ class FindProtocolTest : public AllTrainNodesTest {
     uint64_t event = create_query(nibbles, settings);
     LOG(INFO, "query event: %016" PRIX64, event);
     for (uint16_t alias : results) {
+      LOG(INFO, "expected result: %x", (unsigned)alias);
       expect_packet(StringPrintf(":X19544%03XN%016" PRIX64 ";", alias, event));
     }
     send_packet_and_flush_expect(StringPrintf(":X19914123N%016" PRIX64 ";", event));
