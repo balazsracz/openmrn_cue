@@ -152,7 +152,7 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
 nmranet::SimpleCanStack stack(NODE_ID);
-CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
+// XXX CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 
 nmranet::ConfigDef cfg(0);
 
@@ -285,8 +285,8 @@ nmranet::TrainService traction_service(stack.iface());
 
 //mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
 commandstation::TrainDb train_db(cfg.trains().all_trains());
-CanIf can1_interface(stack.service(), &can_hub1);
-mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
+// XXX CanIf can1_interface(stack.service(), &can_hub1);
+// XXX mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface(), &train_db, stack.node());
 
 commandstation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
@@ -347,7 +347,7 @@ int appl_main(int argc, char* argv[])
 
 #ifdef STANDALONE
 #else
-    PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0", true);
+    // XXX PacketQueue::initialize(stack.can_hub(), "/dev/serUSB0", true);
 #endif
     setblink(0);
 
@@ -363,7 +363,7 @@ int appl_main(int argc, char* argv[])
 
     //HubDeviceNonBlock<CanHubFlow> can0_port(&can_hub0, "/dev/can0");
     //HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
-    bracz_custom::init_host_packet_can_bridge(&can_hub1);
+    // XXX bracz_custom::init_host_packet_can_bridge(&can_hub1);
     //HubDeviceSelect<HubFlow> stdout_port(&stdout_hub, "/dev/ser0");
     //FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
     extern char *heap_end;
