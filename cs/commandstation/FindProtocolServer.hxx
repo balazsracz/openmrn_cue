@@ -81,11 +81,10 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
         // one.
         return;
       }
-      // We do a synchronous alloc here but since we keep hold of the done
-      // callback we are actually guaranteed to never have more than one buffer
-      // in flight.
+      // We do a synchronous alloc here but there isn't a much better choice.
       auto *b = flow_.alloc();
-      b->set_done(done->new_child());
+      // Can't do this -- see handleidentifyproducer.
+      // b->set_done(done->new_child());
       pendingGlobalIdentify_ = true;
       b->data()->reset(REQUEST_GLOBAL_IDENTIFY);
       flow_.send(b);
@@ -98,7 +97,13 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     AutoNotify an(done);
 
     auto *b = flow_.alloc();
-    b->set_done(done->new_child());
+    // This would be nice in that we would prevent allocating more buffers
+    // while the previous request is serviced. However, thereby we also block
+    // the progress on the event handler flow, which will cause deadlocks,
+    // since servicing the request involves sending events out that will be
+    // looped back.
+    //
+    // b->set_done(done->new_child());
     b->data()->reset(event->event);
     flow_.send(b);
   };
@@ -130,12 +135,13 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
         parent_->pendingGlobalIdentify_ = false;
       }
       nextTrainId_ = 0;
+      hasMatches_ = false;
       return call_immediately(STATE(iterate));
     }
 
     Action iterate() {
       if (nextTrainId_ >= nodes()->size()) {
-        return exit();
+        return call_immediately(STATE(iteration_done));
       }
       if (eventId_ == REQUEST_GLOBAL_IDENTIFY) {
         if (parent_->pendingGlobalIdentify_) {
@@ -155,7 +161,7 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
             nodes()->tractionService_->iface()->global_message_write_flow(),
             STATE(send_response));
       }
-      return call_immediately(STATE(next_iterate));
+      return yield_and_call(STATE(next_iterate));
     }
 
     Action send_response() {
@@ -185,12 +191,20 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
       return call_immediately(STATE(iterate));
     }
 
+    Action iteration_done() {
+      // TODO: allocate train node if we have not found a match and allocation
+      //is requested.   
+      // if (
+      return exit();
+    }
+
    private:
     AllTrainNodes *nodes() { return parent_->parent_; }
 
     nmranet::EventId eventId_;
     unsigned nextTrainId_;
     BarrierNotifiable bn_;
+    bool hasMatches_;
     FindProtocolServer *parent_;
   };
 

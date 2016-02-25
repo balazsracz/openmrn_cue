@@ -72,6 +72,52 @@ TEST_F(FindProtocolTest, FindOneNode) {
   wait();
 }
 
+TEST_F(FindProtocolTest, MultiQuery) {
+  send_packet_and_expect_response(":X19914123N090099FFFFFF2200;",
+                                  ":X19544441N090099FFFFFF2200;");
+  send_packet_and_expect_response(":X19914123N090099FFFFFF2200;",
+                                  ":X19544441N090099FFFFFF2200;");
+  send_packet_and_expect_response(":X19914123N090099FFFFFF2200;",
+                                  ":X19544441N090099FFFFFF2200;");
+  send_packet_and_expect_response(":X19914123N090099FFFFFF2200;",
+                                  ":X19544441N090099FFFFFF2200;");
+}
+
+TEST_F(FindProtocolTest, FindThreeNodes) {
+  for (uint16_t alias : {0x440, 0x441, 0x442}) {
+    // producer identified valid for the train finder protocol
+    expect_packet(StringPrintf(":X19544%03XN090099FFFFFFF400;", alias));
+  }
+  send_packet(":X19914123N090099FFFFFFF400;");
+  wait();
+}
+
+TEST_F(FindProtocolTest, RaceToQuery) {
+  // This test checks what happens when multiple throttles are sending train
+  // protocol query commands simultaneously. This, while unlikely, should
+  // function correctly and all requests should be queued and answered.
+  
+  // Check down the train initialization part.
+  wait();
+  clear_expect(true); // strict
+  // Put in expectations
+  for (uint16_t alias : {0x440, 0x441, 0x442}) {
+    // producer identified valid for the train finder protocol
+    expect_packet(StringPrintf(":X19544%03XN090099FFFFFFF400;", alias)).Times(4);
+  }
+  // We block the main executor to ensure that the multiple requests really do
+  // arrive concurrently.
+  BlockExecutor b(nullptr);
+  send_packet(":X19914123N090099FFFFFFF400;");
+  send_packet(":X19914123N090099FFFFFFF400;");
+  send_packet(":X19914123N090099FFFFFFF400;");
+  send_packet(":X19914123N090099FFFFFFF400;");
+  // ... and go!
+  b.release_block();
+  wait();
+  clear_expect();
+}
+
 TEST_F(FindProtocolTest, FindOneNodeInfra) { find_nodes(0xFFFF22, 0, {0x441}); }
 
 TEST_F(FindProtocolTest, BunchOfQueries) {
