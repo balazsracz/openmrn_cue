@@ -557,6 +557,11 @@ nmranet::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
   return impl->node_->node_id();
 }
 
+// For testing.
+bool AllTrainNodes::find_flow_is_idle() {
+  return findProtocolServer_->is_idle();
+}
+
 AllTrainNodes::~AllTrainNodes() {
   for (auto* t : trains_) {
     delete t;

@@ -72,6 +72,9 @@ class AllTrainNodes {
 
   size_t size() { return trains_.size(); }
 
+  // For testing.
+  bool find_flow_is_idle();
+
  private:
   // ==== Interface for children ====
   struct Impl;
