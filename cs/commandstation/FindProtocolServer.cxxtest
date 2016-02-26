@@ -1,5 +1,6 @@
 #include "commandstation/FindProtocolServer.hxx"
 #include "commandstation/cm_test_helper.hxx"
+#include "commandstation/UpdateProcessor.hxx"
 
 namespace commandstation {
 
@@ -9,6 +10,14 @@ static T* CHECK_NOTNULL(T* d) {
   return d;
 }
 
+class DccPacketSink : public dcc::PacketFlowInterface {
+ public:
+  void send(Buffer<dcc::Packet>* b, unsigned prio) {
+    b->unref();
+  }
+};
+
+
 static nmranet::EventId create_query(uint64_t nibbles, uint8_t settings) {
   static_assert(FindProtocolDefs::TRAIN_FIND_MASK_LOW == 8,
                 "The code above expects settings to be 8-bit.");
@@ -17,6 +26,12 @@ static nmranet::EventId create_query(uint64_t nibbles, uint8_t settings) {
           ((1ULL << FindProtocolDefs::TRAIN_FIND_MASK) - 1)) |
          (settings & 0xff);
 }
+
+
+// These components of the command station are needed in order to instantiate
+// real dcc train impl objects.
+DccPacketSink g_hardware;
+UpdateProcessor g_update_processor{&g_service, &g_hardware};
 
 class FindProtocolTest : public AllTrainNodesTest {
  protected:
@@ -114,6 +129,24 @@ TEST_F(FindProtocolTest, RaceToQuery) {
   send_packet(":X19914123N090099FFFFFFF400;");
   // ... and go!
   b.release_block();
+  wait();
+  clear_expect();
+}
+
+TEST_F(FindProtocolTest, WithAllocate) {
+  // Check down the train initialization part.
+  wait();
+  clear_expect(true); // strict
+  send_packet(":X19914123N090099FFFFFF2300;");
+  wait();
+  clear_expect(true); // strict
+  expect_train_start(0x443, 23);
+  expect_packet(":X19544443N090099FFFFFF2380;");
+  send_packet(":X19914123N090099FFFFFF2380;");
+  wait();
+  while (!trainNodes_->find_flow_is_idle()) {
+    usleep(100);
+  }
   wait();
   clear_expect();
 }

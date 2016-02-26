@@ -108,6 +108,11 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     flow_.send(b);
   };
 
+  // For testing.
+  bool is_idle() {
+    return flow_.is_waiting();
+  }
+
  private:
   enum {
     // Send this in the event_ field if there is a global identify
@@ -157,6 +162,7 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
       auto db_entry = nodes()->get_traindb_entry(nextTrainId_);
       if (!db_entry) return call_immediately(STATE(next_iterate));
       if (FindProtocolDefs::match_query_to_node(eventId_, db_entry.get())) {
+        hasMatches_ = true;
         return allocate_and_call(
             nodes()->tractionService_->iface()->global_message_write_flow(),
             STATE(send_response));
@@ -192,9 +198,36 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     }
 
     Action iteration_done() {
-      // TODO: allocate train node if we have not found a match and allocation
-      //is requested.   
-      // if (
+      if (!hasMatches_ && (eventId_ & FindProtocolDefs::ALLOCATE)) {
+        // TODO: we should wait some time, maybe 200 msec for any responses
+        // from other nodes, possibly a deadrail train node, before we actually
+        // allocate a new train node.
+        DccMode mode;
+        unsigned address = FindProtocolDefs::query_to_address(eventId_, &mode);
+        newNodeId_ = nodes()->allocate_node(mode, address);
+        // We sleep a bit to ensure that the new node is registered and the
+        // initialized is enqueued.
+        return sleep_and_call(&timer_, MSEC_TO_NSEC(100),
+                              STATE(new_node_reply));
+      }
+      return exit();
+    }
+
+    Action new_node_reply() {
+      return allocate_and_call(
+          nodes()->tractionService_->iface()->global_message_write_flow(),
+          STATE(send_new_node_response));
+    }
+
+    Action send_new_node_response() {
+      auto *b = get_allocation_result(
+          nodes()->tractionService_->iface()->global_message_write_flow());
+      b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+                       newNodeId_,
+                       nmranet::eventid_to_buffer(eventId_));
+      parent_->parent_->tractionService_->iface()
+          ->global_message_write_flow()
+          ->send(b);
       return exit();
     }
 
@@ -202,10 +235,14 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     AllTrainNodes *nodes() { return parent_->parent_; }
 
     nmranet::EventId eventId_;
-    unsigned nextTrainId_;
+    union {
+      unsigned nextTrainId_;
+      nmranet::NodeID newNodeId_;
+    };
     BarrierNotifiable bn_;
     bool hasMatches_;
     FindProtocolServer *parent_;
+    StateFlowTimer timer_{this};
   };
 
   AllTrainNodes *parent_;
