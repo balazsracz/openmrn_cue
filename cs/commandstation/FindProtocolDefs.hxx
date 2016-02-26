@@ -36,6 +36,7 @@
 #define _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
 
 #include "nmranet/EventHandler.hxx"
+#include "commandstation/TrainDbDefs.hxx"
 
 namespace commandstation {
 
@@ -90,6 +91,19 @@ struct FindProtocolDefs {
       MATCH_ANY (always set), ADDRESS_ONLY (set when the match occurred in the
       address), EXACT (clear for prefix match). */
   static uint8_t match_query_to_node(nmranet::EventId event, TrainDbEntry* train);
+
+  /** Converts a find protocol query to an address and desired DccMode
+      information. Will take into account prefix zeros for forcing a dcc long
+      address, as well as all mode and flag bits coming in via the query.
+      
+      @param mode (can't be null) will be filled in with the Dcc Mode: the
+      bottom 3 bits as specified by the incoming query, or zero if the query
+      did not specify a preference. If the query started with a prefix of zero
+      (typed by the user) or DCC_FORCE_LONG_ADDRESS was set in the query, the
+      DccMode will have the force long address bit set.
+
+      @returns the new legacy_address. */
+  static unsigned query_to_address(nmranet::EventId query, DccMode* mode);
 
  private:
   // Not instantiatable class.

@@ -78,17 +78,16 @@ uint8_t attempt_match(const string name, unsigned pos, nmranet::EventId event) {
 
 }  // namespace
 
+
 // static
-uint8_t FindProtocolDefs::match_query_to_node(nmranet::EventId event,
-                                              TrainDbEntry* train) {
-  unsigned legacy_address = train->get_legacy_address();
+unsigned FindProtocolDefs::query_to_address(nmranet::EventId event, DccMode* mode) {
   unsigned supplied_address = 0;
-  // bool has_prefix_zero = false;
+  bool has_prefix_zero = false;
   for (int shift = TRAIN_FIND_MASK - 4; shift >= TRAIN_FIND_MASK_LOW;
        shift -= 4) {
     uint8_t nibble = (event >> shift) & 0xf;
     if (0 == nibble && 0 == supplied_address) {
-      // has_prefix_zero = true;
+      has_prefix_zero = true;
     }
     if ((0 <= nibble) && (nibble <= 9)) {
       supplied_address *= 10;
@@ -98,6 +97,22 @@ uint8_t FindProtocolDefs::match_query_to_node(nmranet::EventId event,
     // For the moment we just ignore every non-numeric character. Including
     // gluing together all digits entered by the user into one big number.
   }
+  uint8_t nmode = event & 7;
+  // The default drive mode is known by AllTrainNodes. It is okay to leave it
+  // as zero.
+  if (has_prefix_zero || (event & FindProtocolDefs::DCC_FORCE_LONG)) {
+    nmode |= commandstation::DCC_LONG_ADDRESS;
+  }
+  *mode = static_cast<DccMode>(nmode);
+  return supplied_address;
+}
+
+// static
+uint8_t FindProtocolDefs::match_query_to_node(nmranet::EventId event,
+                                              TrainDbEntry* train) {
+  unsigned legacy_address = train->get_legacy_address();
+  DccMode mode;
+  unsigned supplied_address = query_to_address(event, &mode);
   if (supplied_address == legacy_address) {
     // TODO: we have to check here if long address only is set here.
     return MATCH_ANY | ADDRESS_ONLY | EXACT;
