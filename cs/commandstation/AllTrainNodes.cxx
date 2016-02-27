@@ -59,6 +59,10 @@ class DccTrainDbEntry : public TrainDbEntry {
   string get_train_name() override {
     string ret(14, 0);
     char* s = &ret[0];
+    if (is_dcc_mode() && (mode_ & DCC_LONG_ADDRESS) && (address_ < 128)) {
+      s[0] = '0';
+      s++;
+    }
     char* e = integer_to_buffer(get_legacy_address(), s);
     ret.resize(e - &ret[0]);
     if (!is_dcc_mode()) {
