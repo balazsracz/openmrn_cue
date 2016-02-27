@@ -84,9 +84,9 @@ using TrainDbCdiAllFunctionGroup =
 static const char DCC_DRIVE_MODE_MAP[] =
     "<relation><property>5</property><value>DCC 28-step</value></relation>"
     "<relation><property>6</property><value>DCC 128-step</value></relation>"
-    "<relation><property>0</property><value>Marklin-Motorola "
-    "I</value></relation>"
     "<relation><property>1</property><value>Marklin-Motorola "
+    "I</value></relation>"
+    "<relation><property>2</property><value>Marklin-Motorola "
     "II</value></relation>"
     "<relation><property>69</property><value>DCC 28-step (forced long "
     "address)</value></relation>"

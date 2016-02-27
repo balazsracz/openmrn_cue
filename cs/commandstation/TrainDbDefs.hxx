@@ -67,16 +67,17 @@ enum Symbols {
 };
 
 enum DccMode {
-  FAKE_DRIVE = 3,
+  FAKE_DRIVE = 7,
 
-  MARKLIN_OLD = 0,
-  MARKLIN_NEW = 1,
-  MFX = 2,
+  MARKLIN_OLD = 1,
+  MARKLIN_NEW = 2,
+  MFX = 3,
 
   DCC_14 = 4,
   DCC_28 = 5,
   DCC_128 = 6,
 
+  DCC_ANY = 4,
   PUSHPULL = 8,
   MARKLIN_TWOADDR = 16,
   OLCBUSER = 32,

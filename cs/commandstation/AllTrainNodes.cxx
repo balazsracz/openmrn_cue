@@ -57,10 +57,14 @@ class DccTrainDbEntry : public TrainDbEntry {
 
   /** Retrieves the name of the train. */
   string get_train_name() override {
-    string ret(10, 0);
+    string ret(14, 0);
     char* s = &ret[0];
     char* e = integer_to_buffer(get_legacy_address(), s);
-    ret.resize(e - s);
+    ret.resize(e - &ret[0]);
+    if (!is_dcc_mode()) {
+      ret.push_back('M');
+      ret.push_back('M');
+    }
     return ret;
   }
 
@@ -73,21 +77,42 @@ class DccTrainDbEntry : public TrainDbEntry {
   /** Retrieves the label assigned to a given function, or FN_UNUSED if the
       function does not exist. */
   unsigned get_function_label(unsigned fn_id) override {
-    switch (fn_id) {
-      case 0:
-        return LIGHT;
-      case 2:
-        return HORN;
-      case 3:
-        return BELL;
-      default:
-        return FN_UNKNOWN;
+    if (is_dcc_mode()) {
+      switch (fn_id) {
+        case 0:
+          return LIGHT;
+        case 2:
+          return HORN;
+        case 3:
+          return BELL;
+        default:
+          return FN_UNKNOWN;
+      }
+    } else {
+      switch (fn_id) {
+        case 0:
+          return LIGHT;
+        case 4:
+          return ABV;
+        default:
+          return FN_UNKNOWN;
+      }
     }
   }
 
   /** Returns the largest valid function ID for this train, or -1 if the train
       has no functions. */
-  int get_max_fn() override { return 8; }
+  int get_max_fn() override {
+    if (is_dcc_mode()) {
+      return 8;
+    } else {
+      if (mode_ & MARKLIN_TWOADDR) {
+        return 8;
+      } else {
+        return 4;
+      }
+    }
+  }
 
   nmranet::NodeID get_traction_node() override {
     return nmranet::TractionDefs::NODE_ID_DCC | address_;
@@ -105,6 +130,9 @@ class DccTrainDbEntry : public TrainDbEntry {
   }
 
  private:
+  /// @returns true for DCC, false for Marklin trains.
+  bool is_dcc_mode() { return (mode_ & DCC_ANY); }
+
   uint16_t address_;
   DccMode mode_;
 };

@@ -34,8 +34,14 @@
 
 #include "commandstation/cm_test_helper.hxx"
 #include "utils/format_utils.hxx"
+#include "commandstation/UpdateProcessor.hxx"
 
 namespace commandstation {
+
+// These components of the command station are needed in order to instantiate
+// real dcc train impl objects.
+DccPacketSink g_hardware;
+UpdateProcessor g_update_processor{&g_service, &g_hardware};
 
 TEST_F(AllTrainNodesTest, CreateDestroy) {}
 
@@ -56,6 +62,19 @@ TEST_F(AllTrainNodesTest, CreateNode) {
   ASSERT_TRUE(db_entry);
   EXPECT_EQ(183, db_entry->get_legacy_address());
   EXPECT_EQ(string("183"), db_entry->get_train_name());
+}
+
+TEST_F(AllTrainNodesTest, CreateNodeMarklin) {
+  expect_train_start(0x443, 13);
+  trainNodes_->allocate_node(MARKLIN_NEW, 13);
+  wait();
+  send_packet_and_expect_response(":X19828123N0443;",
+                                  ":X19668443N0123D41E00000000;");
+  wait();
+  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
+  ASSERT_TRUE(db_entry);
+  EXPECT_EQ(13, db_entry->get_legacy_address());
+  EXPECT_EQ(string("13MM"), db_entry->get_train_name());
 }
 
 TEST(bufferrender, T183) {

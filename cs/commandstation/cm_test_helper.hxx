@@ -6,6 +6,7 @@
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 #include "nmranet/ConfigUpdateFlow.hxx"
 #include "nmranet/DatagramCan.hxx"
+#include "dcc/PacketFlowInterface.hxx"
 
 nmranet::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
@@ -51,11 +52,19 @@ const struct const_traindb_entry_t const_lokdb[] = {
 extern const size_t const_lokdb_size =
     sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
+class DccPacketSink : public dcc::PacketFlowInterface {
+ public:
+  void send(Buffer<dcc::Packet>* b, unsigned prio) {
+    b->unref();
+  }
+};
 
 extern const char TRAINCDI_DATA[] = "Test cdi data";
 extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
 extern const char TRAINTMPCDI_DATA[] = "Test cdi tmp data";
 extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
+
+
 
 class AllTrainNodesTestBase : public nmranet::TractionTest {
  protected:
