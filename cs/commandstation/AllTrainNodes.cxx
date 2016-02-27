@@ -119,7 +119,8 @@ class DccTrainDbEntry : public TrainDbEntry {
   }
 
   nmranet::NodeID get_traction_node() override {
-    return nmranet::TractionDefs::NODE_ID_DCC | address_;
+    return nmranet::TractionDefs::train_node_id_from_legacy(
+        dcc_mode_to_address_type(mode_, address_), address_);
   }
 
   string identifier() override {

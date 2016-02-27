@@ -51,6 +51,8 @@ class MostaTranslationTest : public nmranet::TractionTest {
     expect_next_alias_allocation();
     EXPECT_CALL(m1_, legacy_address()).Times(AtLeast(0)).WillRepeatedly(
         Return(0x00000056U));
+    EXPECT_CALL(m1_, legacy_address_type()).Times(AtLeast(0)).WillRepeatedly(
+        Return(dcc::TrainAddressType::DCC_SHORT_ADDRESS));
     // alias reservation
     expect_packet(":X1070133AN060100000056;");
     // initialized

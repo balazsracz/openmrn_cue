@@ -92,9 +92,10 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
 
   ~AllTrainNodesTest() { wait(); }
 
-  void expect_train_start(nmranet::NodeAlias alias, int address) {
-    expect_packet(StringPrintf(":X10701%03XN060100%06X;", alias, address));
-    expect_packet(StringPrintf(":X19100%03XN060100%06X;", alias, address));
+  void expect_train_start(nmranet::NodeAlias alias, int addr, dcc::TrainAddressType type = dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+    nmranet::NodeID address = nmranet::TractionDefs::train_node_id_from_legacy(type, addr);
+    expect_packet(StringPrintf(":X10701%03XN%012" PRIX64 ";", alias, address));
+    expect_packet(StringPrintf(":X19100%03XN%012" PRIX64 ";", alias, address));
     expect_packet(
         StringPrintf(":X19547%03XN0101000000000303;", alias));
     expect_packet(

@@ -65,7 +65,7 @@ TEST_F(AllTrainNodesTest, CreateNode) {
 }
 
 TEST_F(AllTrainNodesTest, CreateNodeMarklin) {
-  expect_train_start(0x443, 13);
+  expect_train_start(0x443, 13, dcc::TrainAddressType::MM);
   trainNodes_->allocate_node(MARKLIN_NEW, 13);
   wait();
   send_packet_and_expect_response(":X19828123N0443;",

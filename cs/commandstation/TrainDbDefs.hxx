@@ -35,6 +35,8 @@
 #ifndef _COMMANDSTATION_TRAINDBDEFS_HXX_
 #define _COMMANDSTATION_TRAINDBDEFS_HXX_
 
+#include "dcc/Defs.hxx"
+
 namespace commandstation {
 
 #define DCC_MAX_FN 29
@@ -87,6 +89,17 @@ enum DccMode {
   DCC_28_LONG_ADDRESS = 69,
   DCC_128_LONG_ADDRESS = 70,
 };
+
+inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
+                                                      uint32_t address) {
+  if ((mode & DCC_ANY) == 0) {
+    return dcc::TrainAddressType::MM;
+  }
+  if ((mode & DCC_LONG_ADDRESS) || (address >= 128)) {
+    return dcc::TrainAddressType::DCC_LONG_ADDRESS;
+  }
+  return dcc::TrainAddressType::DCC_SHORT_ADDRESS;
+}
 
 } // namespace commandstation
 

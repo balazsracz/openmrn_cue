@@ -132,7 +132,7 @@ TEST_F(FindProtocolTest, WithAllocate) {
   send_packet(":X19914123N090099FFFFFF2300;");
   wait();
   clear_expect(true); // strict
-  expect_train_start(0x443, 23);
+  expect_train_start(0x443, 23, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
   expect_packet(":X19544443N090099FFFFFF2380;");
   send_packet(":X19914123N090099FFFFFF2380;");
   wait();
@@ -147,7 +147,7 @@ TEST_F(FindProtocolTest, AllocateMarklin) {
   // Check down the train initialization part.
   wait();
   clear_expect(true); // strict
-  expect_train_start(0x443, 23);
+  expect_train_start(0x443, 23, dcc::TrainAddressType::MM);
   expect_packet(":X19544443N090099FFFFFF2382;");
   send_packet(":X19914123N090099FFFFFF2382;");
   wait();
@@ -167,7 +167,7 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
   // Check down the train initialization part.
   wait();
   clear_expect(true); // strict
-  expect_train_start(0x443, 23);
+  expect_train_start(0x443, 23, dcc::TrainAddressType::DCC_LONG_ADDRESS);
   expect_packet(":X19544443N090099FFFFFF2390;");
   send_packet(":X19914123N090099FFFFFF2390;");
   wait();
@@ -187,7 +187,7 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaPrefixZero) {
   // Check down the train initialization part.
   wait();
   clear_expect(true); // strict
-  expect_train_start(0x443, 23);
+  expect_train_start(0x443, 23, dcc::TrainAddressType::DCC_LONG_ADDRESS);
   expect_packet(":X19544443N090099FFFFF02380;");
   send_packet(":X19914123N090099FFFFF02380;");
   wait();

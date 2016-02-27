@@ -190,8 +190,12 @@ class TrainControlServiceTrainTest : public TrainControlServiceTest {
     ifCan_->local_aliases()->add(0x060100000057U, 0x491);
     EXPECT_CALL(m1_, legacy_address()).Times(AtLeast(0)).WillRepeatedly(
         Return(0x00000057U));
+    EXPECT_CALL(m1_, legacy_address_type()).Times(AtLeast(0)).WillRepeatedly(
+        Return(dcc::TrainAddressType::DCC_SHORT_ADDRESS));
     EXPECT_CALL(m2_, legacy_address()).Times(AtLeast(0)).WillRepeatedly(
         Return(0x00000056U));
+    EXPECT_CALL(m2_, legacy_address_type()).Times(AtLeast(0)).WillRepeatedly(
+        Return(dcc::TrainAddressType::DCC_SHORT_ADDRESS));
     trains_.emplace_back(new nmranet::TrainNode(&trainService_, &m1_));
     wait();
     trains_.emplace_back(new nmranet::TrainNode(&trainService_, &m2_));
