@@ -19,8 +19,9 @@ class PtrTrainDbEntry : public TrainDbEntry {
     if (entry()->mode & OLCBUSER) {
       return 0x050101010000ULL | static_cast<nmranet::NodeID>(legacy_address());
     } else {
-      return nmranet::TractionDefs::NODE_ID_DCC |
-             static_cast<nmranet::NodeID>(legacy_address());
+      auto addr = legacy_address();
+      return nmranet::TractionDefs::train_node_id_from_legacy(
+          dcc_mode_to_address_type(get_legacy_drive_mode(), addr), addr);
     }
   }
 
@@ -111,8 +112,9 @@ class FileTrainDbEntry : public TrainDbEntry {
    * particular train known to the database.
    */
   nmranet::NodeID get_traction_node() override {
-    return nmranet::TractionDefs::NODE_ID_DCC |
-           static_cast<nmranet::NodeID>(legacy_address());
+    auto addr = legacy_address();
+    return nmranet::TractionDefs::train_node_id_from_legacy(
+        dcc_mode_to_address_type(get_legacy_drive_mode(), addr), addr);
   }
 
   /** Retrieves the name of the train. */
