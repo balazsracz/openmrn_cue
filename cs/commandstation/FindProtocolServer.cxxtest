@@ -163,6 +163,46 @@ TEST_F(FindProtocolTest, AllocateMarklin) {
   EXPECT_EQ("23MM", entry->get_train_name());
 }
 
+TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
+  // Check down the train initialization part.
+  wait();
+  clear_expect(true); // strict
+  expect_train_start(0x443, 23);
+  expect_packet(":X19544443N090099FFFFFF2390;");
+  send_packet(":X19914123N090099FFFFFF2390;");
+  wait();
+  while (!trainNodes_->find_flow_is_idle()) {
+    usleep(100);
+  }
+  wait();
+  clear_expect();
+  // Checks that the new train is indeed DCC with address 23 long.
+  auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  EXPECT_EQ(DCC_28_LONG_ADDRESS, entry->get_legacy_drive_mode());
+  EXPECT_EQ(23, entry->get_legacy_address());
+  EXPECT_EQ("023", entry->get_train_name());
+}
+
+TEST_F(FindProtocolTest, AllocateLongAddressViaPrefixZero) {
+  // Check down the train initialization part.
+  wait();
+  clear_expect(true); // strict
+  expect_train_start(0x443, 23);
+  expect_packet(":X19544443N090099FFFFF02380;");
+  send_packet(":X19914123N090099FFFFF02380;");
+  wait();
+  while (!trainNodes_->find_flow_is_idle()) {
+    usleep(100);
+  }
+  wait();
+  clear_expect();
+  // Checks that the new train is indeed DCC with address 23 long.
+  auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  EXPECT_EQ(DCC_28_LONG_ADDRESS, entry->get_legacy_drive_mode());
+  EXPECT_EQ(23, entry->get_legacy_address());
+  EXPECT_EQ("023", entry->get_train_name());
+}
+
 TEST_F(FindProtocolTest, FindOneNodeInfra) { find_nodes(0xFFFF22, 0, {0x441}); }
 
 TEST_F(FindProtocolTest, BunchOfQueries) {
