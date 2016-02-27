@@ -113,11 +113,20 @@ uint8_t FindProtocolDefs::match_query_to_node(nmranet::EventId event,
   unsigned legacy_address = train->get_legacy_address();
   DccMode mode;
   unsigned supplied_address = query_to_address(event, &mode);
-  if (supplied_address == legacy_address) {
-    // TODO: we have to check here if long address only is set here.
-    return MATCH_ANY | ADDRESS_ONLY | EXACT;
-  }
   bool has_address_prefix_match = false;
+  if (supplied_address == legacy_address) {
+    auto desired_mode = dcc_mode_to_address_type(mode, supplied_address);
+    auto actual_mode = dcc_mode_to_address_type(train->get_legacy_drive_mode(),
+                                                legacy_address);
+    if ((mode & 7) == 0 || desired_mode == actual_mode) {
+      // If the caller did not specify the drive mode, or the drive mode
+      // matches.
+      return MATCH_ANY | ADDRESS_ONLY | EXACT;
+    } else {
+      LOG(INFO, "exact match failed due to mode: desired %d actual %d", desired_mode, actual_mode);
+    }
+    has_address_prefix_match = ((event & EXACT) == 0);
+  }
   if ((event & EXACT) == 0) {
     // Search for the supplied number being a prefix of the existing addresses.
     unsigned address_prefix = legacy_address / 10;

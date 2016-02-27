@@ -222,7 +222,7 @@ TEST_F(FindProtocolTest, BunchOfQueries) {
 
 class FakeTrain : public TrainDbEntry {
  public:
-  FakeTrain(const string& name, int address) : name_(name), address_(address) {}
+  FakeTrain(const string& name, int address, DccMode mode = DCC_28) : name_(name), address_(address), mode_(mode) {}
 
   /** Returns an internal identifier that uniquely defines where this traindb
    * entry was allocated from. */
@@ -240,7 +240,7 @@ class FakeTrain : public TrainDbEntry {
   int get_legacy_address() override { return address_; }
 
   /** Retrieves the traction drive mode of the train. */
-  DccMode get_legacy_drive_mode() override { return MARKLIN_OLD; }
+  DccMode get_legacy_drive_mode() override { return mode_; }
 
   /** Retrieves the label assigned to a given function, or FN_NONEXISTANT if
       the function does not exist. */
@@ -252,13 +252,14 @@ class FakeTrain : public TrainDbEntry {
 
   string name_;
   int address_;
+  DccMode mode_;
 };
 
 class MatchNodeTest : public ::testing::Test {
  protected:
   uint8_t check_match(uint64_t nibbles, uint8_t settings, const string& name,
-                      int address) {
-    FakeTrain tr(name, address);
+                      int address, DccMode mode = DCC_28) {
+    FakeTrain tr(name, address, mode);
     nmranet::EventId event = create_query(nibbles, settings);
     return FindProtocolDefs::match_query_to_node(event, &tr);
   }
@@ -272,7 +273,7 @@ class MatchNodeTest : public ::testing::Test {
 
 TEST_F(MatchNodeTest, simple) {
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0x123, 0, "Foo", 123));
+            check_match(0xFFF123, 0, "Foo", 123));
 
   EXPECT_FALSE(check_match(0x124, 0, "Foo", 123));
 }
@@ -341,6 +342,39 @@ TEST_F(MatchNodeTest, prefix) {
   EXPECT_EQ(MATCH_ANY, check_match(0xFFF12F, 0, "BR123", 555));
   EXPECT_EQ(MATCH_ANY, check_match(0xFFFF1F, 0, "BR123", 555));
   EXPECT_FALSE(check_match(0xFFF12F, FindProtocolDefs::EXACT, "BR 123", 555));
+}
+
+TEST_F(MatchNodeTest, with_protocol) {
+  // Baseline.
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xFFF123, FindProtocolDefs::EXACT, "Foo", 123));
+  // If the protocol is specified, we return a non-exact match only.
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+            check_match(0xFFF123, MARKLIN_NEW, "Foo", 123));
+  // If exact is needed, no match.
+  EXPECT_FALSE(
+      check_match(0xFFF123, FindProtocolDefs::EXACT | MARKLIN_NEW, "Foo", 123));
+
+  // A DCC long address received matched against a short-addressed train:
+  EXPECT_FALSE(
+      check_match(0xFF0123, FindProtocolDefs::EXACT | DCC_28, "Foo", 123));
+  EXPECT_FALSE(check_match(
+      0xFF0123,
+      FindProtocolDefs::EXACT | FindProtocolDefs::DCC_FORCE_LONG | DCC_28,
+      "Foo", 123));
+  EXPECT_FALSE(check_match(
+      0xFFF123,
+      FindProtocolDefs::EXACT | FindProtocolDefs::DCC_FORCE_LONG | DCC_28,
+      "Foo", 123));
+
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+            check_match(0xFF0123, FindProtocolDefs::EXACT | DCC_28_LONG_ADDRESS,
+                        "Foo", 123, DCC_28_LONG_ADDRESS));
+  EXPECT_FALSE(check_match(0xFFF123, FindProtocolDefs::EXACT | DCC_28, "Foo",
+                           123, DCC_28_LONG_ADDRESS));
+
+  // TODO: add unit tests that check the exact sequence used by a smart and a
+  // dumb throttle to allocate three train nodes: 2, 02, 2MM in any sequence.
 }
 
 TEST_F(MatchNodeTest, select_best) {
