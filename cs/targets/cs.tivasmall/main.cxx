@@ -309,24 +309,7 @@ void adc0_seq3_interrupt_handler(void) {
 
 BlinkerFlow blinker(stack.node(), EVENT_ID);
 
-class FactoryResetHelper : public DefaultConfigUpdateListener {
-public:
-  UpdateAction apply_configuration(int fd, bool initial_load,
-                                   BarrierNotifiable *done) override {
-    return UPDATED;
-  }
-  
-  void factory_reset(int fd) override {
-    // Clears out all train entries with zeros.
-    char block[cfg.trains().all_trains().entry<0>().size()];
-    memset(block, 0, sizeof(block));
-    for (unsigned i = 0; i < cfg.trains().all_trains().num_repeats(); ++i) {
-      const auto& p = cfg.trains().all_trains().entry(i);
-      lseek(fd, p.offset(), SEEK_SET);
-      ::write(fd, block, sizeof(block));
-    }
-  }
-} g_reset_helper;
+commandstation::TrainDbFactoryResetHelper g_reset_helper(cfg.trains().all_trains());
 
 
 /** Entry point to application.
