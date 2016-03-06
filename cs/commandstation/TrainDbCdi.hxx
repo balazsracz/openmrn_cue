@@ -40,7 +40,11 @@
 
 namespace commandstation {
 
+#ifdef TRAINDB_TRAIN_COUNT
+static constexpr unsigned STORED_TRAIN_COUNT = TRAINDB_TRAIN_COUNT;
+#else
 static constexpr unsigned STORED_TRAIN_COUNT = 16;
+#endif
 
 static const char MOMENTARY_MAP[] =
     "<relation><property>0</property><value>Latching</value></relation>"
