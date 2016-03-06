@@ -14,6 +14,8 @@ extern const SimpleNodeStaticValues SNIP_STATIC_DATA =
     4, "Balazs Racz", "CS.Tiva", "v2015.01.02", "1.0.2"
 };
 
+static constexpr uint16_t CANONICAL_VERSION = 0xa732;
+
 CDI_GROUP(BaseSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
 CDI_GROUP_ENTRY(internal_config, InternalConfigData);
 CDI_GROUP_END();

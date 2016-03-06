@@ -93,11 +93,12 @@ OVERRIDE_CONST(automata_init_backoff, 20000);
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 1);
 OVERRIDE_CONST(num_datagram_registry_entries, 3);
-OVERRIDE_CONST(num_memory_spaces, 8);
+OVERRIDE_CONST(num_memory_spaces, 10);
 
 
 namespace commandstation {
 
+/*
 extern const struct const_traindb_entry_t const_lokdb[];
 const struct const_traindb_entry_t const_lokdb[] = {
   // 0
@@ -112,7 +113,7 @@ const struct const_traindb_entry_t const_lokdb[] = {
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
-
+*/
 }  // namespace commandstation
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
@@ -125,6 +126,7 @@ nmranet::ConfigDef cfg(0);
 extern const char *const nmranet::CONFIG_FILENAME = "/dev/eeprom";
 extern const size_t nmranet::CONFIG_FILE_SIZE =
     cfg.trains().size() + cfg.trains().offset();
+static_assert(nmranet::CONFIG_FILE_SIZE <=  4*1024, "eeprom too small for train database");
 extern const char *const nmranet::SNIP_DYNAMIC_FILENAME =
     nmranet::CONFIG_FILENAME;
 
@@ -306,6 +308,7 @@ void adc0_seq2_interrupt_handler(void) {
 }
 
 
+commandstation::TrainDbFactoryResetHelper g_reset_helper(cfg.trains().all_trains());
 HubDeviceSelect<HubFlow>* usb_port;
 
 /** Entry point to application.
@@ -315,6 +318,8 @@ HubDeviceSelect<HubFlow>* usb_port;
  */
 int appl_main(int argc, char* argv[])
 {
+    stack.check_version_and_factory_reset(cfg.seg().internal_config(), nmranet::CANONICAL_VERSION, false);
+
   //  mydisable();
   // TODO(balazs.racz): add a workign implementation of watchdog.
   //start_watchdog(5000);
