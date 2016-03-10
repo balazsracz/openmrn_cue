@@ -170,6 +170,7 @@ public:
 
   UpdateAction apply_configuration(int fd, bool initial_load,
                                    BarrierNotifiable *done) override {
+    AutoNotify an(done);
     return UPDATED;
   }
 
