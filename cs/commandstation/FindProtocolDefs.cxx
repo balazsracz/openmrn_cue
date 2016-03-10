@@ -123,7 +123,7 @@ uint8_t FindProtocolDefs::match_query_to_node(nmranet::EventId event,
       // matches.
       return MATCH_ANY | ADDRESS_ONLY | EXACT;
     } else {
-      LOG(INFO, "exact match failed due to mode: desired %d actual %d", desired_mode, actual_mode);
+      LOG(INFO, "exact match failed due to mode: desired %d actual %d", static_cast<int>(desired_mode), static_cast<int>(actual_mode));
     }
     has_address_prefix_match = ((event & EXACT) == 0);
   }
