@@ -98,22 +98,22 @@ OVERRIDE_CONST(num_memory_spaces, 10);
 
 namespace commandstation {
 
-/*
+
 extern const struct const_traindb_entry_t const_lokdb[];
 const struct const_traindb_entry_t const_lokdb[] = {
   // 0
-  { 51, { LIGHT, TELEX, FN_NONEXISTANT, SHUNT, ABV },
+  /*  { 51, { LIGHT, TELEX, FN_NONEXISTANT, SHUNT, ABV },
     "BR 260417", DCC_28 },  // ESU LokPilot 3.0
   // 1
   { 66, { LIGHT },
-    "Re 6/6 11665", DCC_128 },
+  "Re 6/6 11665", DCC_128 },*/
   { 0, {0,}, "", 0},
   { 0, {0,}, "", 0},
   { 0, {0,}, "", 0},
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
-*/
+
 }  // namespace commandstation
 
 static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
