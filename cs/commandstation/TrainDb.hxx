@@ -103,11 +103,13 @@ class TrainDb {
   TrainDb(const TrainDbConfig cfg);
   ~TrainDb();
 
-  /** @return true if this traindsb is backed by a file. */
+  /** @return true if this traindb is backed by a file. */
   bool has_file();
   /** Loads the train database from the given file. The file must stay open so
-   * long as *this is alive. */
-  void load_from_file(int fd, bool initial_load);
+   * long as *this is alive.
+   * @returns the size of the backing file (i.e. end of the traindb
+   * configuration). */
+  size_t load_from_file(int fd, bool initial_load);
 
   /** @returns the number of traindb entries. The valid train IDs will then be
    * 0 <= id < size(). */

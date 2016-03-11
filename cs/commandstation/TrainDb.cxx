@@ -203,9 +203,9 @@ bool TrainDb::has_file() {
 
 /** Loads the train database from the given file. The file must stay open so
  * long as *this is alive. */
-void TrainDb::load_from_file(int fd, bool initial_load) {
+size_t TrainDb::load_from_file(int fd, bool initial_load) {
   if (cfg_.offset() == NONEX_OFFSET) {
-    return;
+    return 0;
   }
   if (initial_load) {
     for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
@@ -215,6 +215,7 @@ void TrainDb::load_from_file(int fd, bool initial_load) {
       }
     }
   }
+  return cfg_.end_offset();
 }
 
 }  // namespace commandstation

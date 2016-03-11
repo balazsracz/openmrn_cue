@@ -365,8 +365,8 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
 
 class AllTrainNodes::TrainConfigSpace : public nmranet::FileMemorySpace {
  public:
-  TrainConfigSpace(int fd, AllTrainNodes* parent)
-      : FileMemorySpace(fd, TrainDbCdiEntry::size()), parent_(parent) {}
+  TrainConfigSpace(int fd, AllTrainNodes* parent, size_t file_end)
+      : FileMemorySpace(fd, file_end), parent_(parent) {}
 
   bool set_node(nmranet::Node* node) override {
     if (impl_ && impl_->node_ == node) {
@@ -454,10 +454,10 @@ class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
   UpdateAction apply_configuration(int fd, bool initial_load,
                                    BarrierNotifiable* done) override {
     AutoNotify n(done);
-    parent_->db_->load_from_file(fd, initial_load);
+    size_t file_end = parent_->db_->load_from_file(fd, initial_load);
     parent_->update_config();
     if (initial_load) {
-      parent_->configSpace_.reset(new TrainConfigSpace(fd, parent_));
+      parent_->configSpace_.reset(new TrainConfigSpace(fd, parent_, file_end));
       parent_->memoryConfigService_->registry()->insert(
           nullptr, nmranet::MemoryConfigDefs::SPACE_CONFIG,
           parent_->configSpace_.get());
