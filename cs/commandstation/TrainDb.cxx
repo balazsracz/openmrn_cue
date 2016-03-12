@@ -131,9 +131,11 @@ class FileTrainDbEntry : public TrainDbEntry {
   /** Retrieves the label assigned to a given function, or FN_NONEXISTANT if
       the function does not exist. */
   unsigned get_function_label(unsigned fn_id) override {
-    if (fn_id >= cdiEntry_.all_functions().num_repeats()) return FN_NONEXISTANT;
+    if (fn_id == 0) return LIGHT;
     if (fn_id >= maxFn_) return FN_NONEXISTANT;
-    return cdiEntry_.all_functions().entry(fn_id).icon().read(fd_);
+    fn_id--;
+    if (fn_id >= cdiEntry_.functions().all_functions().num_repeats()) return FN_NONEXISTANT;
+    return cdiEntry_.functions().all_functions().entry(fn_id).icon().read(fd_);
   }
 
   /** Returns the largest valid function ID for this train, or -1 if the train
@@ -155,11 +157,12 @@ class FileTrainDbEntry : public TrainDbEntry {
  private:
   /** Computes maxFn_. */
   void init() {
-    maxFn_ = 0;
-    for (unsigned i = 0; i < cdiEntry_.all_functions().num_repeats(); ++i) {
-      if (cdiEntry_.all_functions().entry(i).icon().read(fd_) !=
+    maxFn_ = 1;  // F0 always valid
+    for (unsigned i = 0; i < cdiEntry_.functions().all_functions().num_repeats(); ++i) {
+      if (cdiEntry_.functions().all_functions().entry(i).icon().read(fd_) !=
           FN_NONEXISTANT) {
-        maxFn_ = i + 1;
+        // if entry i valid -> FN(i+1) exists -> maxFn_ == i+2
+        maxFn_ = i + 2;
       }
     }
   }
@@ -168,7 +171,7 @@ class FileTrainDbEntry : public TrainDbEntry {
 
   TrainDbCdiEntry cdiEntry_;
   int fd_;
-  uint8_t maxFn_;  // Largest valid function ID for this train.
+  uint8_t maxFn_;  // Largest valid function ID for this train + 1.
 };
 
 std::shared_ptr<TrainDbEntry> create_lokdb_entry(
