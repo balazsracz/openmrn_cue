@@ -85,12 +85,13 @@ CDI_GROUP_END();
 using TrainDbCdiRepFunctionGroup =
     nmranet::RepeatedGroup<TrainDbCdiFunctionGroup, DCC_MAX_FN - 1>;
 
-CDI_GROUP(F0Description, Name("F0"),
-          Description("F0 is permanently assigned to Light."), Offset(TrainDbCdiFunctionGroup::size()));
+CDI_GROUP(F0Group, Name("F0"),
+          Description("F0 is permanently assigned to Light."));
+CDI_GROUP_ENTRY(blank, nmranet::EmptyGroup<TrainDbCdiFunctionGroup::size()>);
 CDI_GROUP_END();
 
 CDI_GROUP(TrainDbCdiAllFunctionGroup);
-CDI_GROUP_ENTRY(f0, F0Description);
+CDI_GROUP_ENTRY(f0, F0Group);
 CDI_GROUP_ENTRY(all_functions, TrainDbCdiRepFunctionGroup, RepName("Fn"));
 CDI_GROUP_END();
 
@@ -117,7 +118,7 @@ CDI_GROUP_ENTRY(
     MapValues(DCC_DRIVE_MODE_MAP), Default(DCC_28));
 CDI_GROUP_ENTRY(name, nmranet::StringConfigEntry<16>, Name("Name"),
                 Description("Identifies the train node on the LCC bus."));
-CDI_GROUP_ENTRY(functions, TrainDbCdiAllFunctionGroup, RepName("Fn"));
+CDI_GROUP_ENTRY(functions, TrainDbCdiAllFunctionGroup);
 CDI_GROUP_END();
 
 CDI_GROUP(TrainDbShortCdiEntry, Description("Configures a single train"));
