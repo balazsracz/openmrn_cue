@@ -9,8 +9,8 @@ include $(OPENMRNPATH)/etc/recurse.mk
 
 .PHONY: docs
 docs:
-	make -C doc docs || exit 1;
+	$(MAKE) -C doc docs || exit 1;
 
 
 tests:
-	make -C targets/linux.x86 tests
+	$(MAKE) -C targets/linux.x86 tests
