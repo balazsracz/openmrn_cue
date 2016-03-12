@@ -135,7 +135,10 @@ class FileTrainDbEntry : public TrainDbEntry {
     if (fn_id >= maxFn_) return FN_NONEXISTANT;
     fn_id--;
     if (fn_id >= cdiEntry_.functions().all_functions().num_repeats()) return FN_NONEXISTANT;
-    return cdiEntry_.functions().all_functions().entry(fn_id).icon().read(fd_);
+    uint8_t raw_label = cdiEntry_.functions().all_functions().entry(fn_id).icon().read(fd_);
+    uint8_t is_mom = cdiEntry_.functions().all_functions().entry(fn_id).is_momentary().read(fd_);
+    if (is_mom) raw_label |= 128;
+    return raw_label;
   }
 
   /** Returns the largest valid function ID for this train, or -1 if the train
