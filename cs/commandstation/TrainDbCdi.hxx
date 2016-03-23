@@ -36,6 +36,7 @@
 #define _BRACZ_COMMANDSTATION_TRAINDBCDI_HXX_
 
 #include "nmranet/ConfigRepresentation.hxx"
+#include "nmranet/TractionCvCdi.hxx"
 #include "commandstation/TrainDbDefs.hxx"
 
 namespace commandstation {
@@ -145,6 +146,7 @@ CDI_GROUP(TrainConfigDef, MainCdi());
 // information in here because both of these vary train by train.
 CDI_GROUP_ENTRY(ident, nmranet::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TrainSegment);
+CDI_GROUP_ENTRY(cv, nmranet::TractionShortCvSpace);
 CDI_GROUP_END();
 
 CDI_GROUP(TmpTrainSegment, Segment(nmranet::MemoryConfigDefs::SPACE_CONFIG),
@@ -160,6 +162,7 @@ CDI_GROUP_END();
 CDI_GROUP(TrainTmpConfigDef, MainCdi());
 CDI_GROUP_ENTRY(ident, nmranet::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TmpTrainSegment);
+CDI_GROUP_ENTRY(cv, nmranet::TractionShortCvSpace);
 CDI_GROUP_END();
 
 using TrainDbConfig =

@@ -102,17 +102,18 @@ namespace commandstation {
 extern const struct const_traindb_entry_t const_lokdb[];
 const struct const_traindb_entry_t const_lokdb[] = {
   // 0
-  /*  { 51, { LIGHT, TELEX, FN_NONEXISTANT, SHUNT, ABV },
-    "BR 260417", DCC_28 },  // ESU LokPilot 3.0
+  //  { 51, { LIGHT, TELEX, FN_NONEXISTANT, SHUNT, ABV },
+  //  "BR 260417", DCC_28 },  // ESU LokPilot 3.0
   // 1
-  { 66, { LIGHT },
-  "Re 6/6 11665", DCC_128 },*/
+  //{ 66, { LIGHT },
+  //"Re 6/6 11665", DCC_128 },
   { 0, {0,}, "", 0},
   { 0, {0,}, "", 0},
   { 0, {0,}, "", 0},
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+
 
 }  // namespace commandstation
 
@@ -276,7 +277,7 @@ mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface
 
 commandstation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
-nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, 0xEE);
+nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, nmranet::MemoryConfigDefs::SPACE_DCC_CV);
 
 typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
