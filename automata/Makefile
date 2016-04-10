@@ -3,7 +3,7 @@ CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -Wall -isystem /opt/gmock/default/
 OBJS=system.o control-logic.o registry.o
 
 AUTS = rr-crossing.cpp logic-demo.cpp 
-OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout
 BINS = $(AUTS:.cpp=)
 
 DEFAULT_AUT = bracz-layout3h-logic  # lcc-layout-logic
@@ -22,6 +22,8 @@ callback-specializations.hxx: gen_callback
 	./gen_callback > callback-specializations.hxx
 
 gencb: callback-specializations.hxx
+
+CXXFLAGS := -std=gnu++0x
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c -o $@ $(abspath $<)
