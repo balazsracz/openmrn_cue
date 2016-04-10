@@ -59,7 +59,7 @@
 extern TivaDAC<DACDefs> dac;
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const nmranet::NodeID NODE_ID = 0x050101011462ULL;
+extern const nmranet::NodeID NODE_ID;
 nmranet::SimpleCanStack stack(NODE_ID);
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
