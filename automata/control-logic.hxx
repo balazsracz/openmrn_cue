@@ -127,7 +127,7 @@ struct MagnetBase {
 
 struct MagnetDef : public MagnetBase {
   MagnetDef(MagnetCommandAutomata *aut, const string &name,
-            GlobalVariable *closed, GlobalVariable *thrown);
+            GlobalVariable *closed, GlobalVariable *thrown, bool def_state);
   // This variable will be pulled when the command is zero (closed).
   GlobalVariable *set_0;
   // This variable will be pulled when the command is one (thrown).
@@ -137,6 +137,7 @@ struct MagnetDef : public MagnetBase {
   std::unique_ptr<GlobalVariable> owned_locked;
   // Initialized by the magnetcommandautomata.
   StateRef aut_state;
+  bool default_state;
   string name_;
 };
 
@@ -812,6 +813,9 @@ class MovableTurnout : public TurnoutBase {
 
   MagnetBase *magnet() { return magnet_; }
 
+  static const bool kThrown = true;
+  static const bool kClosed = false;
+
  private:
   // Copies the turnout state from the physical turnout's actual state.
   void CopyState(Automata *aut);
@@ -1274,8 +1278,9 @@ static constexpr StateRef StReadyToGo(3);
 static constexpr StateRef StRequestGreen(4);
 static constexpr StateRef StGreenRequested(13);
 static constexpr StateRef StGreenWait(5);
+static constexpr StateRef StGreenFailed(6);
 
-// 6-7-8 are free (ststarttrain, ststoptrain, stmoving)
+// 7-8 are free (ststoptrain, stmoving)
 static constexpr StateRef StRequestTransition(9);
 static constexpr StateRef StTransitionDone(10);
 
