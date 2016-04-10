@@ -35,9 +35,9 @@ CDI_GROUP_ENTRY(acdi, Acdi);
 /// space. UserInfoSegment is defined in the system header.
 CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
 /// Adds the main configuration segment.
-CDI_GROUP_ENTRY(seg, BaseSegment);
+CDI_GROUP_ENTRY(seg, BaseSegment, Name("Node configuration"));
 /// A segment for the train database.
-CDI_GROUP_ENTRY(trains, TrainSegment);
+CDI_GROUP_ENTRY(trains, TrainSegment, Name("Trains"));
 //CDI_GROUP_ENTRY(ro_seg, ROSegment);
 CDI_GROUP_END();
 
