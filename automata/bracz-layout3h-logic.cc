@@ -447,18 +447,18 @@ AllocatorPtr train_tmp(logic2->Allocate("train", 768));
 MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
-MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &bc.ActOraGreen, &bc.ActOraRed);
+MagnetDef Magnet_WWW1(&g_magnet_aut, "WW.W1", &bc.ActOraGreen, &bc.ActOraRed, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_WWW1(&brd,
                                     logic->Allocate("WW.W1", 40),
                                     &Magnet_WWW1);
 
 MagnetDef Magnet_WWW3(&g_magnet_aut, "WW.W3", &bc.ActGreenGreen,
-                      &bc.ActGreenRed);
+                      &bc.ActGreenRed, MovableDKW::kDKWStateCurved);
 StandardMovableDKW DKW_WWW3(&brd, logic->Allocate("WW.W3", 64),
                             &Magnet_WWW3);
 
 MagnetDef Magnet_WWW4(&g_magnet_aut, "WW.W4", &bc.ActBlueBrown,
-                      &bc.ActBlueGrey);
+                      &bc.ActBlueGrey, MovableDKW::kDKWStateCurved);
 StandardMovableDKW DKW_WWW4(&brd, logic->Allocate("WW.W4", 64),
                             &Magnet_WWW4);
 StandardFixedTurnout Turnout_WWW5(&brd,
@@ -476,7 +476,7 @@ StandardBlock Block_A347(&brd, &A347, logic, "A347");
 StandardBlock Block_A360(&brd, &A360, logic, "A360");
 
 MagnetDef Magnet_W447(&g_magnet_aut, "W447", &bd.ActGreenGreen,
-                      &bd.ActGreenRed);
+                      &bd.ActGreenRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_W447(&brd,
                                     logic->Allocate("W447", 40),
                                     &Magnet_W447);
@@ -493,7 +493,7 @@ StandardBlock Block_B460(&brd, &B460, logic, "B460");
 StandardBlock Block_B475(&brd, &B475, logic, "B475");
 
 MagnetDef Magnet_W359(&g_magnet_aut, "W359", &bb.ActBrownGrey,
-                      &bb.ActBrownBrown);
+                      &bb.ActBrownBrown, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_W359(&brd,
                                     logic->Allocate("W359", 40),
                                     &Magnet_W359);
@@ -503,23 +503,23 @@ StandardMovableTurnout Turnout_W459(&brd,
                                     &Magnet_W459);
 
 MagnetDef Magnet_ZZW1(&g_magnet_aut, "ZZ.W1", &bb.ActGreenGreen,
-                      &bb.ActGreenRed);
+                      &bb.ActGreenRed, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_ZZW1(&brd,
                                     logic->Allocate("ZZ.W1", 40),
                                     &Magnet_ZZW1);
 
-MagnetDef Magnet_ZZW2(&g_magnet_aut, "ZZ.W2", &bb.ActOraGreen, &bb.ActOraRed);
+MagnetDef Magnet_ZZW2(&g_magnet_aut, "ZZ.W2", &bb.ActOraGreen, &bb.ActOraRed, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_ZZW2(&brd,
                                     logic->Allocate("ZZ.W2", 40),
                                     &Magnet_ZZW2);
 
 MagnetDef Magnet_ZZW3(&g_magnet_aut, "ZZ.W3", &bb.ActBlueBrown,
-                      &bb.ActBlueGrey);
+                      &bb.ActBlueGrey, MovableDKW::kDKWStateCross);
 StandardMovableDKW DKW_ZZW3(&brd, logic->Allocate("ZZ.W3", 64),
                             &Magnet_ZZW3);
 
 MagnetDef Magnet_ZZW6(&g_magnet_aut, "ZZ.W6", &be.ActGreenGreen,
-                      &be.ActGreenRed);
+                      &be.ActGreenRed, MovableTurnout::kClosed);
 CoupledMagnetDef Magnet_ZZW5(&g_magnet_aut, "ZZ.W5", &Magnet_ZZW6, true);
 StandardMovableTurnout Turnout_ZZW5(&brd,
                                     logic2->Allocate("ZZ.W5", 40),
@@ -540,9 +540,9 @@ StandardMiddleSignal Sig_380(&brd, logic, "Sig380");
 StandardMiddleSignal Sig_480(&brd, logic, "Sig480");
 
 MagnetDef Magnet_W481(&g_magnet_aut, "W481", &be.ActBrownGrey,
-                      &be.ActBrownBrown);
+                      &be.ActBrownBrown, MovableTurnout::kClosed);
 CoupledMagnetDef Magnet_W381(&g_magnet_aut, "W381", &Magnet_W481, true);
-MagnetDef Magnet_W380(&g_magnet_aut, "W380", &be.ActBlueGrey, &be.ActBlueBrown);
+MagnetDef Magnet_W380(&g_magnet_aut, "W380", &be.ActBlueGrey, &be.ActBlueBrown, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_W381(&brd,
                                     logic2->Allocate("W381", 40),
                                     &Magnet_W381);
@@ -571,30 +571,30 @@ StandardBlock Block_YYC23(&brd, &YYC23, logic2, "YY.C23");
 StandardMiddleDetector Det_YYC22(&brd, &ba.InBrownBrown,
                                  logic2->Allocate("YY.C22", 24, 8));
 
-MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen, &ba.ActOraRed);
+MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen, &ba.ActOraRed, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_YYW6(&brd,
                                     logic2->Allocate("YY.W6", 40),
                                     &Magnet_YYW6);
 
-MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen, &be.ActOraRed);
+MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen, &be.ActOraRed, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_XXW1(&brd,
                                     logic2->Allocate("XX.W1", 40),
                                     &Magnet_XXW1);
 
 MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActBlueGrey,
-                      &ba.ActBlueBrown);
+                      &ba.ActBlueBrown, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_XXW2(&brd,
                                     logic2->Allocate("XX.W2", 40),
                                     &Magnet_XXW2);
 
 MagnetDef Magnet_XXW7(&g_magnet_aut, "XX.W7", &ba.ActBrownGrey,
-                      &ba.ActBrownBrown);
+                      &ba.ActBrownBrown, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_XXW7(&brd,
                                     logic2->Allocate("XX.W7", 40),
                                     &Magnet_XXW7);
 
 MagnetDef Magnet_XXW8(&g_magnet_aut, "XX.W8", &ba.ActGreenGreen,
-                      &ba.ActGreenRed);
+                      &ba.ActGreenRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_XXW8(&brd,
                                     logic2->Allocate("XX.W8", 40),
                                     &Magnet_XXW8);
@@ -928,8 +928,8 @@ auto g_front_back_out_condition = NewCallback(&IfFrontBackOutOkay);
 
 class LayoutSchedule : public TrainSchedule {
  public:
-  LayoutSchedule(const string& name, uint16_t train_id, uint8_t default_speed)
-      : TrainSchedule(name, &brd, NODE_ID_DCC | train_id,
+  LayoutSchedule(const string& name, uint64_t train_id, uint8_t default_speed)
+      : TrainSchedule(name, &brd, train_id,
                       train_perm->Allocate(name, 24, 8),
                       train_tmp->Allocate(name, 48, 8), &stored_speed_),
         stored_speed_(&brd, "speed." + name,
@@ -1140,7 +1140,7 @@ class LayoutSchedule : public TrainSchedule {
 
 class CircleTrain : public LayoutSchedule {
  public:
-  CircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
+  CircleTrain(const string& name, uint64_t train_id, uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
@@ -1153,7 +1153,7 @@ class CircleTrain : public LayoutSchedule {
 
 class LongCircleTrain : public LayoutSchedule {
  public:
-  LongCircleTrain(const string& name, uint16_t train_id, uint8_t default_speed)
+  LongCircleTrain(const string& name, uint64_t train_id, uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
@@ -1166,7 +1166,7 @@ class LongCircleTrain : public LayoutSchedule {
 
 class EWIVPendelzug : public LayoutSchedule {
  public:
-  EWIVPendelzug(const string& name, uint16_t train_id, uint8_t default_speed)
+  EWIVPendelzug(const string& name, uint64_t train_id, uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
@@ -1179,7 +1179,7 @@ class EWIVPendelzug : public LayoutSchedule {
 
 class StraightOnlyPushPull : public LayoutSchedule {
  public:
-  StraightOnlyPushPull(const string& name, uint16_t train_id,
+  StraightOnlyPushPull(const string& name, uint64_t train_id,
                        uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
@@ -1193,7 +1193,7 @@ class StraightOnlyPushPull : public LayoutSchedule {
 
 class M61PushPull : public LayoutSchedule {
  public:
-  M61PushPull(const string& name, uint16_t train_id, uint8_t default_speed)
+  M61PushPull(const string& name, uint64_t train_id, uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
@@ -1206,7 +1206,7 @@ class M61PushPull : public LayoutSchedule {
 
 class ICEPushPull : public LayoutSchedule {
  public:
-  ICEPushPull(const string& name, uint16_t train_id, uint8_t default_speed)
+  ICEPushPull(const string& name, uint64_t train_id, uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
@@ -1217,21 +1217,37 @@ class ICEPushPull : public LayoutSchedule {
   }
 };
 
-/*StraightOnlyPushPull train_icn("icn", 50, 16);
-CircleTrain train_re66("re_6_6", 66, 32);
-CircleTrain train_rts("rts_railtraction", 32, 20);
-CircleTrain train_re460hag("Re460_HAG", 26, 32);
-LongCircleTrain train_re465("Re465", 47, 35);
-EWIVPendelzug train_ewivpendelzug("Re460TSR", 22, 20);
-CircleTrain train_rbe44("RBe4_4_ZVV", 52, 35);
-M61PushPull train_m61("m61", 61, 30);
-CircleTrain train_11239("Re44_11239", 48, 28);
-ICEPushPull train_ice("ICE", 2, 16);
-CircleTrain train_wle("wle_er20", 27, 30);
-CircleTrain train_re474("Re474", 12, 30);
-CircleTrain train_krokodil("Krokodil", 68, 35);
-CircleTrain train_rheingold("Rheingold", 19, 35);
-CircleTrain train_re10_10("Re_10_10", 5, 35);*/
+uint64_t DccLongAddress(uint16_t addr) {
+  if (addr < 128) {
+    return 0x06010000C000ULL | addr;
+  } else {
+    return 0x060100000000ULL | addr;
+  }
+}
+
+uint64_t DccShortAddress(uint16_t addr) {
+  return 0x060100000000ULL | addr;
+}
+
+uint64_t MMAddress(uint16_t addr) {
+  return 0x060300000000ULL | addr;
+}
+
+StraightOnlyPushPull train_icn("icn", DccShortAddress(50), 16);
+CircleTrain train_re66("re_6_6", DccShortAddress(66), 32);
+CircleTrain train_rts("rts_railtraction", MMAddress(32), 20);
+EWIVPendelzug train_re460hag("Re460_HAG", DccShortAddress(26), 32);
+CircleTrain train_re465("Re465", DccShortAddress(47), 35);
+LongCircleTrain train_ewivpendelzug("Re460TSR", DccShortAddress(22), 20);
+CircleTrain train_rbe44("RBe4_4_ZVV", DccShortAddress(52), 35);
+M61PushPull train_m61("m61", DccShortAddress(61), 30);
+CircleTrain train_11239("Re44_11239", MMAddress(48), 28);
+ICEPushPull train_ice("ICE", MMAddress(2), 16);
+CircleTrain train_wle("wle_er20", MMAddress(27), 30);
+CircleTrain train_re474("Re474", MMAddress(12), 30);
+CircleTrain train_krokodil("Krokodil", MMAddress(68), 35);
+CircleTrain train_rheingold("Rheingold", MMAddress(19), 35);
+CircleTrain train_re10_10("Re_10_10", DccShortAddress(4), 35);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
