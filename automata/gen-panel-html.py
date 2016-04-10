@@ -1578,12 +1578,24 @@ def ProcessPanel(panel_root, output_html):
   touch_el = svg.find("./g[@id='turnout_buttons']")
   all_touchpoints.render(touch_el)
 
-def main():
-  if len(sys.argv) < 4:
-    print(("Usage: %s jmri-infile.xml panel-outfile.html server_url" % sys.argv[0]), file=sys.stderr)
-    sys.exit(1)
+def list_all_panels(root):
+  ret = ''
+  for e in root.findall('./LayoutEditor'):
+    if (ret != ''): ret += ", "
+    ret += e.attrib['name']
+  return ret
 
-  xml_tree = ET.parse(sys.argv[1])
+def main():
+  if len(sys.argv) < 5:
+    print(("Usage: %s jmri-infile.xml panel-name panel-outfile.html server_url" % sys.argv[0]), file=sys.stderr)
+    sys.exit(1)
+  jmri_infile = sys.argv[1]
+  panel_name = sys.argv[2]
+  panel_outfile = sys.argv[3]
+  server_url = sys.argv[4]
+
+
+  xml_tree = ET.parse(jmri_infile)
   root = xml_tree.getroot()
   ParseAllSensors(xml_tree)
   ParseAllTurnouts(xml_tree)
@@ -1593,13 +1605,13 @@ def main():
   html_root = ET.fromstring(webpage_template)
   html_tree = ET.ElementTree(html_root)
 
-  panel = root.find('./LayoutEditor[@name="LCC Demo"]')
+  panel = root.find('./LayoutEditor[@name="%s"]' % panel_name)
   if not panel:
-    raise Exception("Desired panel not found")
+    raise Exception("Desired panel '%s' not found. Available: %s" %(panel_name, list_all_panels(root)))
   ProcessPanel(panel, html_tree)
 
-  RenderJsBindings(html_root, sys.argv[3])
-  html_tree.write(sys.argv[2], method="html")
+  RenderJsBindings(html_root, server_url)
+  html_tree.write(panel_outfile, method="html")
 
 
 main()
