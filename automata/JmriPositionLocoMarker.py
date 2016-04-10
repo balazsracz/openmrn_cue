@@ -1,3 +1,5 @@
+import jmri
+import java
 
 HORIZONTAL = jmri.jmrit.display.PositionablePopupUtil.HORIZONTAL
 VERTICAL_UP = jmri.jmrit.display.PositionablePopupUtil.VERTICAL_UP
