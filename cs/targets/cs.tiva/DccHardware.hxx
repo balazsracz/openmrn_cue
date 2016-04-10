@@ -70,7 +70,7 @@ struct RailcomDefs
     static void enable_measurement() {}
     static void disable_measurement() {}
 
-    static bool need_ch1_cutout() { return true; }
+    static bool need_ch1_cutout() { return false; }
 
     static uint8_t get_feedback_channel() {
         return 0xff;
