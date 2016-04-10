@@ -731,7 +731,7 @@ def RenderLogixConditionals(output_tree_root):
     print("No conditionals node - skipping rendering")
   else:
     TrainLocLogixConditional.SetMaxId(GetMaxSystemId(all_cond_node, 'IX:GEN:TRAINLOC:BCC'))
-    MergeEntries(all_cond_node, desired_conditionals)
+    MergeEntries(all_cond_node, desired_conditionals, purge = True)
 
   # Finds the main logix node
   logixnode = output_tree_root.find('./logixs/logix[@systemName=\'IX:GEN:TRAINLOC:\']')
@@ -790,19 +790,79 @@ def GetRotationFromVector(v):
 def CreateRGSignalIcon(x, y, head_name, rotation):
   return ET.XML('    <signalheadicon signalhead="'+head_name+'" x="'+str(x)+'" y="'+str(y)+'" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" clickmode="3" litmode="false" class="jmri.jmrit.display.configurexml.SignalHeadIconXml"><tooltip>'+head_name+'</tooltip><icons><held url="program:resources/icons/smallschematics/searchlights/left-held-short.gif" degrees="0" scale="1.0"><rotation>'+str(rotation)+'</rotation></held>        <dark url="program:resources/icons/smallschematics/searchlights/left-dark-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </dark>        <red url="program:resources/icons/smallschematics/searchlights/left-red-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </red>        <green url="program:resources/icons/smallschematics/searchlights/left-green-short.gif" degrees="0" scale="1.0">          <rotation>'+str(rotation)+'</rotation>        </green>      </icons>      <iconmaps />    </signalheadicon>\n')
 
+def CreateSignalLabelOnTrack(x, y, head_name, direction):
+  return ET.XML('    <positionablelabel x="' + str(x) + '" y="' + str(y) + '" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="true" text="'+ head_name + '" size="8" style="0" red="0" green="0" blue="0" hasBackground="no" justification="centre" orientation="'+ direction +'" class="jmri.jmrit.display.configurexml.PositionableLabelXml"/>\n')
+
 # this many pixels behind the head point should the signals start
-g_back = 5
+g_back = 8
 # this many pixels away from the track should the signals start
-g_away = 10
+g_away = 6
+# center point of a signal (from top-left)
+g_sigcenter = 8
+# width of the track which needs to be added to away if we're on the "far" side of the thickness.
+g_trackwidth = 4
+
+# this is how much behond the signal the text should be
+g_text_from_signal = 10
+g_textback = g_back + g_text_from_signal
+# length of the text label (for reverse horizontal layout)
+g_textlength = 20
+g_texth = 10
+g_textaway = 2
+
+"""rotation constants:
+0 = O-
+1 = |
+    O
+2 = -O
+3 = O
+    |
+"""
 
 # gives the vector offset of where the signal should be from the head point
 # given the orientation
 g_signal_offset_by_rotation = [
-  (g_back, g_away),
-  (g_away, -g_back),
-  (-g_back, -g_away),
-  (-g_away, g_back)
+    (g_back - g_sigcenter, g_away - g_sigcenter + g_trackwidth),
+    (g_away - g_sigcenter + g_trackwidth, -g_back - g_sigcenter),
+    (-g_back - g_sigcenter, -g_away - g_sigcenter),
+    (-g_away - g_sigcenter, g_back - g_sigcenter)
 ]
+
+g_signallabel_offset_by_rotation = [
+    (g_textback, g_textaway, 0, 0),
+    (g_textaway, -g_textback, 0, -1),
+    (-g_textback, - g_textaway - g_texth, -1, 0),
+    (- g_textaway - g_texth, g_textback, 0, 0)
+]
+
+g_text_direction_by_rotation = [
+  "horizontal",
+  "vertical_down",
+  "horizontal",
+  "vertical_up",
+]
+
+g_signal_reverse_names = {
+    "A301" : "B321",
+    "B421" : "A401",
+    "A321" : "B347",
+    "B447" : "A421",
+    "A347" : "B360",
+    "B460" : "A447",
+    "A360" : "B375",
+    "B475" : "A460",
+    "ZZ.A2" : "ZZ.A2",
+    "ZZ.A3" : "ZZ.A3",
+    "WW.B2" : "WW.B2",
+    "WW.B3" : "WW.B3",
+    "WW.A11" : "WW.B1",
+}
+
+g_missing_signals = {
+  "WW.A11",
+  "YY.A3"
+}
+
 
 def PrintLocationControls(layout, block, index):
   """Adds signal heads to the layout editor right where the tracks are
@@ -848,7 +908,13 @@ def PrintLocationControls(layout, block, index):
   rotation = GetRotationFromVector(dir_vect)
   signal_vect = g_signal_offset_by_rotation[rotation]
   signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
-  layout.append(CreateRGSignalIcon(int(signal_xy[0] - 8), int(signal_xy[1] - 8), "Sig." + block, rotation))
+  layout.append(CreateRGSignalIcon(int(signal_xy[0]), int(signal_xy[1]), "Sig." + block, rotation))
+  siglabel_vect = g_signallabel_offset_by_rotation[rotation]
+  signame = block
+  if signame in g_missing_signals: signame = "NA"
+  siglabel_xy = (far_xy[0] + siglabel_vect[0] + siglabel_vect[2] * g_textlength * len(signame) / 4, far_xy[1] + siglabel_vect[1] + siglabel_vect[3] * g_textlength * len(signame) / 4)
+  siglabel_rot = g_text_direction_by_rotation[rotation]
+  layout.append(CreateSignalLabelOnTrack(int(siglabel_xy[0]), int(siglabel_xy[1]), signame, siglabel_rot))
   # Computes the other end of the body segments.
   body_pt_map = {}
   for b in index.block_map[bodyblock]:
@@ -877,7 +943,15 @@ def PrintLocationControls(layout, block, index):
   rotation = GetRotationFromVector(dir_vect)
   signal_vect = g_signal_offset_by_rotation[rotation]
   signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
-  layout.append(CreateRGSignalIcon(int(signal_xy[0] - 8), int(signal_xy[1] - 8), "Sig.R" + block, rotation))
+  layout.append(CreateRGSignalIcon(int(signal_xy[0]), int(signal_xy[1]), "Sig.R" + block, rotation))
+  siglabel_vect = g_signallabel_offset_by_rotation[rotation]
+  signame = "NA"
+  if block in g_signal_reverse_names:
+    signame = g_signal_reverse_names[block]
+  siglabel_xy = (far_xy[0] + siglabel_vect[0] + siglabel_vect[2] * g_textlength * len(signame) / 4, far_xy[1] + siglabel_vect[1] + siglabel_vect[3] * g_textlength * len(signame) / 4)
+  siglabel_rot = g_text_direction_by_rotation[rotation]
+  layout.append(CreateSignalLabelOnTrack(int(siglabel_xy[0]), int(siglabel_xy[1]), signame, siglabel_rot))
+
   
 
 def CreateLocoIcon(x, y, text):
@@ -899,7 +973,7 @@ def PrintTrainLine(layout, train, x0, y):
   x0 += 80
   layout.append(CreateLocoIcon(x0, y, train))
 
-def RenderPanelLocationTable(output_tree_root, index):
+def ClearPanelLocationTable(output_tree_root, index):
   layout = output_tree_root.find('./LayoutEditor[@name=\'3H layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
@@ -913,11 +987,15 @@ def RenderPanelLocationTable(output_tree_root, index):
     layout.remove(entry)
   for entry in layout.findall('./memoryicon[@level=\'9\']'):
     layout.remove(entry)
+  for block in all_locations:
+    PrintLocationControls(layout, block, index)
+
+
+def RenderPanelLocationTable(output_tree_root, index):
   y = 190;
   x0 = 250;
   for block in all_locations:
     PrintBlockLine(layout, block, x0, y)
-    PrintLocationControls(layout, block, index)
     y += 40
   y = 190
   x0 = 700
@@ -928,7 +1006,7 @@ def RenderPanelLocationTable(output_tree_root, index):
 
 def main():
   if len(sys.argv) < 2:
-    print(("Usage: %s jmri-infile.xml jmri-outfile.xml" % sys.argv[0]), file=sys.stderr)
+    print(("Usage: %s jmri-infile.xml jmri-outfile.xml [skiptable]" % sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
   xml_tree = ET.parse(sys.argv[1])
@@ -947,8 +1025,12 @@ def main():
   RenderSignalHeads(root)
   RenderSystemBlocks(root)
   RenderMemoryVariables(root)
-  RenderLogixConditionals(root)
-  RenderPanelLocationTable(root, index)
+  ClearPanelLocationTable(root, index)
+  if (len(sys.argv) <= 2) or (sys.argv[3] != "skiptable"):
+    RenderLogixConditionals(root)
+    RenderPanelLocationTable(root, index)
+  else:
+    print("Skipping panel table.")
   print("number of sensors: %d" % len(all_sensors))
   xml_tree.write(sys.argv[2])
 
