@@ -36,6 +36,7 @@
 #define _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
 
 #include "dcc/RailcomHub.hxx"
+#include "dcc/RailcomBroadcastDecoder.hxx"
 
 class RailcomBroadcastFlow : public dcc::RailcomHubPort {
  public:
