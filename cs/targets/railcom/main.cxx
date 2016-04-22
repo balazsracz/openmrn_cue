@@ -48,7 +48,7 @@
 #include "nmranet/CallbackEventHandler.hxx"
 
 #include "config.hxx"
-#include "custom/RailcomBroadcastFlow.hxx"
+#include "commandstation/RailcomBroadcastFlow.hxx"
 #include "custom/DetectorPort.hxx"
 #include "custom/TivaDAC.hxx"
 #include "custom/TivaGNDControl.hxx"

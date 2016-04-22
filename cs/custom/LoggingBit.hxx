@@ -35,6 +35,7 @@
 #ifndef _BRACZ_CUSTOM_LOGGINGBIT_HXX_
 #define _BRACZ_CUSTOM_LOGGINGBIT_HXX_
 
+#include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/SimpleStack.hxx"
 
 extern "C" { void resetblink(uint32_t pattern); }

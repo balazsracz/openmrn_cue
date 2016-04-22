@@ -220,6 +220,24 @@ size_t TrainDb::load_from_file(int fd, bool initial_load) {
         entries_.emplace_back(new FileTrainDbEntry(fd, cfg_.entry(i).offset()));
       }
     }
+  } else {
+    for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
+      uint16_t address = cfg_.entry(i).address().read(fd);
+      if (address != 0 && address != 0xffffu) {
+        std::shared_ptr<FileTrainDbEntry> e(new FileTrainDbEntry(fd, cfg_.entry(i).offset()));
+        nmranet::NodeID traction_node = e->get_traction_node();
+        bool found = false;
+        for (unsigned i = 0; i < entries_.size(); ++i) {
+          if (entries_[i]->get_traction_node() == traction_node) {
+            entries_[i] = e;
+            found = true;
+          }
+        }
+        if (!found) {
+          entries_.emplace_back(std::move(e));
+        }
+      }
+    }
   }
   return cfg_.end_offset();
 }
