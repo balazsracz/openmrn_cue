@@ -65,7 +65,7 @@ static const FunctionLabel labels[] = {  //
     {SHUNT, "Shunt"},
     {PANTO, "Pantgr"},
     {SMOKE, "Smoke"},
-    {ABV, "ABV"},
+    {ABV, "Mom off"},
     {WHISTLE, "Whistle"},
     {SOUND, "Sound"},
     // FNT11 is skipped, rendered as "F<n>"
