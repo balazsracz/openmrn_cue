@@ -1,0 +1,1 @@
+../../../../openmrn/boards/esp-bracz-deadrail-proto/bload_target.ld
