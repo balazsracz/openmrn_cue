@@ -1,10 +1,11 @@
 EXECUTABLE := train
 
+ifndef ADDRESS
+ADDRESS=0xDE
+endif
+
 include hardware.mk
 
-ifndef ADDRESS
-ADDRESS=0xDD
-endif
 
 .PHONY: FORCE
 
