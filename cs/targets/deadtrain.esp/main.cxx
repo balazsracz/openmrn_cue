@@ -98,14 +98,14 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
 
   void call_estop() {
     auto *b = alloc();
-    b->data()->emergencyStop_ = true;
+    b->data()->emergencyStop_ = 1;
     send(b, 0);
   }
 
   void call_kick() {
     kickRunning_ = 0;
     auto *b = alloc();
-    b->data()->emergencyStop_ = true;
+    b->data()->doKick_ = 1;
     send(b, 0);
   }
 
@@ -142,6 +142,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
         HW::MOT_A_LO_Pin::set(LOW_ON);
       }
       schedule_kick();
+      return release_and_exit();
     }
     // Check if we need to change the direction.
     bool desired_dir =
