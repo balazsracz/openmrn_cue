@@ -5,6 +5,7 @@
 #include "nmranet/ConfiguredConsumer.hxx"
 #include "nmranet/ConfiguredProducer.hxx"
 #include "nmranet/MemoryConfig.hxx"
+#include "custom/SpeedFeedbackController.hxx"
 
 CDI_GROUP(MotorControl, Name("Motor control"));
 CDI_GROUP_ENTRY(pwm_frequency, nmranet::Uint16ConfigEntry,
@@ -12,7 +13,7 @@ CDI_GROUP_ENTRY(pwm_frequency, nmranet::Uint16ConfigEntry,
                 Description(
                     "Specifies what frequency the motor should be driven at. "
                     "Typical values are in the 3000-20000 range."),
-                Min(3), Max(50000), Default(13000));
+                Min(3), Max(50000), Default(20000));
 CDI_GROUP_ENTRY(enable_kick, nmranet::Uint8ConfigEntry,
                 Name("Enable motor kick"),
                 Description(
@@ -27,6 +28,7 @@ CDI_GROUP_ENTRY(
     kick_length, nmranet::Uint8ConfigEntry, Name("Motor kick length"),
     Description("Length of kick pulse in milliseconds to send to motor."),
     Min(0), Max(100), Default(5));
+CDI_GROUP(load_control, FeedbackParams);
 CDI_GROUP_END();
 
 /// Defines the main segment in the configuration CDI. This is laid out at

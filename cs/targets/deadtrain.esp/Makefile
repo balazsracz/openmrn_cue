@@ -1,7 +1,7 @@
 EXECUTABLE := train
 
 ifndef ADDRESS
-ADDRESS=0xDE
+ADDRESS=0xDD
 endif
 
 include hardware.mk
