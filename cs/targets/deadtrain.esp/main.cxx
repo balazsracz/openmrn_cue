@@ -68,16 +68,22 @@ struct SpeedRequest {
   nmranet::SpeedType speed_;
   uint8_t emergencyStop_ : 1;
   uint8_t doKick_ : 1;
+  uint8_t doMeasure_ : 1;
   void reset() {
     speed_ = 0.0;
     emergencyStop_ = 0;
     doKick_ = 0;
+    doMeasure_ = 0;
   }
 };
+
+extern nmranet::SimpleTrainCanStack stack;
 
 class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
                         private DefaultConfigUpdateListener {
  public:
+  static constexpr uint64_t ADC_REPORT_EVENT = UINT64_C(0x05010F0000000000);
+
   SpeedController(Service *s, MotorControl mpar)
       : StateFlow<Buffer<SpeedRequest>, QList<2>>(s),
         mpar_(mpar),
@@ -106,6 +112,13 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
     kickRunning_ = 0;
     auto *b = alloc();
     b->data()->doKick_ = 1;
+    send(b, 0);
+  }
+
+  void call_measure() {
+    kickRunning_ = 0;
+    auto *b = alloc();
+    b->data()->doMeasure_ = 1;
     send(b, 0);
   }
 
@@ -144,6 +157,18 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
       schedule_kick();
       return release_and_exit();
     }
+    if (req()->doMeasure_ && isMoving_) {
+      pwm_.pause(MSEC_TO_NSEC(10));
+      HW::MOT_A_HI_Pin::set_off();
+      HW::MOT_B_HI_Pin::set_off();
+      if (lastDirMotAHi_) {
+        HW::MOT_B_LO_Pin::set(LOW_ON);
+      } else {
+        HW::MOT_A_LO_Pin::set(LOW_ON);
+      }
+      release();
+      return sleep_and_call(&timer_, MSEC_TO_NSEC(1), STATE(sample_adc_1));
+    }
     // Check if we need to change the direction.
     bool desired_dir =
         (req()->speed_.direction() == nmranet::SpeedType::FORWARD);
@@ -160,6 +185,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
     // We set the pins explicitly for safety
     bool desired_dir =
         (req()->speed_.direction() == nmranet::SpeedType::FORWARD);
+    lastSetSpeed_ = req()->speed_;
     int lo_pin;
     if (desired_dir) {
       HW::MOT_B_HI_Pin::set_off();
@@ -193,6 +219,41 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
     return exit();
   }
 
+  Action sample_adc_1() {
+    // Sets IN1=hi IN2=hi for the analog mux.
+    HW::ASEL1_Pin::set_on();
+    HW::ASEL2_Pin::set(false);
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(1), STATE(sample_adc_2));
+  }
+
+  Action sample_adc_2() {
+    uint16_t v = system_adc_read();
+    lastAdc_ = v;
+    HW::MOT_A_LO_Pin::set(LOW_OFF);
+    HW::MOT_B_LO_Pin::set(LOW_OFF);
+    if (lastDirMotAHi_) {
+      HW::MOT_A_HI_Pin::set_on();
+    } else {
+      HW::MOT_B_HI_Pin::set_on();
+    }
+    if (v < 0x10) {
+      call_kick();
+    } else {
+      pwm_.pause(0);
+      schedule_kick();
+    }
+    return allocate_and_call(stack.iface()->global_message_write_flow(),
+                             STATE(send_adc_value));
+  }
+
+  Action send_adc_value() {
+    auto *b = get_allocation_result(stack.iface()->global_message_write_flow());
+    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, stack.node()->node_id(),
+                     nmranet::eventid_to_buffer(ADC_REPORT_EVENT | lastAdc_));
+    stack.iface()->global_message_write_flow()->send(b);
+    return release_and_exit();
+  }
+
   SpeedRequest *req() { return message()->data(); }
 
   void factory_reset(int fd) override {
@@ -207,7 +268,6 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
                                    BarrierNotifiable *done) override {
     AutoNotify an(done);
     auto config_freq = mpar_.pwm_frequency().read(fd);
-    printf("pwm freq = %d\n", config_freq);
     period_ = 1000000000 / config_freq;
     enableKick_ = mpar_.enable_kick().read(fd) ? 1 : 0;
     auto kick_length_msec =
@@ -237,7 +297,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
    private:
     /// Sends the kick message.
     long long timeout() override {
-      parent_->call_kick();
+      parent_->call_measure();
       return NONE;
     }
 
@@ -253,6 +313,8 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   long long kickDurationNsec_ = 0;
   /// How much time to wait between motor kicks.
   long long kickDelayNsec_ = 0;
+  /// Last set speed
+  nmranet::SpeedType lastSetSpeed_;
   /// Helper class to control the hardware timer.
   TimerBasedPwm pwm_;
   /// Timer structure for executing delays in the state flow.
@@ -265,6 +327,15 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   unsigned enableKick_ : 1;
   /// 1 if the kick timer is running.
   unsigned kickRunning_ : 1;
+
+  /// last ADC value
+  uint16_t lastAdc_;
+  /// Regulation target: based on last set speed, what should be the expected
+  /// feedback (ADC value)?
+  uint16_t desiredFb_;
+  /// Output variable of the regulation: what power should we send to the
+  /// motor. 255  = full power. 0 = off.
+  uint8_t currentPower_;
 };
 
 extern SpeedController g_speed_controller;
