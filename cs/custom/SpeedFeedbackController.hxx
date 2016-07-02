@@ -37,6 +37,7 @@
 
 #include "nmranet/ConfigRepresentation.hxx"
 #include "utils/ConfigUpdateListener.hxx"
+#include "utils/Ewma.hxx"
 
 CDI_GROUP(FeedbackParams, Name("Load control"),
           Description("Adjust parameters of the load compensation feedback."));
@@ -55,7 +56,10 @@ CDI_GROUP_ENTRY(
     max_adjust, nmranet::Uint8ConfigEntry, Name("Maximum adjustment"),
     Default(16),
     Description("What should be the maximum adjustment per cycle."));
-
+CDI_GROUP_ENTRY(
+    min_power, nmranet::Uint8ConfigEntry, Name("Minimum output power"),
+    Default(0x30),
+    Description("Minimum power value that the motor needs to turn."));
 CDI_GROUP_END();
 
 class SpeedFeedbackController : private DefaultConfigUpdateListener {
@@ -69,14 +73,13 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
   uint8_t measure_tick(uint16_t measurement) {
     if (flushState_) {
       flushState_ = 0;
-      integral_ = measurement;
+      measEwma_.reset_state(measurement);
       lastOutputValue_ = 0;
     } else {
-      integral_ = integral_ * integralAlpha_ +
-                  (measurement * 1.0 * (1 - integralAlpha_));
+      measEwma_.add_value(measurement);
     }
     // Observed difference
-    float diff = desiredRate_ - integral_;
+    float diff = desiredRate_ - measEwma_.avg();
     diff *= adjustParam_;
     diff /= 16;
     // Action to take
@@ -92,11 +95,12 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
     newValue += delta;
     if (newValue < 0 || !desiredRate_) newValue = 0;
     if (newValue > 255) newValue = 255;
+    if (newValue < minPower_ && desiredRate_) newValue = minPower_;
     lastOutputValue_ = newValue;
 
-    debugValue_ = (uint64_t(desiredRate_) << 32) |
-                  (uint64_t(lastOutputValue_) << 24) |
-                  (uint64_t(integral_) << 12) | (uint64_t(measurement));
+    debugValue_ = (uint64_t(desiredRate_) << 40) |
+                  (uint64_t(lastOutputValue_) << 32) |
+                  (uint64_t(measEwma_.avg()) << 16) | (uint64_t(measurement));
 
     return newValue;
   }
@@ -107,11 +111,12 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
   UpdateAction apply_configuration(int fd, bool initial_load,
                                    BarrierNotifiable *done) override {
     AutoNotify an(done);
-    uint8_t raw_alpha = par_.integrate().read(fd);
-    integralAlpha_ = raw_alpha;
-    integralAlpha_ /= 256;
+    float raw_alpha = 256 - par_.integrate().read(fd);
+    raw_alpha /= 256;
+    measEwma_.set_alpha(raw_alpha);
     maxDiff_ = par_.max_adjust().read(fd);
     adjustParam_ = par_.adjust_param().read(fd);
+    minPower_ = par_.min_power().read(fd);
     return UPDATED;
   }
 
@@ -124,20 +129,25 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
     par_.integrate().write(fd, par_.integrate_options().defaultvalue());
     par_.adjust_param().write(fd, par_.adjust_param_options().defaultvalue());
     par_.max_adjust().write(fd, par_.max_adjust_options().defaultvalue());
+    par_.min_power().write(fd, par_.min_power_options().defaultvalue());
   }
 
   /// Configuration parameters.
   FeedbackParams par_;
-  /// alpha value of the integrating component. alpha = 0 turns of integrating,
-  /// alpha = 0.99 will make very very slow integrating compensation.
-  float integralAlpha_{0.2};
+  /// Stores the EWMA of the measured values.
+  AbsEwma measEwma_{0.8};
+  // alpha value of the integrating component. alpha = 0 turns of integrating,
+  // alpha = 0.99 will make very very slow integrating compensation.
+  //float integralAlpha_{0.2};
+  // moved to measurementEwma_
+
   /// What is the maximum value to adjust per iteration.
   uint8_t maxDiff_{16};
   /// Fixed-point representation of the amplification of the adjustment. The
   /// decimal dot is between the nibbles.
   uint8_t adjustParam_{16};
-  /// Stores an EWMA (integral) of the measured values.
-  float integral_{0.0};
+  /// Config: minimum output power.
+  uint8_t minPower_{0};
   uint64_t debugValue_{0};
   /// What is the desired value of the measured values.
   uint16_t desiredRate_{0};
