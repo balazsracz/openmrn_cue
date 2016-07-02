@@ -255,6 +255,36 @@ class FakeTrain : public TrainDbEntry {
   DccMode mode_;
 };
 
+class SingleFindProtocolTest : public nmranet::AsyncNodeTest {
+ protected:
+  ~SingleFindProtocolTest() { wait(); }
+
+  void find_nodes(uint64_t nibbles, uint8_t settings,
+                  std::initializer_list<uint16_t> results) {
+    clear_expect(true);
+    uint64_t event = create_query(nibbles, settings);
+    LOG(INFO, "query event: %016" PRIX64, event);
+    for (uint16_t alias : results) {
+      LOG(INFO, "expected result: %x", (unsigned)alias);
+      expect_packet(StringPrintf(":X19544%03XN%016" PRIX64 ";", alias, event));
+    }
+    send_packet_and_flush_expect(
+        StringPrintf(":X19914123N%016" PRIX64 ";", event));
+  }
+
+  FakeTrain dbEntry_{"Am 853 093-6", 53, FAKE_DRIVE};
+  SingleNodeFindProtocolServer server_{node_, &dbEntry_};
+};
+
+TEST_F(SingleFindProtocolTest, createdestroy) {}
+
+TEST_F(SingleFindProtocolTest, match) {
+  find_nodes(0xFFFF53, 0, {0x22A});
+  find_nodes(0xFFFF63, 0, {});
+  find_nodes(0xFFF853, 0, {0x22A});
+  find_nodes(0xFFFF09, 0, {0x22A});
+}
+
 class MatchNodeTest : public ::testing::Test {
  protected:
   uint8_t check_match(uint64_t nibbles, uint8_t settings, const string& name,

@@ -81,12 +81,14 @@ class AllTrainNodesTestBase : public nmranet::TractionTest {
 class AllTrainNodesTest : public AllTrainNodesTestBase {
  protected:
   AllTrainNodesTest() {
+    wait();
     // print_all_packets();
     expect_train_start(0x440, const_lokdb[0].address);
     expect_train_start(0x441, const_lokdb[1].address);
     expect_train_start(0x442, const_lokdb[2].address);
     trainNodes_.reset(new AllTrainNodes{&trainDb_, &trainService_, &infoFlow_,
                                         &memoryConfigHandler_});
+    // TODO: there is a race condition here but I'm not sure why.
     wait();
   }
 

@@ -109,9 +109,7 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
   };
 
   // For testing.
-  bool is_idle() {
-    return flow_.is_waiting();
-  }
+  bool is_idle() { return flow_.is_waiting(); }
 
  private:
   enum {
@@ -222,8 +220,7 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     Action send_new_node_response() {
       auto *b = get_allocation_result(
           nodes()->tractionService_->iface()->global_message_write_flow());
-      b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-                       newNodeId_,
+      b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFIED_VALID, newNodeId_,
                        nmranet::eventid_to_buffer(eventId_));
       parent_->parent_->tractionService_->iface()
           ->global_message_write_flow()
@@ -256,6 +253,62 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
   FindProtocolFlow flow_{this};
 };
 
-}  // namespace
+class SingleNodeFindProtocolServer : public nmranet::SimpleEventHandler {
+ public:
+  using Node = nmranet::Node;
+
+  SingleNodeFindProtocolServer(Node *node, TrainDbEntry *db_entry)
+      : node_(node), dbEntry_(db_entry) {
+    nmranet::EventRegistry::instance()->register_handler(
+        EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
+        FindProtocolDefs::TRAIN_FIND_MASK);
+  }
+
+  ~SingleNodeFindProtocolServer() {
+    nmranet::EventRegistry::instance()->unregister_handler(this);
+  }
+
+  void HandleIdentifyGlobal(const EventRegistryEntry &registry_entry,
+                            EventReport *event,
+                            BarrierNotifiable *done) override {
+    AutoNotify an(done);
+
+    if (event && event->dst_node) {
+      // Identify addressed
+      if (event->dst_node != node_) return;
+    }
+
+    static_assert(((FindProtocolDefs::TRAIN_FIND_BASE >>
+                    FindProtocolDefs::TRAIN_FIND_MASK) &
+                   1) == 1,
+                  "The lowermost bit of the TRAIN_FIND_BASE must be 1 or "
+                  "else the event produced range encoding must be updated.");
+    nmranet::event_write_helper1.WriteAsync(
+        event->dst_node, nmranet::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+        nmranet::WriteHelper::global(),
+        nmranet::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
+        done->new_child());
+  }
+
+  void HandleIdentifyProducer(const EventRegistryEntry &registry_entry,
+                              EventReport *event,
+                              BarrierNotifiable *done) override {
+    AutoNotify an(done);
+
+    if (FindProtocolDefs::match_query_to_node(event->event, dbEntry_)) {
+      nmranet::event_write_helper1.WriteAsync(
+          node_, nmranet::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+          nmranet::WriteHelper::global(),
+          nmranet::eventid_to_buffer(event->event),
+          done->new_child());
+    }
+  };
+
+ private:
+  Node* node_;
+  TrainDbEntry* dbEntry_;
+};
+
+}  // namespace commandstation
 
 #endif  // _COMMANDSTATION_FINDPROTOCOLSERVER_HXX_
