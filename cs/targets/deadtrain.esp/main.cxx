@@ -131,10 +131,10 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   static constexpr bool LOW_OFF = invertLow_;
 
   uint16_t speed_to_desired_feedback(nmranet::SpeedType speed) {
-    if (speed.mph() < 1) return 0;
-    float tgt = speed.mph() * 0x230 / 128;
-    if (tgt < 0x10) {
-      return 0x10;
+    if (speed.mph() < 0.99) return 0;
+    float tgt = speed.mph() * 0x2300 / 128;
+    if (tgt < 0x100) {
+      return 0x100;
     }
     return tgt;
   }
@@ -243,7 +243,10 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   }
 
   Action sample_adc_2() {
-    uint16_t v = system_adc_read();
+    uint16_t v = 0;
+    for (int i = 0; i < 16; ++i) {
+      v += system_adc_read();
+    }
     lastAdc_ = v;
     HW::MOT_A_LO_Pin::set(LOW_OFF);
     HW::MOT_B_LO_Pin::set(LOW_OFF);
