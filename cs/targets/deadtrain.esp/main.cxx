@@ -50,6 +50,8 @@
 #include "utils/GpioInitializer.hxx"
 #include "utils/blinker.h"
 #include "custom/SpeedFeedbackController.hxx"
+#include "commandstation/FindProtocolServer.hxx"
+#include "commandstation/ExternalTrainDbEntry.hxx"
 
 #include "config.hxx"
 
@@ -489,6 +491,31 @@ extern const char *const SNIP_DYNAMIC_FILENAME = CONFIG_FILENAME;
 
 nmranet::SimpleTrainCanStack stack(&trainImpl, kFdiXml, NODE_ID);
 SpeedController g_speed_controller(stack.service(), cfg.seg().motor_control());
+
+class DbEntry : public commandstation::ExternalTrainDbEntry, private DefaultConfigUpdateListener {
+ public:
+  DbEntry() : ExternalTrainDbEntry("Deadrail", 0, commandstation::FAKE_DRIVE) {}
+
+ private:
+  void factory_reset(int fd) override
+  {
+    cfg.seg().address().write(fd, cfg.seg().address_options().defaultvalue());
+  }
+
+  UpdateAction apply_configuration(
+      int fd, bool initial_load, BarrierNotifiable *done) override
+  {
+    AutoNotify an(done);
+    name_ = cfg.userinfo().name().read(fd);
+    if (name_[0] == 0xFF) {
+      name_ = "Deadrail train";
+    }
+    address_ = cfg.seg().address().read(fd);
+    return UPDATED;
+  }
+} db_entry;
+
+commandstation::SingleNodeFindProtocolServer find_protocol_server(stack.node(), &db_entry);
 
 extern "C" {
 extern char WIFI_SSID[];

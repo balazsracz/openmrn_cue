@@ -33,14 +33,18 @@ CDI_GROUP_END();
 
 /// Defines the main segment in the configuration CDI. This is laid out at
 /// origin 128 to give space for the ACDI user data at the beginning.
-CDI_GROUP(
-    TrainBoardSegment, Segment(nmranet::MemoryConfigDefs::SPACE_CONFIG), Offset(128));
+CDI_GROUP(TrainBoardSegment, Segment(nmranet::MemoryConfigDefs::SPACE_CONFIG),
+          Offset(128));
 CDI_GROUP_ENTRY(internal_data, nmranet::InternalConfigData);
 CDI_GROUP_ENTRY(motor_control, MotorControl);
+CDI_GROUP_ENTRY(address, nmranet::Uint16ConfigEntry, Name("Cab number"),
+                Description(
+                    "Reports this address to the OpenLCB bus in order to be "
+                    "acquired by throttles using the numeric keypad."),
+                Default(11000));
 CDI_GROUP_END();
 
-namespace nmranet
-{
+namespace nmranet {
 
 /// Defines the identification information for the node. The arguments are:
 ///
@@ -74,6 +78,6 @@ CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
 CDI_GROUP_ENTRY(seg, TrainBoardSegment);
 CDI_GROUP_END();
 
-} // namespace nmranet
+}  // namespace nmranet
 
-#endif // _APPLICATIONS_IO_BOARD_TARGET_CONFIG_HXX_
+#endif  // _APPLICATIONS_IO_BOARD_TARGET_CONFIG_HXX_
