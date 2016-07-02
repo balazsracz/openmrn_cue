@@ -17,8 +17,6 @@ namespace nmranet {
 extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 }
 
-nmranet::ConfigUpdateFlow cfgflow(&g_service);
-
 namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
@@ -76,6 +74,8 @@ class AllTrainNodesTestBase : public nmranet::TractionTest {
     inject_allocated_alias(0x443);
     inject_allocated_alias(0x33A);
   }
+
+  nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
 
 class AllTrainNodesTest : public AllTrainNodesTestBase {

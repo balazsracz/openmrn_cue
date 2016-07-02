@@ -15,8 +15,6 @@ extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
 
 }
 
-nmranet::ConfigUpdateFlow cfgflow(&g_service);
-
 namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
@@ -48,6 +46,8 @@ protected:
     ~FindTrainNodeTestBase() {
         wait();
     }
+
+  nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
 
 
