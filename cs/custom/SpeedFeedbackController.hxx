@@ -60,7 +60,7 @@ CDI_GROUP_END();
 
 class SpeedFeedbackController : private DefaultConfigUpdateListener {
  public:
-  SpeedFeedbackController(FeedbackParams par) : par_(par) {}
+  SpeedFeedbackController(FeedbackParams par) : par_(par), flushState_(1) {}
 
   void reset_to_zero() { flushState_ = 1; }
 
@@ -76,7 +76,7 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
                   (measurement * 1.0 * (1 - integralAlpha_));
     }
     // Observed difference
-    float diff = integral_ - desiredRate_;
+    float diff = desiredRate_ - integral_;
     diff *= adjustParam_;
     diff /= 16;
     // Action to take
@@ -89,12 +89,13 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
       delta = diff;
     }
     int newValue = lastOutputValue_;
-    newValue += diff;
-    if (newValue < 0) newValue = 0;
+    newValue += delta;
+    if (newValue < 0 || !desiredRate_) newValue = 0;
     if (newValue > 255) newValue = 255;
     lastOutputValue_ = newValue;
 
-    debugValue_ = (uint64_t(lastOutputValue_) << 24) |
+    debugValue_ = (uint64_t(desiredRate_) << 32) |
+                  (uint64_t(lastOutputValue_) << 24) |
                   (uint64_t(integral_) << 12) | (uint64_t(measurement));
 
     return newValue;
@@ -110,6 +111,8 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
     integralAlpha_ = raw_alpha;
     integralAlpha_ /= 256;
     maxDiff_ = par_.max_adjust().read(fd);
+    adjustParam_ = par_.adjust_param().read(fd);
+    return UPDATED;
   }
 
   /// Clears configuration file and resets the configuration settings to
@@ -134,12 +137,12 @@ class SpeedFeedbackController : private DefaultConfigUpdateListener {
   /// decimal dot is between the nibbles.
   uint8_t adjustParam_{16};
   /// Stores an EWMA (integral) of the measured values.
-  float integral_;
-  uint64_t debugValue_;
+  float integral_{0.0};
+  uint64_t debugValue_{0};
   /// What is the desired value of the measured values.
-  uint16_t desiredRate_;
+  uint16_t desiredRate_{0};
   /// What value did we output last time.
-  uint8_t lastOutputValue_;
+  uint8_t lastOutputValue_{0};
   /// Requests zeroing the internal state.
   uint8_t flushState_ : 1;
 };

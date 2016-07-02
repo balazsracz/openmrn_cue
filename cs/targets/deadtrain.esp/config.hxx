@@ -28,7 +28,7 @@ CDI_GROUP_ENTRY(
     kick_length, nmranet::Uint8ConfigEntry, Name("Motor kick length"),
     Description("Length of kick pulse in milliseconds to send to motor."),
     Min(0), Max(100), Default(5));
-CDI_GROUP(load_control, FeedbackParams);
+CDI_GROUP_ENTRY(load_control, FeedbackParams);
 CDI_GROUP_END();
 
 /// Defines the main segment in the configuration CDI. This is laid out at

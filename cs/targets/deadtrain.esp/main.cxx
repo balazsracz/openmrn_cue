@@ -49,6 +49,7 @@
 #include "utils/ESPWifiClient.hxx"
 #include "utils/GpioInitializer.hxx"
 #include "utils/blinker.h"
+#include "custom/SpeedFeedbackController.hxx"
 
 #include "config.hxx"
 
@@ -82,7 +83,7 @@ extern nmranet::SimpleTrainCanStack stack;
 class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
                         private DefaultConfigUpdateListener {
  public:
-  static constexpr uint64_t ADC_REPORT_EVENT = UINT64_C(0x05010F0000000000);
+  static constexpr uint64_t ADC_REPORT_EVENT = UINT64_C(0x9000000000000000);
 
   SpeedController(Service *s, MotorControl mpar)
       : StateFlow<Buffer<SpeedRequest>, QList<2>>(s),
@@ -129,11 +130,27 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   /// set(LOW_OFF) will turn on the low driver.
   static constexpr bool LOW_OFF = invertLow_;
 
+  uint16_t speed_to_desired_feedback(nmranet::SpeedType speed) {
+    if (speed.mph() < 1) return 0;
+    float tgt = speed.mph() * 0x230 / 128;
+    if (tgt < 0x10) {
+      return 0x10;
+    }
+    return tgt;
+  }
+
+  /*
   long long speed_to_fill_rate(nmranet::SpeedType speed, long long period) {
     int fill_rate = speed.mph();
     if (fill_rate >= 128) fill_rate = 128;
     // Let's do a 1khz
     long long fill = (period * fill_rate) >> 7;
+    if (invertLow_) fill = period - fill;
+    return fill;
+    }*/
+
+  long long power_to_fill_rate(uint8_t power, long long period) {
+    long long fill = (period * power) >> 8;
     if (invertLow_) fill = period - fill;
     return fill;
   }
@@ -157,7 +174,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
       schedule_kick();
       return release_and_exit();
     }
-    if (req()->doMeasure_ && isMoving_) {
+    if (req()->doMeasure_) {
       pwm_.pause(MSEC_TO_NSEC(10));
       HW::MOT_A_HI_Pin::set_off();
       HW::MOT_B_HI_Pin::set_off();
@@ -176,6 +193,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
       pwm_.set_off();
       HW::MOT_B_HI_Pin::set_off();
       HW::MOT_A_HI_Pin::set_off();
+      feedbackController_.reset_to_zero();
       return sleep_and_call(&timer_, MSEC_TO_NSEC(1), STATE(do_speed));
     }
     return call_immediately(STATE(do_speed));
@@ -186,26 +204,24 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
     bool desired_dir =
         (req()->speed_.direction() == nmranet::SpeedType::FORWARD);
     lastSetSpeed_ = req()->speed_;
-    int lo_pin;
     if (desired_dir) {
       HW::MOT_B_HI_Pin::set_off();
       HW::MOT_A_LO_Pin::set(LOW_OFF);
-      lo_pin = HW::MOT_B_LO_Pin::PIN;
       HW::MOT_A_HI_Pin::set_on();
     } else {
       HW::MOT_A_HI_Pin::set_off();
       HW::MOT_B_LO_Pin::set(LOW_OFF);
-      lo_pin = HW::MOT_A_LO_Pin::PIN;
       HW::MOT_B_HI_Pin::set_on();
     }
 
-    long long fill = speed_to_fill_rate(req()->speed_, period_);
-    if (fill) {
+    desiredFb_ = speed_to_desired_feedback(req()->speed_);
+    if (desiredFb_) {
       isMoving_ = 1;
     } else {
       isMoving_ = 0;
+      feedbackController_.reset_to_zero();
     }
-    pwm_.old_set_state(lo_pin, period_, fill);
+    feedbackController_.set_desired_rate(desiredFb_);
     lastDirMotAHi_ = desired_dir;
     schedule_kick();
     return release_and_exit();
@@ -231,17 +247,25 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
     lastAdc_ = v;
     HW::MOT_A_LO_Pin::set(LOW_OFF);
     HW::MOT_B_LO_Pin::set(LOW_OFF);
+    int lo_pin;
     if (lastDirMotAHi_) {
       HW::MOT_A_HI_Pin::set_on();
+      lo_pin = HW::MOT_B_LO_Pin::PIN;
     } else {
       HW::MOT_B_HI_Pin::set_on();
+      lo_pin = HW::MOT_A_LO_Pin::PIN;
     }
-    if (v < 0x10) {
-      call_kick();
-    } else {
-      pwm_.pause(0);
+    currentPower_ = feedbackController_.measure_tick(lastAdc_);
+    long long fill = power_to_fill_rate(currentPower_, period_);
+    pwm_.old_set_state(lo_pin, period_, fill);
+    // if (v < 0x10) {
+    //  call_kick();
+    //} else {
+    //  pwm_.pause(0);
+    if (isMoving_) {
       schedule_kick();
     }
+    //}
     return allocate_and_call(stack.iface()->global_message_write_flow(),
                              STATE(send_adc_value));
   }
@@ -249,7 +273,8 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   Action send_adc_value() {
     auto *b = get_allocation_result(stack.iface()->global_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, stack.node()->node_id(),
-                     nmranet::eventid_to_buffer(ADC_REPORT_EVENT | lastAdc_));
+                     nmranet::eventid_to_buffer(
+                         ADC_REPORT_EVENT | feedbackController_.debug_value()));
     stack.iface()->global_message_write_flow()->send(b);
     return release_and_exit();
   }
@@ -313,6 +338,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   long long kickDurationNsec_ = 0;
   /// How much time to wait between motor kicks.
   long long kickDelayNsec_ = 0;
+  SpeedFeedbackController feedbackController_{mpar_.load_control()};
   /// Last set speed
   nmranet::SpeedType lastSetSpeed_;
   /// Helper class to control the hardware timer.
