@@ -41,6 +41,7 @@
 #include "executor/StateFlow.hxx"
 #include "nmranet/If.hxx"
 #include "nmranet/Node.hxx"
+#include "nmranet/EventHandlerTemplates.hxx"
 
 namespace commandstation {
 
@@ -77,9 +78,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
         node_(node) {}
 
  private:
-  Action entry() override {
-    return call_immediately(STATE(try_find_in_db));
-  }
+  Action entry() override { return call_immediately(STATE(try_find_in_db)); }
 
   /** Looks through all nodes that exist in the train DB and tries to find one
    * with the given legacy address. */
@@ -96,20 +95,45 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   }
 
   Action try_find_on_openlcb() {
-    return allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_find_query)); 
+    return allocate_and_call(iface()->global_message_write_flow(),
+                             STATE(send_find_query));
   }
 
   Action send_find_query() {
-    auto *b = get_allocation_result(node_->iface()->global_message_write_flow());
+    auto* b = get_allocation_result(iface()->global_message_write_flow());
     b->set_done(bn_.reset(this));
 
-    uint64_t event = FindProtocolDefs::address_to_query(input()->address, false, OLCBUSER);
-
+    uint64_t event =
+        FindProtocolDefs::address_to_query(input()->address, false, OLCBUSER);
+    replyHandler_.listen_for(event);
+    remoteMatch_ = {0,0};
     b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
                      nmranet::eventid_to_buffer(event));
-    node_->iface()->global_message_write_flow()->send(b);
-    /// @todo: wait for incoming evet replies.
-    return call_immediately(STATE(allocate_new_train));
+    iface()->global_message_write_flow()->send(b);
+    /// @todo: wait for incoming event replies.
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(300), STATE(reply_timeout));
+  }
+
+  /// Callback from the event handler object when a producer identified comes
+  /// back on the bus.
+  void handle_reply(nmranet::NodeHandle src, nmranet::EventState state) {
+    // Prevents receiving more replies.
+    replyHandler_.listen_for(0);
+    remoteMatch_ = src;
+    timer_.trigger();
+  }
+
+  Action reply_timeout() {
+    // Prevents more wakeups.
+    replyHandler_.listen_for(0);
+    if (!remoteMatch_.id && !remoteMatch_.alias) {
+      // No match
+      return call_immediately(STATE(allocate_new_train));
+    }
+    if (remoteMatch_.id) {
+      return return_ok(remoteMatch_.id);
+    }
+    DIE("Got a match with an alias but no node ID");
   }
 
   /** Asks the AllTrainNodes structure to allocate a new train node. */
@@ -141,6 +165,51 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     return static_cast<nmranet::If*>(service());
   }
 
+  class ReplyHandler : public nmranet::SimpleEventHandler {
+   public:
+    ReplyHandler(FindTrainNode* parent) : parent_(parent) {
+      nmranet::EventRegistry::instance()->register_handler(
+          EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
+          FindProtocolDefs::TRAIN_FIND_MASK);
+    }
+
+    ~ReplyHandler() {
+      nmranet::EventRegistry::instance()->register_handler(
+          EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
+          FindProtocolDefs::TRAIN_FIND_MASK);
+    }
+
+    void HandleIdentifyGlobal(const EventRegistryEntry& registry_entry,
+                              EventReport* event,
+                              BarrierNotifiable* done) override {
+      AutoNotify an(done);
+
+      nmranet::event_write_helper1.WriteAsync(
+          event->dst_node, nmranet::Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
+          nmranet::WriteHelper::global(),
+          nmranet::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
+          done->new_child());
+    }
+
+    void HandleProducerIdentified(const EventRegistryEntry& registry_entry,
+                                  EventReport* event,
+                                  BarrierNotifiable* done) override {
+      AutoNotify an(done);
+      if (event->event == request_) {
+        parent_->handle_reply(event->src_node, event->state);
+      }
+    };
+
+    void listen_for(nmranet::EventId request) { request_ = request; }
+
+   private:
+    nmranet::EventId request_{0};
+    FindTrainNode* parent_;
+  } replyHandler_{this};
+
+  StateFlowTimer timer_{this};
+  /// an openlcb train that may have answered our search
+  nmranet::NodeHandle remoteMatch_;
   BarrierNotifiable bn_;
   TrainDb* trainDb_;
   AllTrainNodes* allTrainNodes_;
