@@ -37,6 +37,7 @@
 
 #include "commandstation/TrainDb.hxx"
 #include "commandstation/AllTrainNodes.hxx"
+#include "commandstation/FindProtocolDefs.hxx"
 #include "executor/StateFlow.hxx"
 #include "nmranet/If.hxx"
 #include "nmranet/Node.hxx"
@@ -78,7 +79,6 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
  private:
   Action entry() override {
     return call_immediately(STATE(try_find_in_db));
-    return return_with_error(nmranet::Defs::ERROR_UNIMPLEMENTED);
   }
 
   /** Looks through all nodes that exist in the train DB and tries to find one
@@ -92,6 +92,23 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
       // TODO: check drive mode.
       return return_ok(allTrainNodes_->get_train_node_id(train_id));
     }
+    return call_immediately(STATE(try_find_on_openlcb));
+  }
+
+  Action try_find_on_openlcb() {
+    return allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_find_query)); 
+  }
+
+  Action send_find_query() {
+    auto *b = get_allocation_result(node_->iface()->global_message_write_flow());
+    b->set_done(bn_.reset(this));
+
+    uint64_t event = FindProtocolDefs::address_to_query(input()->address, false, OLCBUSER);
+
+    b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
+                     nmranet::eventid_to_buffer(event));
+    node_->iface()->global_message_write_flow()->send(b);
+    /// @todo: wait for incoming evet replies.
     return call_immediately(STATE(allocate_new_train));
   }
 
@@ -124,6 +141,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     return static_cast<nmranet::If*>(service());
   }
 
+  BarrierNotifiable bn_;
   TrainDb* trainDb_;
   AllTrainNodes* allTrainNodes_;
   nmranet::Node* node_;
