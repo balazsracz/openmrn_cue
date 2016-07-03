@@ -105,6 +105,17 @@ struct FindProtocolDefs {
       @returns the new legacy_address. */
   static unsigned query_to_address(nmranet::EventId query, DccMode* mode);
 
+  /** Translates an address as punched in by a (dumb) throttle to a query to
+   * issue on the OpenLCB bus as a find protocol request.
+   *
+   * @param address is the numeric value that the user typed.
+   * @param exact should be true if only exact matches shall be retrieved.
+   * @param mode should be set most of the time to OLCBUSER to specify that we
+   * don't care about the address type, but can also be set to
+   * DCC_LONG_ADDRESS.
+   */
+  static nmranet::EventId address_to_query(unsigned address, bool exact, DccMode mode);
+
  private:
   // Not instantiatable class.
   FindProtocolDefs();

@@ -107,6 +107,31 @@ unsigned FindProtocolDefs::query_to_address(nmranet::EventId event, DccMode* mod
   return supplied_address;
 }
 
+//static
+nmranet::EventId FindProtocolDefs::address_to_query(unsigned address, bool exact, DccMode mode) {
+  uint64_t event = TRAIN_FIND_BASE;
+  int shift = TRAIN_FIND_MASK_LOW;
+  while (address) {
+    event |= (address % 10) << shift;
+    shift += 4;
+    address /= 10;
+  }
+  while (shift < TRAIN_FIND_MASK) {
+    event |= UINT64_C(0xF) << shift;
+    shift += 4;
+  }
+  if (exact) {
+    event |= EXACT;
+  }
+  if ((mode & OLCBUSER) == 0) {
+    event |= mode & 7;
+  }
+  if (mode & DCC_LONG_ADDRESS) {
+    event |= DCC_FORCE_LONG;
+  }
+  return event;
+}
+
 // static
 uint8_t FindProtocolDefs::match_query_to_node(nmranet::EventId event,
                                               TrainDbEntry* train) {
