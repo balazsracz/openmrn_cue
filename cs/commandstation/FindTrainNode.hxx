@@ -40,6 +40,7 @@
 #include "commandstation/FindProtocolDefs.hxx"
 #include "executor/StateFlow.hxx"
 #include "nmranet/If.hxx"
+#include "nmranet/IfCan.hxx"
 #include "nmranet/Node.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 
@@ -75,7 +76,8 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
       : StateFlow<Buffer<FindTrainNodeRequest>, QList<1>>(node->iface()),
         trainDb_(train_db),
         allTrainNodes_(local_train_nodes),
-        node_(node) {}
+        node_(node),
+      nodeIdLookup_(static_cast<nmranet::IfCan*>(node_->iface())) {}
 
  private:
   Action entry() override { return call_immediately(STATE(try_find_in_db)); }
@@ -135,8 +137,21 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     if (remoteMatch_.id) {
       return return_ok(remoteMatch_.id);
     }
-    DIE("Got a match with an alias but no node ID");
+    // Need to look up the node id from the alias.
+    return invoke_subflow_and_wait(&nodeIdLookup_, STATE(node_id_lookup_done), node_, remoteMatch_);
   }
+
+  Action node_id_lookup_done() {
+    auto* b = full_allocation_result(&nodeIdLookup_);
+    if (b->data()->handle.id != 0) {
+      return return_ok(b->data()->handle.id);
+    } else {
+      LOG(INFO, "Failed to match found train alias %03x to node id, error %04x",
+          b->data()->handle.alias, b->data()->resultCode);
+      return call_immediately(STATE(allocate_new_train));
+    }
+  }
+
 
   /** Asks the AllTrainNodes structure to allocate a new train node. */
   Action allocate_new_train() {
@@ -215,6 +230,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   TrainDb* trainDb_;
   AllTrainNodes* allTrainNodes_;
   nmranet::Node* node_;
+  nmranet::NodeIdLookupFlow nodeIdLookup_;
 };
 
 }  // namespace commandstation
