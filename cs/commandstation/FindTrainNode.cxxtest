@@ -1,3 +1,7 @@
+#define LOGLEVEL INFO
+
+
+
 #include "utils/async_traction_test_helper.hxx"
 
 #include "commandstation/FindTrainNode.hxx"
@@ -6,6 +10,10 @@
 #include "nmranet/SimpleInfoProtocol.hxx"
 #include "nmranet/MemoryConfig.hxx"
 #include "nmranet/ConfigUpdateFlow.hxx"
+#include "dcc/FakeTrackIf.hxx"
+#include "dcc/SimpleUpdateLoop.hxx"
+#include "commandstation/ExternalTrainDbEntry.hxx"
+#include "commandstation/FindProtocolServer.hxx"
 
 namespace nmranet {
 extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
@@ -22,13 +30,19 @@ const struct const_traindb_entry_t const_lokdb[] = {
       LIGHT, TELEX, SHUNT, ABV, 0xff,
      },
      "BR 260417",
-     FAKE_DRIVE},  // ESU LokPilot 3.0
+     DCC_28},  // ESU LokPilot 3.0
     {2,
      {
       LIGHT, HORN, SPEECH, ABV, 0xff,
      },
      "ICE 2",
-     FAKE_DRIVE},  // todo: check fnbits
+     DCC_28 | DCC_LONG_ADDRESS},  // todo: check fnbits
+    {350,
+     {
+      LIGHT, HORN, SPEECH, ABV, 0xff,
+     },
+     "Test350",
+     DCC_128},  // todo: check fnbits
     {0,
      {
       0,
@@ -47,12 +61,19 @@ extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
 extern const char TRAINTMPCDI_DATA[] = "Test cdi tmp data";
 extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
 
+
+dcc::FakeTrackIf fakeTrack{&g_service, 3};
+dcc::SimpleUpdateLoop updateLoop{&g_service, &fakeTrack};
+
 class FindTrainNodeTestBase : public nmranet::TractionTest {
  protected:
   FindTrainNodeTestBase() {
+    wait();
     inject_allocated_alias(0x340);
     inject_allocated_alias(0x341);
     inject_allocated_alias(0x342);
+    inject_allocated_alias(0x343);
+    inject_allocated_alias(0x344);
   }
 
   ~FindTrainNodeTestBase() { wait(); }
@@ -62,6 +83,7 @@ class FindTrainNodeTestBase : public nmranet::TractionTest {
 
 class FindTrainNodeTest : public FindTrainNodeTestBase {
  protected:
+  FindTrainNodeTest() { wait(); }
   ~FindTrainNodeTest() { wait(); }
 
   nmranet::CanDatagramService dgHandler_{ifCan_.get(), 5, 2};
@@ -70,10 +92,65 @@ class FindTrainNodeTest : public FindTrainNodeTestBase {
   TrainDb db_;
   AllTrainNodes allTrainNodes_{&db_, &trainService_, &infoFlow_,
                                &memCfgHandler_};
+
+  FindTrainNode findFlow_{node_, &db_, &allTrainNodes_};
+
+  nmranet::TrainNodeWithId olcbTrain_{&trainService_, &m1_, 0x0501010118DD};
+  ExternalTrainDbEntry dbEntry_{"Deadrail 415", 415, FAKE_DRIVE};
+  SingleNodeFindProtocolServer findProtocolServer_{&olcbTrain_, &dbEntry_};  
 };
 
 TEST_F(FindTrainNodeTest, CreateDestroy) { wait(); }
 
-TEST_F(FindTrainNodeTest, FindLocalTrain) { }
+TEST_F(FindTrainNodeTest, FindLocalTrain) { 
+  wait();
+  auto b = invoke_flow(&findFlow_, (DccMode)0, 51);
+
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x060100000000 | 51, b->data()->nodeId);
+}
+
+TEST_F(FindTrainNodeTest, FindLocalTrainLong) { 
+  auto b = invoke_flow(&findFlow_, (DccMode) (DCC_28 | DCC_LONG_ADDRESS), 2);
+
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x06010000C000 | 2, b->data()->nodeId);
+}
+
+TEST_F(FindTrainNodeTest, FindLocalTrainLong2) { 
+  auto b = invoke_flow(&findFlow_, (DccMode) 0, 350);
+
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x060100000000 | 350, b->data()->nodeId);
+}
+
+TEST_F(FindTrainNodeTest, AllocateTrainShort) { 
+  auto b = invoke_flow(&findFlow_, (DccMode) 0, 13);
+
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x060100000000 | 13, b->data()->nodeId);
+}
+
+TEST_F(FindTrainNodeTest, AllocateTrainLong) { 
+  auto b = invoke_flow(&findFlow_, (DccMode) DCC_LONG_ADDRESS, 13);
+
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x06010000C000 | 13, b->data()->nodeId);
+}
+
+TEST_F(FindTrainNodeTest, FindOlcbtrainDefault) { 
+  print_all_packets();
+  auto b = invoke_flow(&findFlow_, (DccMode)0, 415);
+
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x0501010118DD, b->data()->nodeId);
+}
+
+TEST_F(FindTrainNodeTest, FindOlcbtrain) { 
+  auto b = invoke_flow(&findFlow_, OLCBUSER, 415);
+
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x0501010118DD, b->data()->nodeId);
+}
 
 }  // namespace commandstation

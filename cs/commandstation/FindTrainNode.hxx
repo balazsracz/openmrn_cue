@@ -66,6 +66,12 @@ struct FindTrainNodeRequest {
   nmranet::NodeID nodeId;
 };
 
+int get_time_msec() {
+  long long tn = os_get_time_monotonic();
+  tn /= 1000000;
+  return tn % 10000;
+}
+
 class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
  public:
   /// @param node is a local node from which queries can be sent out to the
@@ -100,8 +106,8 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   }
 
   Action send_find_query() {
+    LOG(VERBOSE, "Send find query %04d", get_time_msec());
     auto* b = get_allocation_result(iface()->global_message_write_flow());
-    b->set_done(bn_.reset(this));
 
     uint64_t event =
         FindProtocolDefs::address_to_query(input()->address, false, OLCBUSER);
@@ -110,13 +116,13 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
                      nmranet::eventid_to_buffer(event));
     iface()->global_message_write_flow()->send(b);
-    /// @todo: wait for incoming event replies.
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(300), STATE(reply_timeout));
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(200), STATE(reply_timeout));
   }
 
   /// Callback from the event handler object when a producer identified comes
   /// back on the bus.
   void handle_reply(nmranet::NodeHandle src, nmranet::EventState state) {
+    LOG(VERBOSE, "Bus reply");
     // Prevents receiving more replies.
     replyHandler_.listen_for(0);
     remoteMatch_ = src;
@@ -124,9 +130,11 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   }
 
   Action reply_timeout() {
+    LOG(VERBOSE, "sleep end %04d", get_time_msec());
     // Prevents more wakeups.
     replyHandler_.listen_for(0);
     if (!remoteMatch_.id && !remoteMatch_.alias) {
+      LOG(VERBOSE, "Bus match not found, allocating...");
       // No match
       return call_immediately(STATE(allocate_new_train));
     }
@@ -138,6 +146,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
 
   /** Asks the AllTrainNodes structure to allocate a new train node. */
   Action allocate_new_train() {
+    LOG(VERBOSE, "Allocate train node");
     nmranet::NodeID n =
         allTrainNodes_->allocate_node(input()->type, input()->address);
     return return_ok(n);
@@ -174,9 +183,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     }
 
     ~ReplyHandler() {
-      nmranet::EventRegistry::instance()->register_handler(
-          EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
-          FindProtocolDefs::TRAIN_FIND_MASK);
+      nmranet::EventRegistry::instance()->unregister_handler(this);
     }
 
     void HandleIdentifyGlobal(const EventRegistryEntry& registry_entry,
@@ -195,6 +202,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
                                   EventReport* event,
                                   BarrierNotifiable* done) override {
       AutoNotify an(done);
+      LOG(VERBOSE, "Reply Handler");
       if (event->event == request_) {
         parent_->handle_reply(event->src_node, event->state);
       }
@@ -210,7 +218,6 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   StateFlowTimer timer_{this};
   /// an openlcb train that may have answered our search
   nmranet::NodeHandle remoteMatch_;
-  BarrierNotifiable bn_;
   TrainDb* trainDb_;
   AllTrainNodes* allTrainNodes_;
   nmranet::Node* node_;
