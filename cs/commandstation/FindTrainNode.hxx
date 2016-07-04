@@ -66,12 +66,6 @@ struct FindTrainNodeRequest {
   nmranet::NodeID nodeId;
 };
 
-int get_time_msec() {
-  long long tn = os_get_time_monotonic();
-  tn /= 1000000;
-  return tn % 10000;
-}
-
 class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
  public:
   /// @param node is a local node from which queries can be sent out to the
@@ -106,7 +100,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   }
 
   Action send_find_query() {
-    LOG(VERBOSE, "Send find query %04d", get_time_msec());
+    LOG(VERBOSE, "Send find query");
     auto* b = get_allocation_result(iface()->global_message_write_flow());
 
     uint64_t event =
@@ -130,7 +124,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   }
 
   Action reply_timeout() {
-    LOG(VERBOSE, "sleep end %04d", get_time_msec());
+    LOG(VERBOSE, "sleep end");
     // Prevents more wakeups.
     replyHandler_.listen_for(0);
     if (!remoteMatch_.id && !remoteMatch_.alias) {
