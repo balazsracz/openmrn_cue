@@ -7,28 +7,40 @@
 #include "nmranet/MemoryConfig.hxx"
 #include "nmranet/ConfigUpdateFlow.hxx"
 
-
 namespace nmranet {
 extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
 
 extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
-
 }
 
 namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
-  // 0
-  { 51, { LIGHT, TELEX, SHUNT, ABV,  0xff, },
-    "BR 260417", FAKE_DRIVE },  // ESU LokPilot 3.0
-  { 2 , { LIGHT, HORN, SPEECH, ABV,  0xff, },
-    "ICE 2", FAKE_DRIVE }, // todo: check fnbits
-  { 0, {0,}, "", 0},
-  //  { 0, {0, }, {0,}, "", 0},
-  //{ 0, {0, }, {0,}, "", 0},
+    // 0
+    {51,
+     {
+      LIGHT, TELEX, SHUNT, ABV, 0xff,
+     },
+     "BR 260417",
+     FAKE_DRIVE},  // ESU LokPilot 3.0
+    {2,
+     {
+      LIGHT, HORN, SPEECH, ABV, 0xff,
+     },
+     "ICE 2",
+     FAKE_DRIVE},  // todo: check fnbits
+    {0,
+     {
+      0,
+     },
+     "",
+     0},
+    //  { 0, {0, }, {0,}, "", 0},
+    //{ 0, {0, }, {0,}, "", 0},
 };
 
-extern const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+extern const size_t const_lokdb_size =
+    sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 extern const char TRAINCDI_DATA[] = "Test cdi data";
 extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
@@ -36,38 +48,32 @@ extern const char TRAINTMPCDI_DATA[] = "Test cdi tmp data";
 extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
 
 class FindTrainNodeTestBase : public nmranet::TractionTest {
-protected:
-    FindTrainNodeTestBase() {
-        inject_allocated_alias(0x340);
-        inject_allocated_alias(0x341);
-        inject_allocated_alias(0x342);
-    }
+ protected:
+  FindTrainNodeTestBase() {
+    inject_allocated_alias(0x340);
+    inject_allocated_alias(0x341);
+    inject_allocated_alias(0x342);
+  }
 
-    ~FindTrainNodeTestBase() {
-        wait();
-    }
+  ~FindTrainNodeTestBase() { wait(); }
 
   nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
 
-
 class FindTrainNodeTest : public FindTrainNodeTestBase {
-protected:
-    ~FindTrainNodeTest() {
-        wait();
-    }
+ protected:
+  ~FindTrainNodeTest() { wait(); }
 
-
-    nmranet::CanDatagramService dgHandler_{ifCan_.get(), 5, 2};
-    nmranet::MemoryConfigHandler memCfgHandler_{&dgHandler_, node_, 5};
-    nmranet::SimpleInfoFlow infoFlow_{&g_service};
-    TrainDb db_;
-    AllTrainNodes allTrainNodes_{&db_, &trainService_, &infoFlow_, &memCfgHandler_};
+  nmranet::CanDatagramService dgHandler_{ifCan_.get(), 5, 2};
+  nmranet::MemoryConfigHandler memCfgHandler_{&dgHandler_, node_, 5};
+  nmranet::SimpleInfoFlow infoFlow_{&g_service};
+  TrainDb db_;
+  AllTrainNodes allTrainNodes_{&db_, &trainService_, &infoFlow_,
+                               &memCfgHandler_};
 };
 
-TEST_F(FindTrainNodeTest, CreateDestroy) {
-    wait();
-}
+TEST_F(FindTrainNodeTest, CreateDestroy) { wait(); }
 
+TEST_F(FindTrainNodeTest, FindLocalTrain) { }
 
 }  // namespace commandstation
