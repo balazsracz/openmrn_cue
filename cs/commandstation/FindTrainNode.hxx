@@ -46,57 +46,37 @@
 
 namespace commandstation {
 
-struct FindTrainNodeRequest {
-  /** Requests finding a train node with a given address or cab number.
-      DccMode should be set to the expected drive type (bits 0..2) if the
-      train node needs to be freshly allocated. Set the bit OLCBUSER if the
-      expected drive type is not known or don't care. Set the
+struct RemoteFindTrainNodeRequest {
+  /** Sends and OpenLCB request for finding a train node with a given address
+      or cab number.  DccMode should be set to the expected drive type (bits
+      0..2) if the train node needs to be freshly allocated. Set the bit
+      OLCBUSER if the expected drive type is not known or don't care. Set the
       DCC_LONG_ADDRESS bit if the inbound address should be interpreted as a
       long address (even if it is a small number). */
-  void reset(DccMode type, int address) {
-    this->address = address;
-    this->type = type;
+  void reset(int address, bool exact, DccMode type) {
+    event = FindProtocolDefs::address_to_query(address, exact, type);
+    nodeId = 0;
   }
-
-  DccMode type;
-  int address;
+  /// Event to query for.
+  uint64_t event;
+  /// Response
+  nmranet::NodeID nodeId;
 
   BarrierNotifiable done;
-
   int resultCode;
-  nmranet::NodeID nodeId;
 };
 
-class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
+class RemoteFindTrainNode
+    : public StateFlow<Buffer<RemoteFindTrainNodeRequest>, QList<1>> {
  public:
   /// @param node is a local node from which queries can be sent out to the
   /// network. @param train_db is the allocated local train store.
-  FindTrainNode(nmranet::Node* node, TrainDb* train_db,
-                AllTrainNodes* local_train_nodes)
-      : StateFlow<Buffer<FindTrainNodeRequest>, QList<1>>(node->iface()),
-        trainDb_(train_db),
-        allTrainNodes_(local_train_nodes),
+  RemoteFindTrainNode(nmranet::Node* node)
+      : StateFlow<Buffer<RemoteFindTrainNodeRequest>, QList<1>>(node->iface()),
         node_(node),
-      nodeIdLookup_(static_cast<nmranet::IfCan*>(node_->iface())) {}
+        nodeIdLookup_(static_cast<nmranet::IfCan*>(node_->iface())) {}
 
- private:
-  Action entry() override { return call_immediately(STATE(try_find_in_db)); }
-
-  /** Looks through all nodes that exist in the train DB and tries to find one
-   * with the given legacy address. */
-  Action try_find_in_db() {
-    for (unsigned train_id = 0; train_id < allTrainNodes_->size(); ++train_id) {
-      auto e = allTrainNodes_->get_traindb_entry(train_id);
-      if (!e.get() || input()->address != e->get_legacy_address()) {
-        continue;
-      }
-      // TODO: check drive mode.
-      return return_ok(allTrainNodes_->get_train_node_id(train_id));
-    }
-    return call_immediately(STATE(try_find_on_openlcb));
-  }
-
-  Action try_find_on_openlcb() {
+  Action entry() override {
     return allocate_and_call(iface()->global_message_write_flow(),
                              STATE(send_find_query));
   }
@@ -105,10 +85,9 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     LOG(VERBOSE, "Send find query");
     auto* b = get_allocation_result(iface()->global_message_write_flow());
 
-    uint64_t event =
-        FindProtocolDefs::address_to_query(input()->address, false, OLCBUSER);
+    uint64_t event = message()->data()->event;
     replyHandler_.listen_for(event);
-    remoteMatch_ = {0,0};
+    remoteMatch_ = {0, 0};
     b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
                      nmranet::eventid_to_buffer(event));
     iface()->global_message_write_flow()->send(b);
@@ -132,13 +111,14 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     if (!remoteMatch_.id && !remoteMatch_.alias) {
       LOG(VERBOSE, "Bus match not found, allocating...");
       // No match
-      return call_immediately(STATE(allocate_new_train));
+      return return_with_error(nmranet::Defs::ERROR_OPENMRN_NOT_FOUND);
     }
     if (remoteMatch_.id) {
       return return_ok(remoteMatch_.id);
     }
     // Need to look up the node id from the alias.
-    return invoke_subflow_and_wait(&nodeIdLookup_, STATE(node_id_lookup_done), node_, remoteMatch_);
+    return invoke_subflow_and_wait(&nodeIdLookup_, STATE(node_id_lookup_done),
+                                   node_, remoteMatch_);
   }
 
   Action node_id_lookup_done() {
@@ -148,44 +128,13 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
     } else {
       LOG(INFO, "Failed to match found train alias %03x to node id, error %04x",
           b->data()->handle.alias, b->data()->resultCode);
-      return call_immediately(STATE(allocate_new_train));
+      return return_with_error(nmranet::Defs::ERROR_DST_NOT_FOUND);
     }
-  }
-
-
-  /** Asks the AllTrainNodes structure to allocate a new train node. */
-  Action allocate_new_train() {
-    LOG(VERBOSE, "Allocate train node");
-    nmranet::NodeID n =
-        allTrainNodes_->allocate_node(input()->type, input()->address);
-    return return_ok(n);
-  }
-
-  Action return_ok(nmranet::NodeID nodeId) {
-    input()->nodeId = nodeId;
-    return return_with_error(0);
-  }
-
-  Action return_with_error(int error) {
-    if (error) {
-      input()->nodeId = 0;
-    }
-    input()->resultCode = error;
-    return_buffer();
-    return exit();
-  }
-
-  FindTrainNodeRequest* input() { return message()->data(); }
-
-  nmranet::If* iface() {
-    // We know that the service pointer is the node's interface from the
-    // constructor.
-    return static_cast<nmranet::If*>(service());
   }
 
   class ReplyHandler : public nmranet::SimpleEventHandler {
    public:
-    ReplyHandler(FindTrainNode* parent) : parent_(parent) {
+    ReplyHandler(RemoteFindTrainNode* parent) : parent_(parent) {
       nmranet::EventRegistry::instance()->register_handler(
           EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
           FindProtocolDefs::TRAIN_FIND_MASK);
@@ -221,16 +170,135 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
 
    private:
     nmranet::EventId request_{0};
-    FindTrainNode* parent_;
+    RemoteFindTrainNode* parent_;
   } replyHandler_{this};
+
+  Action return_ok(nmranet::NodeID nodeId) {
+    input()->nodeId = nodeId;
+    return return_with_error(0);
+  }
+
+  Action return_with_error(int error) {
+    if (error) {
+      input()->nodeId = 0;
+    }
+    input()->resultCode = error;
+    return_buffer();
+    return exit();
+  }
+
+  RemoteFindTrainNodeRequest* input() { return message()->data(); }
+
+  nmranet::If* iface() {
+    // We know that the service pointer is the node's interface from the
+    // constructor.
+    return static_cast<nmranet::If*>(service());
+  }
 
   StateFlowTimer timer_{this};
   /// an openlcb train that may have answered our search
   nmranet::NodeHandle remoteMatch_;
-  TrainDb* trainDb_;
-  AllTrainNodes* allTrainNodes_;
   nmranet::Node* node_;
   nmranet::NodeIdLookupFlow nodeIdLookup_;
+};
+
+struct FindTrainNodeRequest {
+  /** Requests finding a train node with a given address or cab number.
+      DccMode should be set to the expected drive type (bits 0..2) if the
+      train node needs to be freshly allocated. Set the bit OLCBUSER if the
+      expected drive type is not known or don't care. Set the
+      DCC_LONG_ADDRESS bit if the inbound address should be interpreted as a
+      long address (even if it is a small number). */
+  void reset(DccMode type, int address) {
+    this->address = address;
+    this->type = type;
+  }
+
+  DccMode type;
+  int address;
+
+  BarrierNotifiable done;
+
+  int resultCode;
+  nmranet::NodeID nodeId;
+};
+
+class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
+ public:
+  /// @param node is a local node from which queries can be sent out to the
+  /// network. @param train_db is the allocated local train store.
+  FindTrainNode(nmranet::Node* node, TrainDb* train_db,
+                AllTrainNodes* local_train_nodes)
+      : StateFlow<Buffer<FindTrainNodeRequest>, QList<1>>(node->iface()),
+        trainDb_(train_db),
+      allTrainNodes_(local_train_nodes),
+      remoteLookupFlow_(node) {}
+
+ private:
+  Action entry() override { return call_immediately(STATE(try_find_in_db)); }
+
+  /** Looks through all nodes that exist in the train DB and tries to find one
+   * with the given legacy address. */
+  Action try_find_in_db() {
+    for (unsigned train_id = 0; train_id < allTrainNodes_->size(); ++train_id) {
+      auto e = allTrainNodes_->get_traindb_entry(train_id);
+      if (!e.get() || input()->address != e->get_legacy_address()) {
+        continue;
+      }
+      // TODO: check drive mode.
+      return return_ok(allTrainNodes_->get_train_node_id(train_id));
+    }
+    return call_immediately(STATE(try_find_on_openlcb));
+  }
+
+  Action try_find_on_openlcb() {
+    return invoke_subflow_and_wait(&remoteLookupFlow_, STATE(olcb_find_done),
+                                   input()->address, false, OLCBUSER);
+  }
+
+  Action olcb_find_done() {
+    auto* b = full_allocation_result(&remoteLookupFlow_);
+    nmranet::NodeID id = b->data()->nodeId;
+    b->unref();
+    if (id) {
+      return return_ok(id);
+    }
+    return call_immediately(STATE(allocate_new_train));
+  }
+
+  /** Asks the AllTrainNodes structure to allocate a new train node. */
+  Action allocate_new_train() {
+    LOG(VERBOSE, "Allocate train node");
+    nmranet::NodeID n =
+        allTrainNodes_->allocate_node(input()->type, input()->address);
+    return return_ok(n);
+  }
+
+  Action return_ok(nmranet::NodeID nodeId) {
+    input()->nodeId = nodeId;
+    return return_with_error(0);
+  }
+
+  Action return_with_error(int error) {
+    if (error) {
+      input()->nodeId = 0;
+    }
+    input()->resultCode = error;
+    return_buffer();
+    return exit();
+  }
+
+  FindTrainNodeRequest* input() { return message()->data(); }
+
+  nmranet::If* iface() {
+    // We know that the service pointer is the node's interface from the
+    // constructor.
+    return static_cast<nmranet::If*>(service());
+  }
+
+  TrainDb* trainDb_;
+  AllTrainNodes* allTrainNodes_;
+  RemoteFindTrainNode remoteLookupFlow_;
 };
 
 }  // namespace commandstation
