@@ -382,7 +382,7 @@ class ESPHuzzahTrain : public nmranet::TrainImpl {
   void set_speed(nmranet::SpeedType speed) override {
     lastSpeed_ = speed;
     g_speed_controller.call_speed(speed);
-    if (f0) {
+    if (f0 && directionAwareSpeed_) {
       if (speed.direction() == nmranet::SpeedType::FORWARD) {
         HW::LIGHT_FRONT_Pin::set(true);
         HW::LIGHT_BACK_Pin::set(false);
@@ -414,6 +414,9 @@ class ESPHuzzahTrain : public nmranet::TrainImpl {
         if (!value) {
           HW::LIGHT_FRONT_Pin::set(false);
           HW::LIGHT_BACK_Pin::set(false);
+        } else if (!directionAwareSpeed_) {
+          HW::LIGHT_FRONT_Pin::set(true);
+          HW::LIGHT_BACK_Pin::set(true);
         } else if (lastSpeed_.direction() == nmranet::SpeedType::FORWARD) {
           HW::LIGHT_FRONT_Pin::set(true);
           HW::LIGHT_BACK_Pin::set(false);
@@ -458,6 +461,7 @@ class ESPHuzzahTrain : public nmranet::TrainImpl {
   nmranet::SpeedType lastSpeed_ = 0.0;
   bool f0 = false;
   bool f1 = false;
+  bool directionAwareSpeed_ = false;
 };
 
 const char kFdiXml[] =
