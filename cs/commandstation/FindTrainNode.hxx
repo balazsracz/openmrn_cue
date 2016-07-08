@@ -57,6 +57,12 @@ struct RemoteFindTrainNodeRequest {
     event = FindProtocolDefs::address_to_query(address, exact, type);
     nodeId = 0;
   }
+  void reset(int address, uint8_t find_protocol_flags) {
+    event = FindProtocolDefs::address_to_query(address, false, (DccMode)0);
+    event &= ~UINT64_C(0xFF);
+    event |= find_protocol_flags;
+    nodeId = 0;
+  }
   /// Event to query for.
   uint64_t event;
   /// Response
