@@ -995,6 +995,25 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
   }
 
+  // In WW, run through one specific stub track, changing direction.
+  void RunStubWWB2(Automata* aut) {
+    WithRouteLock l(this, &route_lock_WW);
+    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2,
+                               &g_wwb2_entry_free);
+    SwitchTurnout(Turnout_WWW1.b.magnet(), true);
+    SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCross);
+    StopAndReverseAtStub(&Block_WWB2);
+
+    AddBlockTransitionOnPermit(&Block_WWB2.b_, &Block_B421, &ww_from2,
+                               &g_wwb2_exit_free);
+    SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
+
+    AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
+                               &g_wwb3_entry_free);
+    SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
+  }
+
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
     ClearAutomataVariables(aut);
@@ -1198,7 +1217,7 @@ class M61PushPull : public LayoutSchedule {
 
   void RunTransition(Automata* aut) OVERRIDE {
     Run360_to_301(aut);
-    RunStubWWB3(aut);
+    RunStubWWB2(aut);
     Run421_to_475(aut);
     RunStubZZ(aut);
   }
