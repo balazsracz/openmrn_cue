@@ -57,7 +57,7 @@ class MostaTranslationTest : public nmranet::TractionTest {
     expect_packet(":X1070133AN060100000056;");
     // initialized
     expect_packet(":X1910033AN060100000056;");
-    trainNode_.reset(new nmranet::TrainNode(&trainService_, &m1_));
+    trainNode_.reset(new nmranet::TrainNodeForProxy(&trainService_, &m1_));
     wait();
   }
 

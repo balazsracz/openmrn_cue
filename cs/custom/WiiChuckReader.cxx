@@ -1,3 +1,9 @@
+#if defined(__linux__) || defined(__FreeRTOS__)
+#define ENABLE_WIICHUCK
+#endif
+
+#ifdef ENABLE_WIICHUCK
+
 #define LOGLEVEL INFO
 
 #include "custom/WiiChuckReader.hxx"
@@ -75,3 +81,5 @@ void WiiChuckReader::start() {
 }
 
 }  // namespace bracz_custom
+
+#endif

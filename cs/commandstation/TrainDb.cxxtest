@@ -1,4 +1,4 @@
-#include "utils/test_main.hxx"
+#include "utils/async_if_test_helper.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "nmranet/ConfigUpdateFlow.hxx"
 
@@ -8,7 +8,10 @@ void PrintTo(const nmranet::NodeID& id, std::ostream& o) {
 }
 }
 
-nmranet::ConfigUpdateFlow cfgflow(&g_service);
+
+CanHubFlow g_can_hub(&g_service);
+nmranet::IfCan g_if_can(&g_executor, &can_hub0, 10, 10, 10);
+nmranet::ConfigUpdateFlow cfgflow(&g_if_can);
 
 namespace commandstation {
 

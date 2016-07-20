@@ -1,6 +1,7 @@
 #include "commandstation/FindProtocolServer.hxx"
 #include "commandstation/cm_test_helper.hxx"
 #include "commandstation/UpdateProcessor.hxx"
+#include "commandstation/ExternalTrainDbEntry.hxx"
 
 namespace commandstation {
 
@@ -220,46 +221,41 @@ TEST_F(FindProtocolTest, BunchOfQueries) {
   find_nodes(0xFFFFFF, FindProtocolDefs::ADDRESS_ONLY, {});
 }
 
-class FakeTrain : public TrainDbEntry {
- public:
-  FakeTrain(const string& name, int address, DccMode mode = DCC_28) : name_(name), address_(address), mode_(mode) {}
+class SingleFindProtocolTest : public nmranet::AsyncNodeTest {
+ protected:
+  ~SingleFindProtocolTest() { wait(); }
 
-  /** Returns an internal identifier that uniquely defines where this traindb
-   * entry was allocated from. */
-  string identifier() override { return ""; }
+  void find_nodes(uint64_t nibbles, uint8_t settings,
+                  std::initializer_list<uint16_t> results) {
+    clear_expect(true);
+    uint64_t event = create_query(nibbles, settings);
+    LOG(INFO, "query event: %016" PRIX64, event);
+    for (uint16_t alias : results) {
+      LOG(INFO, "expected result: %x", (unsigned)alias);
+      expect_packet(StringPrintf(":X19544%03XN%016" PRIX64 ";", alias, event));
+    }
+    send_packet_and_flush_expect(
+        StringPrintf(":X19914123N%016" PRIX64 ";", event));
+  }
 
-  /** Retrieves the NMRAnet NodeID for the virtual node that represents a
-   * particular train known to the database.
-   */
-  nmranet::NodeID get_traction_node() override { return 0; }
-
-  /** Retrieves the name of the train. */
-  string get_train_name() override { return name_; }
-
-  /** Retrieves the legacy address of the train. */
-  int get_legacy_address() override { return address_; }
-
-  /** Retrieves the traction drive mode of the train. */
-  DccMode get_legacy_drive_mode() override { return mode_; }
-
-  /** Retrieves the label assigned to a given function, or FN_NONEXISTANT if
-      the function does not exist. */
-  unsigned get_function_label(unsigned fn_id) override { return 0; }
-
-  /** Returns the largest valid function ID for this train, or -1 if the train
-      has no functions. */
-  int get_max_fn() override { return 0; }
-
-  string name_;
-  int address_;
-  DccMode mode_;
+  ExternalTrainDbEntry dbEntry_{"Am 853 093-6", 53, FAKE_DRIVE};
+  SingleNodeFindProtocolServer server_{node_, &dbEntry_};
 };
+
+TEST_F(SingleFindProtocolTest, createdestroy) {}
+
+TEST_F(SingleFindProtocolTest, match) {
+  find_nodes(0xFFFF53, 0, {0x22A});
+  find_nodes(0xFFFF63, 0, {});
+  find_nodes(0xFFF853, 0, {0x22A});
+  find_nodes(0xFFFF09, 0, {0x22A});
+}
 
 class MatchNodeTest : public ::testing::Test {
  protected:
   uint8_t check_match(uint64_t nibbles, uint8_t settings, const string& name,
                       int address, DccMode mode = DCC_28) {
-    FakeTrain tr(name, address, mode);
+    ExternalTrainDbEntry tr(name, address, mode);
     nmranet::EventId event = create_query(nibbles, settings);
     return FindProtocolDefs::match_query_to_node(event, &tr);
   }

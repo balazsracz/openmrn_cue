@@ -397,7 +397,7 @@ class TrainTestHelper {
     expect_packet_(":X1910033AN060100001384;");
     test_base->create_allocated_alias();
     test_base->expect_next_alias_allocation();
-    trainNode_.reset(new nmranet::TrainNode(&trainService_, &trainImpl_));
+    trainNode_.reset(new nmranet::TrainNodeForProxy(&trainService_, &trainImpl_));
     test_base->wait();
   } 
 

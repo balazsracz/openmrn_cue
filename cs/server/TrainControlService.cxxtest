@@ -196,9 +196,9 @@ class TrainControlServiceTrainTest : public TrainControlServiceTest {
         Return(0x00000056U));
     EXPECT_CALL(m2_, legacy_address_type()).Times(AtLeast(0)).WillRepeatedly(
         Return(dcc::TrainAddressType::DCC_SHORT_ADDRESS));
-    trains_.emplace_back(new nmranet::TrainNode(&trainService_, &m1_));
+    trains_.emplace_back(new nmranet::TrainNodeForProxy(&trainService_, &m1_));
     wait();
-    trains_.emplace_back(new nmranet::TrainNode(&trainService_, &m2_));
+    trains_.emplace_back(new nmranet::TrainNodeForProxy(&trainService_, &m2_));
     wait();
   }
 

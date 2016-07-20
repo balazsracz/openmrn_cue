@@ -2629,7 +2629,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
   expect_packet_(":X1910044CN060100001388;");
 
   nmranet::LoggingTrain trainImpl2(0x1388);
-  nmranet::TrainNode trainNode2(&trainService_, &trainImpl2);
+  nmranet::TrainNodeForProxy trainNode2(&trainService_, &trainImpl2);
 
   wait();
 

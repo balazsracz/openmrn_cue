@@ -572,7 +572,8 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
       DIE("Unhandled train drive mode.");
   }
   if (impl->train_) {
-    impl->node_ = new nmranet::TrainNode(tractionService_, impl->train_);
+    impl->node_ =
+        new nmranet::TrainNodeForProxy(tractionService_, impl->train_);
     impl->eventHandler_ =
         new nmranet::FixedEventProducer<nmranet::TractionDefs::IS_TRAIN_EVENT>(
             impl->node_);
