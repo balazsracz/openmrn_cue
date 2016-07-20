@@ -161,7 +161,7 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
     }
     if (adc_value > SHUTDOWN_LIMIT) {
       if (++num_overcurrent_tests_ >= 5 || adc_value > KILL_LIMIT) {
-        disable_dcc();
+        setshorted_dcc();
         LOG(INFO, "%s value: %04" PRIx32,
             adc_value <= KILL_LIMIT ? "disable" : "kill", adc_value);
         ++num_disable_tries_;
