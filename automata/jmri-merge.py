@@ -992,6 +992,9 @@ def ClearPanelLocationTable(output_tree_root, index):
 
 
 def RenderPanelLocationTable(output_tree_root, index):
+  layout = output_tree_root.find('./LayoutEditor[@name=\'3H layout\']')
+  if not layout:
+    raise Exception("Cannot find layout editor node.")
   y = 190;
   x0 = 250;
   for block in all_locations:
@@ -1026,7 +1029,8 @@ def main():
   RenderSystemBlocks(root)
   RenderMemoryVariables(root)
   ClearPanelLocationTable(root, index)
-  if (len(sys.argv) <= 2) or (sys.argv[3] != "skiptable"):
+  print("len = ", len(sys.argv), " args=", sys.argv)
+  if (len(sys.argv) <= 3) or (sys.argv[3] != "skiptable"):
     RenderLogixConditionals(root)
     RenderPanelLocationTable(root, index)
   else:
