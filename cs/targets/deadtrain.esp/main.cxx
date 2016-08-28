@@ -66,6 +66,10 @@ extern void ets_delay_us(uint32_t us);
 #include "nmranet/TrainInterface.hxx"
 #include "hardware.hxx"
 
+
+OVERRIDE_CONST(num_memory_spaces, 6);
+
+
 struct SpeedRequest {
   SpeedRequest() { reset(); }
   nmranet::SpeedType speed_;
@@ -552,6 +556,69 @@ class TestBlinker : public StateFlowBase {
   bool isOn_{true};
 };
 
+struct DynamicConfig {
+  /// 1 if the train should turn off right now when using battery.
+  unsigned turn_off_now = 0;
+  /// Battery voltage in millivolts.
+  unsigned voltage11 = 0;
+  /// Battery voltage in millivolts.
+  unsigned voltage10 = 0;
+  /// Battery voltage in millivolts.
+  unsigned voltage01 = 0;
+  /// Enable charge
+  unsigned enable_charge = 0;
+};
+
+DynamicConfig g_dynamic_config;
+
+class RefreshDynamicConfig : public StateFlowBase {
+ public:
+  RefreshDynamicConfig() : StateFlowBase(stack.service()) {
+    start_flow(STATE(doo));
+  }
+
+ private:
+  Action doo() {
+    update_voltage();
+    check_turnoff();
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(1000), STATE(doo));
+  }
+
+  void update_voltage() {
+    HW::ASEL1_Pin::set_on();
+    HW::ASEL2_Pin::set(HW::ASEL2_HIGH);
+    g_dynamic_config.voltage11 = get_voltage();
+
+    HW::ASEL1_Pin::set_on();
+    HW::ASEL2_Pin::set(HW::ASEL2_LOW);
+    g_dynamic_config.voltage10 = get_voltage();
+
+    HW::ASEL1_Pin::set_off();
+    HW::ASEL2_Pin::set(HW::ASEL2_HIGH);
+    g_dynamic_config.voltage01 = get_voltage();
+    //unsigned voltage_mvolts = 
+  }
+
+  unsigned get_voltage() {
+    os_delay_us(10);
+    system_adc_read();// throw away
+    uint16_t v = 0;
+    for (int i = 0; i < 16; ++i) {
+      v += system_adc_read();
+    }
+    return htobe32(v);
+  }
+
+  void check_turnoff() {
+    if (g_dynamic_config.turn_off_now) {
+      gpio16_output_conf();
+      gpio16_output_set(0);
+    }
+  }
+
+  StateFlowTimer timer_{this};
+} g_refresh_dyn_config;
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -563,6 +630,12 @@ int appl_main(int argc, char *argv[]) {
   printf("pinout: B hi %d; B lo %d; A hi %d; A lo %d;\n", HW::MOT_B_HI_Pin::PIN,
          HW::MOT_B_LO_Pin::PIN, HW::MOT_A_HI_Pin::PIN, HW::MOT_A_LO_Pin::PIN);
   resetblink(1);
+  
+  // Creates the memory block for the dynamic segment.
+  static_assert(sizeof(g_dynamic_config) == cfg.dynseg().size(), "dynamic config segment size is not as expected.");
+  auto* space = new nmranet::ReadWriteMemoryBlock(&g_dynamic_config, sizeof(g_dynamic_config));
+  stack.memory_config_handler()->registry()->insert(stack.node(), DYNAMIC_SEGMENT_ID, space);
+
   if (true)
     stack.create_config_file_if_needed(cfg.seg().internal_data(),
                                        nmranet::EXPECTED_VERSION,

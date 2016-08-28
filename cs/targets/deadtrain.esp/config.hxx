@@ -7,6 +7,8 @@
 #include "nmranet/MemoryConfig.hxx"
 #include "custom/SpeedFeedbackController.hxx"
 
+static constexpr uint8_t DYNAMIC_SEGMENT_ID = 0xD0;
+
 CDI_GROUP(MotorControl, Name("Motor control"));
 CDI_GROUP_ENTRY(pwm_frequency, nmranet::Uint16ConfigEntry,
                 Name("PWM frequency"),
@@ -44,6 +46,27 @@ CDI_GROUP_ENTRY(address, nmranet::Uint16ConfigEntry, Name("Cab number"),
                 Default(11000));
 CDI_GROUP_END();
 
+CDI_GROUP(DynamicSegment, Segment(DYNAMIC_SEGMENT_ID), Offset(0),
+          Name("Status"));
+CDI_GROUP_ENTRY(turn_off_now, nmranet::Uint32ConfigEntry, Name("Turn off"),
+                Description(
+                    "Writing the value of 1 will turn off a battery-operated "
+                    "train immediately."),
+                Min(0), Max(1));
+CDI_GROUP_ENTRY(
+    battery_voltage, nmranet::Uint32ConfigEntry, Name("voltage11"),
+    Description("Reads the current voltage of the battery, in millivolts."));
+CDI_GROUP_ENTRY(
+    voltage2, nmranet::Uint32ConfigEntry, Name("voltage10"),
+    Description("Reads the current voltage of the battery, in millivolts."));
+CDI_GROUP_ENTRY(
+    voltage3, nmranet::Uint32ConfigEntry, Name("voltage01"),
+    Description("Reads the current voltage of the battery, in millivolts."));
+CDI_GROUP_ENTRY(
+    enable_charge, nmranet::Uint32ConfigEntry, Name("Enable charge"), Min(0), Max(1),
+    Description("If non-zero, the battery will be charged from track power."));
+CDI_GROUP_END();
+
 namespace nmranet {
 
 /// Defines the identification information for the node. The arguments are:
@@ -76,6 +99,8 @@ CDI_GROUP_ENTRY(acdi, Acdi);
 CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
 /// Adds the main configuration segment.
 CDI_GROUP_ENTRY(seg, TrainBoardSegment);
+/// Run-time (non persisted) configuration settings and actions.
+CDI_GROUP_ENTRY(dynseg, DynamicSegment);
 CDI_GROUP_END();
 
 }  // namespace nmranet
