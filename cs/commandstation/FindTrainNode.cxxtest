@@ -15,6 +15,8 @@
 #include "commandstation/ExternalTrainDbEntry.hxx"
 #include "commandstation/FindProtocolServer.hxx"
 
+using ::testing::InvokeWithoutArgs;
+
 namespace nmranet {
 extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
 
@@ -139,7 +141,7 @@ TEST_F(FindTrainNodeTest, AllocateTrainLong) {
 }
 
 TEST_F(FindTrainNodeTest, FindOlcbtrainDefault) { 
-  print_all_packets();
+  //print_all_packets();
   auto b = invoke_flow(&findFlow_, (DccMode)0, 415);
 
   EXPECT_EQ(0, b->data()->resultCode);
@@ -151,6 +153,120 @@ TEST_F(FindTrainNodeTest, FindOlcbtrain) {
 
   EXPECT_EQ(0, b->data()->resultCode);
   EXPECT_EQ(0x0501010118DD, b->data()->nodeId);
+}
+
+class FindResponse {
+ public:
+  virtual void response(nmranet::EventState state, nmranet::NodeID id) = 0;
+};
+
+class MockFindResponse : public FindResponse {
+ public:
+  MOCK_METHOD2(response,  void(nmranet::EventState state, nmranet::NodeID id));
+};
+
+class RemoteFindTrainNodeTest : public FindTrainNodeTest {
+ protected:
+  RemoteFindTrainNodeTest() {
+    nmranet::AddAliasAllocator(SECOND_NODE_ID, &secondIf_);
+    secondIf_.add_addressed_message_support();
+    // Adds one alias buffer to the alias allocation flow.
+    auto* b = secondIf_.alias_allocator()->alloc();
+
+
+    b->data()->reset();
+    b->data()->alias = 0x922;
+    b->data()->state = nmranet::AliasInfo::STATE_RESERVED;
+    b->data()->do_not_reallocate();
+    secondIf_.local_aliases()->add(nmranet::AliasCache::RESERVED_ALIAS_NODE_ID,
+                                   b->data()->alias);
+    secondIf_.alias_allocator()->reserved_aliases()->insert(b);
+
+    wait();
+    print_all_packets();
+  }
+
+  ~RemoteFindTrainNodeTest() {
+    wait();
+  }
+
+  const uint64_t SECOND_NODE_ID = nmranet::TEST_NODE_ID + 256;
+  nmranet::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
+  nmranet::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
+
+  RemoteFindTrainNode remoteClient_{&secondNode_};
+  StrictMock<MockFindResponse> responseMock_;
+};
+
+TEST_F(RemoteFindTrainNodeTest, Create) {}
+
+TEST_F(RemoteFindTrainNodeTest, FindExistingTrain) {
+  auto b = invoke_flow(&remoteClient_, 415, true, DccMode::OLCBUSER);
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x0501010118DD, b->data()->nodeId);
+}
+
+TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookupAddresNoReply) {
+  wait();
+  expect_packet(":X19914922N090099FFFFF23440;")
+      .WillOnce(InvokeWithoutArgs(
+          [this]() { send_packet(":X19544662N090099FFFFF23440;"); }));
+  expect_packet(":X19488922N0662;");
+  {
+    auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
+    EXPECT_EQ(nmranet::Defs::ERROR_DST_NOT_FOUND, b->data()->resultCode);
+    EXPECT_EQ(0, b->data()->nodeId);
+  }
+}
+
+TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookup) {
+  wait();
+  expect_packet(":X19914922N090099FFFFF23440;")
+      .WillOnce(InvokeWithoutArgs(
+          [this]() { send_packet(":X19544662N090099FFFFF23440;"); }));
+  expect_packet(":X19488922N0662;")
+      .WillOnce(InvokeWithoutArgs(
+          [this]() { send_packet(":X19170662N0501010114EE;"); }));
+  {
+    auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
+    EXPECT_EQ(0, b->data()->resultCode);
+    EXPECT_EQ(0x0501010114EE, b->data()->nodeId);
+  }
+}
+
+TEST_F(RemoteFindTrainNodeTest, FindNonMatchingTrain) {
+  auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
+  EXPECT_EQ(nmranet::Defs::ERROR_OPENMRN_NOT_FOUND, b->data()->resultCode);
+  EXPECT_EQ(0, b->data()->nodeId);
+}
+
+TEST_F(RemoteFindTrainNodeTest, AllocateTrain) {
+  auto b = invoke_flow(&remoteClient_, 234, FindProtocolDefs::ALLOCATE);
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0x060100000000 + 234, b->data()->nodeId);
+}
+
+TEST_F(RemoteFindTrainNodeTest, FindExistingTrainCallback) {
+  EXPECT_CALL(responseMock_, response(_, 0x0501010118DD));
+  RemoteFindTrainNodeRequest::ResultFn rf =
+      std::bind(&FindResponse::response, &responseMock_, std::placeholders::_1,
+                std::placeholders::_2);
+  auto b = invoke_flow(&remoteClient_, 415, true, DccMode::OLCBUSER, rf);
+  // std::bind(responseMock_, MockFindResponse::response, std::placeholders::_1,
+  // std::placeholders::_2)
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0, b->data()->nodeId);
+}
+
+TEST_F(RemoteFindTrainNodeTest, FindTwoTrainCallback) {
+  EXPECT_CALL(responseMock_, response(_, 0x060100000033));
+  EXPECT_CALL(responseMock_, response(_, 0x06010000c002));
+  RemoteFindTrainNodeRequest::ResultFn rf =
+      std::bind(&FindResponse::response, &responseMock_, std::placeholders::_1,
+                std::placeholders::_2);
+  auto b = invoke_flow(&remoteClient_, 2, false, DccMode::OLCBUSER, rf);
+  EXPECT_EQ(0, b->data()->resultCode);
+  EXPECT_EQ(0, b->data()->nodeId);
 }
 
 }  // namespace commandstation

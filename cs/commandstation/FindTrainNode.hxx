@@ -47,21 +47,24 @@
 namespace commandstation {
 
 struct RemoteFindTrainNodeRequest {
+  typedef std::function<void(nmranet::EventState state, nmranet::NodeID)> ResultFn;
   /** Sends and OpenLCB request for finding a train node with a given address
       or cab number.  DccMode should be set to the expected drive type (bits
       0..2) if the train node needs to be freshly allocated. Set the bit
       OLCBUSER if the expected drive type is not known or don't care. Set the
       DCC_LONG_ADDRESS bit if the inbound address should be interpreted as a
       long address (even if it is a small number). */
-  void reset(int address, bool exact, DccMode type) {
+  void reset(int address, bool exact, DccMode type, ResultFn res = nullptr) {
     event = FindProtocolDefs::address_to_query(address, exact, type);
     nodeId = 0;
+    resultCallback = std::move(res);
   }
-  void reset(int address, uint8_t find_protocol_flags) {
+  void reset(int address, uint8_t find_protocol_flags, ResultFn res = nullptr) {
     event = FindProtocolDefs::address_to_query(address, false, (DccMode)0);
     event &= ~UINT64_C(0xFF);
     event |= find_protocol_flags;
     nodeId = 0;
+    resultCallback = std::move(res);
   }
   /// Event to query for.
   uint64_t event;
@@ -70,6 +73,11 @@ struct RemoteFindTrainNodeRequest {
 
   BarrierNotifiable done;
   int resultCode;
+  /// If this function is non-empty, then multiple results are accepted, and
+  /// for each returning result we call this function. In this case the done
+  /// notifiable will only be called when the timeout is passed.
+  std::function<void(nmranet::EventState state, nmranet::NodeID)>
+      resultCallback;
 };
 
 class RemoteFindTrainNode
@@ -102,18 +110,42 @@ class RemoteFindTrainNode
 
   /// Callback from the event handler object when a producer identified comes
   /// back on the bus.
-  void handle_reply(nmranet::NodeHandle src, nmranet::EventState state) {
+  virtual void handle_reply(nmranet::NodeHandle src, nmranet::EventState state) {
     LOG(VERBOSE, "Bus reply");
-    // Prevents receiving more replies.
-    replyHandler_.listen_for(0);
-    remoteMatch_ = src;
-    timer_.trigger();
+    if (input()->resultCallback) {
+      if (src.id) {
+        // Have Node ID
+        input()->resultCallback(state, src.id);
+      } else {
+        // Need to look up node ID.
+        auto* b = nodeIdLookup_.alloc();
+        b->data()->reset(node_, src);
+        b->ref();
+        int request_id = requestId_;
+        b->data()->done.reset(new TempNotifiable([this, request_id, state, b](){
+              auto bd = get_buffer_deleter(b);
+              if (requestId_ != request_id) return; // outdated.
+              input()->resultCallback(state, b->data()->handle.id);
+            }));
+        nodeIdLookup_.send(b);
+      }
+    } else {
+      // Prevents receiving more replies.
+      replyHandler_.listen_for(0);
+      remoteMatch_ = src;
+      timer_.trigger();
+    }
   }
 
   Action reply_timeout() {
     LOG(VERBOSE, "sleep end");
     // Prevents more wakeups.
     replyHandler_.listen_for(0);
+    if (input()->resultCallback) {
+      // Client wanted multiple results, and the time for waiting for results
+      // is over
+      return return_with_error(0);
+    }
     if (!remoteMatch_.id && !remoteMatch_.alias) {
       LOG(VERBOSE, "Bus match not found, allocating...");
       // No match
@@ -189,6 +221,7 @@ class RemoteFindTrainNode
       input()->nodeId = 0;
     }
     input()->resultCode = error;
+    requestId_++;
     return_buffer();
     return exit();
   }
@@ -205,6 +238,9 @@ class RemoteFindTrainNode
   /// an openlcb train that may have answered our search
   nmranet::NodeHandle remoteMatch_;
   nmranet::Node* node_;
+  /// A monotonically increasing identifier to decide if we moved on from the
+  /// last request yet.
+  int requestId_{0};
   nmranet::NodeIdLookupFlow nodeIdLookup_;
 };
 
