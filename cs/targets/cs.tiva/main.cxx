@@ -75,12 +75,7 @@
 
 
 #define STANDALONE
-
-#ifdef STANDALONE
-#define LOGTOSTDOUT
-#else
-#define LOGTOSTDOUT
-#endif
+//#define LOGTOSTDOUT
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -328,7 +323,7 @@ int appl_main(int argc, char* argv[])
     stack.add_can_port_select("/dev/can0");
     //stack.add_gridconnect_port("/dev/serUSB0");
     usb_port = new HubDeviceSelect<HubFlow>(stack.gridconnect_hub(), "/dev/serUSB0");
-#ifdef STANDALONE    
+#ifdef LOGTOSTDOUT
     FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 #endif
     int mainline = open("/dev/mainline", O_RDWR);

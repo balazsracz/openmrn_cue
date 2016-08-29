@@ -1,0 +1,13 @@
+seg7.Tuning params.Occupancy debouncer.Window length=30
+seg7.Tuning params.Occupancy debouncer.Min Active=5
+seg7.Tuning params.Overcurrent debouncer.Window length=2
+seg7.Tuning params.Overcurrent debouncer.Min Active=2
+seg7.Tuning params.DAC occupancy.Nominator=5
+seg7.Tuning params.DAC occupancy.Denominator=50
+seg7.Tuning params.DAC occupancy.DivBy100=1
+seg7.Tuning params.DAC overcurrent.Nominator=5
+seg7.Tuning params.DAC overcurrent.Denominator=10
+seg7.Tuning params.DAC overcurrent.DivBy100=0
+seg7.Tuning params.DAC railcom.Nominator=5
+seg7.Tuning params.DAC railcom.Denominator=10
+seg7.Tuning params.DAC railcom.DivBy100=1

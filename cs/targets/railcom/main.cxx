@@ -55,11 +55,12 @@
 #include "freertos_drivers/common/BlinkerGPIO.hxx"
 #include "freertos_drivers/ti/TivaGPIO.hxx"
 #include "hardware.hxx"
+#include "dcc/RailcomPortDebug.hxx"
 
 extern TivaDAC<DACDefs> dac;
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const nmranet::NodeID NODE_ID = 0x050101011462ULL;
+extern const nmranet::NodeID NODE_ID;
 nmranet::SimpleCanStack stack(NODE_ID);
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
@@ -303,6 +304,7 @@ int appl_main(int argc, char* argv[]) {
                                                       "/dev/railcom");
   // occupancy info will be proxied by the broadcast decoder
   // railcom_hub.register_port(&occupancy_report);
+  //nmranet::RailcomToOpenLCBDebugProxy debugproxy(&railcom_hub, stack.node(), nullptr);
 
   stack.loop_executor();
   return 0;

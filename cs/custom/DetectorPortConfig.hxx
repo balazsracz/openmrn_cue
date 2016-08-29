@@ -46,7 +46,7 @@ CDI_GROUP_ENTRY(
     Description(
         "A train showed up in the segment."));
 CDI_GROUP_ENTRY(
-    occ_off, nmranet::EventConfigEntry, Name(">Unoccupied"),  //
+    occ_off, nmranet::EventConfigEntry, Name("Unoccupied"),  //
     Description(
         "All trains left the segment."));
 CDI_GROUP_END();
@@ -58,7 +58,7 @@ CDI_GROUP_ENTRY(
     Description(
         "The output was turned off due to a short circuit."));
 CDI_GROUP_ENTRY(
-    over_off, nmranet::EventConfigEntry, Name(">Short cleared"),  //
+    over_off, nmranet::EventConfigEntry, Name("Short cleared"),  //
     Description(
         "The output is not shorted anymore."));
 CDI_GROUP_END();

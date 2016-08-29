@@ -21,7 +21,7 @@ CDI_GROUP_ENTRY(internal_config, InternalConfigData);
 CDI_GROUP_END();
 
 CDI_GROUP(TrainSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(1024));
-CDI_GROUP_ENTRY(all_trains, commandstation::TrainDbConfig);
+CDI_GROUP_ENTRY(all_trains, commandstation::TrainDbConfig, RepName("Train"), Description(nullptr));
 CDI_GROUP_END();
 
 /// The main structure of the CDI. ConfigDef is the symbol we use in main.cxx
@@ -35,9 +35,9 @@ CDI_GROUP_ENTRY(acdi, Acdi);
 /// space. UserInfoSegment is defined in the system header.
 CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
 /// Adds the main configuration segment.
-CDI_GROUP_ENTRY(seg, BaseSegment);
+CDI_GROUP_ENTRY(seg, BaseSegment, Name("Node configuration"));
 /// A segment for the train database.
-CDI_GROUP_ENTRY(trains, TrainSegment);
+CDI_GROUP_ENTRY(trains, TrainSegment, Name("Trains"), Description("Configures individual trains"));
 //CDI_GROUP_ENTRY(ro_seg, ROSegment);
 CDI_GROUP_END();
 

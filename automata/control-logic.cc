@@ -830,7 +830,8 @@ void MagnetAutomataEntry(MagnetDef* def, Automata* aut) {
       .ActReg1(set_0)
       .ActReg0(set_0)
       .ActReg1(set_1)
-      .ActReg0(set_1);
+      .ActReg0(set_1)
+      .ActReg(aut->ImportVariable(def->command.get()), def->default_state);
   // This will force an update at boot.
   Def()
       .IfState(StInit)
@@ -939,8 +940,13 @@ void MagnetCommandAutomata::AddCoupledMagnet(CoupledMagnetDef* def) {
   AddAutomataPlugin(2, NewCallbackPtr(&MagnetAutomataCouple, def));
 }
 
-MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name, GlobalVariable* closed, GlobalVariable* thrown)
-    : set_0(closed), set_1(thrown), aut_state(aut->NewUserState()), name_(name) {
+MagnetDef::MagnetDef(MagnetCommandAutomata* aut, const string& name,
+                     GlobalVariable* closed, GlobalVariable* thrown, bool def)
+    : set_0(closed),
+      set_1(thrown),
+      aut_state(aut->NewUserState()),
+      default_state(def),
+      name_(name) {
   aut->AddMagnet(this);
 }
 
@@ -967,7 +973,7 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
       .IfState(StGreenRequested)
       .IfReg0(current_block_request_green_)
       .IfReg0(current_block_route_out_)
-      .ActState(StWaiting);
+      .ActState(StGreenFailed);
   Def().IfState(StGreenRequested)
       .IfReg1(current_block_route_out_)
       .ActTimer(2)
@@ -1266,6 +1272,10 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
   }
+
+  Def().IfState(StGreenFailed)
+      .RunCallback(route_lock_release())
+      .ActState(StWaiting);
 }
 
 void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
@@ -1369,6 +1379,10 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .ActReg1(&next_block_routingloc_)
       .ActReg0(&current_direction_)
       .ActState(StTransitionDone);
+
+  Def().IfState(StGreenFailed)
+      .RunCallback(route_lock_release())
+      .ActState(StWaiting);
 }
 
 void TrainSchedule::StopTrainAt(StandardBlock* dest) {

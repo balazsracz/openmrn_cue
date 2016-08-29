@@ -70,7 +70,7 @@ struct RailcomDefs
     static void enable_measurement() {}
     static void disable_measurement() {}
 
-    static bool need_ch1_cutout() { return true; }
+    static bool need_ch1_cutout() { return false; }
 
     static uint8_t get_feedback_channel() {
         return 0xff;
@@ -204,7 +204,7 @@ struct AccHwDefs {
   static const auto ADC_INTERRUPT = INT_ADC0SS2;
 
   static const unsigned OVERCURRENT_LIMIT = 0x3E0;  // 0.33 Amps
-  static const unsigned SHORT_LIMIT = 0x846;  // ~1.5 amps
+  static const unsigned SHORT_LIMIT = 0xC00;  // ~2..2.3 amps
 
   static const long long OVERCURRENT_TIME = SEC_TO_NSEC(10);
   static const unsigned SHORT_COUNT = 10;
