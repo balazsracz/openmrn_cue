@@ -37,8 +37,8 @@
 
 #include <functional>
 
-#include "nmranet/If.hxx"
 #include "commandstation/FindTrainNode.hxx"
+#include "nmranet/If.hxx"
 
 namespace commandstation {
 
@@ -46,47 +46,197 @@ struct TrainNodeCacheOutput {
   std::vector<std::string*> entry_names;
 };
 
-class TrainNodeInfoCache {
+class TrainNodeInfoCache : public StateFlowBase {
  public:
   TrainNodeInfoCache(nmranet::Node* node, RemoteFindTrainNode* find_client,
                      TrainNodeCacheOutput* output)
-      : node_(node), findClient_(find_client), output_(output) {}
+      : StateFlowBase(node->iface()->dispatcher()->service()),
+        node_(node),
+        findClient_(find_client),
+        output_(output), pendingSearch_(0) {}
 
-  void reset_search(BufferPtr<RemoteFindTrainNodeRequest> params) {
+  /// Resets the parameters of the search and triggers a new search request.
+  ///
+  /// @param params arguments to the search
+  /// @param ui_refresh a repeatable notifiable that will be called every time
+  /// that the UI should be refreshed. Will be called on the openlcb
+  /// interface's executor.
+  ///
+  void reset_search(BufferPtr<RemoteFindTrainNodeRequest> params,
+                    Notifiable* ui_refresh) {
     searchParams_ = std::move(params);
     minResult_ = kMinNode;
     maxResult_ = kMaxNode;
-    previousCache_ = std::move(trainNodes_);
-    trainNodes_.clear();
-    start_search();
+    topNodeId_ = kMinNode;
+    uiNotifiable_ = ui_refresh;
+    invoke_search();
+  }
+
+  /// @return the last time (in os_time) that the UI data has changed. Helpfu
+  /// in deduping multiple UI refresh notifications.
+  long long last_ui_refresh() { return lastOutputRefresh_; }
+
+  ///
+  /// @return the number of matches the last search found (unfiltered).
+  ///
+  unsigned num_results() {
+    return numResults_;
+  }
+
+  /// @return where we are in the scrolling of results, i.e. the offset of the
+  /// first result in the list of results.
+  unsigned first_result_offset() {
+    return resultOffset_;
+  }
+
+  void scroll_down() {
+    if (pendingSearch_) {
+      ++pendingScroll_;
+      return;
+    }
+    auto it = trainNodes_.lower_bound(topNodeId_);
+    if (!try_move_iterator(1, it)) {
+      // can't go down at all. Do not change anything.
+      return;
+    }
+    if (!try_move_iterator(kNodesToShow, it)) {
+      // not enough results left to fill the page. Do not change anything.
+      return;
+    }
+    bool need_refill_cache = !try_move_iterator(kMinimumPrefetchSize, it);
+    // Now: we can actually move down.
+    it = trainNodes_.lower_bound(topNodeId_);
+    ++it;
+    topNodeId_ = it->first;
+    ++resultOffset_;
+    update_ui_output();
+
+    // Let's see if we need to kick off a new search.
+    if (need_refill_cache && hasEvictBack_) {
+      if (!try_move_iterator(-1-kMinimumPrefetchSize, it)) {
+        LOG(VERBOSE, "Tried to paginate forward but cannot find new start position.");
+        return;
+      }
+      minResult_ = it->first;
+      maxResult_ = kMaxNode;
+      // We invoke search here, which is an asynchronous operation. The
+      // expectation is that the caller will refresh their display before we
+      // actually get around to killing the state vectors.
+      invoke_search();
+    }
+  }
+
+  void scroll_up() {
+    if (pendingSearch_) {
+      --pendingScroll_;
+      return;
+    }
   }
 
  private:
   struct TrainNodeInfo {
-    TrainNodeInfo() {}
-    TrainNodeInfo(TrainNodeInfo&& other) 
-        : name_(std::move(other.name_)) {}
+    TrainNodeInfo() : hasNodeName_(0) {}
+    TrainNodeInfo(TrainNodeInfo&& other)
+        : name_(std::move(other.name_)), hasNodeName_(other.hasNodeName_) {}
     TrainNodeInfo& operator=(TrainNodeInfo&& other) {
       name_ = std::move(other.name_);
       return *this;
     }
     string name_;
+    unsigned hasNodeName_ : 1;
   };
 
   typedef std::map<nmranet::NodeID, TrainNodeInfo> NodeCacheMap;
 
+  /// How many entries we should keep in our inmemory cache.
   static constexpr unsigned kCacheMaxSize = 16;
+  /// Lower bound for all valid node IDs.
   static constexpr nmranet::NodeID kMinNode = 0;
+  /// Upper bound for all valid node IDs.
   static constexpr nmranet::NodeID kMaxNode = 0xFFFFFFFFFFFF;
+  /// How many entries to put into the output vector. THis should probably be
+  /// mvoed to a parameter set by the UI soon.
+  static constexpr unsigned kNodesToShow = 3;
+  /// How many filled cache entries we should keep ahead and behind before we
+  /// redo the search with a different offset.
+  static constexpr int kMinimumPrefetchSize = 4;
 
-  void start_search() {
-    auto* b = findClient_->alloc();
-    b->data()->reset(*searchParams_->data(),
-                     std::bind(&TrainNodeInfoCache::result_callback, this,
-                               std::placeholders::_1, std::placeholders::_2));
+  void invoke_search() {
+    needSearch_ = 1;
+    if (is_terminated()) {
+      start_flow(STATE(send_search_request));
+    }
   }
 
+  Action send_search_request() {
+    needSearch_ = 0;
+    numResults_ = 0;
+    previousCache_ = std::move(trainNodes_);
+    trainNodes_.clear();
+    output_->entry_names.clear();  // will be refreshed later
+    pendingSearch_ = 1;
+    hasEvictBack_ = 0;
+    hasEvictFront_ = 0;
+    return invoke_subflow_and_wait(
+        findClient_, STATE(search_done), *searchParams_->data(),
+        std::bind(&TrainNodeInfoCache::result_callback, this,
+                  std::placeholders::_1, std::placeholders::_2));
+  }
+
+  Action search_done() {
+    // @todo (balazs.racz): do pending scroll actions.
+    pendingSearch_ = 0;
+    if (needSearch_) {
+      return call_immediately(STATE(send_search_request));
+    }
+    lastOutputRefresh_ = os_get_time_monotonic();
+    update_ui_output();
+    // Let's see what we got and start kicking off name lookup requests.
+    lookupIt_ = trainNodes_.begin();
+    return call_immediately(STATE(iter_results));
+  }
+
+  Action iter_results() {
+    if (lookupIt_ == trainNodes_.end()) {
+      return call_immediately(STATE(iter_done));
+    }
+    if (!lookupIt_->second.name_.empty()) {
+      // Nothing to look up.
+      ++lookupIt_;
+      return again();
+    }
+    return allocate_and_call(node_->iface()->addressed_message_write_flow(),
+                             STATE(send_query));
+  }
+
+  Action send_query() {
+    auto* b =
+        get_allocation_result(node_->iface()->addressed_message_write_flow());
+    b->data()->reset(nmranet::Defs::MTI_IDENT_INFO_REQUEST, node_->node_id(),
+                     nmranet::NodeHandle(lookupIt_->first), nmranet::EMPTY_PAYLOAD);
+    b->set_done(bn_.reset(this));
+    node_->iface()->addressed_message_write_flow()->send(b);
+    return wait_and_call(STATE(send_query_done));
+  }
+
+  Action send_query_done() {
+    ++lookupIt_;
+    return call_immediately(STATE(iter_results));
+  }
+
+  Action iter_done() {
+    if (needSearch_) {
+      // We got another search request while we were processing the previous
+      // one.
+      return call_immediately(STATE(send_search_request));
+    }
+    return exit();
+  }
+
+  /// Callback from the train node finder when a node has responded to our
+  /// search query. Called on the openlcb executor.
   void result_callback(nmranet::EventState state, nmranet::NodeID node) {
+    numResults_++;
     if (trainNodes_.find(node) != trainNodes_.end()) {
       // We already have this node, good.
       return;
@@ -108,9 +258,11 @@ class TrainNodeInfoCache {
       if (scrolling_down()) {
         // delete from the end
         trainNodes_.erase(--trainNodes_.end());
+        hasEvictBack_ = 1;
       } else {
         // delete from the beginning
         trainNodes_.erase(trainNodes_.begin());
+        hasEvictFront_ = 1;
       }
     }
 
@@ -126,20 +278,129 @@ class TrainNodeInfoCache {
     return true;
   }
 
+  void handle_snip_response(Buffer<nmranet::NMRAnetMessage>* b) {
+    auto bd = get_buffer_deleter(b);
+    if (!b->data()->src.id) {
+      LOG(VERBOSE, "SNIP response coming in without source node ID");
+      return;
+    }
+    auto it = trainNodes_.find(b->data()->src.id);
+    if (it == trainNodes_.end()) {
+      LOG(VERBOSE, "SNIP response for unknown node");
+      return;
+    }
+    if (it->second.hasNodeName_) {
+      // we already have a name.
+      return;
+    }
+    const auto& payload = b->data()->payload;
+    nmranet::SnipDecodedData decoded_data;
+    nmranet::decode_snip_response(payload, &decoded_data);
+    it->second.hasNodeName_ = 1;
+    if (!decoded_data.user_name.empty()) {
+      it->second.name_ = std::move(decoded_data.user_name);
+    } else if (!decoded_data.user_description.empty()) {
+      it->second.name_ = std::move(decoded_data.user_description);
+    } else if (!decoded_data.model_name.empty()) {
+      it->second.name_ = std::move(decoded_data.model_name);
+    } else if (!decoded_data.manufacturer_name.empty()) {
+      it->second.name_ = std::move(decoded_data.manufacturer_name);
+    } else {
+      it->second.hasNodeName_ = 0;
+      LOG(VERBOSE, "Could not figure out node name from SNIP response. '%s'",
+          payload.c_str());
+    }
+    if (it->second.hasNodeName_) {
+      lastOutputRefresh_ = os_get_time_monotonic();
+      uiNotifiable_->notify();
+    }
+  }
+
+  void update_ui_output() {
+    auto it = trainNodes_.lower_bound(topNodeId_);
+    output_->entry_names.clear();
+    output_->entry_names.reserve(kNodesToShow);
+    for (unsigned res = 0; res < kNodesToShow && it != trainNodes_.end();
+         ++res, ++it) {
+      if (it->second.name_.empty()) {
+        // Format the node MAC address.
+        uint8_t idbuf[6];
+        nmranet::node_id_to_data(it->first, idbuf);  // convert to big-endian
+        it->second.name_ = mac_to_string(idbuf);
+      }
+      output_->entry_names.push_back(&it->second.name_);
+    }
+  }
+
+  /// Tries to advance the iterator forwards or backwards in the
+  /// trainNodeCache_.
+  ///
+  /// @param count how many to move (forward or backwards)
+  /// @param it the iterator to move. It will be destructively moved.
+  ///
+  /// @return true if there were sufficient number of elements to advance,
+  /// false if we hit begin() or end() and still had to do some advancing.
+  ///
+  bool try_move_iterator(int count, NodeCacheMap::iterator& it) {
+    while (count > 0 && it != trainNodes_.end()) {
+      ++it;
+      --count;
+    }
+    while (count < 0 && it != trainNodes_.begin()) {
+      --it;
+      ++count;
+    }
+    return (count == 0);
+  }
+
+  nmranet::MessageHandler::GenericHandler snipResponseHandler_{
+      this, &TrainNodeInfoCache::handle_snip_response};
+
   /// Local node. All outgoing traffic will originate from this node.
   nmranet::Node* node_;
-  /// Helper class for executing train search commands.
+  /// Helper class for executing train search commands. Externally owned.
   RemoteFindTrainNode* findClient_;
   /// We will be writing the output (some number of lines of trains) to this
   /// location.
   TrainNodeCacheOutput* output_;
   /// Arguments of the current search.
   BufferPtr<RemoteFindTrainNodeRequest> searchParams_;
+  /// Helper notifiable for sending messages' callback.
+  BarrierNotifiable bn_;
 
   /// Constrains the results we accept to the cache.
   nmranet::NodeID minResult_;
   /// Constrains the results we accept to the cache.
   nmranet::NodeID maxResult_;
+
+  /// Node ID of the first visible node in the output.
+  nmranet::NodeID topNodeId_;
+
+  /// Number of results we found in the last search.
+  uint16_t numResults_;
+  /// Offset of the topmost result in the result list.
+  uint16_t resultOffset_;
+
+  /// If a scroll action comes in while we are doing a search, we record the
+  /// scroll action and execute it delayed.
+  int8_t pendingScroll_{0};
+
+  /// 1 if we need to start another search.
+  uint8_t needSearch_ : 1;
+  /// 1 if there is something in the SNIP cache refreshed.
+  uint8_t newSnipData_ : 1;
+  /// 1 if we have a pending search action.
+  uint8_t pendingSearch_ : 1;
+  uint8_t hasEvictFront_ : 1;
+  uint8_t hasEvictBack_ : 1;
+
+  /// Iterator for running through the cache and sending lookup requests.
+  NodeCacheMap::iterator lookupIt_;
+
+  /// os_time of when we last changed the output.
+  long long lastOutputRefresh_;
+  /// A repeatable notifiable that will be called to refresh the UI.
+  Notifiable* uiNotifiable_;
 
   /// Internal data structure about the found nodes.
   NodeCacheMap trainNodes_;

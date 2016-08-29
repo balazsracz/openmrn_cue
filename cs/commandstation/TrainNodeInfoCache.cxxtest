@@ -1,0 +1,43 @@
+#define LOGLEVEL VERBOSE
+
+
+#include "utils/async_traction_test_helper.hxx"
+
+#include "commandstation/FindTrainNode.hxx"
+
+namespace nmranet {
+extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
+
+extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
+}
+
+
+namespace commandstation {
+
+const struct const_traindb_entry_t const_lokdb[] = {
+    // 0
+    {11000, {0xff}, "Node test 11000", DCC_28},
+    {0, {0}, "", 0},
+};
+
+extern const size_t const_lokdb_size =
+    sizeof(const_lokdb) / sizeof(const_lokdb[0]);
+
+extern const char TRAINCDI_DATA[] = "Test cdi data";
+extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
+extern const char TRAINTMPCDI_DATA[] = "Test cdi tmp data";
+extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
+
+class FindManyTrainTestBase : public nmranet::TractionTest {
+ protected:
+  FindManyTrainTestBase() {
+    for (int i = 0; i < 100; ++i) {
+      inject_allocated_alias(0x140 + i);
+    }
+    wait();
+  }
+
+  ~FindTrainNodeTestBase() { wait(); }
+
+  nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
+};
