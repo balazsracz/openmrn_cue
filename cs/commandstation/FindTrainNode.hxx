@@ -66,6 +66,12 @@ struct RemoteFindTrainNodeRequest {
     nodeId = 0;
     resultCallback = std::move(res);
   }
+  void reset(const RemoteFindTrainNodeRequest& params, ResultFn res = nullptr) {
+    event = params.event;
+    nodeId = 0;
+    resultCallback = std::move(res);
+  }
+
   /// Event to query for.
   uint64_t event;
   /// Response
