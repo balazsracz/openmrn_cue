@@ -76,6 +76,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     minResult_ = kMinNode;
     maxResult_ = kMaxNode;
     topNodeId_ = kMinNode;
+    resultOffset_ = 0;
     uiNotifiable_ = ui_refresh;
     invoke_search();
   }
@@ -109,6 +110,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
     if (!try_move_iterator(kNodesToShow, it)) {
       // not enough results left to fill the page. Do not change anything.
+      // TODO: maybe we need to add a pending search here?
       return;
     }
     bool need_refill_cache = !try_move_iterator(kMinimumPrefetchSize, it);
@@ -121,8 +123,9 @@ class TrainNodeInfoCache : public StateFlowBase {
 
     // Let's see if we need to kick off a new search.
     if (need_refill_cache && hasEvictBack_) {
-      if (!try_move_iterator(-1-kMinimumPrefetchSize, it)) {
-        LOG(VERBOSE, "Tried to paginate forward but cannot find new start position.");
+      if (!try_move_iterator(-kMinimumPrefetchSize, it)) {
+        LOG(VERBOSE,
+            "Tried to paginate forward but cannot find new start position.");
         return;
       }
       minResult_ = it->first;
@@ -139,6 +142,31 @@ class TrainNodeInfoCache : public StateFlowBase {
       --pendingScroll_;
       return;
     }
+    auto it = trainNodes_.lower_bound(topNodeId_);
+    if (!try_move_iterator(-1, it)) {
+      // can't go up at all. Do not change anything.
+      return;
+    }
+    topNodeId_ = it->first;
+    --resultOffset_;
+    update_ui_output();
+    bool need_refill_cache = !try_move_iterator(-kMinimumPrefetchSize, it);
+
+    // Let's see if we need to kick off a new search.
+    if (need_refill_cache && hasEvictFront_) {
+      it = trainNodes_.lower_bound(topNodeId_);
+      if (!try_move_iterator(kNodesToShow + kMinimumPrefetchSize - 1, it)) {
+        LOG(VERBOSE,
+            "Tried to paginate backwards but cannot find new start position.");
+        return;
+      }
+      minResult_ = kMinNode;
+      maxResult_ = it->first;
+      // We invoke search here, which is an asynchronous operation. The
+      // expectation is that the caller will refresh their display before we
+      // actually get around to killing the state vectors.
+      invoke_search();
+    }
   }
 
  private:
@@ -150,6 +178,7 @@ class TrainNodeInfoCache : public StateFlowBase {
         : name_(std::move(other.name_)), hasNodeName_(other.hasNodeName_) {}
     TrainNodeInfo& operator=(TrainNodeInfo&& other) {
       name_ = std::move(other.name_);
+      hasNodeName_ = other.hasNodeName_;
       return *this;
     }
     string name_;
@@ -251,14 +280,21 @@ class TrainNodeInfoCache : public StateFlowBase {
       // We already have this node, good.
       return;
     }
-    if ((node < minResult_) || (node > maxResult_)) {
+    if (node < minResult_) {
       // Outside of the search range -- ignore.
+      hasEvictFront_ = 1;
+      return;
+    }
+    if (node > maxResult_) {
+      // Outside of the search range -- ignore.
+      hasEvictBack_ = 1;
       return;
     }
     auto& node_state = trainNodes_[node];
     // See if we have stored data
     auto it = previousCache_.find(node);
     if (it != previousCache_.end()) {
+      LOG(VERBOSE, "Found cached node name for %012" PRIx64, node);
       node_state = std::move(it->second);
       previousCache_.erase(it);
     }
@@ -387,9 +423,9 @@ class TrainNodeInfoCache : public StateFlowBase {
   nmranet::NodeID topNodeId_;
 
   /// Number of results we found in the last search.
-  uint16_t numResults_;
+  uint16_t numResults_{0};
   /// Offset of the topmost result in the result list.
-  uint16_t resultOffset_;
+  uint16_t resultOffset_{0};
 
   /// If a scroll action comes in while we are doing a search, we record the
   /// scroll action and execute it delayed.

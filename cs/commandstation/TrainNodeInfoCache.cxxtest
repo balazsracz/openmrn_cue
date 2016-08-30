@@ -1,22 +1,60 @@
-#define LOGLEVEL VERBOSE
+#define LOGLEVEL INFO
 
 #include "commandstation/traindb_test_utils.hxx"
 #include "commandstation/FindTrainNode.hxx"
 #include "commandstation/TrainNodeInfoCache.hxx"
 
+using ::testing::ElementsAre;
 
 namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
     // 0
     {7000, {0xff}, "Node test 7000", DCC_28},
+    {5000, {0xff}, "TT 5000", DCC_28},
+    {5104, {0xff}, "TT 5104", DCC_28},
+    {5100, {0xff}, "TT 5100", DCC_28},
+    {3000, {0xff}, "TT 3000", DCC_28},
+    {5102, {0xff}, "TT 5102", DCC_28},
+    {5001, {0xff}, "TT 5001", DCC_28},
+    {5103, {0xff}, "TT 5103", DCC_28},
+    {5002, {0xff}, "TT 5002", DCC_28},
+    {5101, {0xff}, "TT 5101", DCC_28},
+    {5105, {0xff}, "TT 5105", DCC_28},
+    {5003, {0xff}, "TT 5003", DCC_28},
+    {5004, {0xff}, "TT 5004", DCC_28},
+    {5005, {0xff}, "TT 5005", DCC_28},
+    {3020, {0xff}, "TT 3020", DCC_28},
+    {3001, {0xff}, "TT 3001", DCC_28},
+    {3003, {0xff}, "TT 3003", DCC_28},
+    {3018, {0xff}, "TT 3018", DCC_28},
+    {3006, {0xff}, "TT 3006", DCC_28},
+    {3014, {0xff}, "TT 3014", DCC_28},
+    {3023, {0xff}, "TT 3023", DCC_28},
+    {3013, {0xff}, "TT 3013", DCC_28},
+    {3024, {0xff}, "TT 3024", DCC_28},
+    {3009, {0xff}, "TT 3009", DCC_28},
+    {3004, {0xff}, "TT 3004", DCC_28},
+    {3019, {0xff}, "TT 3019", DCC_28},
+    {3017, {0xff}, "TT 3017", DCC_28},
+    {3007, {0xff}, "TT 3007", DCC_28},
+    {3021, {0xff}, "TT 3021", DCC_28},
+    {3011, {0xff}, "TT 3011", DCC_28},
+    {3002, {0xff}, "TT 3002", DCC_28},
+    {3022, {0xff}, "TT 3022", DCC_28},
+    {3012, {0xff}, "TT 3012", DCC_28},
+    {3005, {0xff}, "TT 3005", DCC_28},
+    {3015, {0xff}, "TT 3015", DCC_28},
+    {3010, {0xff}, "TT 3010", DCC_28},
+    {3008, {0xff}, "TT 3008", DCC_28},
+    {3016, {0xff}, "TT 3016", DCC_28},
     {0, {0}, "", 0},
 };
 
 extern const size_t const_lokdb_size =
     sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
-const unsigned TRAINDB_TEST_NUM_ALIAS = 20;
+const unsigned TRAINDB_TEST_NUM_ALIAS = 45;
 OVERRIDE_CONST(local_alias_cache_size, 30);
 
 class MockNotifiable : public Notifiable {
@@ -26,8 +64,13 @@ class MockNotifiable : public Notifiable {
 
 class FindManyTrainTestBase : public TrainDbTest {
  protected:
+  static void SetUpTestCase() {
+    TrainDbTest::SetUpTestCase();
+    local_alias_cache_size = 40;
+    local_node_count = 39;
+  }
+
   FindManyTrainTestBase() {
-    nmranet::AddAliasAllocator(SECOND_NODE_ID, &secondIf_);
     secondIf_.add_addressed_message_support();
     // Adds one alias buffer to the alias allocation flow.
     auto* b = secondIf_.alias_allocator()->alloc();
@@ -65,8 +108,18 @@ class FindManyTrainTestBase : public TrainDbTest {
     return trainCache_.trainNodes_;
   }
 
+  std::vector<string> get_output() {
+    std::vector<string> ret;
+    for (auto* ps : output_.entry_names) {
+      EXPECT_TRUE(ps);
+      ret.push_back(*ps);
+    }
+    return ret;
+  }
+
   const uint64_t SECOND_NODE_ID = nmranet::TEST_NODE_ID + 256;
   nmranet::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
+  nmranet::AddAliasAllocator aa_{SECOND_NODE_ID, &secondIf_};
   nmranet::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
 
   RemoteFindTrainNode remoteClient_{&secondNode_};
@@ -88,8 +141,215 @@ TEST_F(FindManyTrainTestBase, Search7) {
   wait_for_search();
   EXPECT_EQ(1, get_results_map().size());
   EXPECT_TRUE(get_results_map().begin()->second.hasNodeName_);
-  ASSERT_EQ(1, output_.entry_names.size());
-  EXPECT_EQ("Node test 7000", *output_.entry_names[0]);
+  EXPECT_THAT(get_output(), ElementsAre("Node test 7000"));
+  printf("scrolling...\n");
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("Node test 7000"));
+  printf("scrolling...\n");
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("Node test 7000"));
+}
+
+TEST_F(FindManyTrainTestBase, Search5) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(5, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(12, get_results_map().size());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001", "TT 5002"));
+
+  // Do some scrolling
+  EXPECT_EQ(12, trainCache_.num_results());
+  EXPECT_EQ(0, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5001", "TT 5002", "TT 5003"));
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5002", "TT 5003", "TT 5004"));
+  for (int i = 0; i < 20; ++i) {
+    trainCache_.scroll_down();
+  }
+  EXPECT_THAT(get_output(), ElementsAre("TT 5103", "TT 5104", "TT 5105"));
+  EXPECT_EQ(9, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_EQ(9, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5103", "TT 5104", "TT 5105"));
+
+  clear_expect();
+  printf("restrict search.\n");
+  // Restrict the search
+  b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(51, false, OLCBUSER);
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(0); // no new SNIP lookup.
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtMost(7));
+  wait_for_search();
+  clear_expect();
+  EXPECT_EQ(6, get_results_map().size());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5100", "TT 5101", "TT 5102"));
+  EXPECT_EQ(0, trainCache_.first_result_offset());
+  EXPECT_EQ(6, trainCache_.num_results());
+}
+
+TEST_F(FindManyTrainTestBase, Scroll3) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(3, false, OLCBUSER);
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(16, get_results_map().size());
+  EXPECT_EQ(25, trainCache_.num_results());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
+
+  // Do some scrolling
+  EXPECT_EQ(0, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3001", "TT 3002", "TT 3003"));
+  EXPECT_EQ(1, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3002", "TT 3003", "TT 3004"));
+  EXPECT_EQ(2, trainCache_.first_result_offset());
+  clear_expect(true);
+  for (int i = 0; i < 7; ++i) {
+    printf("offset %u, then scroll\n", trainCache_.first_result_offset());
+    trainCache_.scroll_down();
+  }
+  EXPECT_EQ(9, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
+  wait();
+  clear_expect();
+  printf("scroll and re-fetch\n");
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
+  EXPECT_EQ(10, trainCache_.first_result_offset());
+  wait_for_search();
+  clear_expect(true);
+  EXPECT_EQ(10, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
+  EXPECT_EQ("TT 3006", get_results_map().begin()->second.name_);
+  printf("more scroll\n");
+  for (int i = 0; i < 5; ++i) {
+    printf("offset %u, then scroll\n", trainCache_.first_result_offset());
+    trainCache_.scroll_down();
+  }
+  EXPECT_EQ(15, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 3015", "TT 3016", "TT 3017"));
+  clear_expect(true);
+  wait_for_search();
+  clear_expect();
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+  printf("more scroll\n");
+  trainCache_.scroll_down();
+  wait_for_search();
+  clear_expect(true);
+  EXPECT_EQ(13, get_results_map().size());
+  for (int i = 0; i < 10; ++i) {
+    printf("offset %u, then scroll\n", trainCache_.first_result_offset());
+    trainCache_.scroll_down();
+  }
+  EXPECT_EQ(22, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 3022", "TT 3023", "TT 3024"));
+  wait_for_search();
+}
+
+TEST_F(FindManyTrainTestBase, BidirScrollNoPage) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(5, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(12, get_results_map().size());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001", "TT 5002"));
+  clear_expect(true);
+
+  trainCache_.scroll_down();
+  trainCache_.scroll_down();
+  trainCache_.scroll_down();
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5004", "TT 5005", "TT 5100"));
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5003", "TT 5004", "TT 5005"));
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5002", "TT 5003", "TT 5004"));
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5001", "TT 5002", "TT 5003"));
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001", "TT 5002"));
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001", "TT 5002"));
+  wait_for_search();
+  clear_expect(true);
+}
+
+TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(3, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(16, get_results_map().size());
+  EXPECT_EQ(25, trainCache_.num_results());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
+  
+  clear_expect(true);
+  for (int i = 0; i < 9; ++i) {
+    printf("offset %u, then scroll\n", trainCache_.first_result_offset());
+    trainCache_.scroll_down();
+  }
+  wait_for_search();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
+  clear_expect();
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+  trainCache_.scroll_down();
+  wait_for_search();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
+  clear_expect(true);
+  
+  EXPECT_EQ("TT 3006", get_results_map().begin()->second.name_);
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3011", "TT 3012", "TT 3013"));
+  // now one up should be fine, the second shouls trigger a refetch
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
+  wait_for_search();
+  clear_expect();
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+  trainCache_.scroll_up();
+  wait_for_search();
+  clear_expect(true);
+  EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3008", "TT 3009", "TT 3010"));
+  wait_for_search();
+  clear_expect(true);
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
+  trainCache_.scroll_up();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3008", "TT 3009", "TT 3010"));
+  wait_for_search();
+  clear_expect(true);
+  for (int i = 0; i < 20; ++i) {
+    trainCache_.scroll_up();
+  }
+  wait_for_search();
+  clear_expect(true);
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 3001", "TT 3002", "TT 3003"));
+  EXPECT_EQ(1, trainCache_.first_result_offset());
+  wait_for_search();
+  clear_expect(true);
 }
 
 } // namespace commandstation
