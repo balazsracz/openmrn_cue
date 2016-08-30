@@ -109,7 +109,7 @@ class LogicTest : public AutomataNodeTests {
     TestMovableTurnout(LogicTest* test, const string& name)
         : set_0(test),
           set_1(test),
-          magnet(&test->magnet_aut_, name + ".mgn", &set_0, &set_1),
+          magnet(&test->magnet_aut_, name + ".mgn", &set_0, &set_1, false),
           b(test->alloc()->Allocate(name, 48, 32), &magnet),
           aut_body(name, &test->brd, &b) {}
     FakeBit set_0;
@@ -123,7 +123,7 @@ class LogicTest : public AutomataNodeTests {
     TestMovableDKW(LogicTest* test, const string& name)
         : set_0(test),
           set_1(test),
-          magnet(&test->magnet_aut_, name + ".mgn", &set_0, &set_1),
+          magnet(&test->magnet_aut_, name + ".mgn", &set_0, &set_1, false),
           b(test->alloc()->Allocate(name, 48, 32), &magnet),
           aut_body(name, &test->brd, &b) {}
     FakeBit set_0;
@@ -1580,7 +1580,7 @@ TEST_F(LogicTest, FixedDKW) {
 TEST_F(LogicTest, MovableDKW) {
   FakeBit set_0(this);
   FakeBit set_1(this);
-  MagnetDef magnet(&magnet_aut_, "dkw.mgn", &set_0, &set_1);
+  MagnetDef magnet(&magnet_aut_, "dkw.mgn", &set_0, &set_1, false);
   MovableDKW dkw(alloc()->Allocate("dkw", 120), &magnet);
   DKWTestLayout l(this, &dkw);
 
@@ -1805,8 +1805,8 @@ TEST_F(LogicTest, Magnets) {
   FakeBit v1s1(this);
 
   MagnetCommandAutomata aut(&brd, alloc());
-  MagnetDef def0(&aut, "v0", &v0s0, &v0s1);
-  MagnetDef def1(&aut, "v1", &v1s0, &v1s1);
+  MagnetDef def0(&aut, "v0", &v0s0, &v0s1, false);
+  MagnetDef def1(&aut, "v1", &v1s0, &v1s1, false);
 
   v0s0.Set(true);
   v1s1.Set(true);
