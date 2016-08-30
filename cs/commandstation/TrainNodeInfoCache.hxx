@@ -54,7 +54,14 @@ class TrainNodeInfoCache : public StateFlowBase {
       : StateFlowBase(node->iface()->dispatcher()->service()),
         node_(node),
         findClient_(find_client),
-        output_(output), pendingSearch_(0) {}
+        output_(output), pendingSearch_(0) {
+
+    node_->iface()->dispatcher()->register_handler(&snipResponseHandler_, nmranet::Defs::MTI_IDENT_INFO_REPLY, nmranet::Defs::MTI_EXACT);
+  }
+
+  ~TrainNodeInfoCache() {
+    node_->iface()->dispatcher()->unregister_handler(&snipResponseHandler_, nmranet::Defs::MTI_IDENT_INFO_REPLY, nmranet::Defs::MTI_EXACT);
+  }
 
   /// Resets the parameters of the search and triggers a new search request.
   ///
@@ -203,7 +210,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     if (lookupIt_ == trainNodes_.end()) {
       return call_immediately(STATE(iter_done));
     }
-    if (!lookupIt_->second.name_.empty()) {
+    if (lookupIt_->second.hasNodeName_) {
       // Nothing to look up.
       ++lookupIt_;
       return again();

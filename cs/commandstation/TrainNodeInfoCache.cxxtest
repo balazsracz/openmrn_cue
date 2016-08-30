@@ -20,12 +20,29 @@ const unsigned TRAINDB_TEST_NUM_ALIAS = 20;
 OVERRIDE_CONST(local_alias_cache_size, 30);
 
 class MockNotifiable : public Notifiable {
+ public:
   MOCK_METHOD0(notify, void());
 };
 
 class FindManyTrainTestBase : public TrainDbTest {
  protected:
   FindManyTrainTestBase() {
+    nmranet::AddAliasAllocator(SECOND_NODE_ID, &secondIf_);
+    secondIf_.add_addressed_message_support();
+    // Adds one alias buffer to the alias allocation flow.
+    auto* b = secondIf_.alias_allocator()->alloc();
+
+
+    b->data()->reset();
+    b->data()->alias = 0x922;
+    b->data()->state = nmranet::AliasInfo::STATE_RESERVED;
+    b->data()->do_not_reallocate();
+    secondIf_.local_aliases()->add(nmranet::AliasCache::RESERVED_ALIAS_NODE_ID,
+                                   b->data()->alias);
+    secondIf_.alias_allocator()->reserved_aliases()->insert(b);
+
+    wait();
+
     wait();
   }
 
@@ -48,9 +65,13 @@ class FindManyTrainTestBase : public TrainDbTest {
     return trainCache_.trainNodes_;
   }
 
-  RemoteFindTrainNode remoteClient_{node_};
+  const uint64_t SECOND_NODE_ID = nmranet::TEST_NODE_ID + 256;
+  nmranet::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
+  nmranet::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
+
+  RemoteFindTrainNode remoteClient_{&secondNode_};
   TrainNodeCacheOutput output_;
-  TrainNodeInfoCache trainCache_{node_, &remoteClient_, &output_};
+  TrainNodeInfoCache trainCache_{&secondNode_, &remoteClient_, &output_};
 
   StrictMock<MockNotifiable> mockNotifiable_;
   //nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
@@ -63,8 +84,10 @@ TEST_F(FindManyTrainTestBase, Search7) {
   b->data()->reset(7, false, OLCBUSER);
   print_all_packets();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
   EXPECT_EQ(1, get_results_map().size());
+  EXPECT_TRUE(get_results_map().begin()->second.hasNodeName_);
   ASSERT_EQ(1, output_.entry_names.size());
   EXPECT_EQ("Node test 7000", *output_.entry_names[0]);
 }
