@@ -1,43 +1,72 @@
 #define LOGLEVEL VERBOSE
 
-
-#include "utils/async_traction_test_helper.hxx"
-
+#include "commandstation/traindb_test_utils.hxx"
 #include "commandstation/FindTrainNode.hxx"
-
-namespace nmranet {
-extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
-
-extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
-}
+#include "commandstation/TrainNodeInfoCache.hxx"
 
 
 namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
     // 0
-    {11000, {0xff}, "Node test 11000", DCC_28},
+    {7000, {0xff}, "Node test 7000", DCC_28},
     {0, {0}, "", 0},
 };
 
 extern const size_t const_lokdb_size =
     sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
-extern const char TRAINCDI_DATA[] = "Test cdi data";
-extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
-extern const char TRAINTMPCDI_DATA[] = "Test cdi tmp data";
-extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
+const unsigned TRAINDB_TEST_NUM_ALIAS = 20;
+OVERRIDE_CONST(local_alias_cache_size, 30);
 
-class FindManyTrainTestBase : public nmranet::TractionTest {
+class MockNotifiable : public Notifiable {
+  MOCK_METHOD0(notify, void());
+};
+
+class FindManyTrainTestBase : public TrainDbTest {
  protected:
   FindManyTrainTestBase() {
-    for (int i = 0; i < 100; ++i) {
-      inject_allocated_alias(0x140 + i);
+    wait();
+  }
+
+  ~FindManyTrainTestBase() {
+    wait_for_search();
+    wait();
+  }
+
+
+  void wait_for_search() {
+    while (!trainCache_.is_terminated()) {
+      usleep(20000);
     }
     wait();
   }
 
-  ~FindTrainNodeTestBase() { wait(); }
+  using NodeCacheMap = TrainNodeInfoCache::NodeCacheMap;
 
-  nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
+  const NodeCacheMap& get_results_map() {
+    return trainCache_.trainNodes_;
+  }
+
+  RemoteFindTrainNode remoteClient_{node_};
+  TrainNodeCacheOutput output_;
+  TrainNodeInfoCache trainCache_{node_, &remoteClient_, &output_};
+
+  StrictMock<MockNotifiable> mockNotifiable_;
+  //nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
+
+TEST_F(FindManyTrainTestBase, Create) {}
+
+TEST_F(FindManyTrainTestBase, Search7) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(7, false, OLCBUSER);
+  print_all_packets();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  wait_for_search();
+  EXPECT_EQ(1, get_results_map().size());
+  ASSERT_EQ(1, output_.entry_names.size());
+  EXPECT_EQ("Node test 7000", *output_.entry_names[0]);
+}
+
+} // namespace commandstation

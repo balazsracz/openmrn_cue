@@ -39,6 +39,7 @@
 
 #include "commandstation/FindTrainNode.hxx"
 #include "nmranet/If.hxx"
+#include "utils/format_utils.hxx"
 
 namespace commandstation {
 
@@ -134,6 +135,8 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
  private:
+  friend class FindManyTrainTestBase;
+
   struct TrainNodeInfo {
     TrainNodeInfo() : hasNodeName_(0) {}
     TrainNodeInfo(TrainNodeInfo&& other)
@@ -333,7 +336,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   /// Tries to advance the iterator forwards or backwards in the
-  /// trainNodeCache_.
+  /// trainNodeCache_ map.
   ///
   /// @param count how many to move (forward or backwards)
   /// @param it the iterator to move. It will be destructively moved.
