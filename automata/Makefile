@@ -1,4 +1,3 @@
-CXXFLAGS += -std=c++0x -MMD -MF $@.d -g -ggdb -Wall -isystem /opt/gmock/default/gtest/include
 
 OBJS=system.o control-logic.o registry.o
 
@@ -23,7 +22,8 @@ callback-specializations.hxx: gen_callback
 
 gencb: callback-specializations.hxx
 
-CXXFLAGS := -std=gnu++0x
+#CXXFLAGS := -std=gnu++0x
+CXXFLAGS += -std=gnu++0x -MMD -MF $@.d -g -ggdb -Wall -isystem /opt/gmock/default/gtest/include
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c -o $@ $(abspath $<)
