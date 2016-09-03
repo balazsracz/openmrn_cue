@@ -214,9 +214,12 @@ class TrainNodeInfoCache : public StateFlowBase {
     previousCache_ = std::move(trainNodes_);
     trainNodes_.clear();
     output_->entry_names.clear();  // will be refreshed later
+    resultSetChanged_ = 0;
     pendingSearch_ = 1;
     hasEvictBack_ = 0;
     hasEvictFront_ = 0;
+    resultsClippedAtTop_ = 0;
+    searchParams_->data()->resultCode = RemoteFindTrainNodeRequest::PERSISTENT_REQUEST;
     return invoke_subflow_and_wait(
         findClient_, STATE(search_done), *searchParams_->data(),
         std::bind(&TrainNodeInfoCache::result_callback, this,
@@ -226,32 +229,36 @@ class TrainNodeInfoCache : public StateFlowBase {
   Action search_done() {
     // @todo (balazs.racz): do pending scroll actions.
     pendingSearch_ = 0;
+    resultSetChanged_ = 0;
     if (needSearch_) {
       return call_immediately(STATE(send_search_request));
     }
     // Let's see what we got and start kicking off name lookup requests.
-    lookupIt_ = trainNodes_.begin();
+    lookupIt_ = kMinNode;
     return call_immediately(STATE(iter_results));
   }
 
   Action iter_results() {
-    if (lookupIt_ == trainNodes_.end()) {
-      return call_immediately(STATE(iter_done));
+    auto it = trainNodes_.lower_bound(lookupIt_);
+    while (it != trainNodes_.end()) {
+      if (it->second.hasNodeName_) {
+        // Nothing to look up.
+        ++it;
+        continue;
+      } else {
+        lookupIt_ = it->first;
+        return allocate_and_call(node_->iface()->addressed_message_write_flow(),
+                                 STATE(send_query));
+      }
     }
-    if (lookupIt_->second.hasNodeName_) {
-      // Nothing to look up.
-      ++lookupIt_;
-      return again();
-    }
-    return allocate_and_call(node_->iface()->addressed_message_write_flow(),
-                             STATE(send_query));
+    return call_immediately(STATE(iter_done));
   }
 
   Action send_query() {
     auto* b =
         get_allocation_result(node_->iface()->addressed_message_write_flow());
     b->data()->reset(nmranet::Defs::MTI_IDENT_INFO_REQUEST, node_->node_id(),
-                     nmranet::NodeHandle(lookupIt_->first), nmranet::EMPTY_PAYLOAD);
+                     nmranet::NodeHandle(lookupIt_), nmranet::EMPTY_PAYLOAD);
     b->set_done(bn_.reset(this));
     node_->iface()->addressed_message_write_flow()->send(b);
     return wait_and_call(STATE(send_query_done));
@@ -263,6 +270,9 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   Action iter_done() {
+    int ofs = resultsClippedAtTop_;
+    for (auto it = trainNodes_.begin(); it != trainNodes_.end() && it->first < topNodeId_; ++it, ++ofs);
+    resultOffset_ = ofs;
     update_ui_output();
     notify_ui();
     if (needSearch_) {
@@ -270,12 +280,16 @@ class TrainNodeInfoCache : public StateFlowBase {
       // one.
       return call_immediately(STATE(send_search_request));
     }
+    if (resultSetChanged_) {
+      return call_immediately(STATE(search_done));
+    }
     return exit();
   }
 
   /// Callback from the train node finder when a node has responded to our
   /// search query. Called on the openlcb executor.
   void result_callback(nmranet::EventState state, nmranet::NodeID node) {
+    if (!node) return; // some error occured.
     numResults_++;
     if (trainNodes_.find(node) != trainNodes_.end()) {
       // We already have this node, good.
@@ -283,7 +297,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
     if (node < minResult_) {
       // Outside of the search range -- ignore.
-      hasEvictFront_ = 1;
+      mark_result_clipped_at_top();
       return;
     }
     if (node > maxResult_) {
@@ -291,6 +305,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       hasEvictBack_ = 1;
       return;
     }
+    resultSetChanged_ = 1;
     auto& node_state = trainNodes_[node];
     // See if we have stored data
     auto it = previousCache_.find(node);
@@ -309,12 +324,21 @@ class TrainNodeInfoCache : public StateFlowBase {
       } else {
         // delete from the beginning
         trainNodes_.erase(trainNodes_.begin());
-        hasEvictFront_ = 1;
+        mark_result_clipped_at_top();
       }
     }
 
-    if (node_state.name_.empty()) {
-      // Need lookup.
+    if (is_terminated()) {
+      LOG(INFO, "restarting flow for additional results");
+      start_flow(STATE(search_done));
+    }
+  }
+
+  void mark_result_clipped_at_top() {
+    hasEvictFront_ = 1;
+    resultsClippedAtTop_++;
+    if (!pendingSearch_) {
+      resultOffset_++;
     }
   }
 
@@ -437,6 +461,9 @@ class TrainNodeInfoCache : public StateFlowBase {
   uint16_t numResults_{0};
   /// Offset of the topmost result in the result list.
   uint16_t resultOffset_{0};
+  /// How many results we lost at the top of the scroll due to the restriction
+  /// or size clipping.
+  uint16_t resultsClippedAtTop_;
 
   /// If a scroll action comes in while we are doing a search, we record the
   /// scroll action and execute it delayed.
@@ -448,11 +475,15 @@ class TrainNodeInfoCache : public StateFlowBase {
   uint8_t newSnipData_ : 1;
   /// 1 if we have a pending search action.
   uint8_t pendingSearch_ : 1;
+  /// 1 if the last search has seen results cut off at the front
   uint8_t hasEvictFront_ : 1;
+  /// 1 if the last search has seen results cut off at the back
   uint8_t hasEvictBack_ : 1;
+  /// 1 if the sorted list of results has changed.
+  uint8_t resultSetChanged_ : 1;
 
   /// Iterator for running through the cache and sending lookup requests.
-  NodeCacheMap::iterator lookupIt_;
+  nmranet::NodeID lookupIt_;
 
   /// os_time of when we last changed the output.
   long long lastOutputRefresh_;
