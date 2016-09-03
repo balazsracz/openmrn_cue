@@ -59,6 +59,8 @@ struct RemoteFindTrainNodeRequest {
     nodeId = 0;
     resultCallback = std::move(res);
   }
+  /** Constructor with arbitrary set find_protocol_flags. These come from
+   * FindProtocolDefs. */
   void reset(int address, uint8_t find_protocol_flags, ResultFn res = nullptr) {
     event = FindProtocolDefs::address_to_query(address, false, (DccMode)0);
     event &= ~UINT64_C(0xFF);
@@ -66,11 +68,27 @@ struct RemoteFindTrainNodeRequest {
     nodeId = 0;
     resultCallback = std::move(res);
   }
+  /** Copy-Constructor. */
   void reset(const RemoteFindTrainNodeRequest& params, ResultFn res = nullptr) {
     event = params.event;
     nodeId = 0;
     resultCallback = std::move(res);
   }
+  /** Requests all train nodes. */
+  void reset(ResultFn res = nullptr) {
+    event = nmranet::TractionDefs::IS_TRAIN_EVENT;
+    nodeId = 0;
+    resultCallback = std::move(res);
+  }
+
+  enum {
+    // if the resultCode is set to this value at the request start, the request
+    // will keep outstanding after the timeout expires and delivering results,
+    // until the next request is sent to this flow.
+    PERSISTENT_REQUEST = 0x00103080,
+    // Kills the previous persistent request.
+    CANCEL_REQUEST = 0x00103081,
+  };
 
   /// Event to query for.
   uint64_t event;
@@ -97,6 +115,20 @@ class RemoteFindTrainNode
         nodeIdLookup_(static_cast<nmranet::IfCan*>(node_->iface())) {}
 
   Action entry() override {
+    // If there was a persistent request, this will kill any more responses.
+    requestId_++;
+    replyHandler_.listen_for(0);
+    persistentRequest_.reset();
+    if (message()->data()->resultCode ==
+        RemoteFindTrainNodeRequest::CANCEL_REQUEST) {
+      // nothing else to do.
+      return return_with_error(0);
+    }
+    if (message()->data()->resultCode ==
+        RemoteFindTrainNodeRequest::PERSISTENT_REQUEST) {
+      // New persistent request.
+      persistentRequest_.reset(transfer_message());
+    }
     return allocate_and_call(iface()->global_message_write_flow(),
                              STATE(send_find_query));
   }
@@ -117,7 +149,8 @@ class RemoteFindTrainNode
   /// Callback from the event handler object when a producer identified comes
   /// back on the bus.
   virtual void handle_reply(nmranet::NodeHandle src, nmranet::EventState state) {
-    LOG(VERBOSE, "Bus reply");
+    LOG(INFO, "Bus reply %04x%08x alias %03x", nmranet::node_high(src.id),
+        nmranet::node_low(src.id), src.alias);
     if (input()->resultCallback) {
       if (src.id) {
         // Have Node ID
@@ -130,7 +163,11 @@ class RemoteFindTrainNode
         int request_id = requestId_;
         b->data()->done.reset(new TempNotifiable([this, request_id, state, b](){
               auto bd = get_buffer_deleter(b);
-              if (requestId_ != request_id) return; // outdated.
+              if (requestId_ != request_id || !input()) {
+                LOG(INFO, "LookupID response: dropped stale data");
+                droppedResults_++;
+                return; // outdated.
+              }
               input()->resultCallback(state, b->data()->handle.id);
             }));
         nodeIdLookup_.send(b);
@@ -150,6 +187,9 @@ class RemoteFindTrainNode
     if (input()->resultCallback) {
       // Client wanted multiple results, and the time for waiting for results
       // is over
+      if (!nodeIdLookup_.is_waiting()) {
+        return sleep_and_call(&timer_, MSEC_TO_NSEC(50), STATE(reply_timeout));
+      }
       return return_with_error(0);
     }
     if (!remoteMatch_.id && !remoteMatch_.alias) {
@@ -207,10 +247,16 @@ class RemoteFindTrainNode
       LOG(VERBOSE, "Reply Handler");
       if (event->event == request_) {
         parent_->handle_reply(event->src_node, event->state);
+      } else {
+        LOG(INFO, "Dropped event reply input request %08x%08x reply %08x%08x",
+            FAKELLP(request_), FAKELLP(event->event));
       }
     };
 
-    void listen_for(nmranet::EventId request) { request_ = request; }
+    void listen_for(nmranet::EventId request) {
+      LOG(INFO, "listen for %08x%08x", FAKELLP(request));
+      request_ = request;
+    }
 
    private:
     nmranet::EventId request_{0};
@@ -227,12 +273,16 @@ class RemoteFindTrainNode
       input()->nodeId = 0;
     }
     input()->resultCode = error;
-    requestId_++;
-    return_buffer();
-    return exit();
+    input()->done.notify();
+    return release_and_exit();
   }
 
-  RemoteFindTrainNodeRequest* input() { return message()->data(); }
+  RemoteFindTrainNodeRequest* input() {
+    if (persistentRequest_) {
+      return persistentRequest_->data();
+    }
+    return message()->data();
+  }
 
   nmranet::If* iface() {
     // We know that the service pointer is the node's interface from the
@@ -246,7 +296,9 @@ class RemoteFindTrainNode
   nmranet::Node* node_;
   /// A monotonically increasing identifier to decide if we moved on from the
   /// last request yet.
-  int requestId_{0};
+  volatile uint16_t requestId_{0};
+  volatile uint16_t droppedResults_{0};
+  BufferPtr<RemoteFindTrainNodeRequest> persistentRequest_;
   nmranet::NodeIdLookupFlow nodeIdLookup_;
 };
 
