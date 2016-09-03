@@ -72,6 +72,7 @@ struct RemoteFindTrainNodeRequest {
   void reset(const RemoteFindTrainNodeRequest& params, ResultFn res = nullptr) {
     event = params.event;
     nodeId = 0;
+    resultCode = params.resultCode;
     resultCallback = std::move(res);
   }
   /** Requests all train nodes. */
@@ -137,7 +138,7 @@ class RemoteFindTrainNode
     LOG(VERBOSE, "Send find query");
     auto* b = get_allocation_result(iface()->global_message_write_flow());
 
-    uint64_t event = message()->data()->event;
+    uint64_t event = input()->event;
     replyHandler_.listen_for(event);
     remoteMatch_ = {0, 0};
     b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
@@ -183,7 +184,9 @@ class RemoteFindTrainNode
   Action reply_timeout() {
     LOG(VERBOSE, "sleep end");
     // Prevents more wakeups.
-    replyHandler_.listen_for(0);
+    if (!persistentRequest_) {
+      replyHandler_.listen_for(0);
+    }
     if (input()->resultCallback) {
       // Client wanted multiple results, and the time for waiting for results
       // is over
