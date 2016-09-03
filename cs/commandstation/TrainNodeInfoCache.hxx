@@ -36,6 +36,7 @@
 #define _BRACZ_COMMANDSTATION_TRAINNODEINFOCACHE_HXX_
 
 #include <functional>
+#include <algorithm>
 
 #include "commandstation/FindTrainNode.hxx"
 #include "nmranet/If.hxx"
@@ -228,8 +229,6 @@ class TrainNodeInfoCache : public StateFlowBase {
     if (needSearch_) {
       return call_immediately(STATE(send_search_request));
     }
-    lastOutputRefresh_ = os_get_time_monotonic();
-    update_ui_output();
     // Let's see what we got and start kicking off name lookup requests.
     lookupIt_ = trainNodes_.begin();
     return call_immediately(STATE(iter_results));
@@ -264,6 +263,8 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   Action iter_done() {
+    update_ui_output();
+    notify_ui();
     if (needSearch_) {
       // We got another search request while we were processing the previous
       // one.
@@ -325,14 +326,17 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   void handle_snip_response(Buffer<nmranet::NMRAnetMessage>* b) {
+    LOG(INFO, "Snip response for %04x%08x",
+        nmranet::node_high(b->data()->src.id),
+        nmranet::node_low(b->data()->src.id));
     auto bd = get_buffer_deleter(b);
     if (!b->data()->src.id) {
-      LOG(VERBOSE, "SNIP response coming in without source node ID");
+      LOG(INFO, "SNIP response coming in without source node ID");
       return;
     }
     auto it = trainNodes_.find(b->data()->src.id);
     if (it == trainNodes_.end()) {
-      LOG(VERBOSE, "SNIP response for unknown node");
+      LOG(INFO, "SNIP response for unknown node");
       return;
     }
     if (it->second.hasNodeName_) {
@@ -357,8 +361,10 @@ class TrainNodeInfoCache : public StateFlowBase {
           payload.c_str());
     }
     if (it->second.hasNodeName_) {
-      lastOutputRefresh_ = os_get_time_monotonic();
-      uiNotifiable_->notify();
+      if (std::find(output_->entry_names.begin(), output_->entry_names.end(),
+                    &it->second.name_) != output_->entry_names.end()) {
+        notify_ui();
+      }
     }
   }
 
@@ -397,6 +403,11 @@ class TrainNodeInfoCache : public StateFlowBase {
       ++count;
     }
     return (count == 0);
+  }
+
+  void notify_ui() {
+    lastOutputRefresh_ = os_get_time_monotonic();
+    uiNotifiable_->notify();
   }
 
   nmranet::MessageHandler::GenericHandler snipResponseHandler_{
