@@ -51,9 +51,9 @@
 static const nmranet::NodeID NODE_ID = 0x050101011440ULL;
 nmranet::SimpleCanStack stack(NODE_ID);
 OVERRIDE_CONST(num_memory_spaces, 12);
-OVERRIDE_CONST(local_nodes_count, 40);
-OVERRIDE_CONST(local_alias_cache_size, 40);
-OVERRIDE_CONST(remote_alias_cache_size, 30);
+OVERRIDE_CONST(local_nodes_count, 0);
+OVERRIDE_CONST(local_alias_cache_size, 5000);
+OVERRIDE_CONST(remote_alias_cache_size, 5000);
 // Forces all trains to be our responsibility.
 OVERRIDE_CONST(mobile_station_train_count, 0);
 
