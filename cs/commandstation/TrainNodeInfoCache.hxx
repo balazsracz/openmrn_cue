@@ -99,6 +99,25 @@ class TrainNodeInfoCache : public StateFlowBase {
     return resultOffset_;
   }
 
+  /// Retrieves the Node ID of a the result at a given offset.
+  /// @param offset is an index into the output array (i.e. counting form
+  /// first_result_offset). Returns 0 on error.
+  nmranet::NodeID get_result_id(unsigned offset) {
+    auto it = trainNodes_.lower_bound(topNodeId_);
+    if (!try_move_iterator(offset, it)) {
+      LOG(VERBOSE, "Requested nonexistant result offset %u", offset);
+      return 0; // invalid node ID; could not find result.
+    }
+    if (offset < output_->entry_names.size() && 
+        &it->second.name_ == output_->entry_names[offset]) {
+      // We are sure we have the right train.
+      return it->first;
+    }
+    LOG(INFO, "Requested a train which does not seem to match the result array.");
+    return 0;
+  }
+
+  /// Moves the window of displayed entries one down.
   void scroll_down() {
     if (pendingSearch_) {
       ++pendingScroll_;
@@ -138,6 +157,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   }
 
+  /// Moves the window of displayed entries one up.
   void scroll_up() {
     if (pendingSearch_) {
       --pendingScroll_;
@@ -233,6 +253,9 @@ class TrainNodeInfoCache : public StateFlowBase {
     if (needSearch_) {
       return call_immediately(STATE(send_search_request));
     }
+    // let's render the output first with whatever data we have.
+    update_ui_output();
+    notify_ui();
     // Let's see what we got and start kicking off name lookup requests.
     lookupIt_ = kMinNode;
     return call_immediately(STATE(iter_results));
@@ -270,6 +293,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   Action iter_done() {
+    LOG(INFO, "iter done");
     int ofs = resultsClippedAtTop_;
     for (auto it = trainNodes_.begin(); it != trainNodes_.end() && it->first < topNodeId_; ++it, ++ofs);
     resultOffset_ = ofs;
@@ -334,6 +358,8 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   }
 
+  /// Called from the result callback in every case that a result is dropped
+  /// out on the front of the trainCache_ map.
   void mark_result_clipped_at_top() {
     hasEvictFront_ = 1;
     resultsClippedAtTop_++;
@@ -342,6 +368,8 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   }
 
+  /// @return our guess whether we did the new search request because we are
+  /// scrolling down.
   bool scrolling_down() {
     if (maxResult_ >= kMaxNode) return true;
     if (minResult_ <= kMinNode) return false;
@@ -349,6 +377,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     return true;
   }
 
+  /// Callback when a SNIP response arrives from the network.
   void handle_snip_response(Buffer<nmranet::NMRAnetMessage>* b) {
     LOG(INFO, "Snip response for %04x%08x",
         nmranet::node_high(b->data()->src.id),

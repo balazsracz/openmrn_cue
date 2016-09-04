@@ -184,7 +184,7 @@ TEST_F(FindManyTrainTestBase, Search5) {
   b = get_buffer_deleter(remoteClient_.alloc());
   b->data()->reset(51, false, OLCBUSER);
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
-  EXPECT_CALL(mockNotifiable_, notify()).Times(1); // no new SNIP lookup.
+  EXPECT_CALL(mockNotifiable_, notify()).Times(2); // no new SNIP lookup.
   EXPECT_CALL(canBus_, mwrite(_)).Times(AtMost(7));
   wait_for_search();
   clear_expect();
