@@ -66,6 +66,9 @@ struct RemoteFindTrainNodeRequest {
     event &= ~UINT64_C(0xFF);
     event |= find_protocol_flags;
     nodeId = 0;
+    if (find_protocol_flags & FindProtocolDefs::ALLOCATE) {
+      resultCode = TIMEOUT_SPECIFIED | 800;
+    }
     resultCallback = std::move(res);
   }
   /** Copy-Constructor. */
@@ -89,6 +92,8 @@ struct RemoteFindTrainNodeRequest {
     PERSISTENT_REQUEST = 0x00103080,
     // Kills the previous persistent request.
     CANCEL_REQUEST = 0x00103081,
+    // Specifies timeout
+    TIMEOUT_SPECIFIED = 0x10000000,
   };
 
   /// Event to query for.
@@ -139,12 +144,18 @@ class RemoteFindTrainNode
     auto* b = get_allocation_result(iface()->global_message_write_flow());
 
     uint64_t event = input()->event;
+    int timeout_msec = 200;
+    if ((input()->resultCode & RemoteFindTrainNodeRequest::TIMEOUT_SPECIFIED) ==
+        RemoteFindTrainNodeRequest::TIMEOUT_SPECIFIED) {
+      timeout_msec = input()->resultCode & 0xfffff;
+    }
     replyHandler_.listen_for(event);
     remoteMatch_ = {0, 0};
     b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
                      nmranet::eventid_to_buffer(event));
     iface()->global_message_write_flow()->send(b);
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(200), STATE(reply_timeout));
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(timeout_msec),
+                          STATE(reply_timeout));
   }
 
   /// Callback from the event handler object when a producer identified comes
