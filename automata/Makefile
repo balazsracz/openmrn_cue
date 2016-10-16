@@ -5,7 +5,8 @@ AUTS = rr-crossing.cpp logic-demo.cpp
 OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout
 BINS = $(AUTS:.cpp=)
 
-DEFAULT_AUT = bracz-layout3h-logic  # lcc-layout-logic
+#DEFAULT_AUT = bracz-layout3h-logic
+DEFAULT_AUT = bracz-layout1i-logic  # lcc-layout-logic
 TARGET_NODE = 0x050101011432 # host.tiva
 
 all: lib test-aut bracz-layout3h-logic bin lcc-layout-logic lcc-layout-logic-soft
@@ -43,6 +44,9 @@ test-aut: $(OBJS) test-aut.o
 
 bracz-layout3h-logic: $(OBJS) bracz-layout3h-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ bracz-layout3h-logic.o $(OBJS) 
+
+bracz-layout1i-logic: $(OBJS) bracz-layout1i-logic.o # control-logic.hxx
+	$(CXX) $(CXXFLAGS) -o $@ bracz-layout1i-logic.o $(OBJS) 
 
 lcc-layout-logic: $(OBJS) lcc-layout-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ lcc-layout-logic.o $(OBJS) 

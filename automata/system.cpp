@@ -185,6 +185,9 @@ void ClearEventMap() {
 }
 
 EventMap* GetEventMap() {
+  if (!g_event_map) {
+    g_event_map = new EventMap;
+  }
   return g_event_map;
 }
 
