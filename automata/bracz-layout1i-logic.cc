@@ -69,6 +69,8 @@ StateRef StGoing(3);
 StateRef StUser1(10);
 StateRef StUser2(11);
 
+/* More signals
+
 PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
@@ -150,7 +152,7 @@ I2CSignal signal_ZZA2_adv(&bb, 58, "ZZ.A2.adv");
 I2CSignal signal_ZZA3_main(&bb, 65, "ZZ.A3.main");  // 136
 I2CSignal signal_ZZA3_adv(&bb, 66, "ZZ.A3.adv");
 
-/* More signals
+
 
 address 158 (0x9E) main 26 adv 27  reflashed in YYC23
 address 155 (0x9B) main 6 adv 7   reflashed in B475
@@ -195,10 +197,25 @@ address 133 0x85 main 53 adv 54 reflashed in A380
 address 130 0x82 main 55 adv 56 reflashed in A480
 address 153 0x99 main 57 adv 58 reflashed in ZZA2
 address 136 0x86 main 65 adv 66 reflashed in ZZA3
+
+ I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
+ I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
+
 */
 
-// I2CSignal signal_WWB3_main(&b5, 75, "WW.B3.main");  // todo:
-// I2CSignal signal_WWB3_adv(&b5, 74, "WW.B3.adv");
+PhysicalSignal A240(&bd.InBrownGrey, &bd.Rel0, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal A217(&bd.InGreenGreen, &bd.Rel1, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal B116(&bd.InGreenYellow, &bd.Rel3, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal B129(&bd.InBrownBrown, &ba.Rel0, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+
+PhysicalSignal A406(&bc.In0, &bc.Rel0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr); 
+PhysicalSignal XXB1(&bc.In4, &bc.Rel1, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr); 
 
 
 int next_temp_bit = 480;
@@ -297,7 +314,6 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&bc.LedBlueSw));
   DefCopy(*rep, ImportVariable(&bd.LedBlueSw));
   DefCopy(*rep, ImportVariable(&be.LedBlueSw));
-  DefCopy(*rep, ImportVariable(&lpc11_back.l0));
 });
 
 /*DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
