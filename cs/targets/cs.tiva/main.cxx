@@ -75,7 +75,12 @@
 
 
 #define STANDALONE
+//#define ENABLE_HOST
 //#define LOGTOSTDOUT
+
+#if !defined(ENABLE_HOST) && !defined(LOGTOSTDOUT)
+#define LOGTOSTDOUT
+#endif
 
 // Used to talk to the booster.
 //OVERRIDE_CONST(can2_bitrate, 250000);
@@ -93,7 +98,7 @@ OVERRIDE_CONST(num_memory_spaces, 10);
 
 namespace commandstation {
 
-
+/*
 extern const struct const_traindb_entry_t const_lokdb[];
 const struct const_traindb_entry_t const_lokdb[] = {
   // 0
@@ -108,7 +113,7 @@ const struct const_traindb_entry_t const_lokdb[] = {
 };
 extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
-
+*/
 
 }  // namespace commandstation
 
@@ -133,7 +138,9 @@ nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __auto
 
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
+#ifdef ENABLE_HOST
 bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
+#endif
 
 extern "C" {
 #ifdef LOGTOSTDOUT
@@ -162,9 +169,11 @@ void log_output(char* buf, int size) {
 } // extern c
 
 namespace bracz_custom {
+#ifdef ENABLE_HOST
 void send_host_log_event(HostLogEvent e) {
   host_client.send_host_log_event(e);
 }
+#endif
 }
 
 
