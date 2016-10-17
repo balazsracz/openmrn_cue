@@ -580,13 +580,15 @@ class CircleTrain : public LayoutSchedule {
 };
 
 
-CircleTrain train_rts("rts_railtraction", MMAddress(32), 20);
-CircleTrain train_wle("wle_er20", MMAddress(27), 30);
+CircleTrain train_rts("rts_railtraction", MMAddress(32), 10);
+CircleTrain train_wle("wle_er20", MMAddress(27), 10);
 CircleTrain train_re474("Re474", MMAddress(12), 30);
-CircleTrain train_krokodil("Krokodil", MMAddress(68), 35);
+CircleTrain train_krokodil("Krokodil", MMAddress(68), 40);
 CircleTrain train_rheingold("Rheingold", MMAddress(19), 35);
 CircleTrain train_re10_10("Re_10_10", DccShortAddress(4), 35);
 CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
+CircleTrain train_re465("Re465", DccShortAddress(47), 17);
+CircleTrain train_ice("ICE", MMAddress(2), 16);
 
 
 
