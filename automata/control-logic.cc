@@ -276,7 +276,7 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(int min_occupied_time,
   LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
   const LocalVariable& raw = aut->ImportVariable(*raw_detector_);
   LocalVariable* last(aut->ImportVariable(debounce_temp_var_.get()));
-  LocalVariable* route1 = aut->ImportVariable(route_set_ab_.get());
+  LocalVariable* route_ab = aut->ImportVariable(route_set_ab_.get());
   LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
 
   // During boot we purposefully emit an event on the raw detector. This is a
@@ -296,7 +296,7 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(int min_occupied_time,
   if (min_occupied_time) {
     // If there is a route set, then we do not delay setting the occupancy to
     // busy.
-    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route1)
+    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route_ab)
         .ActTimer(min_occupied_time).ActReg0(last).ActReg1(occ);
     Def().IfReg0(raw).IfReg1(*last).IfReg1(*route2)
         .ActTimer(min_occupied_time).ActReg0(last).ActReg1(occ);
@@ -313,13 +313,29 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(int min_occupied_time,
   } else {
     // If there is a route set, then we do not delay setting the occupancy to
     // busy.
-    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route1).ActTimer(0).ActReg0(last);
+    Def().IfReg0(raw).IfReg1(*last).IfReg1(*route_ab).ActTimer(0).ActReg0(last);
     Def().IfReg0(raw).IfReg1(*last).IfReg1(*route2).ActTimer(0).ActReg0(last);
 
     // If there is a flip, we start a timer. The timer length depends on the
     // edge.
     Def().IfReg0(raw).IfReg1(*last).ActTimer(kTimeTakenToGoBusy).ActReg0(last);
-    Def().IfReg1(raw).IfReg0(*last).ActTimer(kTimeTakenToGoFree).ActReg1(last);
+    // if there was no incoming route, we just use the timer
+    Def()
+        .IfReg1(raw)
+        .IfReg0(*last)
+        .IfReg0(*route_ab)
+        .ActTimer(kTimeTakenToGoFree)
+        .ActReg1(last);
+    std::vector<const GlobalVariable*> v{output_route_};
+    // if there was an incoming route and we have the outgoing route var, we
+    // won't start the timer unless there is an outgoing route set too.
+    Def()
+        .IfReg1(raw)
+        .IfReg0(*last)
+        .IfReg1(*route_ab)
+        .Rept(&Automata::Op::IfReg1, v)
+        .ActTimer(kTimeTakenToGoFree)
+        .ActReg1(last);
   }
 
   // If no flip happened for the timer length, we put the value into the
@@ -329,7 +345,7 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(int min_occupied_time,
       .IfTimerDone()
       .IfReg1(*last)
       .IfReg1(*occ)
-      .ActReg0(route1)
+      .ActReg0(route_ab)
       .ActReg0(route2)
       .ActReg0(occ);
 }

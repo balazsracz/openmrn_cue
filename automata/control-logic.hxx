@@ -403,10 +403,19 @@ class StraightTrackWithRawDetector : public StraightTrackWithDetector {
                            min_occupied_time));
   }
 
+  // Call this function with the outgoing route_ab_ variable for the same
+  // logical block before rendering the automata. This is typically the signal
+  // piece's route_ab. As a result the occupancy will never go low if there was
+  // an input route unless output_route is set.
+  void SetOutputRouteVariable(const GlobalVariable* output_route) {
+    output_route_ = output_route;
+  }
+  
  protected:
   void RawDetectorOccupancy(int min_occupied_time, Automata *aut);
 
   const GlobalVariable *raw_detector_;
+  const GlobalVariable *output_route_{nullptr};
   std::unique_ptr<GlobalVariable> debounce_temp_var_;
 };
 
@@ -574,6 +583,7 @@ class StandardBlock : public StraightTrackInterface {
         aut_signal_(name() + ".signal", brd, &signal_),
         aut_rsignal_(name() + ".rsignal", brd, &rsignal_) {
     BindSequence(rsignal_.side_a(), {&body_, &body_det_, &signal_});
+    body_det_.SetOutputRouteVariable(&route_out());
   }
 
  protected:
