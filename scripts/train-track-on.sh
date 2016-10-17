@@ -1,4 +1,4 @@
 #!/bin/bash
 
-train send-raw-event 010100000000FFFE
+train send-raw-event 010000000000FFFE
 
