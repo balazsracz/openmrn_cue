@@ -209,12 +209,12 @@ PhysicalSignal A217(&bd.InGreenGreen, &bd.Rel1, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 PhysicalSignal B116(&bd.InGreenYellow, &bd.Rel3, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
-PhysicalSignal B129(&bd.InBrownBrown, &ba.Rel0, nullptr, nullptr, nullptr,
+PhysicalSignal B129(&bd.InBrownBrown, &ba.Rel2, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 
-PhysicalSignal A406(&bc.In0, &bc.Rel0, nullptr, nullptr, nullptr, nullptr,
+PhysicalSignal A406(&ba.In4, &ba.Rel0, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr); 
-PhysicalSignal XXB1(&bc.In4, &bc.Rel1, nullptr, nullptr, nullptr, nullptr,
+PhysicalSignal XXB1(&ba.In5, &ba.Rel1, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr); 
 
 
@@ -327,6 +327,7 @@ DefAut(blinkaut, brd, {
     DefCopy(ImportVariable(bc.In7), ImportVariable(&bc.Act7));
     });*/
 
+
 // Adds the necessary conditions that represent if there is a train at the
 // source track waiting to depart.
 void IfSourceTrackReady(StandardBlock* track, Automata::Op* op) {
@@ -395,6 +396,19 @@ AllocatorPtr train_tmp(logic2->Allocate("train", 768));
 MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
+
+StandardBlock Block_B116(&brd, &B116, logic, "B116");
+StandardBlock Block_B129(&brd, &B129, logic, "B129");
+StandardBlock Block_A240(&brd, &A240, logic, "A240");
+StandardBlock Block_A217(&brd, &A217, logic, "A217");
+
+StandardBlock Block_A406(&brd, &A406, logic, "A406");
+StandardBlock Block_XXB1(&brd, &XXB1, logic, "XX.B1");
+
+#define CYCLE {&Block_B116, &Block_B129, &Block_A240, &Block_A217, \
+        &Block_A406, &Block_XXB1, &Block_B116}
+
+bool ignored1 = BindSequence(CYCLE);
 
 DefAut(display, brd, {
                          /*  DefCopy(ImportVariable(Block_XXB1.detector()),
@@ -535,6 +549,46 @@ uint64_t DccShortAddress(uint16_t addr) {
 uint64_t MMAddress(uint16_t addr) {
   return 0x060300000000ULL | addr;
 }
+
+
+class LayoutSchedule : public TrainSchedule {
+ public:
+  LayoutSchedule(const string& name, uint64_t train_id, uint8_t default_speed)
+      : TrainSchedule(name, &brd, train_id,
+                      train_perm->Allocate(name, 24, 8),
+                      train_tmp->Allocate(name, 48, 8), &stored_speed_),
+        stored_speed_(&brd, "speed." + name,
+                      BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
+
+ protected:
+  void RunCycle(Automata* aut) {
+    AddEagerBlockSequence(CYCLE, &g_not_paused_condition, true);
+  }
+  
+  ByteImportVariable stored_speed_;
+};
+
+
+class CircleTrain : public LayoutSchedule {
+ public:
+  CircleTrain(const string& name, uint64_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    RunCycle(aut);
+  }
+};
+
+
+CircleTrain train_rts("rts_railtraction", MMAddress(32), 20);
+CircleTrain train_wle("wle_er20", MMAddress(27), 30);
+CircleTrain train_re474("Re474", MMAddress(12), 30);
+CircleTrain train_krokodil("Krokodil", MMAddress(68), 35);
+CircleTrain train_rheingold("Rheingold", MMAddress(19), 35);
+CircleTrain train_re10_10("Re_10_10", DccShortAddress(4), 35);
+CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
+
+
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
