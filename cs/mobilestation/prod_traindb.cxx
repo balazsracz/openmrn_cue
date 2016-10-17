@@ -65,8 +65,8 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
     "185 595-6", DCC_28 }, // NOTE: hardware is programmed for addr 18 // I think this engine was returned to Acacio
   // id 15
   { 26, //{ 0,   },
-    { LIGHT,   },
-    "Re 460 HAG", MARKLIN_OLD | PUSHPULL },  // Marklin 6090 (i think; best to check)
+    { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV, },
+    "Re 460 HAG", DCC_128 | PUSHPULL },  // LokPilot 4 (some bare cable form)
   // id 16
   { 38, //{ 0, 3, 4,  },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,  },
