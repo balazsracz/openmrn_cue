@@ -505,6 +505,7 @@ def GetMaxSystemId(parent_element, strip_letters = 'IBL'):
   returns: an integer, the maximum ID seen, or 1 if there was no ID seen.
   """
   max_id = 1
+  if parent_element is None: return max_id
   for e in parent_element:
     system_name = e.get('systemName')
     if not system_name:
