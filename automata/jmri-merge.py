@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import sys
 import re
 
+FLAGS_purge_all = True
 
 class LocationInfo:
   pass
@@ -590,10 +591,10 @@ def RenderSystemBlocks(output_tree_root):
   print("Number of blocks: ", len(desired_block_list))
   all_block_node = output_tree_root.find('blocks')
   SystemBlock.SetMaxId(GetMaxSystemId(all_block_node))
-  MergeEntries(all_block_node, desired_block_list)
+  MergeEntries(all_block_node, desired_block_list, purge = FLAGS_purge_all)
   all_lblock_node = output_tree_root.find('layoutblocks')
   LayoutBlock.SetMaxId(GetMaxSystemId(all_lblock_node))
-  MergeEntries(all_lblock_node, desired_lblock_list)
+  MergeEntries(all_lblock_node, desired_lblock_list, purge = FLAGS_purge_all)
 
 def GetAllTrainList():
   """Returns a list of strings, with each train name."""
@@ -683,7 +684,9 @@ def GetLocationCoordinates(all_location, tree_root, index):
   ret = {}
   for loc in all_location:
     segments = tree_root.findall('LayoutEditor/tracksegment[@blockname=\'' + loc + '\']')
-    if not segments: raise Exception("Cound not find track segment for block '%s'" % loc)
+    if not segments:
+      print("Cound not find track segment for block '%s'" % loc)
+      continue
     segment = segments[0]
     ret[loc] = LocationInfo()
     ret[loc].center = index.FindCenterLocation(segment)
@@ -716,7 +719,7 @@ def RenderMemoryVariables(output_tree_root):
     return
   Memory.SetMaxId(GetMaxSystemId(all_memory_node, strip_letters='IM:AUTO:LOC'))
   print("Number of memory entries: ", len(desired_memory_list))
-  MergeEntries(all_memory_node, desired_memory_list)
+  MergeEntries(all_memory_node, desired_memory_list, purge = FLAGS_purge_all)
 
 def RenderLogixConditionals(output_tree_root):
   desired_conditionals = []
@@ -1031,7 +1034,7 @@ def main():
   ClearPanelLocationTable(root, index)
   print("len = ", len(sys.argv), " args=", sys.argv)
   if (len(sys.argv) <= 3) or (sys.argv[3] != "skiptable"):
-    RenderLogixConditionals(root)
+    # TODO RenderLogixConditionals(root)
     RenderPanelLocationTable(root, index)
   else:
     print("Skipping panel table.")
