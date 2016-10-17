@@ -369,6 +369,7 @@ public:
   template<class C> Op& Rept(mutable_var_fn_t fn,
            const C& vars) {
     for (GlobalVariable* v : vars) {
+      if (!v) continue;
       (this->*fn)(parent()->ImportVariable(v));
     }
     return *this;
@@ -377,6 +378,7 @@ public:
   template<class C> Op& Rept(const_var_fn_t fn,
            const C& vars) {
     for (const GlobalVariable* v : vars) {
+      if (!v) continue;
       (this->*fn)(parent()->ImportVariable(*v));
     }
     return *this;
