@@ -999,13 +999,13 @@ def RenderPanelLocationTable(output_tree_root, index):
   layout = output_tree_root.find('./LayoutEditor[@name=\'3H layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
-  y = 190;
-  x0 = 250;
+  y = 190
+  x0 = 250 + 160
   for block in all_locations:
     PrintBlockLine(layout, block, x0, y)
     y += 40
   y = 190
-  x0 = 700
+  x0 = 700 + 160
   for train in all_trains:
     PrintTrainLine(layout, train, x0, y);
     y += 40
