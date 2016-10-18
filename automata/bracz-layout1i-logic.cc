@@ -217,6 +217,15 @@ PhysicalSignal A406(&ba.In4, &ba.Rel0, nullptr, nullptr, nullptr, nullptr,
 PhysicalSignal XXB1(&ba.In5, &ba.Rel1, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr); 
 
+// These are not checked yet
+PhysicalSignal A317(&bd.InOraRed, &be.Rel0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+PhysicalSignal XXB2(&bb.In0, &bb.Rel0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr); 
+PhysicalSignal XXB3(&bb.In1, &bb.Rel1, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr); 
+
+
 
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
@@ -397,18 +406,110 @@ MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 
+MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &ba.ActOraGreen, &ba.ActOraRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_XXW1(&brd,
+                                    logic->Allocate("XX.W1", 40),
+                                    &Magnet_XXW1);
+TurnoutWrap TXXW1(&Turnout_XXW1.b, kClosedToPoint);
+
+MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActGreenGreen,
+                      &ba.ActGreenRed, MovableDKW::kDKWStateCross);
+StandardMovableDKW DKW_XXW2(&brd, logic->Allocate("XX.W2", 64),
+                            &Magnet_XXW2);
+
+MagnetDef Magnet_XXW3(&g_magnet_aut, "XX.W3", &bb.ActBrownGrey,
+                      &bb.ActBrownBrown, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_XXW3(&brd, logic->Allocate("XX.W3", 40),
+                                    &Magnet_XXW3);
+TurnoutWrap TXXW3(&Turnout_XXW3.b, kThrownToPoint);
+
+MagnetDef Magnet_XXW4(&g_magnet_aut, "XX.W4", &bb.ActBlueGrey,
+                      &bb.ActBlueBrown, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_XXW4(&brd, logic->Allocate("XX.W4", 40),
+                                    &Magnet_XXW4);
+TurnoutWrap TXXW4(&Turnout_XXW4.b, kPointToClosed);
+
+/*
+MagnetDef Magnet_W406(&g_magnet_aut, "W406", &bc.ActGreenGreen,
+                      &bc.ActGreenRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_W406(&brd, logic->Allocate("W406", 40),
+                                    &Magnet_W406);
+TurnoutWrap TW406(&Turnout_W406.b, kThrownToPoint);
+*/
+
+MagnetDef Magnet_W109(&g_magnet_aut, "W109", &bc.ActGreenGreen,
+                      &bc.ActGreenRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_W109(&brd, logic->Allocate("W109", 40),
+                                    &Magnet_W109);
+TurnoutWrap TW109(&Turnout_W109.b, kClosedToPoint);
+
+MagnetDef Magnet_W209(&g_magnet_aut, "W209", &bc.ActBrownBrown,
+                      &bc.ActBrownGrey, MovableDKW::kDKWStateCurved);
+StandardMovableDKW DKW_W209(&brd, logic->Allocate("W209", 64),
+                            &Magnet_W209);
+
+MagnetDef Magnet_W116(&g_magnet_aut, "W116", &bd.ActBrownGrey,
+                      &bd.ActBrownBrown, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_W116(&brd, logic->Allocate("W116", 40),
+                                    &Magnet_W116);
+TurnoutWrap TW116(&Turnout_W116.b, kPointToClosed);
+
+MagnetDef Magnet_W216(&g_magnet_aut, "W216", &bc.ActOraRed,
+                      &bc.ActOraGreen, MovableDKW::kDKWStateCross);
+StandardMovableDKW DKW_W216(&brd, logic->Allocate("W216", 64),
+                            &Magnet_W216);
+
+MagnetDef Magnet_W130(&g_magnet_aut, "W130", &bd.ActGreenGreen,
+                      &bd.ActGreenRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_W130(&brd, logic->Allocate("W130", 40),
+                                    &Magnet_W130);
+TurnoutWrap TW130(&Turnout_W130.b, kClosedToPoint);
+
+CoupledMagnetDef Magnet_W230(&g_magnet_aut, "W230", &Magnet_W130, true);
+StandardMovableTurnout Turnout_W230(&brd, logic->Allocate("W230", 40),
+                                    &Magnet_W230);
+TurnoutWrap TW230(&Turnout_W230.b, kClosedToPoint);
+
+MagnetDef Magnet_W231(&g_magnet_aut, "W231", &bd.ActOraGreen,
+                      &bd.ActOraRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_W231(&brd, logic->Allocate("W231", 40),
+                                    &Magnet_W231);
+TurnoutWrap TW231(&Turnout_W231.b, kPointToClosed);
+
+
 StandardBlock Block_B116(&brd, &B116, logic, "B116");
 StandardBlock Block_B129(&brd, &B129, logic, "B129");
 StandardBlock Block_A240(&brd, &A240, logic, "A240");
 StandardBlock Block_A217(&brd, &A217, logic, "A217");
+StandardBlock Block_A317(&brd, &A317, logic, "A317");
 
 StandardBlock Block_A406(&brd, &A406, logic, "A406");
 StandardBlock Block_XXB1(&brd, &XXB1, logic, "XX.B1");
+StandardBlock Block_XXB2(&brd, &XXB2, logic, "XX.B2");
+StandardBlock Block_XXB3(&brd, &XXB3, logic, "XX.B3");
 
 #define CYCLE {&Block_B116, &Block_B129, &Block_A240, &Block_A217, \
         &Block_A406, &Block_XXB1, &Block_B116}
 
-bool ignored1 = BindSequence(CYCLE);
+bool ignored1 =
+    BindSequence(Turnout_W109.b.side_thrown(),
+                 {&DKW_W209.c2, &Block_A406, &TXXW4, &Block_XXB1, &TXXW1,
+                  &TW109, &Block_B116, &TW116, &Block_B129, &TW130, &Block_A240,
+                  &TW231, &TW230, &Block_A217, &DKW_W216.c1, &DKW_W209.c1,
+                  &DKW_XXW2.c1, &Block_XXB2, &TXXW3},
+                 Turnout_XXW4.b.side_thrown());
+
+bool ignored2 =
+    BindSequence(Turnout_W231.b.side_thrown(), {&Block_A317, &DKW_W216.c2},
+                 Turnout_W116.b.side_thrown());
+
+bool ignored3 =
+    BindSequence(Turnout_XXW1.b.side_thrown(), {&DKW_XXW2.c2, &Block_XXB3},
+                 Turnout_XXW3.b.side_closed());
+
+bool ignored4 = BindPairs({
+    {Turnout_W230.b.side_thrown(), Turnout_W130.b.side_thrown()}
+  });
 
 DefAut(display, brd, {
                          /*  DefCopy(ImportVariable(Block_XXB1.detector()),
