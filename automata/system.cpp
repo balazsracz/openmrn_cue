@@ -31,6 +31,19 @@ void Board::AddAutomata(Automata* a) {
 }
 
 void Board::RenderPreamble(string* output) {
+    // Validates all automatas
+    bool valid = true;
+    for (auto& a: automatas_) {
+      assert(a.automata);
+      if (!a.automata->Validate()) {
+        Debug("failed to validate automata %s", a.automata->name().c_str());
+        valid = false;
+      }
+    }
+    if (!valid) {
+      fprintf(stderr, "%s", GetDebugData()->c_str());
+      exit(1);
+    }
     for (auto& a: automatas_) {
         a.ptr_offset = output->size();
         // Put a pointer to the output.

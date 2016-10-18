@@ -70,6 +70,8 @@ class AutomataPlugin {
     }
   }
 
+  virtual bool Validate() { return true; }
+
   void RunAll(Automata *aut) {
     for (const auto &it : cb_) {
       it.second->Run(aut);
@@ -104,6 +106,7 @@ class StandardPluginAutomata : public automata::Automata {
   }
 
   virtual void Body() { plugins_->RunAll(this); }
+  virtual bool Validate() { return plugins_->Validate(); }
 
   virtual Board *board() { return brd_; }
 
@@ -229,6 +232,7 @@ class CtrlTrackInterface {
         out_route_released(allocator->Allocate("out_route_released")),
         in_next_signal_1(allocator->Allocate("in_next_signal_1")),
         in_next_signal_2(allocator->Allocate("in_next_signal_2")),
+        name_(allocator->name()),
         lookup_if_(parent),
         binding_(nullptr) {}
 
@@ -259,7 +263,18 @@ class CtrlTrackInterface {
     return true;
   }
 
+  bool Validate() {
+    if (!binding_) {
+      Debug("Unbound interface on %s.", name_.c_str());
+      return false;
+    }
+    return true;
+  }
+  
  private:
+  // User-readable name of this interface
+  const string name_;
+  
   // Where to ask for occupancy lookups.
   OccupancyLookupInterface *lookup_if_;
 
@@ -305,6 +320,10 @@ class StraightTrack : public StraightTrackInterface,
   void CopySignalState(Automata *aut);
 
   static const int kAllocSize = 24;
+
+  bool Validate() override {
+    return side_a_.Validate() && side_b_.Validate();
+  }
 
  protected:
   bool Bind(CtrlTrackInterface *me, CtrlTrackInterface *opposite);
@@ -658,18 +677,12 @@ class TurnoutInterface {
   virtual CtrlTrackInterface *side_thrown() = 0;
 };
 
-// Allows a turnout be included in a BindSequence({tack, track, turnout, track,
-// track})
-class TurnoutWrap : public StraightTrackInterface {
+
+class FakeStraightTrack : public StraightTrackInterface {
  public:
-  struct PointToClosed {};
-  struct PointToThrown {};
-  struct ClosedToPoint {};
-  struct ThrownToPoint {};
-
-  TurnoutWrap(TurnoutInterface* t, const PointToClosed&)
-      : side_a_(t->side_points()), side_b_(t->side_closed()) {}
-
+  FakeStraightTrack(CtrlTrackInterface *a, CtrlTrackInterface *b)
+      : side_a_(a), side_b_(b) {}
+  
   CtrlTrackInterface *side_a() OVERRIDE { return side_a_; }
   CtrlTrackInterface *side_b() OVERRIDE { return side_b_; }
 
@@ -678,7 +691,32 @@ class TurnoutWrap : public StraightTrackInterface {
   CtrlTrackInterface* side_b_;
 };
 
+// Allows a turnout be included in a BindSequence({tack, track, turnout, track,
+// track})
+class TurnoutWrap : public FakeStraightTrack {
+ public:
+  struct PointToClosed {};
+  struct PointToThrown {};
+  struct ClosedToPoint {};
+  struct ThrownToPoint {};
+
+  TurnoutWrap(TurnoutInterface* t, const PointToClosed&)
+      : FakeStraightTrack(t->side_points(), t->side_closed()) {}
+
+  TurnoutWrap(TurnoutInterface* t, const ClosedToPoint&)
+      : FakeStraightTrack(t->side_closed(), t->side_points()) {}
+
+  TurnoutWrap(TurnoutInterface* t, const ThrownToPoint&)
+      : FakeStraightTrack(t->side_thrown(), t->side_points()) {}
+
+  TurnoutWrap(TurnoutInterface* t, const PointToThrown&)
+      : FakeStraightTrack(t->side_points(), t->side_thrown()) {}
+};
+
 constexpr TurnoutWrap::PointToClosed kPointToClosed;
+constexpr TurnoutWrap::ClosedToPoint kClosedToPoint;
+constexpr TurnoutWrap::PointToThrown kPointToThrown;
+constexpr TurnoutWrap::ThrownToPoint kThrownToPoint;
 
 void ClearAutomataVariables(Automata *aut);
 
@@ -743,6 +781,11 @@ class TurnoutBase : public TurnoutInterface,
   CtrlTrackInterface side_closed_;
   CtrlTrackInterface side_thrown_;
 
+  bool Validate() override {
+    return side_points_.Validate() && side_closed_.Validate() &&
+           side_thrown_.Validate();
+  }
+  
   struct Direction {
     Direction(CtrlTrackInterface *f, CtrlTrackInterface *t, GlobalVariable *r,
               GlobalVariable *rp, State state_cond)
@@ -962,6 +1005,11 @@ class DKW : private OccupancyLookupInterface,
   CtrlTrackInterface* point_b1() { return GetPoint(POINT_B1); }
   CtrlTrackInterface* point_b2() { return GetPoint(POINT_B2); }
 
+  bool Validate() override {
+    return point_a1()->Validate() && point_a2()->Validate() &&
+           point_b1()->Validate() && point_b2()->Validate();
+  }
+
   Point FindPoint(const CtrlTrackInterface* from) const {
     for (int i = POINT_MIN; i <= POINT_MAX; ++i) {
       if (points_[i].interface.get() == from) return static_cast<Point>(i);
@@ -1091,6 +1139,13 @@ class StandardMovableDKW {
 
   MovableDKW b;
 
+  // This variable can be used in BindSequence. It is one of the straight
+  // connected pieces.
+  FakeStraightTrack c1{b.point_a1(), b.point_b1()};
+  // This variable can be used in BindSequence. It is the other of the straight
+  // connected pieces. The "start" of c1 and c2 is the same side.
+  FakeStraightTrack c2{b.point_a2(), b.point_b2()};
+  
  private:
   StandardPluginAutomata aut_;
 };

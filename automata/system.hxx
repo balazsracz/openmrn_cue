@@ -194,9 +194,10 @@ class Automata {
 
     void RenderImportVariable(const GlobalVariable& var, int local_id);
 
-protected:
-    virtual void Body() = 0;
+    virtual bool Validate() { return true; }
 
+ protected:
+    virtual void Body() = 0;
     LocalVariable timer_bit_;
 
 #define Def() Automata::Op(aut, aut->output(), __FILE__, __LINE__)
