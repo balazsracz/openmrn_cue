@@ -69,6 +69,71 @@ StateRef StGoing(3);
 StateRef StUser1(10);
 StateRef StUser2(11);
 
+
+I2CSignal signal_A240_main(&ba, 26, "A240.main");
+I2CSignal signal_A240_adv(&ba, 27, "A240.adv");
+
+I2CSignal signal_A131_main(&ba, 8, "A131.main");
+I2CSignal signal_A131_adv(&ba, 9, "A131.adv");
+
+I2CSignal signal_B129_main(&ba, 53, "B129.main");
+I2CSignal signal_B129_adv(&ba, 54, "B129.adv");
+
+I2CSignal signal_B229_main(&ba, 55, "B229.main");
+I2CSignal signal_B229_adv(&ba, 56, "B229.adv");
+
+I2CSignal signal_B329_main(&ba, 57, "B329.main");
+I2CSignal signal_B329_adv(&ba, 58, "B329.adv");
+
+I2CSignal signal_B429_main(&ba, 65, "B429.main");
+I2CSignal signal_B429_adv(&ba, 66, "B429.adv");
+
+I2CSignal signal_A317_main(&bb, 63, "A317.main");
+I2CSignal signal_A217_main(&bb, 24, "A217.main");
+I2CSignal signal_A117_main(&bb, 25, "A117.main");
+
+
+I2CSignal signal_B108_main(&bb, 12, "B108.main");
+I2CSignal signal_B108_adv(&bb, 13, "B108.adv");
+I2CSignal signal_B208_main(&bb, 14, "B208.main");
+I2CSignal signal_B208_adv(&bb, 15, "B208.adv");
+
+I2CSignal signal_A108_adv(&bb, 17, "A108.adv");
+I2CSignal signal_A208_adv(&bb, 18, "A208.adv");
+
+I2CSignal signal_B400_main(&bb, 4, "B400.main");
+I2CSignal signal_B400_adv(&bb, 5, "B400.adv");
+
+I2CSignal signal_A100_main(&be, 32, "A100.main");
+I2CSignal signal_A100_adv(&be, 33, "A100.adv");
+I2CSignal signal_A200_main(&be, 6, "A200.main");
+I2CSignal signal_A200_adv(&be, 7, "A200.adv");
+
+I2CSignal signal_B100_adv(&be, 75, "B100.adv");
+I2CSignal signal_B200_adv(&be, 74, "B200.adv");
+
+I2CSignal signal_XXB1_main(&be, 69, "XX.B1.main");
+I2CSignal signal_XXB1_adv(&be, 70, "XX.B1.adv");
+I2CSignal signal_XXB2_main(&be, 67, "XX.B2.main");
+I2CSignal signal_XXB2_adv(&be, 68, "XX.B2.adv");
+I2CSignal signal_XXB3_main(&be, 51, "XX.B3.main");
+I2CSignal signal_XXB3_adv(&be, 52, "XX.B3.adv");
+I2CSignal signal_XXB4_main(&be, 49, "XX.B4.main");
+I2CSignal signal_XXB4_adv(&be, 50, "XX.B4.adv");
+
+I2CSignal signal_A406_main(&be, 72, "A406.main");
+I2CSignal signal_A406_adv(&be, 73, "A406.adv");
+
+I2CSignal signal_A700_main(&be, 22, "A700.main");
+I2CSignal signal_A700_adv(&be, 23, "A700.adv");
+
+I2CSignal signal_XXA1_main(&bc, 31, "XX.A1.main");
+I2CSignal signal_XXA1_adv(&bc, 32, "XX.A1.adv");
+I2CSignal signal_XXA2_main(&bc, 44, "XX.A2.main");
+I2CSignal signal_XXA2_adv(&bc, 65, "XX.A2.adv");
+I2CSignal signal_XXA3_main(&bc, 10, "XX.A3.main");
+I2CSignal signal_XXA3_adv(&bc, 11, "XX.A3.adv");
+
 /* More signals
 
 PandaControlBoard panda_bridge;
@@ -203,28 +268,37 @@ address 136 0x86 main 65 adv 66 reflashed in ZZA3
 
 */
 
-PhysicalSignal A240(&bd.InBrownGrey, &bd.Rel0, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal A217(&bd.InGreenGreen, &bd.Rel1, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal B116(&bd.InGreenYellow, &bd.Rel3, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal B129(&bd.InBrownBrown, &ba.Rel2, nullptr, nullptr, nullptr,
+PhysicalSignal A240(&ba.InBrownGrey, &bd.Rel0, &signal_A240_main.signal,
+                    &signal_A240_adv.signal, &signal_A131_main.signal,
+                    &signal_A131_adv.signal, nullptr, nullptr);
+PhysicalSignal A217(&bb.InOraRed, &bd.Rel1, &signal_A217_main.signal,
+                    nullptr, &signal_B229_main.signal,
+                    &signal_B229_adv.signal, nullptr, nullptr);
+PhysicalSignal B116(&bb.InBrownBrown, &bd.Rel3, &signal_B108_main.signal,
+                    &signal_B108_adv.signal, &signal_A100_main.signal,
+                    &signal_A100_adv.signal, &signal_B100_adv.signal,
+                    &signal_A108_adv.signal);
+PhysicalSignal B129(&ba.InBrownBrown, &ba.Rel2, &signal_B129_main.signal,
+                    &signal_B129_adv.signal, &signal_A117_main.signal,
                     nullptr, nullptr, nullptr);
 
-PhysicalSignal A406(&ba.In4, &ba.Rel0, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr); 
-PhysicalSignal XXB1(&ba.In5, &ba.Rel1, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr); 
+PhysicalSignal A406(&be.In4, &ba.Rel0, &signal_A406_main.signal,
+                    &signal_A406_adv.signal, &signal_B400_main.signal,
+                    &signal_B400_adv.signal, nullptr, nullptr);
+PhysicalSignal XXB1(&be.In5, &ba.Rel1, &signal_XXB1_main.signal,
+                    &signal_XXB1_adv.signal, &signal_XXA1_main.signal,
+                    &signal_XXA1_adv.signal, nullptr, nullptr);
 
-// These are not checked yet
-PhysicalSignal A317(&bd.InOraRed, &be.Rel0, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
-PhysicalSignal XXB2(&bb.In0, &bb.Rel0, nullptr, nullptr, nullptr, nullptr,
+PhysicalSignal A317(&bb.InOraGreen, &be.Rel0, &signal_A317_main.signal,
+                    nullptr, &signal_B329_main.signal,
+                    &signal_B329_adv.signal, nullptr, nullptr);
+PhysicalSignal XXA2(&bc.In6, &bb.Rel0, &signal_XXA2_main.signal,
+                    &signal_XXA2_adv.signal, &signal_XXB2_main.signal,
+                    &signal_XXB2_adv.signal, nullptr, nullptr);
+PhysicalSignal XXA3(&bc.In7, &bb.Rel1, &signal_XXA3_main.signal,
+                    &signal_XXA3_adv.signal, &signal_XXB3_main.signal,
+                    &signal_XXB3_adv.signal,
                     nullptr, nullptr); 
-PhysicalSignal XXB3(&bb.In1, &bb.Rel1, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr); 
-
 
 
 int next_temp_bit = 480;
@@ -405,73 +479,73 @@ AllocatorPtr train_tmp(logic2->Allocate("train", 768));
 MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
-
-MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &ba.ActOraGreen, &ba.ActOraRed, MovableTurnout::kClosed);
+MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen,
+                      &be.ActOraRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_XXW1(&brd,
                                     logic->Allocate("XX.W1", 40),
                                     &Magnet_XXW1);
 TurnoutWrap TXXW1(&Turnout_XXW1.b, kClosedToPoint);
 
-MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &ba.ActGreenGreen,
-                      &ba.ActGreenRed, MovableDKW::kDKWStateCross);
+MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &be.ActBlueBrown,
+                      &be.ActBlueGrey, MovableDKW::kDKWStateCross);
 StandardMovableDKW DKW_XXW2(&brd, logic->Allocate("XX.W2", 64),
                             &Magnet_XXW2);
 
-MagnetDef Magnet_XXW3(&g_magnet_aut, "XX.W3", &bb.ActBrownGrey,
-                      &bb.ActBrownBrown, MovableTurnout::kThrown);
+MagnetDef Magnet_XXW3(&g_magnet_aut, "XX.W3", &bc.ActBrownGrey,
+                      &bc.ActBrownBrown, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_XXW3(&brd, logic->Allocate("XX.W3", 40),
                                     &Magnet_XXW3);
 TurnoutWrap TXXW3(&Turnout_XXW3.b, kThrownToPoint);
 
-MagnetDef Magnet_XXW4(&g_magnet_aut, "XX.W4", &bb.ActBlueGrey,
-                      &bb.ActBlueBrown, MovableTurnout::kClosed);
+MagnetDef Magnet_XXW4(&g_magnet_aut, "XX.W4", &bc.ActOraGreen,
+                      &bc.ActOraRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_XXW4(&brd, logic->Allocate("XX.W4", 40),
                                     &Magnet_XXW4);
 TurnoutWrap TXXW4(&Turnout_XXW4.b, kPointToClosed);
 
 /*
-MagnetDef Magnet_W406(&g_magnet_aut, "W406", &bc.ActGreenGreen,
-                      &bc.ActGreenRed, MovableTurnout::kClosed);
+MagnetDef Magnet_W406(&g_magnet_aut, "W406", &bc.ActBlueGrey,
+                      &be.ActBlueBrown, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_W406(&brd, logic->Allocate("W406", 40),
                                     &Magnet_W406);
 TurnoutWrap TW406(&Turnout_W406.b, kThrownToPoint);
 */
 
-MagnetDef Magnet_W109(&g_magnet_aut, "W109", &bc.ActGreenGreen,
-                      &bc.ActGreenRed, MovableTurnout::kClosed);
+MagnetDef Magnet_W109(&g_magnet_aut, "W109", &bb.ActGreenGreen,
+                      &bb.ActGreenRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_W109(&brd, logic->Allocate("W109", 40),
                                     &Magnet_W109);
 TurnoutWrap TW109(&Turnout_W109.b, kClosedToPoint);
 
-MagnetDef Magnet_W209(&g_magnet_aut, "W209", &bc.ActBrownBrown,
-                      &bc.ActBrownGrey, MovableDKW::kDKWStateCurved);
+MagnetDef Magnet_W209(&g_magnet_aut, "W209", &bb.ActOraRed,
+                      &bb.ActOraGreen, MovableDKW::kDKWStateCurved);
 StandardMovableDKW DKW_W209(&brd, logic->Allocate("W209", 64),
                             &Magnet_W209);
 
-MagnetDef Magnet_W116(&g_magnet_aut, "W116", &bd.ActBrownGrey,
-                      &bd.ActBrownBrown, MovableTurnout::kClosed);
+MagnetDef Magnet_W116(&g_magnet_aut, "W116", &bb.ActBlueGrey,
+                      &bb.ActBlueBrown, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_W116(&brd, logic->Allocate("W116", 40),
                                     &Magnet_W116);
 TurnoutWrap TW116(&Turnout_W116.b, kPointToClosed);
 
-MagnetDef Magnet_W216(&g_magnet_aut, "W216", &bc.ActOraRed,
-                      &bc.ActOraGreen, MovableDKW::kDKWStateCross);
+MagnetDef Magnet_W216(&g_magnet_aut, "W216", &bb.ActBrownBrown,
+                      &bb.ActBrownGrey, MovableDKW::kDKWStateCross);
 StandardMovableDKW DKW_W216(&brd, logic->Allocate("W216", 64),
                             &Magnet_W216);
 
-MagnetDef Magnet_W130(&g_magnet_aut, "W130", &bd.ActGreenGreen,
-                      &bd.ActGreenRed, MovableTurnout::kClosed);
+MagnetDef Magnet_W130(&g_magnet_aut, "W130", &ba.ActOraGreen,
+                      &ba.ActOraRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_W130(&brd, logic->Allocate("W130", 40),
                                     &Magnet_W130);
 TurnoutWrap TW130(&Turnout_W130.b, kClosedToPoint);
 
-CoupledMagnetDef Magnet_W230(&g_magnet_aut, "W230", &Magnet_W130, true);
+CoupledMagnetDef Magnet_W230(&g_magnet_aut, "W230", &Magnet_W130, false);
 StandardMovableTurnout Turnout_W230(&brd, logic->Allocate("W230", 40),
                                     &Magnet_W230);
 TurnoutWrap TW230(&Turnout_W230.b, kClosedToPoint);
 
-MagnetDef Magnet_W231(&g_magnet_aut, "W231", &bd.ActOraGreen,
-                      &bd.ActOraRed, MovableTurnout::kClosed);
+MagnetDef Magnet_W231(&g_magnet_aut, "W231", &ba.ActBrownGrey,
+                      &ba.ActBrownBrown, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_W231(&brd, logic->Allocate("W231", 40),
                                     &Magnet_W231);
 TurnoutWrap TW231(&Turnout_W231.b, kPointToClosed);
@@ -485,8 +559,8 @@ StandardBlock Block_A317(&brd, &A317, logic, "A317");
 
 StandardBlock Block_A406(&brd, &A406, logic, "A406");
 StandardBlock Block_XXB1(&brd, &XXB1, logic, "XX.B1");
-StandardBlock Block_XXB2(&brd, &XXB2, logic, "XX.B2");
-StandardBlock Block_XXB3(&brd, &XXB3, logic, "XX.B3");
+StandardBlock Block_XXA2(&brd, &XXA2, logic, "XX.A2");
+StandardBlock Block_XXA3(&brd, &XXA3, logic, "XX.A3");
 
 #define CYCLE {&Block_B116, &Block_B129, &Block_A240, &Block_A217, \
         &Block_A406, &Block_XXB1, &Block_B116}
@@ -496,7 +570,7 @@ bool ignored1 =
                  {&DKW_W209.c2, &Block_A406, &TXXW4, &Block_XXB1, &TXXW1,
                   &TW109, &Block_B116, &TW116, &Block_B129, &TW130, &Block_A240,
                   &TW231, &TW230, &Block_A217, &DKW_W216.c1, &DKW_W209.c1,
-                  &DKW_XXW2.c1, &Block_XXB2, &TXXW3},
+                  &DKW_XXW2.c1, &Block_XXA2, &TXXW3},
                  Turnout_XXW4.b.side_thrown());
 
 bool ignored2 =
@@ -504,7 +578,7 @@ bool ignored2 =
                  Turnout_W116.b.side_thrown());
 
 bool ignored3 =
-    BindSequence(Turnout_XXW1.b.side_thrown(), {&DKW_XXW2.c2, &Block_XXB3},
+    BindSequence(Turnout_XXW1.b.side_thrown(), {&DKW_XXW2.c2, &Block_XXA3},
                  Turnout_XXW3.b.side_closed());
 
 bool ignored4 = BindPairs({
@@ -616,11 +690,19 @@ void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {
 }
 
 DefAut(signalaut, brd, {
+  BlockSignal(this, &Block_XXB1);
+  BlockSignal(this, &Block_XXA2);
   ClearUsedVariables();
+  BlockSignal(this, &Block_XXA3);
+  BlockSignal(this, &Block_A406);
   ClearUsedVariables();
+  BlockSignal(this, &Block_B116);
+  BlockSignal(this, &Block_B129);
 });
 
 DefAut(signalaut1, brd, {
+  BlockSignal(this, &Block_A217);
+  BlockSignal(this, &Block_A317);
   ClearUsedVariables();
   ClearUsedVariables();
 });
