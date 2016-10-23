@@ -847,24 +847,21 @@ g_text_direction_by_rotation = [
 ]
 
 g_signal_reverse_names = {
-    "A301" : "B321",
-    "B421" : "A401",
-    "A321" : "B347",
-    "B447" : "A421",
-    "A347" : "B360",
-    "B460" : "A447",
-    "A360" : "B375",
-    "B475" : "A460",
-    "ZZ.A2" : "ZZ.A2",
-    "ZZ.A3" : "ZZ.A3",
-    "WW.B2" : "WW.B2",
-    "WW.B3" : "WW.B3",
-    "WW.A11" : "WW.B1",
+    "A240" : "A131",
+    "B129" : "A117",
+    "A217" : "B229",
+    "A317" : "B329",
+    "B108" : "A100",
+    "A200" : "B208",
+    "XX.B1" : "XX.A1",
+    "XX.A2" : "XX.B2",
+    "XX.A3" : "XX.B3",
+    "A406" : "B400",
 }
 
 g_missing_signals = {
-  "WW.A11",
-  "YY.A3"
+#  "WW.A11",
+#  "YY.A3"
 }
 
 
@@ -1035,7 +1032,7 @@ def main():
   ClearPanelLocationTable(root, index)
   print("len = ", len(sys.argv), " args=", sys.argv)
   if (len(sys.argv) <= 3) or (sys.argv[3] != "skiptable"):
-    # TODO RenderLogixConditionals(root)
+    RenderLogixConditionals(root)
     RenderPanelLocationTable(root, index)
   else:
     print("Skipping panel table.")

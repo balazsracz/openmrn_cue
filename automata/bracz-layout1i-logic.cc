@@ -268,34 +268,38 @@ address 136 0x86 main 65 adv 66 reflashed in ZZA3
 
 */
 
-PhysicalSignal A240(&ba.InBrownGrey, &bd.Rel0, &signal_A240_main.signal,
+PhysicalSignal A240(&ba.InBrownGrey, &ba.Rel0, &signal_A240_main.signal,
                     &signal_A240_adv.signal, &signal_A131_main.signal,
                     &signal_A131_adv.signal, nullptr, nullptr);
-PhysicalSignal A217(&bb.InOraRed, &bd.Rel1, &signal_A217_main.signal,
+PhysicalSignal A217(&bb.InOraRed, &bb.Rel0, &signal_A217_main.signal,
                     nullptr, &signal_B229_main.signal,
                     &signal_B229_adv.signal, nullptr, nullptr);
-PhysicalSignal B116(&bb.InBrownBrown, &bd.Rel3, &signal_B108_main.signal,
+PhysicalSignal A200(&be.In2, &be.Rel0, &signal_A200_main.signal,
+                    &signal_A200_adv.signal, &signal_B208_main.signal,
+                    &signal_B208_adv.signal, &signal_B200_adv.signal,
+                    &signal_A208_adv.signal);
+PhysicalSignal B108(&bb.InBrownBrown, &bb.Rel1, &signal_B108_main.signal,
                     &signal_B108_adv.signal, &signal_A100_main.signal,
                     &signal_A100_adv.signal, &signal_B100_adv.signal,
                     &signal_A108_adv.signal);
-PhysicalSignal B129(&ba.InBrownBrown, &ba.Rel2, &signal_B129_main.signal,
+PhysicalSignal B129(&ba.InBrownBrown, &ba.Rel1, &signal_B129_main.signal,
                     &signal_B129_adv.signal, &signal_A117_main.signal,
                     nullptr, nullptr, nullptr);
 
-PhysicalSignal A406(&be.In4, &ba.Rel0, &signal_A406_main.signal,
+PhysicalSignal A406(&be.In4, &be.Rel1, &signal_A406_main.signal,
                     &signal_A406_adv.signal, &signal_B400_main.signal,
                     &signal_B400_adv.signal, nullptr, nullptr);
-PhysicalSignal XXB1(&be.In5, &ba.Rel1, &signal_XXB1_main.signal,
+PhysicalSignal XXB1(&be.In5, &be.Rel2, &signal_XXB1_main.signal,
                     &signal_XXB1_adv.signal, &signal_XXA1_main.signal,
                     &signal_XXA1_adv.signal, nullptr, nullptr);
 
-PhysicalSignal A317(&bb.InOraGreen, &be.Rel0, &signal_A317_main.signal,
+PhysicalSignal A317(&bb.InOraGreen, &bb.Rel2, &signal_A317_main.signal,
                     nullptr, &signal_B329_main.signal,
                     &signal_B329_adv.signal, nullptr, nullptr);
-PhysicalSignal XXA2(&bc.In6, &bb.Rel0, &signal_XXA2_main.signal,
+PhysicalSignal XXA2(&bc.In6, &bc.Rel0, &signal_XXA2_main.signal,
                     &signal_XXA2_adv.signal, &signal_XXB2_main.signal,
                     &signal_XXB2_adv.signal, nullptr, nullptr);
-PhysicalSignal XXA3(&bc.In7, &bb.Rel1, &signal_XXA3_main.signal,
+PhysicalSignal XXA3(&bc.In7, &bc.Rel1, &signal_XXA3_main.signal,
                     &signal_XXA3_adv.signal, &signal_XXB3_main.signal,
                     &signal_XXB3_adv.signal,
                     nullptr, nullptr); 
@@ -551,26 +555,27 @@ StandardMovableTurnout Turnout_W231(&brd, logic->Allocate("W231", 40),
 TurnoutWrap TW231(&Turnout_W231.b, kPointToClosed);
 
 
-StandardBlock Block_B116(&brd, &B116, logic, "B116");
+StandardBlock Block_B108(&brd, &B108, logic, "B108");
 StandardBlock Block_B129(&brd, &B129, logic, "B129");
 StandardBlock Block_A240(&brd, &A240, logic, "A240");
 StandardBlock Block_A217(&brd, &A217, logic, "A217");
 StandardBlock Block_A317(&brd, &A317, logic, "A317");
+StandardBlock Block_A200(&brd, &A200, logic, "A200");
 
 StandardBlock Block_A406(&brd, &A406, logic, "A406");
 StandardBlock Block_XXB1(&brd, &XXB1, logic, "XX.B1");
 StandardBlock Block_XXA2(&brd, &XXA2, logic, "XX.A2");
 StandardBlock Block_XXA3(&brd, &XXA3, logic, "XX.A3");
 
-#define CYCLE {&Block_B116, &Block_B129, &Block_A240, &Block_A217, \
-        &Block_A406, &Block_XXB1, &Block_B116}
+#define CYCLE {&Block_B108, &Block_B129, &Block_A240, &Block_A217, \
+        &Block_A406, &Block_XXB1, &Block_B108}
 
 bool ignored1 =
     BindSequence(Turnout_W109.b.side_thrown(),
                  {&DKW_W209.c2, &Block_A406, &TXXW4, &Block_XXB1, &TXXW1,
-                  &TW109, &Block_B116, &TW116, &Block_B129, &TW130, &Block_A240,
+                  &Block_B108, &TW109, &TW116, &Block_B129, &TW130, &Block_A240,
                   &TW231, &TW230, &Block_A217, &DKW_W216.c1, &DKW_W209.c1,
-                  &DKW_XXW2.c1, &Block_XXA2, &TXXW3},
+                  &Block_A200, &DKW_XXW2.c1, &Block_XXA2, &TXXW3},
                  Turnout_XXW4.b.side_thrown());
 
 bool ignored2 =
@@ -696,7 +701,7 @@ DefAut(signalaut, brd, {
   BlockSignal(this, &Block_XXA3);
   BlockSignal(this, &Block_A406);
   ClearUsedVariables();
-  BlockSignal(this, &Block_B116);
+  BlockSignal(this, &Block_B108);
   BlockSignal(this, &Block_B129);
 });
 
@@ -704,6 +709,8 @@ DefAut(signalaut1, brd, {
   BlockSignal(this, &Block_A217);
   BlockSignal(this, &Block_A317);
   ClearUsedVariables();
+  BlockSignal(this, &Block_A240);
+  BlockSignal(this, &Block_A200);
   ClearUsedVariables();
 });
 
