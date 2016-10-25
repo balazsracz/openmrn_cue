@@ -65,6 +65,8 @@ static const unsigned KILL_LIMIT = (KILL_CURRENT_AMPS * 0.2 / 3.3) * 0xfff;
 static const unsigned OVERCURRENT_RETRY = 3;
 static const long long OVERCURRENT_RETRY_DELAY = MSEC_TO_NSEC(300);
 
+static const uint64_t EVENT_CS_DETECTED_SHORT = UINT64_C(0x0501010114FF0000) | 0x18;
+
 template <class HW>
 class TivaShortDetectionModule;
 
@@ -201,6 +203,16 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
                          nmranet::TractionDefs::EMERGENCY_STOP_EVENT));
     node_->iface()->global_message_write_flow()->send(b);
 
+    return this->allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_short_report2));
+  }
+
+  Action send_short_report2() {
+    auto* b = this->get_allocation_result(
+        node_->iface()->global_message_write_flow());
+    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     nmranet::eventid_to_buffer(EVENT_CS_DETECTED_SHORT));
+    node_->iface()->global_message_write_flow()->send(b);
+    
     return call_immediately(STATE(start_timer));
   }
 
