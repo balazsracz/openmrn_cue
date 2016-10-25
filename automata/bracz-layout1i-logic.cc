@@ -58,6 +58,13 @@ EventBasedVariable route_lock_WW(&brd, "route_lock_WW", BRACZ_LAYOUT | 0x0014,
 EventBasedVariable route_lock_ZZ(&brd, "route_lock_ZZ", BRACZ_LAYOUT | 0x0016,
                                  BRACZ_LAYOUT | 0x0017, 7, 30, 2);
 
+
+EventBasedVariable estop_short(&brd, "estop_short", BRACZ_LAYOUT | 0x0018,
+                               BRACZ_LAYOUT | 0x0019, 7, 30, 1);
+
+EventBasedVariable estop_nopwr(&brd, "estop", 0x010000000000FFFFULL,
+                               0x010000000000FFFEULL, 7, 30, 0);
+
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 // NativeIO n8(0x28);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
@@ -723,6 +730,44 @@ DefAut(signalaut3, brd, {
   ClearUsedVariables();
 });
 
+DefAut(estopaut, brd, {
+  Def().IfState(StInit).ActState(StBase);
+
+  // Reports when a short is noticed by the CS. If th euser hit emergency off
+  // on a throttle, this will not signal.
+  auto* report = aut->ImportVariable(&estop_short);
+  // Defines whether there is power on the track.
+  auto* poweroff = aut->ImportVariable(&estop_nopwr);
+  static const StateRef StRetry(NewUserState());
+  static const StateRef StDead(NewUserState());
+
+  // If we get a short report, we wait a bit first.
+  Def()
+      .IfState(StBase)
+      .IfReg1(*report)
+      .ActState(StWaiting)
+      .ActTimer(4);
+
+  // Then try to turn power on again.
+  Def()
+      .IfState(StWaiting)
+      .IfTimerDone()
+      .ActReg0(poweroff)
+      .ActState(StRetry)
+      .ActTimer(4);
+
+  // If within another waiting period we get a second short report, we give up.
+  Def().IfState(StRetry).IfReg1(*report).ActState(StDead);
+  // If power is stable, we go to the base state.
+  Def().IfState(StRetry).IfTimerDone().ActState(StBase);
+  // When the user finally turns on power again, we should go back to base.
+  Def().IfState(StDead).IfReg0(*poweroff).ActState(StBase);
+
+  // Report is a single event in one direction -- we automatically reset the
+  // internal bit to expect another report. Yes, this generates an extra event
+  // on the bus but we don't care.
+  Def().IfReg1(*report).ActReg0(report);
+});
 
 uint64_t DccLongAddress(uint16_t addr) {
   if (addr < 128) {
