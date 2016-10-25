@@ -99,7 +99,7 @@ I2CSignal signal_B208_main(&bb, 14, "B208.main");
 I2CSignal signal_B208_adv(&bb, 15, "B208.adv");
 
 I2CSignal signal_A108_adv(&bb, 17, "A108.adv");
-I2CSignal signal_A208_adv(&bb, 18, "A208.adv");
+I2CSignal signal_A208_adv(&bb, 19, "A208.adv");
 
 I2CSignal signal_B400_main(&bb, 4, "B400.main");
 I2CSignal signal_B400_adv(&bb, 5, "B400.adv");
@@ -130,7 +130,7 @@ I2CSignal signal_A700_adv(&be, 23, "A700.adv");
 I2CSignal signal_XXA1_main(&bc, 31, "XX.A1.main");
 I2CSignal signal_XXA1_adv(&bc, 32, "XX.A1.adv");
 I2CSignal signal_XXA2_main(&bc, 44, "XX.A2.main");
-I2CSignal signal_XXA2_adv(&bc, 65, "XX.A2.adv");
+I2CSignal signal_XXA2_adv(&bc, 45, "XX.A2.adv");
 I2CSignal signal_XXA3_main(&bc, 10, "XX.A3.main");
 I2CSignal signal_XXA3_adv(&bc, 11, "XX.A3.adv");
 
