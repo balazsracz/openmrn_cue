@@ -579,6 +579,32 @@ class StandardMiddleSignal : public StraightTrackInterface {
   StandardPluginAutomata aut_signal_;
 };
 
+// Abstract class that represents a single signal on the layout. This concept
+// is used in the train schedules to mark where a train may need to stop.
+class SignalBlock {
+ public:
+  // basename of the signal location.
+  virtual const string& name() const = 0;
+
+  // This detector goes from empty to occupied when the traion arrives at the
+  // signal and needs to be stopped. Empty == 0, occupied == 1.
+  virtual const GlobalVariable &dst_detector() const = 0;
+  // This detector is occupied when a train is here and ready to leave.
+  virtual const GlobalVariable &src_detector() const = 0;
+
+  // The route variable for going beyond this signal (which sets the signal to
+  // green).
+  virtual const GlobalVariable &route_out() const = 0;
+
+  // The incoming route variable; set when a train is coming into this block
+  // (but is not yet occupying the block).
+  virtual const GlobalVariable &route_in() const = 0;
+
+  // Request to set the route_out to green.
+  virtual GlobalVariable *request_green() const = 0;
+
+};
+
 class StandardBlock : public StraightTrackInterface {
  public:
   StandardBlock(Board *brd, PhysicalSignal *physical,
@@ -605,14 +631,47 @@ class StandardBlock : public StraightTrackInterface {
     body_det_.SetOutputRouteVariable(&route_out());
   }
 
+  operator const SignalBlock&() const {
+    return fwd_signal;
+  }
+
  protected:
   AllocatorPtr alloc_;
   string base_name_;
   friend class StubBlock;
 
+  class FwdSignal : public SignalBlock {
+   public:
+    FwdSignal(StandardBlock* parent) : parent_(parent) {}
+    const string& name() const override {
+      return parent_->base_name();
+    }
+
+    const GlobalVariable &dst_detector() const override {
+      return parent_->detector();
+    }
+    const GlobalVariable &src_detector() const override {
+      return dst_detector();
+    }
+    const GlobalVariable &route_out() const override {
+      return parent_->route_out();
+    }
+    const GlobalVariable &route_in() const override {
+      return parent_->route_in();
+    }
+    GlobalVariable *request_green() const override {
+      return parent_->request_green();
+    }
+
+   private:
+    StandardBlock* parent_;
+  };
+
  public:
-  virtual CtrlTrackInterface *side_a() { return rsignal_.side_b(); }
-  virtual CtrlTrackInterface *side_b() { return signal_.side_b(); }
+  CtrlTrackInterface *side_a() override { return rsignal_.side_b(); }
+  CtrlTrackInterface *side_b() override { return signal_.side_b(); }
+
+  const FwdSignal fwd_signal{this};
 
   GlobalVariable *request_green() { return request_green_.get(); }
   GlobalVariable *rrequest_green() { return rrequest_green_.get(); }
@@ -1415,14 +1474,14 @@ class TrainSchedule : public virtual AutomataPlugin {
   // ImportLastBlock -> sets localvariables based on the current state.
   //
 
-  GlobalVariable* TEST_GetPermalocBit(StandardBlock* source) {
+  GlobalVariable* TEST_GetPermalocBit(const SignalBlock& source) {
     size_t s = location_map_.size();
     auto* r = AllocateOrGetLocationByBlock(source)->permaloc();
     HASSERT(s == location_map_.size());
     return r;
   }
 
-  GlobalVariable* TEST_GetRoutinglocBit(StandardBlock* source) {
+  GlobalVariable* TEST_GetRoutinglocBit(const SignalBlock& source) {
     size_t s = location_map_.size();
     auto* r = AllocateOrGetLocationByBlock(source)->permaloc();
     HASSERT(s == location_map_.size());
@@ -1464,13 +1523,15 @@ class TrainSchedule : public virtual AutomataPlugin {
   // requested whenever the location's routingloc==true and condition holds,
   // irrespectively of the permaloc. This means that the train will set the
   // route multiple blocks ahead.
-  void AddDirectBlockTransition(StandardBlock *source, StandardBlock *dest,
+  void AddDirectBlockTransition(const SignalBlock &source,
+                                const SignalBlock &dest,
                                 OpCallback *condition = nullptr,
                                 bool eager = false);
 
   // Simplification of an "eager block transition", meaning open track with
   // multiple blocks one behind the other.
-  void AddEagerBlockTransition(StandardBlock *source, StandardBlock *dest) {
+  void AddEagerBlockTransition(const SignalBlock &source,
+                               const SignalBlock &dest) {
     extern CallbackSpec1_0<Automata::Op*> g_not_paused_condition;
     AddDirectBlockTransition(source, dest, &g_not_paused_condition, true);
   }
@@ -1484,7 +1545,8 @@ class TrainSchedule : public virtual AutomataPlugin {
     if (ia == blocks.end()) return;
     auto ib = blocks.begin(); ++ib;
     while (ib != blocks.end()) {
-      AddDirectBlockTransition(*ia, *ib, condition, is_eager);
+      AddDirectBlockTransition((*ia)->fwd_signal, (*ib)->fwd_signal, condition,
+                               is_eager);
       ++ia;
       ++ib;
     }
@@ -1494,7 +1556,8 @@ class TrainSchedule : public virtual AutomataPlugin {
   // communicate with a flipflop automata to request permission to
   // proceed. Only when the permission si granted, will the train proceed with
   // requesting green from the control point logic.
-  void AddBlockTransitionOnPermit(StandardBlock *source, StandardBlock *dest,
+  void AddBlockTransitionOnPermit(const SignalBlock &source,
+                                  const SignalBlock &dest,
                                   RequestClientInterface *client,
                                   OpCallback *condition = nullptr);
 
@@ -1506,7 +1569,7 @@ class TrainSchedule : public virtual AutomataPlugin {
 
   // Stops the train at the destination block. This is a terminal state and
   // probably should be used for testing only.
-  void StopTrainAt(StandardBlock* dest);
+  void StopTrainAt(const SignalBlock& dest);
 
   // Before requesting green outbounds from this location, sets the particular
   // turnout to the desired state.
@@ -1537,19 +1600,19 @@ class TrainSchedule : public virtual AutomataPlugin {
  protected:
   // Allocates the permaloc bit for the current block if it does not exist
   // yet. Maps the current_block_permaloc_ bit onto it.
-  void MapCurrentBlockPermaloc(StandardBlock* source);
+  void MapCurrentBlockPermaloc(const SignalBlock& source);
 
   // Allocates the location bits for a particular block if does not exist;
   // returns the location structure. Does NOT transfer ownership.
   //
-  // @param p arbitrary key that references the location.
-  // @param name will be used to mark the location bits for debugging.
-  ScheduleLocation* AllocateOrGetLocation(const void* p, const string& name);
+  // @param name references the location. Will also be used to mark the
+  // location bits for debugging.
+  ScheduleLocation* AllocateOrGetLocation(const string& name);
 
   // Allocates the location bits for a particular block if does not exist;
   // returns the location structure. Does NOT transfer ownership.
-  ScheduleLocation* AllocateOrGetLocationByBlock(StandardBlock* block) {
-    return AllocateOrGetLocation(&block->detector(), block->name());
+  ScheduleLocation* AllocateOrGetLocationByBlock(const SignalBlock& block) {
+    return AllocateOrGetLocation(block.name());
   }
 
   OpCallback* route_lock_acquire() { return route_lock_acquire_.get(); }
@@ -1670,7 +1733,7 @@ class TrainSchedule : public virtual AutomataPlugin {
 
   // This map goes from the detector bit of the current train location (aka
   // state) to the struct that holds the allocated train location bits.
-  std::map<const void*, ScheduleLocation> location_map_;
+  std::map<string, ScheduleLocation> location_map_;
 
   // These helper bits are used by turnout setting commands.
   std::map<const void*, std::unique_ptr<GlobalVariable> > helper_bits_;

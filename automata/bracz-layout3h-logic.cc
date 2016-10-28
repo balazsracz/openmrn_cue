@@ -938,8 +938,9 @@ class LayoutSchedule : public TrainSchedule {
  protected:
   // Runs down from ZZ to WW on track 300.
   void Run360_to_301(Automata* aut) {
-    AddDirectBlockTransition(&Block_A360, &Block_A347, &g_b360_not_blocked, true);
-    AddEagerBlockTransition(&Block_A347, &Block_A321);
+    AddDirectBlockTransition(Block_A360, Block_A347,
+                             &g_b360_not_blocked, true);
+    AddEagerBlockTransition(Block_A347, Block_A321);
     SwitchTurnout(Turnout_W347.b.magnet(), false);
     AddEagerBlockSequence({&Block_A321, &Block_A301}, nullptr, true);
   }
@@ -947,36 +948,37 @@ class LayoutSchedule : public TrainSchedule {
   // In WW, runs around the loop track 11 to 14.
   void RunLoopWW(Automata* aut) {
     WithRouteLock l(this, &route_lock_WW);
-    AddDirectBlockTransition(&Block_A301, &Block_WWA11, &g_wwb2_entry_free);
+    AddDirectBlockTransition(Block_A301, Block_WWA11,
+                             &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
-    AddEagerBlockTransition(&Block_WWA11, &Block_WWB14);
+    AddEagerBlockTransition(Block_WWA11, Block_WWB14);
 
-    AddBlockTransitionOnPermit(&Block_WWB14, &Block_B421, &ww_from14,
-                               &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(Block_WWB14, Block_B421,
+                               &ww_from14, &g_wwb3_entry_free);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
   }
 
   // In WW, run through the stub track, changing direction.
   void RunStubWW(Automata* aut) {
     WithRouteLock l(this, &route_lock_WW);
-    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3,
-                               &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(Block_A301, Block_WWB3.b_,
+                               &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB3);
 
-    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2,
-                               &g_wwb2_entry_free);
+    AddBlockTransitionOnPermit(Block_A301, Block_WWB2.b_,
+                               &ww_to2, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB2);
 
-    AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
-                               &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(Block_WWB3.b_, Block_B421,
+                               &ww_from3, &g_wwb3_entry_free);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
-    AddBlockTransitionOnPermit(&Block_WWB2.b_, &Block_B421, &ww_from2,
-                               &g_wwb2_exit_free);
+    AddBlockTransitionOnPermit(Block_WWB2.b_, Block_B421,
+                               &ww_from2, &g_wwb2_exit_free);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
   }
@@ -984,65 +986,66 @@ class LayoutSchedule : public TrainSchedule {
   // In WW, run through the stub track, changing direction.
   void RunStubWWB3(Automata* aut) {
     WithRouteLock l(this, &route_lock_WW);
-    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB3.b_, &ww_to3,
-                               &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(Block_A301, Block_WWB3.b_,
+                               &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB3);
 
-    AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
-                               &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(Block_WWB3.b_, Block_B421,
+                               &ww_from3, &g_wwb3_entry_free);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
   }
 
   // In WW, run through one specific stub track, changing direction.
   void RunStubWWB2(Automata* aut) {
     WithRouteLock l(this, &route_lock_WW);
-    AddBlockTransitionOnPermit(&Block_A301, &Block_WWB2.b_, &ww_to2,
-                               &g_wwb2_entry_free);
+    AddBlockTransitionOnPermit(Block_A301, Block_WWB2.b_,
+                               &ww_to2, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCross);
     StopAndReverseAtStub(&Block_WWB2);
 
-    AddBlockTransitionOnPermit(&Block_WWB2.b_, &Block_B421, &ww_from2,
-                               &g_wwb2_exit_free);
+    AddBlockTransitionOnPermit(Block_WWB2.b_, Block_B421,
+                               &ww_from2, &g_wwb2_exit_free);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCurved);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
 
-    AddBlockTransitionOnPermit(&Block_WWB3.b_, &Block_B421, &ww_from3,
-                               &g_wwb3_entry_free);
+    AddBlockTransitionOnPermit(Block_WWB3.b_, Block_B421,
+                               &ww_from3, &g_wwb3_entry_free);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCurved);
   }
 
   // Runs up from WW to ZZ on track 400.
   void Run421_to_475(Automata* aut) {
     ClearAutomataVariables(aut);
-    AddEagerBlockTransition(&Block_B421, &Block_B447);
-    AddEagerBlockTransition(&Block_B447, &Block_B460);
+    AddEagerBlockTransition(Block_B421, Block_B447);
+    AddEagerBlockTransition(Block_B447, Block_B460);
     SwitchTurnout(Turnout_W447.b.magnet(), false);
-    AddDirectBlockTransition(&Block_B460, &Block_B475, &g_b460_not_blocked, true);
+    AddDirectBlockTransition(Block_B460, Block_B475,
+                             &g_b460_not_blocked, true);
     ClearAutomataVariables(aut);
   }
 
   // Runs in ZZ into the stub track and reverses direction.
   void RunStubZZ(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZZ);
-    AddDirectBlockTransition(&Block_B475, &Block_ZZA2.b_, &g_zzw3_free, true);
+    AddDirectBlockTransition(Block_B475, Block_ZZA2.b_, &g_zzw3_free, true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
     StopAndReverseAtStub(&Block_ZZA2);
 
-    AddDirectBlockTransition(&Block_ZZA2.b_, &Block_A360, &g_zzw3_free);
+    AddDirectBlockTransition(Block_ZZA2.b_, Block_A360, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
   }
 
   void RunStub2ZZ(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZZ);
-    AddDirectBlockTransition(&Block_B475, &Block_ZZA3.b_, &g_zzw1_free, true);
+    AddDirectBlockTransition(Block_B475, Block_ZZA3.b_, &g_zzw1_free, true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), false);
     StopAndReverseAtStub(&Block_ZZA3);
 
-    AddDirectBlockTransition(&Block_ZZA3.b_, &Block_A347, &g_zz2_out_free);
+    AddDirectBlockTransition(Block_ZZA3.b_, Block_A347, &g_zz2_out_free);
     SwitchTurnout(Turnout_W459.b.magnet(), true);
     auto* stop_b460 = aut->ImportVariable(g_stop_b460.get());
     auto* stop_b360 = aut->ImportVariable(g_stop_b360.get());
@@ -1071,13 +1074,13 @@ class LayoutSchedule : public TrainSchedule {
     {
       WithRouteLock l(this, &route_lock_ZZ);
       // in
-      AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback,
+      AddBlockTransitionOnPermit(Block_B475, Block_YYA3, &frc_toback,
                                  &g_zzw3_free);
       SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
       SwitchTurnout(DKW_ZZW3.b.magnet(), true);
       SwitchTurnout(Turnout_ZZW5.b.magnet(), true);
       SwitchTurnout(Turnout_W481.b.magnet(), false);
-      AddBlockTransitionOnPermit(&Block_B475, &Block_XXB2, &frc_tofront,
+      AddBlockTransitionOnPermit(Block_B475, Block_XXB2, &frc_tofront,
                                  &g_front_front_in_condition);
       SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
       SwitchTurnout(DKW_ZZW3.b.magnet(), true);
@@ -1087,37 +1090,37 @@ class LayoutSchedule : public TrainSchedule {
       SwitchTurnout(Turnout_XXW2.b.magnet(), true);
     }
 
-    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23);
+    AddEagerBlockTransition(Block_YYA3, Block_YYC23);
 
     // back->front
-    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB3, &lpc_tofront3,
+    AddBlockTransitionOnPermit(Block_YYC23, Block_XXB3, &lpc_tofront3,
                                &g_loop_condition);
     SwitchTurnout(Turnout_XXW8.b.magnet(), true);
     SwitchTurnout(Turnout_XXW7.b.magnet(), false);
-    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
+    AddBlockTransitionOnPermit(Block_YYC23, Block_XXB1, &lpc_tofront1,
                                &g_loop_condition);
     SwitchTurnout(Turnout_XXW8.b.magnet(), false);
 
     // front->back
-    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1,
+    AddBlockTransitionOnPermit(Block_XXB2, Block_YYB2, &lpc_toback1,
                                &g_loop_condition);
     SwitchTurnout(Turnout_YYW6.b.magnet(), true);
-    AddBlockTransitionOnPermit(&Block_XXB2, &Block_YYB2, &lpc_toback1x,
+    AddBlockTransitionOnPermit(Block_XXB2, Block_YYB2, &lpc_toback1x,
                                &g_loop_condition);
     SwitchTurnout(Turnout_YYW6.b.magnet(), true);
 
     {
       WithRouteLock l(this, &route_lock_ZZ);
       // out
-      AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1,
+      AddBlockTransitionOnPermit(Block_XXB1, Block_A360, &frc_fromfront1,
                                  &g_front_front_out_condition);
       SwitchTurnout(Turnout_W380.b.magnet(), true);
       SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
-      AddBlockTransitionOnPermit(&Block_XXB3, &Block_A360, &frc_fromfront3,
+      AddBlockTransitionOnPermit(Block_XXB3, Block_A360, &frc_fromfront3,
                                  &g_front_front_out_condition);
       SwitchTurnout(Turnout_W380.b.magnet(), true);
       SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
-      AddBlockTransitionOnPermit(&Block_YYB2, &Block_A360, &frc_fromback,
+      AddBlockTransitionOnPermit(Block_YYB2, Block_A360, &frc_fromback,
                                  &g_front_back_out_condition);
       SwitchTurnout(Turnout_W381.b.magnet(), true);
       SwitchTurnout(Turnout_ZZW6.b.magnet(), false);
@@ -1129,7 +1132,7 @@ class LayoutSchedule : public TrainSchedule {
     {
       WithRouteLock l(this, &route_lock_ZZ);
       // in
-      AddBlockTransitionOnPermit(&Block_B475, &Block_YYA3, &frc_toback,
+      AddBlockTransitionOnPermit(Block_B475, Block_YYA3, &frc_toback,
                                  &g_zzw3_free);
       SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
       SwitchTurnout(DKW_ZZW3.b.magnet(), true);
@@ -1137,17 +1140,17 @@ class LayoutSchedule : public TrainSchedule {
       SwitchTurnout(Turnout_W481.b.magnet(), false);
     }
 
-    AddEagerBlockTransition(&Block_YYA3, &Block_YYC23);
+    AddEagerBlockTransition(Block_YYA3, Block_YYC23);
 
     // back->front
-    AddBlockTransitionOnPermit(&Block_YYC23, &Block_XXB1, &lpc_tofront1,
+    AddBlockTransitionOnPermit(Block_YYC23, Block_XXB1, &lpc_tofront1,
                                &g_loop_condition);
     SwitchTurnout(Turnout_XXW8.b.magnet(), false);
 
     {
       WithRouteLock l(this, &route_lock_ZZ);
       // out
-      AddBlockTransitionOnPermit(&Block_XXB1, &Block_A360, &frc_fromfront1,
+      AddBlockTransitionOnPermit(Block_XXB1, Block_A360, &frc_fromfront1,
                                  &g_front_front_out_condition);
       SwitchTurnout(Turnout_W380.b.magnet(), true);
       SwitchTurnout(Turnout_ZZW6.b.magnet(), false);

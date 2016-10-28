@@ -805,42 +805,42 @@ class LayoutSchedule : public TrainSchedule {
 
  protected:
   void RunCycle(Automata* aut) {
-    AddEagerBlockTransition(&Block_B108, &Block_B129);
-    AddEagerBlockTransition(&Block_B129, &Block_A240);
+    AddEagerBlockTransition(Block_B108, Block_B129);
+    AddEagerBlockTransition(Block_B129, Block_A240);
 
 
-    AddBlockTransitionOnPermit(&Block_A240, &Block_A217, &l240_to217);
+    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217);
     SwitchTurnout(Turnout_W231.b.magnet(), false);
 
-    AddBlockTransitionOnPermit(&Block_A240, &Block_A317, &l240_to317);
+    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317);
     SwitchTurnout(Turnout_W231.b.magnet(), true);
 
     {
       WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(&Block_A217, &Block_A406, &w217_from217);
+      AddBlockTransitionOnPermit(Block_A217, Block_A406, &w217_from217);
       SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
 
-      AddBlockTransitionOnPermit(&Block_A317, &Block_A406, &w217_from317);
+      AddBlockTransitionOnPermit(Block_A317, Block_A406, &w217_from317);
       SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
     }
     
-    AddEagerBlockTransition(&Block_A406, &Block_XXB1);
-    AddEagerBlockTransition(&Block_XXB1, &Block_B108);
+    AddEagerBlockTransition(Block_A406, Block_XXB1);
+    AddEagerBlockTransition(Block_XXB1, Block_B108);
   }
 
   void RunAltCycle(Automata* aut) {
-    AddEagerBlockTransition(&Block_B108, &Block_B129);
-    AddEagerBlockTransition(&Block_B129, &Block_A240);
-    AddEagerBlockTransition(&Block_A240, &Block_A217);
+    AddEagerBlockTransition(Block_B108, Block_B129);
+    AddEagerBlockTransition(Block_B129, Block_A240);
+    AddEagerBlockTransition(Block_A240, Block_A217);
     SwitchTurnout(Turnout_W231.b.magnet(), false);
     {
       WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(&Block_A217, &Block_A406, &w217_from217);
+      AddBlockTransitionOnPermit(Block_A217, Block_A406, &w217_from217);
       SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
     }
     
-    AddEagerBlockTransition(&Block_A406, &Block_XXB1);
-    AddEagerBlockTransition(&Block_XXB1, &Block_B108);
+    AddEagerBlockTransition(Block_A406, Block_XXB1);
+    AddEagerBlockTransition(Block_XXB1, Block_B108);
   }
 
   

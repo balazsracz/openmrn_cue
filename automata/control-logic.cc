@@ -1095,12 +1095,13 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
 }
 
 void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
+  const SignalBlock& in_signal = dest->b_.fwd_signal;
   // This will set the need_reverse to 1 just before the move.
   auto* need_reverse = aut->ImportVariable(need_reverse_.get());
-  MapCurrentBlockPermaloc(&dest->b_);
+  MapCurrentBlockPermaloc(in_signal);
 
   Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(dest->detector(),
+      .ActImportVariable(in_signal.dst_detector(),
                          current_block_detector_);
 
   Def()
@@ -1161,7 +1162,7 @@ void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
       .ActState(StWaiting);
 }
 
-void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
+void TrainSchedule::MapCurrentBlockPermaloc(const SignalBlock& source) {
   ScheduleLocation* loc = AllocateOrGetLocationByBlock(source);
   Def().ActImportVariable(*loc->permaloc(), current_block_permaloc_);
   Def().ActImportVariable(*loc->routingloc(), current_block_routingloc_);
@@ -1169,8 +1170,8 @@ void TrainSchedule::MapCurrentBlockPermaloc(StandardBlock* source) {
 }
 
 TrainSchedule::ScheduleLocation* TrainSchedule::AllocateOrGetLocation(
-    const void* ptr, const string& name) {
-  auto& loc = location_map_[ptr];
+    const string& name) {
+  auto& loc = location_map_[name];
   if (!loc.permaloc_bit) {
     loc.permaloc_bit.reset(permanent_alloc_->Allocate("loc." + name));
   }
@@ -1189,15 +1190,15 @@ GlobalVariable* TrainSchedule::GetHelperBit(
   return loc.get();
 }
 
-void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
-                                             StandardBlock* dest,
+void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
+                                             const SignalBlock& dest,
                                              OpCallback* condition,
                                              bool eager) {
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(source->route_out(),
+      .ActImportVariable(source.route_out(),
                          current_block_route_out_)
-      .ActImportVariable(source->detector(),
+      .ActImportVariable(source.src_detector(),
                          current_block_detector_);
   if (!eager) {
     aut->DefCopy(current_block_permaloc_, &current_block_routingloc_);
@@ -1211,7 +1212,7 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
     // routes.
     Def()
         .IfReg1(current_block_routingloc_)
-        .ActImportVariable(source->route_in(), next_block_route_in_);
+        .ActImportVariable(source.route_in(), next_block_route_in_);
     Def()
         .IfState(StWaiting)
         .IfReg1(current_block_routingloc_)
@@ -1234,21 +1235,21 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
         .ActReg0(&current_block_permaloc_)
         .ActReg1(&next_block_permaloc_)
         // This will make sure not to stop the train here.
-        .ActImportVariable(dest->detector(),
+        .ActImportVariable(dest.dst_detector(),
                            current_block_detector_);
   }
 
   Def().IfReg1(current_block_routingloc_)
-      .ActImportVariable(*source->request_green(),
+      .ActImportVariable(*source.request_green(),
                          current_block_request_green_)
-      .ActImportVariable(source->route_out(),
+      .ActImportVariable(source.route_out(),
                          current_block_route_out_);
   Def()
       .IfReg1(current_block_routingloc_)
       .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->routingloc(),
                          next_block_routingloc_)
-      .ActImportVariable(dest->detector(), next_block_detector_)
-      .ActImportVariable(dest->route_in(), next_block_route_in_);
+      .ActImportVariable(dest.dst_detector(), next_block_detector_)
+      .ActImportVariable(dest.route_in(), next_block_route_in_);
 
   Def().IfState(StWaiting)
       .IfReg1(current_block_routingloc_)
@@ -1294,19 +1295,19 @@ void TrainSchedule::AddDirectBlockTransition(StandardBlock* source,
       .ActState(StWaiting);
 }
 
-void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
-                                               StandardBlock* dest,
+void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
+                                               const SignalBlock& dest,
                                                RequestClientInterface* client,
                                                OpCallback* condition) {
   MapCurrentBlockPermaloc(source);
   Def().ActImportVariable(
       *GetHelperBit(client->request(),
-                    "transition_" + source->name() + "_" + dest->name()),
+                    "transition_" + source.name() + "_" + dest.name()),
       current_direction_);
   current_location_->respect_direction_ = true;
 
   Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(source->route_out(),
+      .ActImportVariable(source.route_out(),
                          current_block_route_out_);
   Def()
       .IfReg1(current_block_permaloc_)
@@ -1319,21 +1320,21 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
   aut->DefCopy(current_block_permaloc_, &current_block_routingloc_);
 
   Def().IfReg1(current_block_routingloc_)
-      .ActImportVariable(*source->request_green(),
+      .ActImportVariable(*source.request_green(),
                          current_block_request_green_)
-      .ActImportVariable(source->route_out(),
+      .ActImportVariable(source.route_out(),
                          current_block_route_out_);
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->permaloc(),
                          next_block_permaloc_)
-      .ActImportVariable(source->detector(),
+      .ActImportVariable(source.src_detector(),
                          current_block_detector_);
   Def()
       .IfReg1(current_block_routingloc_)
-      .ActImportVariable(dest->detector(), next_block_detector_)
+      .ActImportVariable(dest.dst_detector(), next_block_detector_)
       .ActImportVariable(*AllocateOrGetLocationByBlock(dest)->routingloc(),
                          next_block_routingloc_)
-      .ActImportVariable(dest->route_in(), next_block_route_in_);
+      .ActImportVariable(dest.route_in(), next_block_route_in_);
 
   Def().IfState(StWaiting)
       .IfReg1(current_block_routingloc_)
@@ -1401,10 +1402,10 @@ void TrainSchedule::AddBlockTransitionOnPermit(StandardBlock* source,
       .ActState(StWaiting);
 }
 
-void TrainSchedule::StopTrainAt(StandardBlock* dest) {
+void TrainSchedule::StopTrainAt(const SignalBlock& dest) {
   MapCurrentBlockPermaloc(dest);
   Def().IfReg1(current_block_permaloc_)
-      .ActImportVariable(dest->detector(),
+      .ActImportVariable(dest.dst_detector(),
                          current_block_detector_);
   // We never transition to RequestGreen, thus we don't need all the other
   // import variables either.
