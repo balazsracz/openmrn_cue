@@ -1094,8 +1094,7 @@ void TrainSchedule::SendTrainCommands(Automata *aut) {
       .ActReg0(is_moving);
 }
 
-void TrainSchedule::StopAndReverseAtStub(StubBlock* dest) {
-  const SignalBlock& in_signal = dest->b_.fwd_signal;
+void TrainSchedule::StopAndReverseAtStub(const SignalBlock& in_signal) {
   // This will set the need_reverse to 1 just before the move.
   auto* need_reverse = aut->ImportVariable(need_reverse_.get());
   MapCurrentBlockPermaloc(in_signal);

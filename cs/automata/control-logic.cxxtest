@@ -2463,6 +2463,61 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
   }
 }
 
+TEST_F(SampleLayoutLogicTrainTest, DISABLED_RunCirclesReversedAtTopB) {
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
+            const AllocatorPtr& alloc)
+        : TrainSchedule("mytrain", b,
+                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 16)),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      AddEagerBlockSequence({t_->TopA.b(), t_->TopB.b()});
+      StopAndReverseAtStub(*t_->TopB.b());
+      AddEagerBlockTransition(t_->TopB.b()->rev_signal, *t_->BotB.b());
+      AddEagerBlockSequence(
+          {t_->BotB.b(), t_->RLeft.b(), t_->TopA.b()});
+    }
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } my_train(this, &brd, alloc());
+  SetupRunner(&brd);
+  Run(20);
+  vector<TestBlock*> blocks = {&TopB, &BotB, &RLeft, &TopA, &TopB};
+  TopB.inverted_detector()->Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopB.b()), true);
+
+  for (int loop = 0; loop < 5; ++loop) {
+    for (unsigned i = 0; i < blocks.size() - 1; ++i) {
+      TestBlock* cblock = blocks[i];
+      TestBlock* nblock = blocks[i + 1];
+      Run(20);
+      if (i == 0) {
+        EXPECT_TRUE(QueryVar(cblock->b()->rev_route_out()));
+        EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
+      } else {
+        EXPECT_FALSE(QueryVar(cblock->b()->rev_route_out()));
+        EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
+      }
+      EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+      cblock->inverted_detector()->Set(true);
+      Run(20);
+      EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
+      EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
+      EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+
+      EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*nblock->b())));
+      EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*cblock->b())));
+
+      nblock->inverted_detector()->Set(false);
+      Run(20);
+    }
+  }
+}
+
 TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   debug_variables = 0;
   class MyTrain : public TrainSchedule {
@@ -2485,7 +2540,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
       AddBlockTransitionOnPermit(*t_->TopB.b(), *t_->RStub.b(),
                                  &gate_stub_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
-      StopAndReverseAtStub(&t_->RStub.b_);
+      StopAndReverseAtStub(t_->RStub.b_);
 
       AddEagerBlockTransition(*t_->RRight.b(), *t_->BotA.b());
       AddDirectBlockTransition(*t_->RStub.b(), *t_->BotA.b(), nullptr, false);

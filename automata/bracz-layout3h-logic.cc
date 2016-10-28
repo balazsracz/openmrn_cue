@@ -966,13 +966,13 @@ class LayoutSchedule : public TrainSchedule {
                                &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
-    StopAndReverseAtStub(&Block_WWB3);
+    StopAndReverseAtStub(Block_WWB3);
 
     AddBlockTransitionOnPermit(Block_A301, Block_WWB2.b_,
                                &ww_to2, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCross);
-    StopAndReverseAtStub(&Block_WWB2);
+    StopAndReverseAtStub(Block_WWB2);
 
     AddBlockTransitionOnPermit(Block_WWB3.b_, Block_B421,
                                &ww_from3, &g_wwb3_entry_free);
@@ -990,7 +990,7 @@ class LayoutSchedule : public TrainSchedule {
                                &ww_to3, &g_wwb3_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), false);
     SwitchTurnout(DKW_WWW3.b.magnet(), DKW::kDKWStateCross);
-    StopAndReverseAtStub(&Block_WWB3);
+    StopAndReverseAtStub(Block_WWB3);
 
     AddBlockTransitionOnPermit(Block_WWB3.b_, Block_B421,
                                &ww_from3, &g_wwb3_entry_free);
@@ -1004,7 +1004,7 @@ class LayoutSchedule : public TrainSchedule {
                                &ww_to2, &g_wwb2_entry_free);
     SwitchTurnout(Turnout_WWW1.b.magnet(), true);
     SwitchTurnout(DKW_WWW4.b.magnet(), DKW::kDKWStateCross);
-    StopAndReverseAtStub(&Block_WWB2);
+    StopAndReverseAtStub(Block_WWB2);
 
     AddBlockTransitionOnPermit(Block_WWB2.b_, Block_B421,
                                &ww_from2, &g_wwb2_exit_free);
@@ -1033,7 +1033,7 @@ class LayoutSchedule : public TrainSchedule {
     AddDirectBlockTransition(Block_B475, Block_ZZA2.b_, &g_zzw3_free, true);
     SwitchTurnout(DKW_ZZW3.b.magnet(), false);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), true);
-    StopAndReverseAtStub(&Block_ZZA2);
+    StopAndReverseAtStub(Block_ZZA2);
 
     AddDirectBlockTransition(Block_ZZA2.b_, Block_A360, &g_zzw3_free);
     SwitchTurnout(DKW_ZZW3.b.magnet(), true);
@@ -1043,7 +1043,7 @@ class LayoutSchedule : public TrainSchedule {
     WithRouteLock l(this, &route_lock_ZZ);
     AddDirectBlockTransition(Block_B475, Block_ZZA3.b_, &g_zzw1_free, true);
     SwitchTurnout(Turnout_ZZW1.b.magnet(), false);
-    StopAndReverseAtStub(&Block_ZZA3);
+    StopAndReverseAtStub(Block_ZZA3);
 
     AddDirectBlockTransition(Block_ZZA3.b_, Block_A347, &g_zz2_out_free);
     SwitchTurnout(Turnout_W459.b.magnet(), true);

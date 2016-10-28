@@ -667,11 +667,39 @@ class StandardBlock : public StraightTrackInterface {
     StandardBlock* parent_;
   };
 
+  class RevSignal : public SignalBlock {
+   public:
+    RevSignal(StandardBlock* parent) : parent_(parent) {}
+    const string& name() const override {
+      return parent_->base_name();
+    }
+
+    const GlobalVariable &dst_detector() const override {
+      return parent_->detector();
+    }
+    const GlobalVariable &src_detector() const override {
+      return dst_detector();
+    }
+    const GlobalVariable &route_out() const override {
+      return parent_->rev_route_out();
+    }
+    const GlobalVariable &route_in() const override {
+      return parent_->route_in();
+    }
+    GlobalVariable *request_green() const override {
+      return parent_->rrequest_green();
+    }
+
+   private:
+    StandardBlock* parent_;
+  };
+
  public:
   CtrlTrackInterface *side_a() override { return rsignal_.side_b(); }
   CtrlTrackInterface *side_b() override { return signal_.side_b(); }
 
   const FwdSignal fwd_signal{this};
+  const RevSignal rev_signal{this};
 
   GlobalVariable *request_green() { return request_green_.get(); }
   GlobalVariable *rrequest_green() { return rrequest_green_.get(); }
@@ -1227,6 +1255,10 @@ class StubBlock {
                  fake_turnout_.side_closed());
   }
 
+  operator const SignalBlock&() const {
+    return b_.fwd_signal;
+  }
+
  public:
   virtual CtrlTrackInterface *entry() { return fake_turnout_.side_points(); }
 
@@ -1565,7 +1597,7 @@ class TrainSchedule : public virtual AutomataPlugin {
   // should be called after the necessary turnout commands; nothing related to
   // the previous block should be left around anymore. This must also appear
   // before any state transitions outwards of the destination block.
-  void StopAndReverseAtStub(StubBlock* dest);
+  void StopAndReverseAtStub(const SignalBlock& dest);
 
   // Stops the train at the destination block. This is a terminal state and
   // probably should be used for testing only.
