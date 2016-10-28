@@ -4,6 +4,7 @@
 #ifndef _AUTOMATA_CONTROL_LOGIC_HXX_
 #define _AUTOMATA_CONTROL_LOGIC_HXX_
 
+#include <vector>
 #include <map>
 #include <memory>
 #include <algorithm>
@@ -56,6 +57,8 @@ struct PhysicalSignal {
 };
 
 typedef Callback1<Automata *> AutomataCallback;
+
+void ClearAutomataVariables(Automata *aut);
 
 // This class allows registering multiple feature callbacks that will all be
 // applied to an automata in one go, in user-specified ordering.
@@ -410,12 +413,17 @@ class StraightTrackWithRawDetector : public StraightTrackWithDetector {
                                const GlobalVariable *raw_detector,
                                int min_occupied_time = 0)
       : StraightTrackWithDetector(
-            allocator->Forward(1),
+            allocator->Forward(2),
             nullptr),
         raw_detector_(raw_detector),
-        debounce_temp_var_(allocator->Allocate("tmp_debounce")) {
+        debounce_temp_var_(allocator->Allocate("tmp_debounce")),
+        output_route_temp_var_(allocator->Allocate("tmp_outputroute")) {
     detector_ = simulated_occupancy_.get();
     RemoveAutomataPlugins(20);
+    AddAutomataPlugin(
+        18,
+        NewCallbackPtr(this, &StraightTrackWithRawDetector::VirtualRouteOut));
+    AddAutomataPlugin(19, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(
         20, NewCallbackPtr(this,
                            &StraightTrackWithRawDetector::RawDetectorOccupancy,
@@ -426,16 +434,20 @@ class StraightTrackWithRawDetector : public StraightTrackWithDetector {
   // logical block before rendering the automata. This is typically the signal
   // piece's route_ab. As a result the occupancy will never go low if there was
   // an input route unless output_route is set.
-  void SetOutputRouteVariable(const GlobalVariable* output_route) {
-    output_route_ = output_route;
+  void SetOutputRouteVariable(
+      std::initializer_list<const GlobalVariable *> output_routes) {
+    output_routes_ = output_routes;
   }
   
  protected:
+  // Computes the output_route_temp_var value.
+  void VirtualRouteOut(Automata *aut);
   void RawDetectorOccupancy(int min_occupied_time, Automata *aut);
 
   const GlobalVariable *raw_detector_;
-  const GlobalVariable *output_route_{nullptr};
+  std::vector<const GlobalVariable *> output_routes_;
   std::unique_ptr<GlobalVariable> debounce_temp_var_;
+  std::unique_ptr<GlobalVariable> output_route_temp_var_;
 };
 
 class StraightTrackShort : public StraightTrack {
@@ -609,7 +621,7 @@ class StandardBlock : public StraightTrackInterface {
  public:
   StandardBlock(Board *brd, PhysicalSignal *physical,
                 const AllocatorPtr &parent_alloc, const string &base_name,
-                int num_to_allocate = 104)
+                int num_to_allocate = 112)
       : alloc_(parent_alloc->Allocate(base_name, num_to_allocate, 8)),
         base_name_(base_name),
         request_green_(alloc_->Allocate("request_green")),
@@ -617,7 +629,7 @@ class StandardBlock : public StraightTrackInterface {
         rrequest_green_(alloc_->Allocate("rev_request_green")),
         rsignal_no_stop_(alloc_->Allocate("rsignal_no_stop")),
         body_(alloc_->Allocate("body", 24, 8)),
-        body_det_(alloc_->Allocate("body_det", 24, 8), physical->sensor_raw),
+        body_det_(alloc_->Allocate("body_det", 32, 8), physical->sensor_raw),
         signal_(alloc_->Allocate("signal", 24, 8), request_green_.get(),
                 physical->signal_raw, signal_no_stop_.get()),
         rsignal_(alloc_->Allocate("rsignal", 24, 8), rrequest_green_.get(),
@@ -628,7 +640,7 @@ class StandardBlock : public StraightTrackInterface {
         aut_signal_(name() + ".signal", brd, &signal_),
         aut_rsignal_(name() + ".rsignal", brd, &rsignal_) {
     BindSequence(rsignal_.side_a(), {&body_, &body_det_, &signal_});
-    body_det_.SetOutputRouteVariable(&route_out());
+    body_det_.SetOutputRouteVariable({&route_out(), &rev_route_out()});
   }
 
   operator const SignalBlock&() const {
@@ -804,8 +816,6 @@ constexpr TurnoutWrap::PointToClosed kPointToClosed;
 constexpr TurnoutWrap::ClosedToPoint kClosedToPoint;
 constexpr TurnoutWrap::PointToThrown kPointToThrown;
 constexpr TurnoutWrap::ThrownToPoint kThrownToPoint;
-
-void ClearAutomataVariables(Automata *aut);
 
 class TurnoutBase : public TurnoutInterface,
                     private OccupancyLookupInterface,
@@ -1244,10 +1254,10 @@ class StubBlock {
   StubBlock(Board *brd, PhysicalSignal *physical,
             GlobalVariable *entry_sensor_raw,
             const AllocatorPtr& parent_alloc, const string &base_name,
-            int num_to_allocate = 184)
+            int num_to_allocate = 192)
       : b_(brd, physical, parent_alloc, base_name, num_to_allocate),
         fake_turnout_(FixedTurnout::TURNOUT_THROWN, b_.alloc_->Allocate("fake_turnout", 40, 8)),
-        entry_det_(b_.alloc_->Allocate("entry_det", 24, 8), entry_sensor_raw),
+        entry_det_(b_.alloc_->Allocate("entry_det", 32, 8), entry_sensor_raw),
         aut_fake_turnout_(name() + ".fake_turnout", brd, &fake_turnout_),
         aut_entry_det_(name() + ".entry_det", brd, &entry_det_) {
     BindSequence(fake_turnout_.side_thrown(),

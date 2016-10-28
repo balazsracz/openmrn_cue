@@ -252,21 +252,44 @@ void SignalPiece::SetSignalState(Automata* aut) {
 }
 
 void SignalPiece::SignalOccupancy(Automata* aut) {
-  const LocalVariable& prev_detector =
-      aut->ImportVariable(*side_a()->binding()->LookupNextDetector());
-  LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
-  LocalVariable* route = aut->ImportVariable(route_set_ab_.get());
-  LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
-  LocalVariable* signal = signal_ ? aut->ImportVariable(signal_) : nullptr;
-  Def().IfReg1(prev_detector).ActReg1(occ);
-  Def()
-      .IfReg0(prev_detector)
-      .IfReg1(*occ)
-      .MaybeActReg(signal_, signal, 0)
-      .ActReg0(route)
-      .ActReg0(route2)
-      .ActReg0(occ);
+  if (side_a()->binding()->LookupNextDetector() !=
+      side_a()->binding()->LookupFarDetector()) {
+    // We have a detector right next to us.
+    const LocalVariable& prev_detector =
+        aut->ImportVariable(*side_a()->binding()->LookupNextDetector());
+    LocalVariable* occ = aut->ImportVariable(simulated_occupancy_.get());
+    LocalVariable* route = aut->ImportVariable(route_set_ab_.get());
+    LocalVariable* route2 = aut->ImportVariable(route_set_ba_.get());
+    LocalVariable* signal = signal_ ? aut->ImportVariable(signal_) : nullptr;
+    Def().IfReg1(prev_detector).ActReg1(occ);
+    Def()
+        .IfReg0(prev_detector)
+        .IfReg1(*occ)
+        .MaybeActReg(signal_, signal, 0)
+        .ActReg0(route)
+        .ActReg0(route2)
+        .ActReg0(occ);
+  } else {
+    ClearAutomataVariables(aut);
+    // This seems to be a reverse signal in a standard block. The simulated
+    // occupancy algorithm of the straight track has to be used.
+    StraightTrack::SimulateAllOccupancy(aut);
+    ClearAutomataVariables(aut);
+  }
 }
+
+void StraightTrackWithRawDetector::VirtualRouteOut(Automata *aut) {
+  auto* ortmp = aut->ImportVariable(output_route_temp_var_.get());
+  if (output_routes_.empty()) {
+    Def().ActReg1(ortmp);
+    return;
+  }
+  Def().Rept(&Automata::Op::IfReg0, output_routes_).ActReg0(ortmp);
+  for (auto* v : output_routes_) {
+    Def().IfReg1(aut->ImportVariable(*v)).ActReg1(ortmp);
+  }
+}
+
 
 void StraightTrackWithRawDetector::RawDetectorOccupancy(int min_occupied_time,
                                                         Automata* aut) {
@@ -326,14 +349,13 @@ void StraightTrackWithRawDetector::RawDetectorOccupancy(int min_occupied_time,
         .IfReg0(*route_ab)
         .ActTimer(kTimeTakenToGoFree)
         .ActReg1(last);
-    std::vector<const GlobalVariable*> v{output_route_};
     // if there was an incoming route and we have the outgoing route var, we
     // won't start the timer unless there is an outgoing route set too.
     Def()
         .IfReg1(raw)
         .IfReg0(*last)
         .IfReg1(*route_ab)
-        .Rept(&Automata::Op::IfReg1, v)
+        .IfReg1(aut->ImportVariable(*output_route_temp_var_))
         .ActTimer(kTimeTakenToGoFree)
         .ActReg1(last);
   }
