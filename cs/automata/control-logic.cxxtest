@@ -2064,11 +2064,11 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
                              current_block_route_out_)
           .ActImportVariable(second.b()->detector(),
                              next_block_detector_);
-      MapCurrentBlockPermaloc(first.b());
+      MapCurrentBlockPermaloc(*first.b());
       Def()
           .ActImportVariable(second.b()->detector(), current_block_detector_)
           .ActImportVariable(
-              *AllocateOrGetLocationByBlock(second.b())->permaloc(),
+              *AllocateOrGetLocationByBlock(*second.b())->permaloc(),
                next_block_permaloc_);
 
       Def().IfState(StRequestTransition).ActState(StTransitionDone);
@@ -2182,9 +2182,9 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddEagerBlockTransition(t_->TopA.b(), t_->TopB.b());
+      AddEagerBlockTransition(*t_->TopA.b(), *t_->TopB.b());
       //AddDirectBlockTransition(t_->TopA.b(), t_->TopB.b(), nullptr, false);
-      StopTrainAt(t_->TopB.b());
+      StopTrainAt(*t_->TopB.b());
     }
    private:
     SampleLayoutLogicTrainTest* t_;
@@ -2204,7 +2204,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   Run(20);
 
   LOG(INFO, "Setting train to the source location.");
-  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopA.b()), true);
   wait();
   Run(20);
   wait();
@@ -2220,8 +2220,8 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
   EXPECT_EQ(0, trainImpl_.get_speed().mph());
 
   // Some expectations on where the train actually is (block TopB).
-  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(TopA.b())));
-  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(TopB.b())));
+  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*TopA.b())));
+  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*TopB.b())));
   EXPECT_FALSE(QueryVar(TopA.b()->route_out()));
   EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
   EXPECT_TRUE(QueryVar(TopB.b()->route_in()));
@@ -2255,7 +2255,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
   Run(20);
   vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
   TopA.inverted_detector()->Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopA.b()), true);
   
   for (int i = 0; i < 37; ++i) {
     LOG(INFO, "sequence %d", i);
@@ -2270,8 +2270,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
     EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
     EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*cblock->b())));
 
     nblock->inverted_detector()->Set(false);
     Run(20);
@@ -2308,7 +2308,7 @@ TEST_F(SampleLayoutLogicTrainTest, SpeedSetting) {
   Run(20);
   vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
   TopA.inverted_detector()->Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopA.b()), true);
 
   vector<uint8_t> speeds = {30, 50, 19, 20};
 
@@ -2327,8 +2327,8 @@ TEST_F(SampleLayoutLogicTrainTest, SpeedSetting) {
 
     EXPECT_EQ(speed, (int)(trainImpl_.get_speed().mph() + 0.5));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*cblock->b())));
 
     nblock->inverted_detector()->Set(false);
     speed = speeds[(i+1) % speeds.size()];
@@ -2350,8 +2350,8 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
           t_(t) {}
 
     void RunTransition(Automata* aut) OVERRIDE {
-      AddBlockTransitionOnPermit(t_->TopA.b(), t_->TopB.b(), &gate_);
-      StopTrainAt(t_->TopB.b());
+      AddBlockTransitionOnPermit(*t_->TopA.b(), *t_->TopB.b(), &gate_);
+      StopTrainAt(*t_->TopB.b());
     }
 
     RequestClientInterface gate_;
@@ -2373,7 +2373,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   EXPECT_FALSE(QueryVar(*my_train.gate_.request()));
 
   LOG(INFO, "Setting train to the source location.");
-  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopA.b()), true);
   wait();
   Run(20);
   wait();
@@ -2409,8 +2409,8 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
   EXPECT_EQ(0, trainImpl_.get_speed().mph());
 
   // Some expectations on where the train actually is (block TopB).
-  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(TopA.b())));
-  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(TopB.b())));
+  EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*TopA.b())));
+  EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*TopB.b())));
   EXPECT_FALSE(QueryVar(TopA.b()->route_out()));
   EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
   EXPECT_TRUE(QueryVar(TopB.b()->route_in()));
@@ -2430,7 +2430,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
 
     void RunTransition(Automata* aut) OVERRIDE {
       AddEagerBlockSequence({t_->TopA.b(), t_->TopB.b()});
-      AddEagerBlockTransition(t_->TopB.b(), t_->RRight.b());
+      AddEagerBlockTransition(*t_->TopB.b(), *t_->RRight.b());
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
       AddEagerBlockSequence(
           {t_->RRight.b(), t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b()});
@@ -2442,7 +2442,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
   Run(20);
   vector<TestBlock*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft};
   TopA.inverted_detector()->Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopA.b()), true);
   
   for (int i = 0; i < 37; ++i) {
     TestBlock* cblock = blocks[i % blocks.size()];
@@ -2456,8 +2456,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
     EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
     EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*cblock->b())));
 
     nblock->inverted_detector()->Set(false);
     Run(20);
@@ -2480,16 +2480,16 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
 
     void RunTransition(Automata* aut) OVERRIDE {
       AddEagerBlockSequence({t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b(), t_->TopB.b()});
-      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RRight.b(),
+      AddBlockTransitionOnPermit(*t_->TopB.b(), *t_->RRight.b(),
                                  &gate_loop_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
-      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RStub.b(),
+      AddBlockTransitionOnPermit(*t_->TopB.b(), *t_->RStub.b(),
                                  &gate_stub_);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
       StopAndReverseAtStub(&t_->RStub.b_);
 
-      AddEagerBlockTransition(t_->RRight.b(), t_->BotA.b());
-      AddDirectBlockTransition(t_->RStub.b(), t_->BotA.b(), nullptr, false);
+      AddEagerBlockTransition(*t_->RRight.b(), *t_->BotA.b());
+      AddDirectBlockTransition(*t_->RStub.b(), *t_->BotA.b(), nullptr, false);
     }
 
     RequestClientInterface gate_loop_;
@@ -2502,7 +2502,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
   Run(20);
   vector<TestBlock*> blocks = {&BotA, &BotB, &RLeft, &TopA, &TopB};
   BotA.inverted_detector()->Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(BotA.b()), true);
+  SetVar(*my_train.TEST_GetPermalocBit(*BotA.b()), true);
   unsigned i = 1;
   bool is_out = false;
   BlockInterface* last_block = blocks[0];
@@ -2542,8 +2542,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
     EXPECT_FALSE(QueryVar(last_block->b()->route_out()));
     EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
     
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(last_block->b())));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*last_block->b())));
     if (nblock == &RStub) {
       RStub.inverted_entry_detector()->Set(true);
     }
@@ -2577,14 +2577,14 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
 
     void RunTransition(Automata* aut) OVERRIDE {
       AddEagerBlockSequence({t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b(), t_->TopB.b()});
-      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RRight.b(),
+      AddBlockTransitionOnPermit(*t_->TopB.b(), *t_->RRight.b(),
                                  &flc_loop);
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
-      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RStub.b(),
+      AddBlockTransitionOnPermit(*t_->TopB.b(), *t_->RStub.b(),
                                  &flc_stub);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
-      AddEagerBlockTransition(t_->RRight.b(), t_->BotA.b());
-      AddDirectBlockTransition(t_->RStub.b(), t_->BotA.b(), nullptr, false);
+      AddEagerBlockTransition(*t_->RRight.b(), *t_->BotA.b());
+      AddDirectBlockTransition(*t_->RStub.b(), *t_->BotA.b(), nullptr, false);
     }
 
    private:
@@ -2595,7 +2595,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
   vector<BlockInterface*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,
                                     &TopA, &TopB, &RStub, &BotA, &BotB, &RLeft};
   TopA.inverted_detector()->Set(false);
-  SetVar(*my_train.TEST_GetPermalocBit(TopA.b()), true);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopA.b()), true);
   
   for (int i = 0; i < 37; ++i) {
     BlockInterface* cblock = blocks[i % blocks.size()];
@@ -2612,8 +2612,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
     EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
     EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
+    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(*nblock->b())));
+    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(*cblock->b())));
     if (nblock == &RStub) {
       RStub.inverted_entry_detector()->Set(true);
     }
@@ -2651,14 +2651,14 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
 
     void RunTransition(Automata* aut) OVERRIDE {
       AddEagerBlockSequence({t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(), t_->TopA.b(), t_->TopB.b()}, nullptr, true);
-      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RRight.b(),
+      AddBlockTransitionOnPermit(*t_->TopB.b(), *t_->RRight.b(),
                                  &flc_loop);
       SwitchTurnout(t_->RStubEntry.b.magnet(), true);
-      AddBlockTransitionOnPermit(t_->TopB.b(), t_->RStub.b(),
+      AddBlockTransitionOnPermit(*t_->TopB.b(), *t_->RStub.b(),
                                  &flc_stub);
       SwitchTurnout(t_->RStubEntry.b.magnet(), false);
-      AddEagerBlockTransition(t_->RRight.b(), t_->BotA.b());
-      AddDirectBlockTransition(t_->RStub.b(), t_->BotA.b(), nullptr, false);
+      AddEagerBlockTransition(*t_->RRight.b(), *t_->BotA.b());
+      AddDirectBlockTransition(*t_->RStub.b(), *t_->BotA.b(), nullptr, false);
     }
 
    private:
@@ -2670,9 +2670,9 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
   vector<BlockInterface*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,
                                     &TopA, &TopB, &RStub, &BotA, &BotB, &RLeft};
   TopA.inverted_detector()->Set(false);
-  SetVar(*train1.TEST_GetPermalocBit(TopA.b()), true);
+  SetVar(*train1.TEST_GetPermalocBit(*TopA.b()), true);
   BotA.inverted_detector()->Set(false);
-  SetVar(*train2.TEST_GetPermalocBit(BotA.b()), true);
+  SetVar(*train2.TEST_GetPermalocBit(*BotA.b()), true);
 
   Run(50);
 
@@ -2682,11 +2682,11 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
   EXPECT_TRUE(QueryVar(TopA.b()->route_out()));
   EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
 
-  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.blk.RLeft"));
-  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.blk.TopB"));
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.RLeft"));
+  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.TopB"));
 
-  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.blk.BotB"));
-  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.blk.TopB"));
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.BotB"));
+  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.TopB"));
 
   // The trains are moving.
   EXPECT_EQ(40, (int)(trainImpl_.get_speed().mph() + 0.5));
@@ -2700,21 +2700,21 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
 
   EXPECT_TRUE(QueryVar(RLeft.b()->route_out()));
   EXPECT_FALSE(QueryVar(TopA.b()->route_out()));
-  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.blk.TopA"));
-  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.blk.TopB"));
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.TopA"));
+  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.TopB"));
 
-  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.blk.BotB"));
-  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.blk.TopB"));
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.BotB"));
+  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.TopB"));
 
   LOG(INFO, "\n\nTop train arrives.\n");
   TopB.inverted_detector()->Set(false);
   Run(50);
 
-  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.blk.RRight"));
-  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.blk.RRight"));
+  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.RRight"));
+  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.RRight"));
 
-  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.blk.BotB"));
-  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.blk.TopA"));
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.BotB"));
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.TopA"));
 
   //PrintAllEventVariables(stderr);
 
