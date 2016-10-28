@@ -2121,11 +2121,13 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
 // There is a stub track in the turnaround loop. It has a moveableturnout as
 // entry, then a fixedturnout to exit.
 //
+// There is a crossover of fixed turnouts to get back from TopB to BotB when
+// going wrong-way.
 //
 //   >Rleft
 //  /--\  TopA>TopB  /---------\   x
-//  |   \-----------/--/--x    |   x
-//  |   /-----------\-/  StubR |   x
+//  |   \------/----/--/--x    |   x
+//  |   /-----/-----\-/  StubR |   x
 //  \--/  BotB<BotA  \---------/   x
 //                   <RRight
 //
@@ -2134,33 +2136,30 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
 class SampleLayoutLogicTrainTest : public LogicTrainTest {
  public:
   SampleLayoutLogicTrainTest()
-      : RLeft(this, "RLeft"),
-        TopA(this, "TopA"),
-        TopB(this, "TopB"),
-        RRight(this, "RRight"),
-        BotA(this, "BotA"),
-        BotB(this, "BotB"),
-        RStub(this, "RStub"),
-        RStubEntry(this, "RStubEntry"),
-        RStubExit(this, FixedTurnout::TURNOUT_THROWN, "RStubExit"),
-        RStubIntoMain(this, FixedTurnout::TURNOUT_THROWN, "RStubIntoMain")
+
   {
-    BindSequence(RStubIntoMain.b.side_points(),
-                 {BotA.b(), BotB.b(), RLeft.b(), TopA.b(), TopB.b()},
-                 RStubEntry.b.side_points());
-    BindSequence(RStubEntry.b.side_thrown(),
-                 {RRight.b()},
-                 RStubIntoMain.b.side_thrown());
+    BindSequence({&WRStubIntoMain, BotA.b(), &WXoverBot, BotB.b(), RLeft.b(),
+                  TopA.b(), &WXoverTop, TopB.b(), &WRStubEntry, RRight.b(),
+                  &WRStubIntoMain});
     BindPairs({{RStubEntry.b.side_closed(), RStubExit.b.side_closed()},
                {RStubExit.b.side_thrown(), RStubIntoMain.b.side_closed()},
-               {RStubExit.b.side_points(), RStub.b_.entry()}});
+               {RStubExit.b.side_points(), RStub.b_.entry()},
+               {XoverTop.b.side_thrown(), XoverBot.b.side_thrown()}});
   }
 
-  TestBlock RLeft, TopA, TopB, RRight, BotA, BotB;
-  TestStubBlock RStub;
-  TestMovableTurnout RStubEntry;
-  TestFixedTurnout RStubExit;
-  TestFixedTurnout RStubIntoMain;
+  TestBlock RLeft{this, "RLeft"}, TopA{this, "TopA"}, TopB{this, "TopB"},
+      RRight{this, "RRight"}, BotA{this, "BotA"}, BotB{this, "BotB"};
+  TestStubBlock RStub{this, "RStub"};
+  TestMovableTurnout RStubEntry{this, "RStubEntry"};
+  TurnoutWrap WRStubEntry{&RStubEntry.b, kPointToThrown};
+  TestFixedTurnout RStubExit{this, FixedTurnout::TURNOUT_THROWN, "RStubExit"};
+  TestFixedTurnout RStubIntoMain{this, FixedTurnout::TURNOUT_THROWN,
+                                 "RStubIntoMain"};
+  TurnoutWrap WRStubIntoMain{&RStubIntoMain.b, kThrownToPoint};
+  TestFixedTurnout XoverTop{this, FixedTurnout::TURNOUT_THROWN, "XoverTop"};
+  TurnoutWrap WXoverTop{&XoverTop.b, kClosedToPoint};
+  TestFixedTurnout XoverBot{this, FixedTurnout::TURNOUT_THROWN, "XoverBot"};
+  TurnoutWrap WXoverBot{&XoverBot.b, kClosedToPoint};
 };
 
 TEST_F(SampleLayoutLogicTrainTest, Construct) {}
