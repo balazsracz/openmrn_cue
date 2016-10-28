@@ -283,8 +283,8 @@ PhysicalSignal A217(&bb.InOraRed, &bb.Rel0, &signal_A217_main.signal,
                     &signal_B229_adv.signal, nullptr, nullptr);
 PhysicalSignal A200(&be.In2, &be.Rel0, &signal_A200_main.signal,
                     &signal_A200_adv.signal, &signal_B208_main.signal,
-                    &signal_B208_adv.signal, &signal_B200_adv.signal,
-                    &signal_A208_adv.signal);
+                    &signal_B208_adv.signal, &signal_A208_adv.signal,
+                    &signal_B200_adv.signal);
 PhysicalSignal B108(&bb.InBrownBrown, &bb.Rel1, &signal_B108_main.signal,
                     &signal_B108_adv.signal, &signal_A100_main.signal,
                     &signal_A100_adv.signal, &signal_B100_adv.signal,
@@ -794,6 +794,13 @@ FlipFlopAutomata w217_flipflop(&brd, "w217_flipflop", logic, 32);
 FlipFlopClient w217_from217("from_217", &w217_flipflop);
 FlipFlopClient w217_from317("from_317", &w217_flipflop);
 
+void IfDKW209Free(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_W209.b.any_route()));
+}
+
+auto g_dkw209_free = NewCallback(&IfDKW209Free);
+
 class LayoutSchedule : public TrainSchedule {
  public:
   LayoutSchedule(const string& name, uint64_t train_id, uint8_t default_speed)
@@ -804,11 +811,14 @@ class LayoutSchedule : public TrainSchedule {
                       BRACZ_SPEEDS | ((train_id & 0xff) << 8), default_speed) {}
 
  protected:
-  void RunCycle(Automata* aut) {
+  void RunB108_to_A240(Automata* aut) {
     AddEagerBlockTransition(Block_B108, Block_B129);
     AddEagerBlockTransition(Block_B129, Block_A240);
+  }
 
-
+  void RunCycle(Automata* aut) {
+    RunB108_to_A240(aut);
+    
     AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217);
     SwitchTurnout(Turnout_W231.b.magnet(), false);
 
@@ -817,30 +827,20 @@ class LayoutSchedule : public TrainSchedule {
 
     {
       WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(Block_A217, Block_A406, &w217_from217);
+      AddBlockTransitionOnPermit(Block_A217, Block_A406, &w217_from217, &g_dkw209_free);
       SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
+      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCurved);
 
-      AddBlockTransitionOnPermit(Block_A317, Block_A406, &w217_from317);
+      AddBlockTransitionOnPermit(Block_A317, Block_A406, &w217_from317, &g_dkw209_free);
       SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
+      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCurved);
     }
     
     AddEagerBlockTransition(Block_A406, Block_XXB1);
-    AddEagerBlockTransition(Block_XXB1, Block_B108);
+    AddDirectBlockTransition(Block_XXB1, Block_B108);
   }
 
   void RunAltCycle(Automata* aut) {
-    AddEagerBlockTransition(Block_B108, Block_B129);
-    AddEagerBlockTransition(Block_B129, Block_A240);
-    AddEagerBlockTransition(Block_A240, Block_A217);
-    SwitchTurnout(Turnout_W231.b.magnet(), false);
-    {
-      WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(Block_A217, Block_A406, &w217_from217);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
-    }
-    
-    AddEagerBlockTransition(Block_A406, Block_XXB1);
-    AddEagerBlockTransition(Block_XXB1, Block_B108);
   }
 
   
@@ -858,13 +858,28 @@ class CircleTrain : public LayoutSchedule {
   }
 };
 
-class AltCircleTrain : public LayoutSchedule {
+class IC2000Train : public LayoutSchedule {
  public:
-  AltCircleTrain(const string& name, uint64_t train_id, uint8_t default_speed)
+  IC2000Train(const string& name, uint64_t train_id, uint8_t default_speed)
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
-    RunAltCycle(aut);
+    RunB108_to_A240(aut);
+    AddEagerBlockTransition(Block_A240, Block_A217);
+    SwitchTurnout(Turnout_W231.b.magnet(), false);
+    {
+      WithRouteLock l(this, &route_lock_WW);
+      AddBlockTransitionOnPermit(Block_A217, Block_A200, &w217_from217,
+                                 &g_dkw209_free);
+      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
+      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
+    }
+    
+    AddEagerBlockTransition(Block_A200, Block_XXA2);
+    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCross);
+    StopAndReverseAtStub(Block_XXA2);
+    AddDirectBlockTransition(Block_XXA2.rev_signal, Block_B108);
+    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCurved);
   }
 };
 
@@ -876,7 +891,7 @@ CircleTrain train_krokodil("Krokodil", MMAddress(68), 40);
 CircleTrain train_rheingold("Rheingold", MMAddress(19), 35);
 CircleTrain train_re10_10("Re_10_10", DccShortAddress(4), 35);
 CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
-AltCircleTrain train_re465("Re465", DccShortAddress(47), 17);
+IC2000Train train_re465("Re465", DccShortAddress(47), 17);
 CircleTrain train_ice("ICE", MMAddress(2), 16);
 
 
