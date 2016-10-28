@@ -786,6 +786,14 @@ uint64_t MMAddress(uint16_t addr) {
 }
 
 
+FlipFlopAutomata l240_flipflop(&brd, "l240_flipflop", logic, 32);
+FlipFlopClient l240_to217("to_217", &l240_flipflop);
+FlipFlopClient l240_to317("to_317", &l240_flipflop);
+
+FlipFlopAutomata w217_flipflop(&brd, "w217_flipflop", logic, 32);
+FlipFlopClient w217_from217("from_217", &w217_flipflop);
+FlipFlopClient w217_from317("from_317", &w217_flipflop);
+
 class LayoutSchedule : public TrainSchedule {
  public:
   LayoutSchedule(const string& name, uint64_t train_id, uint8_t default_speed)
@@ -797,8 +805,44 @@ class LayoutSchedule : public TrainSchedule {
 
  protected:
   void RunCycle(Automata* aut) {
-    AddEagerBlockSequence(CYCLE, &g_not_paused_condition, true);
+    AddEagerBlockTransition(&Block_B108, &Block_B129);
+    AddEagerBlockTransition(&Block_B129, &Block_A240);
+
+
+    AddBlockTransitionOnPermit(&Block_A240, &Block_A217, &l240_to217);
+    SwitchTurnout(Turnout_W231.b.magnet(), false);
+
+    AddBlockTransitionOnPermit(&Block_A240, &Block_A317, &l240_to317);
+    SwitchTurnout(Turnout_W231.b.magnet(), true);
+
+    {
+      WithRouteLock l(this, &route_lock_WW);
+      AddBlockTransitionOnPermit(&Block_A217, &Block_A406, &w217_from217);
+      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
+
+      AddBlockTransitionOnPermit(&Block_A317, &Block_A406, &w217_from317);
+      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
+    }
+    
+    AddEagerBlockTransition(&Block_A406, &Block_XXB1);
+    AddEagerBlockTransition(&Block_XXB1, &Block_B108);
   }
+
+  void RunAltCycle(Automata* aut) {
+    AddEagerBlockTransition(&Block_B108, &Block_B129);
+    AddEagerBlockTransition(&Block_B129, &Block_A240);
+    AddEagerBlockTransition(&Block_A240, &Block_A217);
+    SwitchTurnout(Turnout_W231.b.magnet(), false);
+    {
+      WithRouteLock l(this, &route_lock_WW);
+      AddBlockTransitionOnPermit(&Block_A217, &Block_A406, &w217_from217);
+      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
+    }
+    
+    AddEagerBlockTransition(&Block_A406, &Block_XXB1);
+    AddEagerBlockTransition(&Block_XXB1, &Block_B108);
+  }
+
   
   ByteImportVariable stored_speed_;
 };
@@ -814,6 +858,16 @@ class CircleTrain : public LayoutSchedule {
   }
 };
 
+class AltCircleTrain : public LayoutSchedule {
+ public:
+  AltCircleTrain(const string& name, uint64_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    RunAltCycle(aut);
+  }
+};
+
 
 CircleTrain train_rts("rts_railtraction", MMAddress(32), 10);
 CircleTrain train_wle("wle_er20", MMAddress(27), 10);
@@ -822,7 +876,7 @@ CircleTrain train_krokodil("Krokodil", MMAddress(68), 40);
 CircleTrain train_rheingold("Rheingold", MMAddress(19), 35);
 CircleTrain train_re10_10("Re_10_10", DccShortAddress(4), 35);
 CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
-CircleTrain train_re465("Re465", DccShortAddress(47), 17);
+AltCircleTrain train_re465("Re465", DccShortAddress(47), 17);
 CircleTrain train_ice("ICE", MMAddress(2), 16);
 
 
