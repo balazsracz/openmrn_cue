@@ -285,6 +285,7 @@ PhysicalSignal A200(&be.In2, &be.Rel0, &signal_A200_main.signal,
                     &signal_A200_adv.signal, &signal_B208_main.signal,
                     &signal_B208_adv.signal, &signal_A208_adv.signal,
                     &signal_B200_adv.signal);
+const GlobalVariable* B208_raw_detector = &bb.InBrownGrey;
 PhysicalSignal B108(&bb.InBrownBrown, &bb.Rel1, &signal_B108_main.signal,
                     &signal_B108_adv.signal, &signal_A100_main.signal,
                     &signal_A100_adv.signal, &signal_B100_adv.signal,
@@ -296,6 +297,7 @@ PhysicalSignal B129(&ba.InBrownBrown, &ba.Rel1, &signal_B129_main.signal,
 PhysicalSignal A406(&be.In4, &be.Rel1, &signal_A406_main.signal,
                     &signal_A406_adv.signal, &signal_B400_main.signal,
                     &signal_B400_adv.signal, nullptr, nullptr);
+const GlobalVariable* B400_raw_detector = &bb.InGreenGreen;
 PhysicalSignal XXB1(&be.In5, &be.Rel2, &signal_XXB1_main.signal,
                     &signal_XXB1_adv.signal, &signal_XXA1_main.signal,
                     &signal_XXA1_adv.signal, nullptr, nullptr);
@@ -567,9 +569,9 @@ StandardBlock Block_B129(&brd, &B129, logic, "B129");
 StandardBlock Block_A240(&brd, &A240, logic, "A240");
 StandardBlock Block_A217(&brd, &A217, logic, "A217");
 StandardBlock Block_A317(&brd, &A317, logic, "A317");
-StandardBlock Block_A200(&brd, &A200, logic, "A200");
+StandardBidirBlock Block_A200(&brd, &A200, B208_raw_detector, logic, "A200");
 
-StandardBlock Block_A406(&brd, &A406, logic, "A406");
+StandardBidirBlock Block_A406(&brd, &A406, B400_raw_detector, logic, "A406");
 StandardBlock Block_XXB1(&brd, &XXB1, logic, "XX.B1");
 StandardBlock Block_XXA2(&brd, &XXA2, logic, "XX.A2");
 StandardBlock Block_XXA3(&brd, &XXA3, logic, "XX.A3");
