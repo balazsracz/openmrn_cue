@@ -266,6 +266,11 @@ class CtrlTrackInterface {
     return true;
   }
 
+  void Unbind() {
+    binding_->binding_ = nullptr;
+    binding_ = nullptr;
+  }
+  
   bool Validate() {
     if (!binding_) {
       Debug("Unbound interface on %s.", name_.c_str());
@@ -355,6 +360,7 @@ class StraightTrack : public StraightTrackInterface,
   FRIEND_TEST(SampleLayoutLogicTrainTest, ScheduleConditional);
 
   friend class StandardBlock;
+  friend class StandardBidirBlock;
   friend class StandardMiddleSignal;
   friend class StubBlock;
 
@@ -702,7 +708,7 @@ class StandardBlock : public StraightTrackInterface {
       return parent_->rrequest_green();
     }
 
-   private:
+   protected:
     StandardBlock* parent_;
   };
 
@@ -755,6 +761,49 @@ class StandardBlock : public StraightTrackInterface {
   StandardPluginAutomata aut_rsignal_;
 
   DISALLOW_COPY_AND_ASSIGN(StandardBlock);
+};
+
+class StandardBidirBlock : public StandardBlock {
+ public:
+  StandardBidirBlock(Board *brd, PhysicalSignal *physical,
+                     const GlobalVariable *rsensor_raw,
+                     const AllocatorPtr &parent_alloc, const string &base_name,
+                     int num_to_allocate = 144)
+      : StandardBlock(brd, physical, parent_alloc, base_name, num_to_allocate),
+        rbody_det_(alloc_->Allocate("rbody_det", 32, 8), rsensor_raw),
+        aut_rbody_det_(name() + ".rbody_det", brd, &rbody_det_) {
+    rsignal_.side_a()->Unbind();
+    BindSequence(body_.side_a(), {&rbody_det_, &rsignal_});
+    rbody_det_.SetOutputRouteVariable({&route_out(), &rev_route_out()});
+  }
+
+  class RevSignal : public StandardBlock::RevSignal {
+   public:
+    RevSignal(StandardBidirBlock* parent) : StandardBlock::RevSignal(parent) {}
+
+    const GlobalVariable &dst_detector() const override {
+      return parent()->rev_detector();
+    }
+    const GlobalVariable &src_detector() const override {
+      return dst_detector();
+    }
+    
+   private:
+    StandardBidirBlock* parent() const {
+      return static_cast<StandardBidirBlock*>(parent_);
+    }
+  };
+  
+ public:
+  const RevSignal rev_signal{this};
+  
+  const GlobalVariable &rev_detector() const { return *rbody_det_.simulated_occupancy_; }
+
+ private:
+  StraightTrackWithRawDetector rbody_det_;
+  StandardPluginAutomata aut_rbody_det_;
+
+  DISALLOW_COPY_AND_ASSIGN(StandardBidirBlock);
 };
 
 class StandardMiddleDetector : public StraightTrackWithRawDetector {
