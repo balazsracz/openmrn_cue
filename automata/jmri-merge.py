@@ -333,7 +333,7 @@ class TrainLocLogixConditional:
 
   def __init__(self, sensor_name):
     self.sensor_name = sensor_name
-    m = re.match('perm\.(.*)\.loc.logic[23]?\.(.*)', sensor_name)
+    m = re.match('perm\.(.*)\.loc\.(.*)', sensor_name)
  #                'perm.icn.loc.logic.A360'
 
     if not m:
@@ -725,7 +725,7 @@ def RenderMemoryVariables(output_tree_root):
 def RenderLogixConditionals(output_tree_root):
   desired_conditionals = []
   for sensor in all_sensors:
-    m = re.match('perm.*loc.logic.*', sensor.user_name)
+    m = re.match('perm.*loc.*', sensor.user_name)
     #m = re.match('perm.\([^.]*\).loc.logic.\(.*\)', sensor.user_name)
     if not m: continue
     desired_conditionals.append(TrainLocLogixConditional(sensor.user_name))
