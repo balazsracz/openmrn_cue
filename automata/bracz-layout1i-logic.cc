@@ -803,6 +803,13 @@ void IfDKW209Free(Automata::Op* op) {
 
 auto g_dkw209_free = NewCallback(&IfDKW209Free);
 
+void IfXXW2Free(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_XXW2.b.any_route()));
+}
+
+auto g_xxw2_free = NewCallback(&IfXXW2Free);
+
 class LayoutSchedule : public TrainSchedule {
  public:
   LayoutSchedule(const string& name, uint64_t train_id, uint8_t default_speed)
@@ -867,17 +874,27 @@ class IC2000Train : public LayoutSchedule {
 
   void RunTransition(Automata* aut) OVERRIDE {
     RunB108_to_A240(aut);
-    AddEagerBlockTransition(Block_A240, Block_A217);
+
+    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217);
     SwitchTurnout(Turnout_W231.b.magnet(), false);
+
+    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317);
+    SwitchTurnout(Turnout_W231.b.magnet(), true);
+
     {
       WithRouteLock l(this, &route_lock_WW);
       AddBlockTransitionOnPermit(Block_A217, Block_A200, &w217_from217,
                                  &g_dkw209_free);
       SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
       SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
+
+      AddBlockTransitionOnPermit(Block_A317, Block_A200, &w217_from317,
+                                 &g_dkw209_free);
+      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
+      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
     }
     
-    AddEagerBlockTransition(Block_A200, Block_XXA2);
+    AddDirectBlockTransition(Block_A200, Block_XXA2, &g_xxw2_free, true);
     SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCross);
     StopAndReverseAtStub(Block_XXA2);
     AddDirectBlockTransition(Block_XXA2.rev_signal, Block_B108);
@@ -894,7 +911,8 @@ CircleTrain train_rheingold("Rheingold", MMAddress(19), 35);
 CircleTrain train_re10_10("Re_10_10", DccShortAddress(4), 35);
 CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 IC2000Train train_re465("Re465", DccShortAddress(47), 17);
-CircleTrain train_ice("ICE", MMAddress(2), 16);
+IC2000Train train_icn("ICN", DccShortAddress(50), 17);
+IC2000Train train_ice("ICE", MMAddress(2), 16);
 
 
 
