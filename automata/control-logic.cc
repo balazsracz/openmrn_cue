@@ -569,6 +569,11 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
       .ActReg1(sim_occ)
       .ActReg0(tmp_seen_train_in_next);
 
+  if (reset_routes) {
+    Def().IfReg1(aut->ImportVariable(*reset_routes))
+        .ActReg0(tmp_seen_train_in_next);
+  }
+  
   auto* far_detector = next_if->binding()->LookupFarDetector();
   auto* next_detector = next_if->binding()->LookupNextDetector();
   if (far_detector) {
