@@ -1260,6 +1260,7 @@ class MovableDKW : public DKW {
   MovableDKW(AllocatorPtr allocator, MagnetBase *def)
       : DKW(std::move(allocator)), magnet_(def) {
     AddAutomataPlugin(110, NewCallbackPtr(this, &MovableDKW::CopyState));
+    AddAutomataPlugin(120, NewCallbackPtr(this, &MovableDKW::CopyLocked));
   }
 
   MagnetBase *magnet() { return magnet_; }
@@ -1273,6 +1274,13 @@ class MovableDKW : public DKW {
         aut->ImportVariable(*magnet_->current_state);
     Def().IfReg0(any_route_set).IfReg1(physical_state).ActReg1(turnoutstate);
     Def().IfReg0(any_route_set).IfReg0(physical_state).ActReg0(turnoutstate);
+  }
+
+  void CopyLocked(Automata* aut) {
+    ClearAutomataVariables(aut);
+    auto* locked = aut->ImportVariable(magnet_->locked);
+    const auto& route_any = aut->ImportVariable(*any_route_set_);
+    aut->DefCopy(route_any, locked);
   }
 
   MagnetBase *magnet_;
