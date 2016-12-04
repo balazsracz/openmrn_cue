@@ -1008,6 +1008,7 @@ class MovableTurnout : public TurnoutBase {
   MovableTurnout(AllocatorPtr allocator, MagnetBase *def)
       : TurnoutBase(std::move(allocator)), magnet_(def) {
     AddAutomataPlugin(110, NewCallbackPtr(this, &MovableTurnout::CopyState));
+    AddAutomataPlugin(120, NewCallbackPtr(this, &MovableTurnout::CopyLocked));
   }
 
   MagnetBase *magnet() { return magnet_; }
@@ -1018,6 +1019,9 @@ class MovableTurnout : public TurnoutBase {
  private:
   // Copies the turnout state from the physical turnout's actual state.
   void CopyState(Automata *aut);
+
+  // Copies the route set any bit to the magnet's locked bit.
+  void CopyLocked(Automata *aut);
 
   MagnetBase *magnet_;
 };
@@ -1495,11 +1499,12 @@ static constexpr StateRef StGreenRequested(13);
 static constexpr StateRef StGreenWait(5);
 static constexpr StateRef StGreenFailed(6);
 
-// 7-8 are free (ststoptrain, stmoving)
+// 8 are free (stmoving)
 static constexpr StateRef StRequestTransition(9);
 static constexpr StateRef StTransitionDone(10);
 
 static constexpr StateRef StTurnout(11);
+static constexpr StateRef StTurnoutFailed(7);
 static constexpr StateRef StTestCondition(12);
 
 static constexpr StateRef StBeforeReverseWait(14);
@@ -1537,7 +1542,6 @@ class TrainSchedule : public virtual AutomataPlugin {
         permit_request_(aut_.ReserveVariable()),
         permit_granted_(aut_.ReserveVariable()),
         permit_taken_(aut_.ReserveVariable()),
-        magnets_ready_(alloc_->Allocate("magnets_ready")),
         need_reverse_(alloc_->Allocate("need_reverse")),
         req_stop_(alloc_->Allocate("req_stop")),
         req_go_(alloc_->Allocate("req_go")),
@@ -1763,8 +1767,6 @@ class TrainSchedule : public virtual AutomataPlugin {
   Automata::LocalVariable permit_granted_;
   Automata::LocalVariable permit_taken_;
 
-  // Used by the StTurnout state to know if all turnouts have already been set.
-  std::unique_ptr<GlobalVariable> magnets_ready_;
   // Used for the turnaround logic to figure out if we still need to switch the
   // direction.
   std::unique_ptr<GlobalVariable> need_reverse_;

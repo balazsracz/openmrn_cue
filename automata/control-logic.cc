@@ -644,7 +644,12 @@ void MovableTurnout::CopyState(Automata* aut) {
       .ActReg0(turnoutstate);
 }
 
-
+void MovableTurnout::CopyLocked(Automata* aut) {
+  ClearAutomataVariables(aut);
+  LocalVariable* locked = aut->ImportVariable(magnet_->locked);
+  const LocalVariable& route_any = aut->ImportVariable(*any_route_set_);
+  aut->DefCopy(route_any, locked);
+}
 
 void TurnoutBase::TurnoutOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
@@ -1007,7 +1012,6 @@ void TrainSchedule::HandleInit(Automata* aut) {
 }
 
 void TrainSchedule::HandleBaseStates(Automata* aut) {
-  auto* magnets_ready = aut->ImportVariable(magnets_ready_.get());
   Def().IfState(StRequestGreen)
       .IfReg0(current_block_request_green_)
       .ActReg1(&current_block_request_green_)
@@ -1039,24 +1043,22 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
       .IfReg1(current_block_detector_)
       .ActReg1(aut->ImportVariable(req_stop_.get()));
 
-  Def().IfState(StReadyToGo)
-      .ActState(StTurnout)
-      .ActReg0(magnets_ready);
-
   Def().IfState(StTurnout)
-      .IfReg1(*magnets_ready)
       .ActState(StRequestGreen);
 
+  Def().IfState(StReadyToGo)
+      .ActState(StTurnout);
+
   if (reset_routes) {
-    Def().IfState(StTurnout)
+    Def().IfState(StTurnoutFailed)
         .IfReg1(aut->ImportVariable(*reset_routes))
         .ActState(StWaiting);
   }
 
   // If we haven't transitioned out of StTurnout state previously, then we
   // reset the "todo" bit and go for another round of magnet setting.
-  Def().IfState(StTurnout)
-      .ActReg1(magnets_ready);
+  Def().IfState(StTurnoutFailed)
+      .ActState(StTurnout);
 }
 
 void TrainSchedule::SendTrainCommands(Automata *aut) {
@@ -1446,21 +1448,17 @@ void TrainSchedule::AddCurrentOutgoingConditions(Automata::Op* op) {
 }
 
 void TrainSchedule::SwitchTurnout(MagnetBase* magnet, bool desired_state) {
-  auto* magnets_ready = aut->ImportVariable(magnets_ready_.get());
   Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
       .ActImportVariable(*magnet->command, magnet_command_)
       .ActImportVariable(*magnet->current_state, magnet_state_)
-      /* TODO(balazs.racz) locked is currently ignored by the magnet automata. */
+      /// TODO(balazs.racz) locked is currently ignored by the magnet automata.
       .ActImportVariable(*magnet->locked, magnet_locked_);
-  Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
-      .IfReg(magnet_state_, !desired_state)
-      .ActReg0(magnets_ready);
-  Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
-      .IfReg(magnet_command_, !desired_state)
-      .ActReg0(magnets_ready);
   Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
       .IfReg0(magnet_locked_)
       .ActReg(&magnet_command_, desired_state);
+  Def().IfState(StTurnout).RunCallback(outgoing_route_conditions_.get())
+      .IfReg(magnet_state_, !desired_state)
+      .ActState(StTurnoutFailed);
 }
 
 const AllocatorPtr& FlipFlopAutomata::AddClient(FlipFlopClient* client) {

@@ -2127,7 +2127,7 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
 //   >Rleft
 //  /--\  TopA>TopB  /---------\   x
 //  |   \------/----/--/--x    |   x
-//  |   /-----/-----\-/  StubR |   x
+//  |   /-----/-----\-/  RStub |   x
 //  \--/  BotB<BotA  \---------/   x
 //                   <RRight
 //
@@ -2780,38 +2780,71 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
   TopB.inverted_detector()->Set(false);
   Run(50);
 
+  EXPECT_TRUE(QueryVar("blk.magnets.RStubEntry.mgn.current_state"));
+
   EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.RRight"));
   EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.RRight"));
 
   EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.BotB"));
   EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.TopA"));
 
-  //PrintAllEventVariables(stderr);
+  // We make t2 catch up with t1.
 
-  /*
-  for (int i = 0; i < 37; ++i) {
-    BlockInterface* cblock = blocks[i % blocks.size()];
-    BlockInterface* nblock = blocks[(i + 1) % blocks.size()];
+  std::vector<std::vector<TestBlock*>> ll = {{&BotA, &BotB}, {&BotB, &RLeft}, {&RLeft, &TopA}};
+  for (auto& pp : ll) {
+    EXPECT_TRUE(QueryVar(pp[0]->b()->route_out()));
+    pp[0]->inverted_detector()->Set(true);
     Run(20);
-    EXPECT_TRUE(QueryVar(cblock->b()->route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
-    cblock->inverted_detector()->Set(true);
-    if (nblock == &RStub) {
-      RStub.inverted_entry_detector()->Set(false);
-    }
+    EXPECT_FALSE(QueryVar(pp[0]->b()->route_out()));
+    pp[1]->inverted_detector()->Set(false);
     Run(20);
-    EXPECT_FALSE(QueryVar(cblock->b()->route_in()));
-    EXPECT_FALSE(QueryVar(cblock->b()->route_out()));
-    EXPECT_TRUE(QueryVar(nblock->b()->route_in()));
+  }
 
-    EXPECT_TRUE(QueryVar(*my_train.TEST_GetPermalocBit(nblock->b())));
-    EXPECT_FALSE(QueryVar(*my_train.TEST_GetPermalocBit(cblock->b())));
-    if (nblock == &RStub) {
-      RStub.inverted_entry_detector()->Set(true);
-    }
-    nblock->inverted_detector()->Set(false);
-    Run(20);
-    }*/
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.TopA"));
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.TopA"));
+  LOG(INFO, "\n\nTop train moves on.\n");
+  TopB.inverted_detector()->Set(true);
+  Run(40);
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.TopB"));
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.TopB"));
+  // The front train has green all around.
+  EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.RLeft"));
+  EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.RRight"));
+
+  EXPECT_TRUE(QueryVar("blk.magnets.RStubEntry.mgn.current_state"));
+
+  LOG(INFO, "\n\nSecond train reaches the flipflop.\n");
+  TopA.inverted_detector()->Set(true);
+  TopB.inverted_detector()->Set(false);
+  Run(40);
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.TopB"));
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.TopB"));
+  EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
+  // Since the turnout still has its route set, we are not supposed to have
+  // changed the state yet.
+  EXPECT_TRUE(QueryVar("blk.magnets.RStubEntry.mgn.locked"));
+  EXPECT_TRUE(QueryVar("blk.magnets.RStubEntry.mgn.current_state"));
+
+  // Now the turnout route gets released as the front train reaches the next
+  // station.
+  RRight.inverted_detector()->Set(false);
+  Run(40);
+  EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.RStub"));
+  EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.RStub"));
+  EXPECT_TRUE(QueryVar(TopB.b()->route_out()));
+  EXPECT_TRUE(QueryVar("blk.magnets.RStubEntry.mgn.locked"));
+  EXPECT_FALSE(QueryVar("blk.magnets.RStubEntry.mgn.current_state"));
+
+  TopB.inverted_detector()->Set(true);
+  Run(40);
+  EXPECT_FALSE(QueryVar(TopB.b()->route_out()));
+  EXPECT_TRUE(QueryVar("blk.magnets.RStubEntry.mgn.locked"));
+  EXPECT_FALSE(QueryVar("blk.magnets.RStubEntry.mgn.current_state"));
+
+  RStub.inverted_detector()->Set(false);
+  Run(40);
+  EXPECT_FALSE(QueryVar("blk.magnets.RStubEntry.mgn.current_state"));
+  EXPECT_FALSE(QueryVar("blk.magnets.RStubEntry.mgn.locked"));
 }
 
 }  // namespace automata

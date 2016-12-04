@@ -237,9 +237,9 @@ protected:
   }
 
   void Run(int count = 1) {
+    extern int debug_variables;
     for (int i = 0; i < count; ++i) {
       wait_for_event_thread();
-      extern int debug_variables;
       if ((i % 3) == 2) {
         if (debug_variables) fprintf(stderr, ",");
         runner_->AddPendingTick();
@@ -249,6 +249,7 @@ protected:
       runner_->RunAllAutomata();
     }
     wait_for_event_thread();
+    if (debug_variables) fprintf(stderr, "\n");
   }
 
   void SetVar(const automata::GlobalVariable& var, bool value) {
