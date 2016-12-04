@@ -1662,7 +1662,8 @@ class TrainSchedule : public virtual AutomataPlugin {
   void AddBlockTransitionOnPermit(const SignalBlock &source,
                                   const SignalBlock &dest,
                                   RequestClientInterface *client,
-                                  OpCallback *condition = nullptr);
+                                  OpCallback *condition = nullptr,
+                                  bool eager = false);
 
   // Moves the train into a stub block and turns the direction around. This
   // should be called after the necessary turnout commands; nothing related to
