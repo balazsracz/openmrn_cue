@@ -1382,6 +1382,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .IfReg1(current_block_route_out_)
         .IfReg1(current_direction_)
         .ActReg0(&current_block_permaloc_)
+        .ActReg0(&current_direction_)
         .ActReg1(&next_block_permaloc_)
         // This will make sure not to stop the train here.
         .ActImportVariable(dest.dst_detector(),
@@ -1457,7 +1458,6 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .IfReg1(current_direction_)
         .RunCallback(route_lock_release())
         .ActReg0(&current_block_routingloc_)
-        .ActReg0(&current_direction_)
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
   } else {
