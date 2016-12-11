@@ -84,8 +84,8 @@ class MemorizingHandlerManager : public EventHandler {
                            unsigned num_total_events, unsigned block_size);
   ~MemorizingHandlerManager();
 
-  void HandleEventReport(const EventRegistryEntry& registry_entry,
-                         EventReport* event, BarrierNotifiable* done) OVERRIDE;
+  void handle_event_report(const EventRegistryEntry& registry_entry,
+                           EventReport* event, BarrierNotifiable* done) OVERRIDE;
   void HandleConsumerIdentified(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE;
@@ -153,8 +153,8 @@ class MemorizingHandlerBlock : public EventHandler {
   ~MemorizingHandlerBlock();
 
   // Event reports are handled by the manager.
-  void HandleEventReport(const EventRegistryEntry& registry_entry,
-                         EventReport* event, BarrierNotifiable* done) OVERRIDE {
+  void handle_event_report(const EventRegistryEntry& registry_entry,
+                           EventReport* event, BarrierNotifiable* done) OVERRIDE {
     done->notify();
   }
 

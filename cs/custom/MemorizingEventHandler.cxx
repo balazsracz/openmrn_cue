@@ -58,7 +58,7 @@ MemorizingHandlerManager::~MemorizingHandlerManager() {
   EventRegistry::instance()->unregister_handler(this);
 }
 
-void MemorizingHandlerManager::HandleEventReport(
+void MemorizingHandlerManager::handle_event_report(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
