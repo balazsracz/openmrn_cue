@@ -93,9 +93,9 @@
 #include "commandstation/dcc_control.hxx"
 #include "commandstation/TrackPowerBit.hxx"
 #include "DccHardware.hxx"
+#include "hardware.hxx"
 #include "TivaDCC.hxx"
 #include "dcc/RailCom.hxx"
-#include "hardware.hxx"
 #include "config.hxx"
 
 #define STANDALONE

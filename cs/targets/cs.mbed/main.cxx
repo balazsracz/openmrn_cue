@@ -147,9 +147,9 @@ nmranet::BitEventConsumer powerbit(&on_off);
 nmranet::TrainService traction_service(stack.iface());
 
 dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
-nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+nmranet::TrainNodeForProxy train_Am843_node(&traction_service, &train_Am843);
 dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
-nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
+nmranet::TrainNodeForProxy train_Re460_node(&traction_service, &train_Re460);
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 commandstation::TrainDb train_db;
