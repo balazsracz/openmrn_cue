@@ -66,6 +66,7 @@ const struct const_traindb_entry_t const_lokdb[] = {
   // 1
   //{ 66, { LIGHT },
   //"Re 6/6 11665", DCC_128 },
+  { 31, { LIGHT, FN_NONEXISTANT, TELEX, ABV ,}, "F7 31", FAKE_DRIVE },
   { 123, { LIGHT, FN_NONEXISTANT, TELEX, ABV ,}, "Example 123", DCC_128 },
 
     {7000, {0xff}, "Node test 7000", DCC_28},

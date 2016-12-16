@@ -2,7 +2,7 @@
 OBJS=system.o control-logic.o registry.o
 
 AUTS = rr-crossing.cpp logic-demo.cpp 
-OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout bracz-layout1i-logic.cout
 BINS = $(AUTS:.cpp=)
 
 #DEFAULT_AUT = bracz-layout3h-logic
@@ -81,7 +81,7 @@ bin: $(DEFAULT_AUT)
 
 
 $(OUTPUTS): %.cout : %
-	./$< > $@
+	./$<
 
 
 $(BINS): $(OBJS)
