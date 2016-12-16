@@ -1245,7 +1245,7 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .IfState(StWaiting)
         .IfReg1(current_block_routingloc_)
         .IfReg0(current_block_permaloc_)
-        .IfReg0(next_block_route_in_)
+        .IfReg0(next_block_route_in_) // current block route in!
         .ActReg0(&current_block_routingloc_);
   }
 
@@ -1260,6 +1260,9 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
         .IfReg1(current_block_route_out_)
+        // TODO: maybe this is needed in the AddBlockTransitionOnPermit version
+        // too!
+        .IfReg0(current_block_routingloc_) 
         .ActReg0(&current_block_permaloc_)
         .ActReg1(&next_block_permaloc_)
         // This will make sure not to stop the train here.
