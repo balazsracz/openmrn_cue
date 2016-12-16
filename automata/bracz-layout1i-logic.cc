@@ -828,10 +828,10 @@ class LayoutSchedule : public TrainSchedule {
   void RunCycle(Automata* aut) {
     RunB108_to_A240(aut);
     
-    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217);
+    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
     SwitchTurnout(Turnout_W231.b.magnet(), false);
 
-    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317);
+    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317, &g_not_paused_condition, true);
     SwitchTurnout(Turnout_W231.b.magnet(), true);
 
     {
@@ -846,7 +846,7 @@ class LayoutSchedule : public TrainSchedule {
     }
     
     AddEagerBlockTransition(Block_A406, Block_XXB1);
-    AddDirectBlockTransition(Block_XXB1, Block_B108);
+    AddDirectBlockTransition(Block_XXB1, Block_B108, &g_not_paused_condition);
   }
 
   void RunAltCycle(Automata* aut) {
@@ -875,10 +875,10 @@ class IC2000Train : public LayoutSchedule {
   void RunTransition(Automata* aut) OVERRIDE {
     RunB108_to_A240(aut);
 
-    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217);
+    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
     SwitchTurnout(Turnout_W231.b.magnet(), false);
 
-    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317);
+    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317, &g_not_paused_condition, true);
     SwitchTurnout(Turnout_W231.b.magnet(), true);
 
     {
@@ -926,7 +926,7 @@ int main(int argc, char** argv) {
   fwrite(output.data(), 1, output.size(), f);
   fclose(f);
 
-  f = fopen("bracz-layout3h-logic.cout", "wb");
+  f = fopen("bracz-layout1i-logic.cout", "wb");
   fprintf(f,
           "const char automata_code[] __attribute__((section(\"automata\"))) = "
           "{\n  ");
