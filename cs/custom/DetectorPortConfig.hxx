@@ -41,43 +41,43 @@ namespace bracz_custom {
 
 CDI_GROUP(DetectorPortOccupancy);
 CDI_GROUP_ENTRY(
-                occ_on, nmranet::EventConfigEntry,  //
+                occ_on, openlcb::EventConfigEntry,  //
     Name("Occupied"),
     Description(
         "A train showed up in the segment."));
 CDI_GROUP_ENTRY(
-    occ_off, nmranet::EventConfigEntry, Name("Unoccupied"),  //
+    occ_off, openlcb::EventConfigEntry, Name("Unoccupied"),  //
     Description(
         "All trains left the segment."));
 CDI_GROUP_END();
 
 CDI_GROUP(DetectorPortOvercurrent);
 CDI_GROUP_ENTRY(
-    over_on, nmranet::EventConfigEntry,  //
+    over_on, openlcb::EventConfigEntry,  //
     Name("Shorted"),
     Description(
         "The output was turned off due to a short circuit."));
 CDI_GROUP_ENTRY(
-    over_off, nmranet::EventConfigEntry, Name("Short cleared"),  //
+    over_off, openlcb::EventConfigEntry, Name("Short cleared"),  //
     Description(
         "The output is not shorted anymore."));
 CDI_GROUP_END();
 
 CDI_GROUP(DetectorPortEnable);
 CDI_GROUP_ENTRY(
-    enable_on, nmranet::EventConfigEntry,  //
+    enable_on, openlcb::EventConfigEntry,  //
     Name("Turn On"),
     Description(
         "Turns on the output."));
 CDI_GROUP_ENTRY(
-    enable_off, nmranet::EventConfigEntry, Name("Turn Off"),  //
+    enable_off, openlcb::EventConfigEntry, Name("Turn Off"),  //
     Description(
         "Turns off the output."));
 CDI_GROUP_END();
 
 
 CDI_GROUP(DetectorPortConfig);
-CDI_GROUP_ENTRY(name, nmranet::StringConfigEntry<16>, Name("Port name"), Description("This setting has no effect on the node operation."));
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<16>, Name("Port name"), Description("This setting has no effect on the node operation."));
 CDI_GROUP_ENTRY(occupancy, DetectorPortOccupancy, Name("Occupancy detector"), Description("Configures events produced by the occupancy detector."));
 CDI_GROUP_ENTRY(overcurrent, DetectorPortOvercurrent, Name("Short detector"), Description("Configures events produced by the overcurrent detector."));
 CDI_GROUP_ENTRY(enable, DetectorPortEnable, Name("Enable"), Description("Configures events consumed to turn the port on or off."));

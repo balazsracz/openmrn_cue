@@ -14,16 +14,16 @@ void WDT_IRQHandler(void) { NVIC_SystemReset(); }
 #undef OVERRIDE
 #define OVERRIDE override
 
-class WatchDogEventHandler : public nmranet::SimpleEventHandler {
+class WatchDogEventHandler : public openlcb::SimpleEventHandler {
  public:
-  WatchDogEventHandler(nmranet::Node* node, uint64_t event)
+  WatchDogEventHandler(openlcb::Node* node, uint64_t event)
       : node_(node), event_(event) {
     init_watchdog();
     reset_watchdog();
-    nmranet::EventRegistry::instance()->register_handlerr(this, 0, 0);
+    openlcb::EventRegistry::instance()->register_handlerr(this, 0, 0);
   }
 
-  void HandleEventReport(nmranet::EventReport* event,
+  void HandleEventReport(openlcb::EventReport* event,
                          BarrierNotifiable* done) OVERRIDE {
     if (event->event == event_) {
       reset_watchdog();
@@ -31,13 +31,13 @@ class WatchDogEventHandler : public nmranet::SimpleEventHandler {
     done->notify();
   }
 
-  void handle_identify_global(nmranet::EventReport* event,
+  void handle_identify_global(openlcb::EventReport* event,
                             BarrierNotifiable* done) OVERRIDE {
-    nmranet::event_write_helper1.WriteAsync(
-        node_, nmranet::Defs::MTI_CONSUMER_IDENTIFIED_UNKNOWN,
-        nmranet::WriteHelper::global(), nmranet::eventid_to_buffer(event_), done);
+    openlcb::event_write_helper1.WriteAsync(
+        node_, openlcb::Defs::MTI_CONSUMER_IDENTIFIED_UNKNOWN,
+        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(event_), done);
   }
-  void handle_identify_consumer(nmranet::EventReport* event,
+  void handle_identify_consumer(openlcb::EventReport* event,
                               BarrierNotifiable* done) OVERRIDE {
     if (event->event == event_) {
       handle_identify_global(event, done);
@@ -74,7 +74,7 @@ class WatchDogEventHandler : public nmranet::SimpleEventHandler {
     LPC_WDT->FEED = 0x55;
   }
 
-  nmranet::Node* node_;
+  openlcb::Node* node_;
   uint64_t event_;
 };
 
