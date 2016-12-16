@@ -40,10 +40,10 @@
 #include <memory>
 #include <map>
 
-#include "nmranet/EventHandler.hxx"
-#include "nmranet/Defs.hxx"
+#include "openlcb/EventHandler.hxx"
+#include "openlcb/Defs.hxx"
 
-namespace nmranet {
+namespace openlcb {
 
 class MemorizingHandlerBlock;
 
@@ -84,24 +84,24 @@ class MemorizingHandlerManager : public EventHandler {
                            unsigned num_total_events, unsigned block_size);
   ~MemorizingHandlerManager();
 
-  void HandleEventReport(const EventRegistryEntry& registry_entry,
-                         EventReport* event, BarrierNotifiable* done) OVERRIDE;
-  void HandleConsumerIdentified(const EventRegistryEntry& registry_entry,
+  void handle_event_report(const EventRegistryEntry& registry_entry,
+                           EventReport* event, BarrierNotifiable* done) OVERRIDE;
+  void handle_consumer_identified(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE;
-  void HandleProducerIdentified(const EventRegistryEntry& registry_entry,
+  void handle_producer_identified(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE;
-  void HandleIdentifyGlobal(const EventRegistryEntry& registry_entry,
+  void handle_identify_global(const EventRegistryEntry& registry_entry,
                             EventReport* event,
                             BarrierNotifiable* done) OVERRIDE;
-  void HandleIdentifyConsumer(const EventRegistryEntry& registry_entry,
+  void handle_identify_consumer(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) override {
     // These are handled by individual blocks TODO: what if there is no block
     return done->notify();
   }
-  void HandleIdentifyProducer(const EventRegistryEntry& registry_entry,
+  void handle_identify_producer(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) override {
     // These are handled by individual blocks TODO: what if there is no block
@@ -153,43 +153,43 @@ class MemorizingHandlerBlock : public EventHandler {
   ~MemorizingHandlerBlock();
 
   // Event reports are handled by the manager.
-  void HandleEventReport(const EventRegistryEntry& registry_entry,
-                         EventReport* event, BarrierNotifiable* done) OVERRIDE {
+  void handle_event_report(const EventRegistryEntry& registry_entry,
+                           EventReport* event, BarrierNotifiable* done) OVERRIDE {
     done->notify();
   }
 
-  void HandleConsumerIdentified(const EventRegistryEntry& registry_entry,
+  void handle_consumer_identified(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE {
     ReportSingle(event->event, done);
   }
-  void HandleConsumerRangeIdentified(const EventRegistryEntry& registry_entry,
+  void handle_consumer_range_identified(const EventRegistryEntry& registry_entry,
                                      EventReport* event,
                                      BarrierNotifiable* done) OVERRIDE {
     ReportRange(event, done);
   }
-  void HandleProducerIdentified(const EventRegistryEntry& registry_entry,
+  void handle_producer_identified(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE {
     ReportSingle(event->event, done);
   }
-  void HandleProducerRangeIdentified(const EventRegistryEntry& registry_entry,
+  void handle_producer_range_identified(const EventRegistryEntry& registry_entry,
                                      EventReport* event,
                                      BarrierNotifiable* done) OVERRIDE {
     ReportRange(event, done);
   }
-  void HandleIdentifyProducer(const EventRegistryEntry& registry_entry,
+  void handle_identify_producer(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) OVERRIDE {
     ReportAndIdentify(event->event, Defs::MTI_PRODUCER_IDENTIFIED_VALID, done);
   }
-  void HandleIdentifyConsumer(const EventRegistryEntry& registry_entry,
+  void handle_identify_consumer(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) OVERRIDE {
     ReportAndIdentify(event->event, Defs::MTI_CONSUMER_IDENTIFIED_VALID, done);
   }
 
-  void HandleIdentifyGlobal(const EventRegistryEntry& registry_entry,
+  void handle_identify_global(const EventRegistryEntry& registry_entry,
                             EventReport* event,
                             BarrierNotifiable* done) OVERRIDE {
     // Global identify is handler by the block manager.
@@ -232,6 +232,6 @@ class MemorizingHandlerBlock : public EventHandler {
   uint64_t current_event_;
 };
 
-}  // namespace nmranet
+}  // namespace openlcb
 
 #endif  // _BRACZ_CUSTOM_MEMORIZINGEVENTHANDLER_HXX_

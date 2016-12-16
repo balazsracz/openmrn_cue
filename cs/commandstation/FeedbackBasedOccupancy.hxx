@@ -36,14 +36,14 @@
 #ifndef _BRACZ_COMMANDSTATION_FEEDBACKBASEDOCCUPANCY_HXX_
 #define _BRACZ_COMMANDSTATION_FEEDBACKBASEDOCCUPANCY_HXX_
 
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 #include "dcc/RailcomHub.hxx"
 
 namespace commandstation {
 
 class FeedbackBasedOccupancy : public dcc::RailcomHubPort {
  public:
-    FeedbackBasedOccupancy(nmranet::Node* node, uint64_t event_base,
+    FeedbackBasedOccupancy(openlcb::Node* node, uint64_t event_base,
                          unsigned channel_count)
       : dcc::RailcomHubPort(node->iface()),
         currentValues_(0),
@@ -69,8 +69,8 @@ class FeedbackBasedOccupancy : public dcc::RailcomHubPort {
 
  private:
   uint32_t currentValues_;
-  nmranet::BitRangeEventPC eventHandler_;
-  nmranet::WriteHelper h_;
+  openlcb::BitRangeEventPC eventHandler_;
+  openlcb::WriteHelper h_;
   BarrierNotifiable n_;
 };
 

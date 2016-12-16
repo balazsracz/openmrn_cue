@@ -206,7 +206,7 @@ EventMap* GetEventMap() {
 
 }  // namespace automata
 
-namespace nmranet {
+namespace openlcb {
 const string& GetNameForEvent(uint64_t event) {
   automata::EventMap::const_iterator it = automata::g_event_map->find(event);
   if (it != automata::g_event_map->end()) {

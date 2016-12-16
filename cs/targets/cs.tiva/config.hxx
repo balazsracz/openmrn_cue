@@ -2,12 +2,12 @@
 #ifndef _BRACZ_CS_TIVA_CONFIG_HXX_
 #define _BRACZ_CS_TIVA_CONFIG_HXX_
 
-#include "nmranet/ConfigRepresentation.hxx"
-#include "nmranet/MemoryConfig.hxx"
-#include "nmranet/SimpleNodeInfo.hxx"
+#include "openlcb/ConfigRepresentation.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/SimpleNodeInfo.hxx"
 #include "commandstation/TrainDbCdi.hxx"
 
-namespace nmranet {
+namespace openlcb {
 
 extern const SimpleNodeStaticValues SNIP_STATIC_DATA =
 {
@@ -41,7 +41,7 @@ CDI_GROUP_ENTRY(trains, TrainSegment, Name("Trains"), Description("Configures in
 //CDI_GROUP_ENTRY(ro_seg, ROSegment);
 CDI_GROUP_END();
 
-} // namespace nmranet
+} // namespace openlcb
 
 
 

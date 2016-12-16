@@ -50,7 +50,7 @@ class ExternalTrainDbEntry : public TrainDbEntry {
   /** Retrieves the NMRAnet NodeID for the virtual node that represents a
    * particular train known to the database.
    */
-  nmranet::NodeID get_traction_node() override { return 0; }
+  openlcb::NodeID get_traction_node() override { return 0; }
 
   /** Retrieves the name of the train. */
   string get_train_name() override { return name_; }

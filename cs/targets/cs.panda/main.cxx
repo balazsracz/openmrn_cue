@@ -47,12 +47,12 @@
 #include "nmranet_config.h"
 #include "os/watchdog.h"
 
-#include "nmranet/IfCan.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/AliasAllocator.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
 // for logging implementation
@@ -68,7 +68,7 @@
 #include "custom/HostProtocol.hxx"
 
 #include "commandstation/UpdateProcessor.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/TractionTrain.hxx"
 
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/LoggingBit.hxx"
@@ -77,21 +77,21 @@
 #include "commandstation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/AllTrainNodes.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 
-static const nmranet::NodeID NODE_ID = 0x050101011431ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011431ULL;
 
-nmranet::SimpleCanStack stack(NODE_ID);
+openlcb::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = openlcb::MockSNIPUserFile::snip_user_file_path;
 
 extern char __automata_start[];
 extern char __automata_end[];
 
-nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
+openlcb::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
 
 bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
 
@@ -124,21 +124,21 @@ commandstation::UpdateProcessor cs_loop(stack.service(), &track_send);
 bracz_custom::TrackIfReceive track_recv(&can1_interface, &cs_loop);
 static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
 bracz_custom::TrackPowerOnOffBit on_off(ON_EVENT_ID, ON_EVENT_ID+1, &track_send);
-nmranet::BitEventConsumer powerbit(&on_off);
-nmranet::TrainService traction_service(stack.iface());
+openlcb::BitEventConsumer powerbit(&on_off);
+openlcb::TrainService traction_service(stack.iface());
 /*dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
-nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+openlcb::TrainNode train_Am843_node(&traction_service, &train_Am843);
 dcc::Dcc28Train train_ICN(dcc::DccShortAddress(50));
-nmranet::TrainNode train_ICN_node(&traction_service, &train_ICN);
+openlcb::TrainNode train_ICN_node(&traction_service, &train_ICN);
 dcc::Dcc28Train train_M61(dcc::DccShortAddress(61));
-nmranet::TrainNode train_M61_node(&traction_service, &train_M61);
+openlcb::TrainNode train_M61_node(&traction_service, &train_M61);
 //dcc::Dcc28Train train_Re460TSR(dcc::DccShortAddress(22));
 dcc::MMOldTrain train_Re460TSR(dcc::MMAddress(22));
-nmranet::TrainNode train_Re460TSR_node(&traction_service, &train_Re460TSR);
+openlcb::TrainNode train_Re460TSR_node(&traction_service, &train_Re460TSR);
 dcc::Dcc28Train train_V60(dcc::DccShortAddress(51));
-nmranet::TrainNode train_V60_node(&traction_service, &train_V60);
+openlcb::TrainNode train_V60_node(&traction_service, &train_V60);
 dcc::MMOldTrain train_Re465(dcc::MMAddress(47));
-nmranet::TrainNode train_Re465_node(&traction_service, &train_Re465);*/
+openlcb::TrainNode train_Re465_node(&traction_service, &train_Re465);*/
 
 
 OVERRIDE_CONST(automata_init_backoff, 10000);
@@ -163,7 +163,7 @@ int appl_main(int argc, char* argv[]) {
   HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
 
   LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-  nmranet::BitEventConsumer consumer(&logger);
+  openlcb::BitEventConsumer consumer(&logger);
 
   stack.loop_executor();
   return 0;

@@ -38,10 +38,10 @@
 #include <memory>
 #include <vector>
 
-#include "nmranet/SimpleInfoProtocol.hxx"
+#include "openlcb/SimpleInfoProtocol.hxx"
 #include "commandstation/TrainDb.hxx"
 
-namespace nmranet {
+namespace openlcb {
 class Node;
 class TrainService;
 class TrainImpl;
@@ -53,22 +53,22 @@ class FindProtocolServer;
 
 class AllTrainNodes {
  public:
-  AllTrainNodes(TrainDb* db, nmranet::TrainService* traction_service,
-                nmranet::SimpleInfoFlow* info_flow,
-                nmranet::MemoryConfigHandler* memory_config);
+  AllTrainNodes(TrainDb* db, openlcb::TrainService* traction_service,
+                openlcb::SimpleInfoFlow* info_flow,
+                openlcb::MemoryConfigHandler* memory_config);
   ~AllTrainNodes();
 
   // Used for debugging purposes
-  nmranet::TrainImpl* get_train_impl(int id);
+  openlcb::TrainImpl* get_train_impl(int id);
 
   /// Returns a traindb entry or nullptr if the id is too high.
   std::shared_ptr<TrainDbEntry> get_traindb_entry(int id);
 
   /// Returns a node id or 0 if the id is not known to be a train.
-  nmranet::NodeID get_train_node_id(int id);
+  openlcb::NodeID get_train_node_id(int id);
 
   // Creates a new train node based on the given address and drive mode.
-  nmranet::NodeID allocate_node(DccMode drive_type, int address);
+  openlcb::NodeID allocate_node(DccMode drive_type, int address);
 
   size_t size() { return trains_.size(); }
 
@@ -82,8 +82,8 @@ class AllTrainNodes {
   /// A child can look up if a local node is actually a Train node. If so, the
   /// Impl structure will be returned. If the node is not known (or not a train
   /// node maintained by this object), we return nullptr.
-  Impl* find_node(nmranet::Node* node);
-  Impl* find_node(nmranet::NodeID node_id);
+  Impl* find_node(openlcb::Node* node);
+  Impl* find_node(openlcb::NodeID node_id);
 
   /// Helper function to create lok objects. Adds a new Impl structure to
   /// impl_.
@@ -95,8 +95,8 @@ class AllTrainNodes {
 
   // Externally owned.
   TrainDb* db_;
-  nmranet::TrainService* tractionService_;
-  nmranet::MemoryConfigHandler* memoryConfigService_;
+  openlcb::TrainService* tractionService_;
+  openlcb::MemoryConfigHandler* memoryConfigService_;
 
   /// All train nodes that we know about.
   std::vector<Impl*> trains_;

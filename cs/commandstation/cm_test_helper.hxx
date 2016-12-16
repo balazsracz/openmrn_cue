@@ -2,18 +2,18 @@
 #include "commandstation/TrainDb.hxx"
 #include "utils/async_traction_test_helper.hxx"
 
-#include "nmranet/SimpleInfoProtocol.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/ConfigUpdateFlow.hxx"
-#include "nmranet/DatagramCan.hxx"
+#include "openlcb/SimpleInfoProtocol.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/ConfigUpdateFlow.hxx"
+#include "openlcb/DatagramCan.hxx"
 #include "dcc/PacketFlowInterface.hxx"
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char* const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::MockSNIPUserFile::snip_user_file_path;
+const char* const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::MockSNIPUserFile::snip_user_file_path;
 
-namespace nmranet {
+namespace openlcb {
 extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 }
 
@@ -64,7 +64,7 @@ extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
 
 
 
-class AllTrainNodesTestBase : public nmranet::TractionTest {
+class AllTrainNodesTestBase : public openlcb::TractionTest {
  protected:
   AllTrainNodesTestBase() {
     // create_allocated_alias();
@@ -75,7 +75,7 @@ class AllTrainNodesTestBase : public nmranet::TractionTest {
     inject_allocated_alias(0x33A);
   }
 
-  nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
+  openlcb::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
 
 class AllTrainNodesTest : public AllTrainNodesTestBase {
@@ -94,8 +94,8 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
 
   ~AllTrainNodesTest() { wait(); }
 
-  void expect_train_start(nmranet::NodeAlias alias, int addr, dcc::TrainAddressType type = dcc::TrainAddressType::DCC_LONG_ADDRESS) {
-    nmranet::NodeID address = nmranet::TractionDefs::train_node_id_from_legacy(type, addr);
+  void expect_train_start(openlcb::NodeAlias alias, int addr, dcc::TrainAddressType type = dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+    openlcb::NodeID address = openlcb::TractionDefs::train_node_id_from_legacy(type, addr);
     expect_packet(StringPrintf(":X10701%03XN%012" PRIX64 ";", alias, address));
     expect_packet(StringPrintf(":X19100%03XN%012" PRIX64 ";", alias, address));
     expect_packet(
@@ -105,9 +105,9 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
   }
 
   TrainDb trainDb_;
-  nmranet::SimpleInfoFlow infoFlow_{&g_service};
-  nmranet::CanDatagramService datagramService_{ifCan_.get(), 5, 2};
-  nmranet::MemoryConfigHandler memoryConfigHandler_{&datagramService_, nullptr,
+  openlcb::SimpleInfoFlow infoFlow_{&g_service};
+  openlcb::CanDatagramService datagramService_{ifCan_.get(), 5, 2};
+  openlcb::MemoryConfigHandler memoryConfigHandler_{&datagramService_, nullptr,
                                                     5};
   std::unique_ptr<AllTrainNodes> trainNodes_;
 };

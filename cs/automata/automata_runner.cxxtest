@@ -93,7 +93,7 @@ const insn_t* AD(const string& data) {
   return (const insn_t*)(data.data());
 }
 
-class RunnerTest : public nmranet::AsyncNodeTest {
+class RunnerTest : public openlcb::AsyncNodeTest {
  public:
   ~RunnerTest() {
     wait();
@@ -512,7 +512,7 @@ TEST_F(AutomataTests, SignalVar) {
   static FakeBit trigger_f3(this);
   uint8_t consumer_data[10] = {0,};
   static const uint64_t EVENTID = 0x0501010114FF6000;
-  nmranet::ByteRangeEventC consumer(node_, EVENTID, consumer_data, 10);
+  openlcb::ByteRangeEventC consumer(node_, EVENTID, consumer_data, 10);
   static SignalVariable signalvar(&brd, "signal_name", EVENTID + 4*256, 0x5a);
   wait_for_event_thread();
   DefAut(testaut1, brd, {
@@ -618,12 +618,12 @@ TEST_F(AutomataTrainTest, SpeedIsFwd) {
   DefAut(testaut1, brd, {
       auto mb1 = ImportVariable(&mbit1);
       auto mb2 = ImportVariable(&mbit2);
-      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActSetId(openlcb::TractionDefs::NODE_ID_DCC | 0x1384);
       Def().IfGetSpeed().IfSpeedIsForward().ActReg1(mb1);
       Def().IfSpeedIsReverse().ActReg1(mb2);
     });
   SetupRunner(&brd);
-  nmranet::Velocity v(13.5);
+  openlcb::Velocity v(13.5);
   v.forward();
   trainImpl_.set_speed(v);
   mbit1.Set(false);
@@ -651,7 +651,7 @@ TEST_F(AutomataTrainTest, SpeedReverse) {
   DefAut(testaut1, brd, {
       auto mb1 = ImportVariable(&mbit1);
       auto mb2 = ImportVariable(&mbit2);
-      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActSetId(openlcb::TractionDefs::NODE_ID_DCC | 0x1384);
       Def().ActReg0(mb1).ActReg0(mb2);
       Def().IfGetSpeed();
       Def().IfSpeedIsForward().ActReg1(mb1);
@@ -661,7 +661,7 @@ TEST_F(AutomataTrainTest, SpeedReverse) {
       Def().IfSetSpeed();
     });
   SetupRunner(&brd);
-  nmranet::Velocity v(13.5);
+  openlcb::Velocity v(13.5);
   v.forward();
   trainImpl_.set_speed(v);
   runner_->RunAllAutomata(); wait();
@@ -681,12 +681,12 @@ TEST_F(AutomataTrainTest, SpeedReverse) {
 TEST_F(AutomataTrainTest, SpeedReverseFlip) {
   Board brd;
   DefAut(testaut1, brd, {
-      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActSetId(openlcb::TractionDefs::NODE_ID_DCC | 0x1384);
       Def().IfGetSpeed().ActDirectionFlip();
       Def().IfSetSpeed();
     });
   SetupRunner(&brd);
-  nmranet::Velocity v(13.5);
+  openlcb::Velocity v(13.5);
   v.forward();
   trainImpl_.set_speed(v);
   runner_->RunAllAutomata(); wait();
@@ -707,13 +707,13 @@ TEST_F(AutomataTrainTest, SpeedReverseFlip) {
 TEST_F(AutomataTrainTest, SpeedImmediateSet) {
   Board brd;
   DefAut(testaut1, brd, {
-      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActSetId(openlcb::TractionDefs::NODE_ID_DCC | 0x1384);
       Def().ActLoadSpeed(true, 37);
       Def().IfSetSpeed();
     });
   SetupRunner(&brd);
   runner_->RunAllAutomata(); wait();
-  nmranet::Velocity v = trainImpl_.get_speed();
+  openlcb::Velocity v = trainImpl_.get_speed();
   EXPECT_EQ(v.FORWARD, v.direction());
   EXPECT_LT(36.5, v.mph());
   EXPECT_GT(37.5, v.mph());
@@ -722,13 +722,13 @@ TEST_F(AutomataTrainTest, SpeedImmediateSet) {
 TEST_F(AutomataTrainTest, SpeedScale) {
   Board brd;
   DefAut(testaut1, brd, {
-      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActSetId(openlcb::TractionDefs::NODE_ID_DCC | 0x1384);
       Def().ActLoadSpeed(true, 13).ActScaleSpeed(-2.0);
       Def().IfSetSpeed();
     });
   SetupRunner(&brd);
   runner_->RunAllAutomata(); wait();
-  nmranet::Velocity v = trainImpl_.get_speed();
+  openlcb::Velocity v = trainImpl_.get_speed();
   EXPECT_EQ(v.REVERSE, v.direction());
   EXPECT_LT(25.5, v.mph());
   EXPECT_GT(26.5, v.mph());
@@ -737,13 +737,13 @@ TEST_F(AutomataTrainTest, SpeedScale) {
 TEST_F(AutomataTrainTest, SpeedScaleDown) {
   Board brd;
   DefAut(testaut1, brd, {
-      Def().ActSetId(nmranet::TractionDefs::NODE_ID_DCC | 0x1384);
+      Def().ActSetId(openlcb::TractionDefs::NODE_ID_DCC | 0x1384);
       Def().ActLoadSpeed(true, 100).ActScaleSpeed(0.125);
       Def().IfSetSpeed();
     });
   SetupRunner(&brd);
   runner_->RunAllAutomata(); wait();
-  nmranet::Velocity v = trainImpl_.get_speed();
+  openlcb::Velocity v = trainImpl_.get_speed();
   EXPECT_EQ(v.FORWARD, v.direction());
   EXPECT_LT(12, v.mph());
   EXPECT_GT(13, v.mph());

@@ -2046,7 +2046,7 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
    public:
     MyTrain(Board* b, const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 16)) {}
 
@@ -2175,7 +2175,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleStraight) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 16)),
           t_(t) {}
@@ -2234,7 +2234,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCircles) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 16)),
           t_(t) {}
@@ -2286,7 +2286,7 @@ TEST_F(SampleLayoutLogicTrainTest, SpeedSetting) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 16),
                         &speed_var),
@@ -2342,7 +2342,7 @@ TEST_F(SampleLayoutLogicTrainTest, ScheduleConditional) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 16)),
           gate_("gate", alloc_),
@@ -2422,7 +2422,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 16)),
           t_(t) {}
@@ -2469,7 +2469,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesReversedAtTopB) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 8),
                         alloc->Allocate("mytrain", 16)),
           t_(t) {}
@@ -2541,7 +2541,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 16),
                         alloc->Allocate("mytrain", 32)),
           gate_loop_("gate_loop", alloc_),
@@ -2620,7 +2620,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesAlternating) {
     nblock->inverted_detector()->Set(false);
     Run(30);
     EXPECT_EQ(is_forward,
-              trainImpl_.get_speed().direction() == nmranet::Velocity::FORWARD);
+              trainImpl_.get_speed().direction() == openlcb::Velocity::FORWARD);
     if (i == blocks.size()) {
       EXPECT_FALSE(QueryVar(*my_train.gate_loop_.request()));
       EXPECT_FALSE(QueryVar(*my_train.gate_stub_.request()));
@@ -2640,7 +2640,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
     MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
             const AllocatorPtr& alloc)
         : TrainSchedule("mytrain", b,
-                        nmranet::TractionDefs::NODE_ID_DCC | 0x1384,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
                         alloc->Allocate("mytrain.pbits", 16),
                         alloc->Allocate("mytrain", 32)),
           t_(t) {}
@@ -2702,8 +2702,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
   expect_packet_(":X1070144CN060100001388;");
   expect_packet_(":X1910044CN060100001388;");
 
-  nmranet::LoggingTrain trainImpl2(0x1388);
-  nmranet::TrainNodeForProxy trainNode2(&trainService_, &trainImpl2);
+  openlcb::LoggingTrain trainImpl2(0x1388);
+  openlcb::TrainNodeForProxy trainNode2(&trainService_, &trainImpl2);
 
   wait();
 
@@ -2733,8 +2733,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
 
    private:
     SampleLayoutLogicTrainTest* t_;
-  } train1("t1", nmranet::TractionDefs::NODE_ID_DCC | 0x1384, this, &brd, alloc()->Allocate("t1", 64)),
-      train2("t2", nmranet::TractionDefs::NODE_ID_DCC | 0x1388, this, &brd, alloc()->Allocate("t2", 64));
+  } train1("t1", openlcb::TractionDefs::NODE_ID_DCC | 0x1384, this, &brd, alloc()->Allocate("t1", 64)),
+      train2("t2", openlcb::TractionDefs::NODE_ID_DCC | 0x1388, this, &brd, alloc()->Allocate("t2", 64));
   SetupRunner(&brd);
   Run(20);
   vector<BlockInterface*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,
@@ -2856,8 +2856,8 @@ TEST_F(SampleLayoutLogicTrainTest, EagerFlipFlopTwoTrain) {
   expect_packet_(":X1070144CN060100001388;");
   expect_packet_(":X1910044CN060100001388;");
 
-  nmranet::LoggingTrain trainImpl2(0x1388);
-  nmranet::TrainNodeForProxy trainNode2(&trainService_, &trainImpl2);
+  openlcb::LoggingTrain trainImpl2(0x1388);
+  openlcb::TrainNodeForProxy trainNode2(&trainService_, &trainImpl2);
 
   wait();
 
@@ -2887,8 +2887,8 @@ TEST_F(SampleLayoutLogicTrainTest, EagerFlipFlopTwoTrain) {
 
    private:
     SampleLayoutLogicTrainTest* t_;
-  } train1("t1", nmranet::TractionDefs::NODE_ID_DCC | 0x1384, this, &brd, alloc()->Allocate("t1", 64)),
-      train2("t2", nmranet::TractionDefs::NODE_ID_DCC | 0x1388, this, &brd, alloc()->Allocate("t2", 64));
+  } train1("t1", openlcb::TractionDefs::NODE_ID_DCC | 0x1384, this, &brd, alloc()->Allocate("t1", 64)),
+      train2("t2", openlcb::TractionDefs::NODE_ID_DCC | 0x1388, this, &brd, alloc()->Allocate("t2", 64));
   SetupRunner(&brd);
   Run(20);
   vector<BlockInterface*> blocks = {&TopA, &TopB, &RRight, &BotA, &BotB, &RLeft,

@@ -2,8 +2,8 @@
 #ifndef _BRACZ_CUSTOM_AUTOMATACONTROL_HXX_
 #define _BRACZ_CUSTOM_AUTOMATACONTROL_HXX_
 
-#include "nmranet/DatagramHandlerDefault.hxx"
-#include "nmranet/Defs.hxx"
+#include "openlcb/DatagramHandlerDefault.hxx"
+#include "openlcb/Defs.hxx"
 #include "src/automata_runner.h"
 
 namespace bracz_custom {
@@ -18,13 +18,13 @@ struct AutomataDefs {
 
     GET_AUTOMATA_STATE = 0x20,
 
-    ERROR_AUTOMATA_NOT_FOUND = nmranet::Defs::ERROR_INVALID_ARGS | 0xF,
+    ERROR_AUTOMATA_NOT_FOUND = openlcb::Defs::ERROR_INVALID_ARGS | 0xF,
   };
 };
 
-class AutomataControl : public nmranet::DefaultDatagramHandler {
+class AutomataControl : public openlcb::DefaultDatagramHandler {
  public:
-  AutomataControl(nmranet::Node* node, nmranet::DatagramService* if_datagram,
+  AutomataControl(openlcb::Node* node, openlcb::DatagramService* if_datagram,
                   const insn_t* code)
       : DefaultDatagramHandler(if_datagram), runner_(node, code) {
     dg_service()->registry()->insert(runner_.node(),
@@ -38,7 +38,7 @@ class AutomataControl : public nmranet::DefaultDatagramHandler {
 
   Action entry() OVERRIDE {
     if (size() < 2) {
-      return respond_reject(nmranet::DatagramClient::PERMANENT_ERROR);
+      return respond_reject(openlcb::DatagramClient::PERMANENT_ERROR);
     }
     uint8_t cmd = payload()[1];
     needResponse_ = 0;
@@ -54,7 +54,7 @@ class AutomataControl : public nmranet::DefaultDatagramHandler {
       case AutomataDefs::GET_AUTOMATA_STATE: {
         if (size() < 4) {
           return respond_reject(
-              nmranet::Defs::ERROR_INVALID_ARGS_MESSAGE_TOO_SHORT);
+              openlcb::Defs::ERROR_INVALID_ARGS_MESSAGE_TOO_SHORT);
         }
         automataNum_ = payload()[2];
         automataNum_ <<= 8;
@@ -70,10 +70,10 @@ class AutomataControl : public nmranet::DefaultDatagramHandler {
         responsePayload_.push_back(
             runner_.GetAllAutomatas()[automataNum_]->GetState());
         needResponse_ = 1;
-        return respond_ok(nmranet::DatagramDefs::REPLY_PENDING);
+        return respond_ok(openlcb::DatagramDefs::REPLY_PENDING);
       }
       default:
-        return respond_reject(nmranet::DatagramClient::PERMANENT_ERROR);
+        return respond_reject(openlcb::DatagramClient::PERMANENT_ERROR);
     }
   }
 
@@ -92,16 +92,16 @@ class AutomataControl : public nmranet::DefaultDatagramHandler {
   Action send_response_datagram() {
     auto* b = get_allocation_result(dg_service()->iface()->dispatcher());
     b->set_done(b_.reset(this));
-    b->data()->reset(nmranet::Defs::MTI_DATAGRAM,
+    b->data()->reset(openlcb::Defs::MTI_DATAGRAM,
                      message()->data()->dst->node_id(), message()->data()->src,
-                     nmranet::EMPTY_PAYLOAD);
+                     openlcb::EMPTY_PAYLOAD);
     b->data()->payload.swap(responsePayload_);
     clientFlow_->write_datagram(b);
     return wait_and_call(STATE(wait_response_datagram));
   }
 
   Action wait_response_datagram() {
-    if (clientFlow_->result() & nmranet::DatagramClient::OPERATION_PENDING) {
+    if (clientFlow_->result() & openlcb::DatagramClient::OPERATION_PENDING) {
       DIE("Unexpected notification from the datagram client.");
     }
     dg_service()->client_allocator()->typed_insert(clientFlow_);
@@ -112,8 +112,8 @@ class AutomataControl : public nmranet::DefaultDatagramHandler {
 
  private:
   AutomataRunner runner_;
-  nmranet::DatagramClient* clientFlow_;
-  nmranet::DatagramPayload responsePayload_;
+  openlcb::DatagramClient* clientFlow_;
+  openlcb::DatagramPayload responsePayload_;
   uint16_t automataNum_;
   uint16_t needResponse_ : 1;
   BarrierNotifiable b_;

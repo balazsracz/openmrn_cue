@@ -44,15 +44,15 @@ namespace Debug {
 typedef DummyPin DetectRepeat;
 }
 
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleStack.hxx"
 
-#include "nmranet/PolledProducer.hxx"
+#include "openlcb/PolledProducer.hxx"
 #include "custom/AutomataControl.hxx"
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/HostProtocol.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
 #include "os/watchdog.h"
 #include "utils/HubDeviceSelect.hxx"
 #include "utils/Debouncer.hxx"
@@ -67,20 +67,20 @@ OVERRIDE_CONST(node_init_identify, 0);
 
 OVERRIDE_CONST(num_datagram_registry_entries, 3);
 
-static const nmranet::NodeID NODE_ID = 0x05010101143FULL;
+static const openlcb::NodeID NODE_ID = 0x05010101143FULL;
 static const uint64_t EVENT_ID = (NODE_ID << 16);
 
-nmranet::SimpleCanStack stack(NODE_ID);
+openlcb::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = openlcb::MockSNIPUserFile::snip_user_file_path;
 
 extern char __automata_start[];
 extern char __automata_end[];
 
-nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
+openlcb::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
 
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
@@ -125,7 +125,7 @@ OVERRIDE_CONST(num_memory_spaces, 5);
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-typedef nmranet::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
+typedef openlcb::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
                                 TivaGPIOProducerBit> TivaSwitchProducer;
 QuiesceDebouncer::Options opts(3);
 
@@ -138,12 +138,12 @@ TivaSwitchProducer sw2(opts, EVENT_ID + 2, EVENT_ID + 3, USR_SW2_Pin::GPIO_BASE,
 //TivaGPIOConsumer led_acc(BRACZ_LAYOUT | 4, BRACZ_LAYOUT | 5, io::AccPwrLed::GPIO_BASE, io::AccPwrLed::GPIO_PIN);
 //TivaGPIOConsumer led_go(BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,  io::GoPausedLed::GPIO_BASE, io::GoPausedLed::GPIO_PIN);
 
-nmranet::RefreshLoop loop(stack.node(), {&sw1, &sw2});
+openlcb::RefreshLoop loop(stack.node(), {&sw1, &sw2});
 
 bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const insn_t*) __automata_start);
 
-/*TivaSwitchProducer sw2(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                       nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
+/*TivaSwitchProducer sw2(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                       openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
                        USR_SW1::GPIO_BASE, USR_SW1::GPIO_PIN);
 */
 

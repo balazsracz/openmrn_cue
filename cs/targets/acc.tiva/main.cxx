@@ -46,17 +46,17 @@
 #include "utils/GcTcpHub.hxx"
 #include "utils/HubDevice.hxx"
 #include "utils/HubDeviceNonBlock.hxx"
-#include "nmranet/IfCan.hxx"
-#include "nmranet/Defs.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/EventBitProducer.hxx"
-#include "nmranet/RefreshLoop.hxx"
-#include "nmranet/MemoryConfig.hxx"
-#include "nmranet/DatagramCan.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/Defs.hxx"
+#include "openlcb/AliasAllocator.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/EventBitProducer.hxx"
+#include "openlcb/RefreshLoop.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/DatagramCan.hxx"
 #include "utils/Debouncer.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "openlcb/DefaultNode.hxx"
 #include "driverlib/gpio.h"
 #include "inc/hw_memmap.h"
 
@@ -70,20 +70,20 @@ Executor<1> g_executor(nt);
 Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 
-extern const nmranet::NodeID NODE_ID;
-// const nmranet::NodeID NODE_ID = 0x05010101144aULL;
+extern const openlcb::NodeID NODE_ID;
+// const openlcb::NodeID NODE_ID = 0x05010101144aULL;
 
 // OVERRIDE_CONST(can_tx_buffer_size, 2);
 // OVERRIDE_CONST(can_rx_buffer_size, 1);
 
 OVERRIDE_CONST(main_thread_stack_size, 2048);
 
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
-static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventService g_event_service(&g_if_can);
-nmranet::CanDatagramService g_datagram_service(&g_if_can, 2, 2);
-nmranet::MemoryConfigHandler g_memory_config_handler(&g_datagram_service,
+openlcb::IfCan g_if_can(&g_executor, &can_hub0, 3, 3, 2);
+static openlcb::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
+openlcb::DefaultNode g_node(&g_if_can, NODE_ID);
+openlcb::EventService g_event_service(&g_if_can);
+openlcb::CanDatagramService g_datagram_service(&g_if_can, 2, 2);
+openlcb::MemoryConfigHandler g_memory_config_handler(&g_datagram_service,
                                                      &g_node, 1);
 
 bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
@@ -94,8 +94,8 @@ bracz_custom::TivaSignalPacketSender g_signalbus(&g_service, 15625,
 static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
 
-class TivaGPIOConsumer : public nmranet::BitEventInterface,
-                         public nmranet::BitEventConsumer {
+class TivaGPIOConsumer : public openlcb::BitEventInterface,
+                         public openlcb::BitEventConsumer {
  public:
   TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port,
                    uint8_t pin)
@@ -112,13 +112,13 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
     }
   }
 
-  nmranet::Node* node() OVERRIDE { return &g_node; }
+  openlcb::Node* node() OVERRIDE { return &g_node; }
 
  private:
   volatile uint8_t* memory_;
 };
 
-class LoggingBit : public nmranet::BitEventInterface {
+class LoggingBit : public openlcb::BitEventInterface {
  public:
   LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
       : BitEventInterface(event_on, event_off), name_(name), state_(false) {}
@@ -134,7 +134,7 @@ class LoggingBit : public nmranet::BitEventInterface {
 #endif
   }
 
-  virtual nmranet::Node* node() { return &g_node; }
+  virtual openlcb::Node* node() { return &g_node; }
 
  private:
   const char* name_;
@@ -142,7 +142,7 @@ class LoggingBit : public nmranet::BitEventInterface {
 };
 
 LoggingBit led_red_bit(R_EVENT_ID + 0, R_EVENT_ID + 1, nullptr);
-nmranet::BitEventConsumer red_consumer(&led_red_bit);
+openlcb::BitEventConsumer red_consumer(&led_red_bit);
 TivaGPIOConsumer led_yellow(R_EVENT_ID + 2, R_EVENT_ID + 3, GPIO_PORTB_BASE,
                             GPIO_PIN_0);
 TivaGPIOConsumer led_green(R_EVENT_ID + 4, R_EVENT_ID + 5, GPIO_PORTD_BASE,
@@ -180,7 +180,7 @@ TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12,
 TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14,
                       GPIO_PORTE_BASE, GPIO_PIN_2);  // Out7
 
-class TivaGPIOProducerBit : public nmranet::BitEventInterface {
+class TivaGPIOProducerBit : public openlcb::BitEventInterface {
  public:
   TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
                       uint8_t port_bit)
@@ -194,13 +194,13 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
     DIE("cannot set state of input producer");
   }
 
-  nmranet::Node* node() OVERRIDE { return &g_node; }
+  openlcb::Node* node() OVERRIDE { return &g_node; }
 
  private:
   const uint8_t* ptr_;
 };
 
-typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
+typedef openlcb::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
 QuiesceDebouncer::Options opts(8);
 
@@ -221,7 +221,7 @@ TivaGPIOProducer in6(opts, R_EVENT_ID + 48 + 12, R_EVENT_ID + 49 + 12,
 TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14,
                      GPIO_PORTA_BASE, GPIO_PIN_7);
 
-nmranet::RefreshLoop loop(&g_node,
+openlcb::RefreshLoop loop(&g_node,
                           {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
 #define NUM_SIGNALS 32

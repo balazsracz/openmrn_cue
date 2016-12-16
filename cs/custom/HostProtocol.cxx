@@ -39,12 +39,12 @@
 #include "custom/MCPCanFrameFormat.hxx"
 
 
-using nmranet::Defs;
-using nmranet::DatagramClient;
+using openlcb::Defs;
+using openlcb::DatagramClient;
 
 namespace bracz_custom {
 
-static nmranet::NodeHandle g_host_address{0, 0};
+static openlcb::NodeHandle g_host_address{0, 0};
 static Notifiable* g_host_address_nn = nullptr;
 
 void TEST_clear_host_address() {
@@ -169,7 +169,7 @@ void HostClient::log_output(char* buf, int size) {
 
 StateFlowBase::Action HostClient::HostClientSend::entry() {
   // If the log master has not checked in yet, we wait.
-  if (g_host_address == nmranet::NodeHandle{0, 0}) {
+  if (g_host_address == openlcb::NodeHandle{0, 0}) {
     g_host_address_nn = this;
     return wait();
   }

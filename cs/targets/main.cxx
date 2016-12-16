@@ -85,8 +85,8 @@
 #endif
 
 #ifdef ONLY_CPP_EVENT
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 #include "executor/executor.hxx"
 #endif
 
@@ -163,7 +163,7 @@ int __wrap___cxa_atexit(void) {
 }
 
 
-nmranet::Node* node;
+openlcb::Node* node;
 
 #ifdef HAVE_MBED
 
@@ -211,7 +211,7 @@ class BlinkerBit : public BitEventInterface {
   BlinkerBit(uint64_t event_on, uint64_t event_off)
       : BitEventInterface(event_on, event_off) {}
 
-  virtual bool GetCurrentState() { return blinker_pattern; }
+  virtual bool get_current_state() { return blinker_pattern; }
   virtual void SetState(bool new_value) {
     resetblink(new_value ? 1 : 0);
   }

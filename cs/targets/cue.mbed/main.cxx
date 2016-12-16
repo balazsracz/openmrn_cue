@@ -36,15 +36,15 @@
 #include <unistd.h>
 
 #include "mbed.h"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleStack.hxx"
 
-#include "nmranet/PolledProducer.hxx"
+#include "openlcb/PolledProducer.hxx"
 #include "custom/AutomataControl.hxx"
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/HostProtocol.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
 #include "os/watchdog.h"
 #include "utils/HubDeviceSelect.hxx"
 #include "utils/Debouncer.hxx"
@@ -55,15 +55,15 @@ OVERRIDE_CONST(node_init_identify, 0);
 
 OVERRIDE_CONST(num_datagram_registry_entries, 3);
 
-static const nmranet::NodeID NODE_ID = 0x050101011437ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011437ULL;
 static const uint64_t EVENT_ID = (NODE_ID << 16);
 
-nmranet::SimpleCanStack stack(NODE_ID);
+openlcb::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = openlcb::MockSNIPUserFile::snip_user_file_path;
 
 extern "C" {
 extern insn_t automata_code[];

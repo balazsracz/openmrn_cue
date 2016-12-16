@@ -32,16 +32,16 @@
  * @date 22 Feb 2015
  */
 
-#include "nmranet/DatagramHandlerDefault.hxx"
+#include "openlcb/DatagramHandlerDefault.hxx"
 #include "custom/SignalPacket.hxx"
 
 namespace bracz_custom {
 
-class SignalServer : public nmranet::DefaultDatagramHandler {
+class SignalServer : public openlcb::DefaultDatagramHandler {
  public:
   enum { DATAGRAM_ID = 0x2F };
 
-  SignalServer(nmranet::DatagramService* if_dg, nmranet::Node* node,
+  SignalServer(openlcb::DatagramService* if_dg, openlcb::Node* node,
                SignalPacketBaseInterface* signalbus);
 
   ~SignalServer();
@@ -52,7 +52,7 @@ class SignalServer : public nmranet::DefaultDatagramHandler {
   Action send_signalpacket();
   Action wait_for_packet_ready();
 
-  nmranet::Node* node_;
+  openlcb::Node* node_;
   SignalPacketBaseInterface* signalbus_;
   BarrierNotifiable bn_;
 };

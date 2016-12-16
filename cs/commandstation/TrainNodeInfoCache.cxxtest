@@ -78,9 +78,9 @@ class FindManyTrainTestBase : public TrainDbTest {
 
     b->data()->reset();
     b->data()->alias = 0x922;
-    b->data()->state = nmranet::AliasInfo::STATE_RESERVED;
+    b->data()->state = openlcb::AliasInfo::STATE_RESERVED;
     b->data()->do_not_reallocate();
-    secondIf_.local_aliases()->add(nmranet::AliasCache::RESERVED_ALIAS_NODE_ID,
+    secondIf_.local_aliases()->add(openlcb::AliasCache::RESERVED_ALIAS_NODE_ID,
                                    b->data()->alias);
     secondIf_.alias_allocator()->reserved_aliases()->insert(b);
 
@@ -117,17 +117,17 @@ class FindManyTrainTestBase : public TrainDbTest {
     return ret;
   }
 
-  const uint64_t SECOND_NODE_ID = nmranet::TEST_NODE_ID + 256;
-  nmranet::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
-  nmranet::AddAliasAllocator aa_{SECOND_NODE_ID, &secondIf_};
-  nmranet::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
+  const uint64_t SECOND_NODE_ID = openlcb::TEST_NODE_ID + 256;
+  openlcb::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
+  openlcb::AddAliasAllocator aa_{SECOND_NODE_ID, &secondIf_};
+  openlcb::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
 
   RemoteFindTrainNode remoteClient_{&secondNode_};
   TrainNodeCacheOutput output_;
   TrainNodeInfoCache trainCache_{&secondNode_, &remoteClient_, &output_};
 
   StrictMock<MockNotifiable> mockNotifiable_;
-  //nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
+  //openlcb::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
 
 TEST_F(FindManyTrainTestBase, Create) {}

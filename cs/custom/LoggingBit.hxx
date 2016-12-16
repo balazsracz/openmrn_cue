@@ -35,12 +35,12 @@
 #ifndef _BRACZ_CUSTOM_LOGGINGBIT_HXX_
 #define _BRACZ_CUSTOM_LOGGINGBIT_HXX_
 
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/SimpleStack.hxx"
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public nmranet::BitEventInterface
+class LoggingBit : public openlcb::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -48,11 +48,11 @@ public:
     {
     }
 
-    nmranet::EventState GetCurrentState() override
+    openlcb::EventState get_current_state() override
     {
-        return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+        return state_ ? openlcb::EventState::VALID : openlcb::EventState::INVALID;
     }
-    void SetState(bool new_value) override
+    void set_state(bool new_value) override
     {
         state_ = new_value;
 #ifdef __linux__
@@ -62,9 +62,9 @@ public:
 #endif
     }
 
-    nmranet::Node* node() override
+    openlcb::Node* node() override
     {
-      extern nmranet::SimpleCanStack stack;
+      extern openlcb::SimpleCanStack stack;
       return stack.node();
     }
 

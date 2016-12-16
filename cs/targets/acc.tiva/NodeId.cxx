@@ -1,4 +1,4 @@
-#include "nmranet/If.hxx"
+#include "openlcb/If.hxx"
 
-extern const nmranet::NodeID NODE_ID;
-const nmranet::NodeID NODE_ID = 0x05010101144aULL;
+extern const openlcb::NodeID NODE_ID;
+const openlcb::NodeID NODE_ID = 0x05010101144aULL;

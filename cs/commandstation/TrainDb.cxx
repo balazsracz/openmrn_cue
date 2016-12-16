@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "commandstation/TrainDbCdi.hxx"
-#include "nmranet/TractionDefs.hxx"
+#include "openlcb/TractionDefs.hxx"
 #include "utils/format_utils.hxx"
 
 namespace commandstation {
@@ -15,12 +15,12 @@ class PtrTrainDbEntry : public TrainDbEntry {
   /** Retrieves the NMRAnet NodeID for the virtual node that represents a
    * particular train known to the database.
    */
-  nmranet::NodeID get_traction_node() override {
+  openlcb::NodeID get_traction_node() override {
     if (entry()->mode & OLCBUSER) {
-      return 0x050101010000ULL | static_cast<nmranet::NodeID>(legacy_address());
+      return 0x050101010000ULL | static_cast<openlcb::NodeID>(legacy_address());
     } else {
       auto addr = legacy_address();
-      return nmranet::TractionDefs::train_node_id_from_legacy(
+      return openlcb::TractionDefs::train_node_id_from_legacy(
           dcc_mode_to_address_type(get_legacy_drive_mode(), addr), addr);
     }
   }
@@ -111,9 +111,9 @@ class FileTrainDbEntry : public TrainDbEntry {
   /** Retrieves the NMRAnet NodeID for the virtual node that represents a
    * particular train known to the database.
    */
-  nmranet::NodeID get_traction_node() override {
+  openlcb::NodeID get_traction_node() override {
     auto addr = legacy_address();
-    return nmranet::TractionDefs::train_node_id_from_legacy(
+    return openlcb::TractionDefs::train_node_id_from_legacy(
         dcc_mode_to_address_type(get_legacy_drive_mode(), addr), addr);
   }
 
@@ -225,7 +225,7 @@ size_t TrainDb::load_from_file(int fd, bool initial_load) {
       uint16_t address = cfg_.entry(i).address().read(fd);
       if (address != 0 && address != 0xffffu) {
         std::shared_ptr<FileTrainDbEntry> e(new FileTrainDbEntry(fd, cfg_.entry(i).offset()));
-        nmranet::NodeID traction_node = e->get_traction_node();
+        openlcb::NodeID traction_node = e->get_traction_node();
         bool found = false;
         for (unsigned i = 0; i < entries_.size(); ++i) {
           if (entries_[i]->get_traction_node() == traction_node) {

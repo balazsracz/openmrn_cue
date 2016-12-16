@@ -9,12 +9,12 @@
 #include "can_frame.h"
 #include "nmranet_config.h"
 
-#include "nmranet/IfCan.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/AliasAllocator.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
 #include "src/event_range_listener.hxx"
@@ -29,7 +29,7 @@ Executor<1> g_executor(nt);
 Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 
-static const nmranet::NodeID NODE_ID = 0x050101011447ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011447ULL;
 
 extern "C" {
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
@@ -40,10 +40,10 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 1, 3, 2);
-static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventService g_event_service(&g_if_can);
+openlcb::IfCan g_if_can(&g_executor, &can_hub0, 1, 3, 2);
+static openlcb::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
+openlcb::DefaultNode g_node(&g_if_can, NODE_ID);
+openlcb::EventService g_event_service(&g_if_can);
 WatchDogEventHandler g_watchdog(&g_node, WATCHDOG_EVENT_ID);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2400ULL;
@@ -58,7 +58,7 @@ extern "C" {
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public nmranet::BitEventInterface
+class LoggingBit : public openlcb::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -81,7 +81,7 @@ public:
 #endif
     }
 
-    virtual nmranet::Node* node()
+    virtual openlcb::Node* node()
     {
         return &g_node;
     }
@@ -106,8 +106,8 @@ int appl_main(int argc, char* argv[])
 #endif
   //BlinkerFlow blinker(&g_node);
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
-    nmranet::AliasInfo info;
+    openlcb::BitEventConsumer consumer(&logger);
+    openlcb::AliasInfo info;
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
     g_executor.thread_body();
     return 0;

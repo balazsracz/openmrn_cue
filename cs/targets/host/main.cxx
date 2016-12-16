@@ -40,14 +40,14 @@
 #include "nmranet_config.h"
 
 #include "os/TempFile.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "utils/socket_listener.hxx"
 #include "utils/StringPrintf.hxx"
 #include "utils/HubDevice.hxx"
 #include "server/TrainControlService.hxx"
 
-static const nmranet::NodeID NODE_ID = 0x050101011472ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011472ULL;
 OVERRIDE_CONST(num_memory_spaces, 4);
 OVERRIDE_CONST(gc_generate_newlines, 1);
 int port = 12021;
@@ -61,17 +61,17 @@ uint16_t destination_alias = 0;
 const char *lokdb_path;
 string lokdb = "LokDb { }";
 
-nmranet::SimpleCanStack stack(NODE_ID);
+openlcb::SimpleCanStack stack(NODE_ID);
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::MockSNIPUserFile::snip_user_file_path;
 
-namespace nmranet {
+namespace openlcb {
 const SimpleNodeStaticValues SNIP_STATIC_DATA = {
     4, "OpenMRN", "Host server", "No hardware here", "0.92"};
-}  // namespace nmranet
+}  // namespace openlcb
 
 server::TrainControlService control_server(stack.executor());
 
@@ -196,7 +196,7 @@ int appl_main(int argc, char *argv[]) {
   }
   control_server.initialize(
       stack.dg_service(), stack.node(),
-      nmranet::NodeHandle(destination_nodeid, destination_alias), lokdb, true);
+      openlcb::NodeHandle(destination_nodeid, destination_alias), lokdb, true);
   int proxy_fd = ConnectSocket(proxy_host, proxy_port);
   if (proxy_fd < 0) {
     DIE("Could not connect to proxy.");

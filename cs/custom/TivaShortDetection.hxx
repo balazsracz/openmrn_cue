@@ -46,8 +46,8 @@
 #include "inc/hw_memmap.h"
 
 #include "executor/StateFlow.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/TractionDefs.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/TractionDefs.hxx"
 #include "utils/logging.h"
 #include "commandstation/dcc_control.hxx"
 #include "DccHardware.hxx"
@@ -140,7 +140,7 @@ class ADCFlowBase : public StateFlowBase {
 template <class HW>
 class TivaShortDetectionModule : public ADCFlowBase<HW> {
  public:
-  TivaShortDetectionModule(nmranet::Node* node)
+  TivaShortDetectionModule(openlcb::Node* node)
       : ADCFlowBase<HW>(node->iface(), MSEC_TO_NSEC(1)),
         num_disable_tries_(0),
         num_overcurrent_tests_(0),
@@ -198,9 +198,9 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   Action send_short_message() {
     auto* b = this->get_allocation_result(
         node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
-                     nmranet::eventid_to_buffer(
-                         nmranet::TractionDefs::EMERGENCY_STOP_EVENT));
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(
+                         openlcb::TractionDefs::EMERGENCY_STOP_EVENT));
     node_->iface()->global_message_write_flow()->send(b);
 
     return this->allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_short_report2));
@@ -209,8 +209,8 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   Action send_short_report2() {
     auto* b = this->get_allocation_result(
         node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
-                     nmranet::eventid_to_buffer(EVENT_CS_DETECTED_SHORT));
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(EVENT_CS_DETECTED_SHORT));
     node_->iface()->global_message_write_flow()->send(b);
     
     return call_immediately(STATE(start_timer));
@@ -229,13 +229,13 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   uint8_t num_disable_tries_;
   uint8_t num_overcurrent_tests_;
   long long next_report_;
-  nmranet::Node* node_;
+  openlcb::Node* node_;
 };
 
 template <class HW>
 class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
  public:
-  AccessoryOvercurrentMeasurement(Service* s, nmranet::Node* node)
+  AccessoryOvercurrentMeasurement(Service* s, openlcb::Node* node)
       : ADCFlowBase<HW>(s, MSEC_TO_NSEC(10)), num_short_(0), node_(node) {
     last_time_not_overcurrent_ = os_get_time_monotonic();
     HW::VOLTAGE_Pin::hw_init();
@@ -311,8 +311,8 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
   Action send_shorted() {
     auto* b =
         get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
-                     nmranet::eventid_to_buffer(HW::EVENT_SHORT));
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(HW::EVENT_SHORT));
     node_->iface()->global_message_write_flow()->send(b);
     return call_immediately(STATE(off));
   }
@@ -325,8 +325,8 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
   Action send_overcurrent() {
     auto* b =
         get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
-                     nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT));
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(HW::EVENT_OVERCURRENT));
     node_->iface()->global_message_write_flow()->send(b);
     return call_immediately(STATE(off));
   }
@@ -339,8 +339,8 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
   Action send_off() {
     auto* b =
         get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
-                     nmranet::eventid_to_buffer(HW::EVENT_OFF));
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(HW::EVENT_OFF));
     node_->iface()->global_message_write_flow()->send(b);
     return this->start_timer();
   }
@@ -374,40 +374,40 @@ class AccessoryOvercurrentMeasurement : public ADCFlowBase<HW> {
   unsigned num_uv_ : 8;
   unsigned is_voltage_ : 1;
   unsigned count_report_;
-  nmranet::Node* node_;
+  openlcb::Node* node_;
 };
 
 template <class HW>
-class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
+class TivaAccPowerOnOffBit : public openlcb::BitEventInterface {
  public:
-  TivaAccPowerOnOffBit(nmranet::Node* node, uint64_t event_on,
+  TivaAccPowerOnOffBit(openlcb::Node* node, uint64_t event_on,
                        uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  nmranet::EventState GetCurrentState() OVERRIDE {
-    return HW::ACC_ENABLE_Pin::get() ? nmranet::EventState::VALID
-                                     : nmranet::EventState::INVALID;
+  openlcb::EventState get_current_state() OVERRIDE {
+    return HW::ACC_ENABLE_Pin::get() ? openlcb::EventState::VALID
+                                     : openlcb::EventState::INVALID;
   }
-  void SetState(bool new_value) OVERRIDE {
+  void set_state(bool new_value) OVERRIDE {
     if (!HW::ACC_ENABLE_Pin::get() && new_value) {
       // We are turning power on.
       // sends some event reports to clear off the shorted and overcurrent bits.
       auto* b = node()->iface()->global_message_write_flow()->alloc();
-      b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
-                       nmranet::eventid_to_buffer(HW::EVENT_OVERCURRENT ^ 1));
+      b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node()->node_id(),
+                       openlcb::eventid_to_buffer(HW::EVENT_OVERCURRENT ^ 1));
       node()->iface()->global_message_write_flow()->send(b);
       b = node()->iface()->global_message_write_flow()->alloc();
-      b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
-                       nmranet::eventid_to_buffer(HW::EVENT_SHORT ^ 1));
+      b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node()->node_id(),
+                       openlcb::eventid_to_buffer(HW::EVENT_SHORT ^ 1));
       node()->iface()->global_message_write_flow()->send(b);
     }
     HW::ACC_ENABLE_Pin::set(new_value);
   }
 
-  nmranet::Node* node() OVERRIDE { return node_; }
+  openlcb::Node* node() OVERRIDE { return node_; }
 
  private:
-  nmranet::Node* node_;
+  openlcb::Node* node_;
 };
 
 #endif  // _TIVA_SHORTDETECTION_HXX_

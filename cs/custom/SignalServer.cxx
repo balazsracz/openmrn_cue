@@ -38,7 +38,7 @@
 
 namespace bracz_custom {
 
-SignalServer::SignalServer(nmranet::DatagramService* if_dg, nmranet::Node* node,
+SignalServer::SignalServer(openlcb::DatagramService* if_dg, openlcb::Node* node,
                            SignalPacketBaseInterface* signalbus)
     : DefaultDatagramHandler(if_dg), node_(node), signalbus_(signalbus) {
   dg_service()->registry()->insert(node_, DATAGRAM_ID, this);
@@ -50,7 +50,7 @@ SignalServer::~SignalServer() {
 
 StateFlowBase::Action SignalServer::entry() {
   if (size() < 2)
-    return respond_reject(nmranet::Defs::ERROR_INVALID_ARGS_MESSAGE_TOO_SHORT);
+    return respond_reject(openlcb::Defs::ERROR_INVALID_ARGS_MESSAGE_TOO_SHORT);
   uint8_t cmd = payload()[1];
   switch (cmd) {
     case CMD_SIGNALPACKET: {
@@ -65,7 +65,7 @@ StateFlowBase::Action SignalServer::entry() {
       return respond_ok(0);
     }
     default:
-      return respond_reject(nmranet::Defs::ERROR_UNIMPLEMENTED_SUBCMD);
+      return respond_reject(openlcb::Defs::ERROR_UNIMPLEMENTED_SUBCMD);
   }
 }
 

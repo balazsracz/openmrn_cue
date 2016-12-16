@@ -36,22 +36,22 @@
 #include <unistd.h>
 #include <termios.h> /* tc* functions */
 
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "custom/AutomataControl.hxx"
 #include "utils/Ewma.hxx"
 
-using nmranet::MemoryConfigDefs;
-using nmranet::DatagramDefs;
-using nmranet::DatagramClient;
+using openlcb::MemoryConfigDefs;
+using openlcb::DatagramDefs;
+using openlcb::DatagramClient;
 
-static const nmranet::NodeID NODE_ID = 0x05010101143EULL;
-nmranet::SimpleCanStack stack(NODE_ID);
+static const openlcb::NodeID NODE_ID = 0x05010101143EULL;
+openlcb::SimpleCanStack stack(NODE_ID);
 
-nmranet::MockSNIPUserFile snip_user_file(
+openlcb::MockSNIPUserFile snip_user_file(
     "Signal logic", "This node is loaded with the signaling logic");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::MockSNIPUserFile::snip_user_file_path;
 
 int port = 12021;
 const char *host = "localhost";

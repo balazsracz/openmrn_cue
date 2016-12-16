@@ -16,26 +16,26 @@ using std::vector;
 #include "automata_control.h"
 #include "automata_defs.h"
 
-#include "nmranet/Velocity.hxx"
-#include "nmranet/TractionClient.hxx"
+#include "openlcb/Velocity.hxx"
+#include "openlcb/TractionClient.hxx"
 #include "executor/Timer.hxx"
 #include "os/OS.hxx"
 
 typedef unsigned aut_offset_t;
 typedef uint8_t insn_t;
 
-namespace nmranet { class Node; }
+namespace openlcb { class Node; }
 
 class Automata;
 
 class ReadWriteBit {
 public:
   virtual ~ReadWriteBit() {}
-  virtual bool Read(uint16_t arg, nmranet::Node* node, Automata* aut) = 0;
-  virtual void Write(uint16_t arg, nmranet::Node* node, Automata* aut, bool value) = 0;
+  virtual bool Read(uint16_t arg, openlcb::Node* node, Automata* aut) = 0;
+  virtual void Write(uint16_t arg, openlcb::Node* node, Automata* aut, bool value) = 0;
   virtual uint8_t GetState(uint16_t arg) { HASSERT(0); return 0; }
   virtual void SetState(uint16_t arg, uint8_t state) { HASSERT(0); }
-  virtual void Initialize(nmranet::Node* node) = 0;
+  virtual void Initialize(openlcb::Node* node) = 0;
 };
 
 
@@ -94,13 +94,13 @@ private:
           HASSERT(0 <= id && id <= 255);
         }
 	virtual ~TimerBit() {}
-        bool Read(uint16_t, nmranet::Node*, Automata* aut) override {
+        bool Read(uint16_t, openlcb::Node*, Automata* aut) override {
             return timer_;
 	}
-	void Write(uint16_t, nmranet::Node*, Automata* aut, bool value) override {
+	void Write(uint16_t, openlcb::Node*, Automata* aut, bool value) override {
 	    diewith(CS_DIE_AUT_WRITETIMERBIT);
 	}
-        void Initialize(nmranet::Node*) OVERRIDE {}
+        void Initialize(openlcb::Node*) OVERRIDE {}
 	int GetId() {
 	    return id_;
 	}
@@ -123,11 +123,11 @@ class AutomataTick;
 
 class AutomataRunner {
 public:
-  AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
+  AutomataRunner(openlcb::Node* node, const insn_t* base_pointer,
                  bool with_thread = true);
     ~AutomataRunner();
 
-  nmranet::Node* node() { return openmrn_node_; }
+  openlcb::Node* node() { return openmrn_node_; }
 
   // Starts the automata runner from the beginning.
   void Start();
@@ -222,11 +222,11 @@ private:
 
     /** @returns the last commanded speed of the current loco, or NAN if there
      * was an error getting the speed. */
-    nmranet::Velocity get_train_speed();
+    openlcb::Velocity get_train_speed();
 
     /** Sets the speed of the current loco.
      * @returns true on success. */
-    bool set_train_speed(nmranet::Velocity speed);
+    bool set_train_speed(openlcb::Velocity speed);
 
     //! Instruction pointer.
     aut_offset_t ip_;
@@ -234,7 +234,7 @@ private:
     uint8_t aut_srcplace_; //< "current" (or source) place of train.
     uint8_t aut_trainid_;  //< train id for absolute identification of trains.
     uint8_t aut_signal_aspect_; //< signal aspect for the next set-signal cmd.
-    nmranet::Velocity aut_speed_; //< speed for next set-speed cmd.
+    openlcb::Velocity aut_speed_; //< speed for next set-speed cmd.
 
     uint64_t aut_eventids_[2];  //< Eventid accumulators for declaring bits.
 
@@ -256,11 +256,11 @@ private:
     //! Points to the current automata.
     Automata* current_automata_;
     //! The OpenMRN node used for generating sourced events.
-    nmranet::Node* openmrn_node_;
+    openlcb::Node* openmrn_node_;
     struct Traction {
-        Traction(nmranet::Node* node);
+        Traction(openlcb::Node* node);
         //! Helper flow for traction requests.
-        nmranet::TractionResponseHandler resp_handler_;
+        openlcb::TractionResponseHandler resp_handler_;
         SyncTimeout timer_;
     };
     std::unique_ptr<Traction> traction_;

@@ -36,7 +36,7 @@
 #include "custom/HostProtocol.hxx"
 #include "custom/HostPacketCanPort.hxx"
 
-using namespace nmranet;
+using namespace openlcb;
 
 namespace bracz_custom {
 namespace {
@@ -51,12 +51,12 @@ class HostClientTest : public AsyncDatagramTest, protected AsyncCan1Test {
   }
 
   static void SetUpTestCase() {
-    nmranet::AsyncNodeTest::SetUpTestCase();
+    openlcb::AsyncNodeTest::SetUpTestCase();
     AsyncCan1Test::SetUpTestCase();
   }
 
   static void TearDownTestCase() {
-    nmranet::AsyncNodeTest::TearDownTestCase();
+    openlcb::AsyncNodeTest::TearDownTestCase();
     AsyncCan1Test::TearDownTestCase();
   }
 

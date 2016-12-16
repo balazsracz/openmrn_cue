@@ -39,13 +39,13 @@
 
 #include "dcc/RailcomBroadcastDecoder.hxx"
 #include "dcc/RailcomHub.hxx"
-#include "nmranet/ConfiguredConsumer.hxx"
-#include "nmranet/ConfiguredProducer.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/MultiConfiguredConsumer.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/TractionDefs.hxx"
-#include "nmranet/CallbackEventHandler.hxx"
+#include "openlcb/ConfiguredConsumer.hxx"
+#include "openlcb/ConfiguredProducer.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/MultiConfiguredConsumer.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/TractionDefs.hxx"
+#include "openlcb/CallbackEventHandler.hxx"
 
 #include "config.hxx"
 #include "commandstation/RailcomBroadcastFlow.hxx"
@@ -60,44 +60,44 @@
 extern TivaDAC<DACDefs> dac;
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const nmranet::NodeID NODE_ID;
-nmranet::SimpleCanStack stack(NODE_ID);
+extern const openlcb::NodeID NODE_ID;
+openlcb::SimpleCanStack stack(NODE_ID);
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
 
-nmranet::ConfigDef cfg(0);
+openlcb::ConfigDef cfg(0);
 
-extern const char* const nmranet::CONFIG_FILENAME = "/dev/eeprom";
-extern const char* const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::CONFIG_FILENAME;
-extern const size_t nmranet::CONFIG_FILE_SIZE =
+extern const char* const openlcb::CONFIG_FILENAME = "/dev/eeprom";
+extern const char* const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::CONFIG_FILENAME;
+extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
-static_assert(nmranet::CONFIG_FILE_SIZE <= 1024, "Need to adjust eeprom size");
+static_assert(openlcb::CONFIG_FILE_SIZE <= 1024, "Need to adjust eeprom size");
 
 typedef BLINKER_Pin LED_RED_Pin;
 
-nmranet::ConfiguredConsumer consumer_red(stack.node(),
+openlcb::ConfiguredConsumer consumer_red(stack.node(),
                                          cfg.seg().consumers().entry<0>(),
                                          LED_RED_Pin());
-nmranet::ConfiguredConsumer consumer_green(stack.node(),
+openlcb::ConfiguredConsumer consumer_green(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
                                            OUTPUT_EN0_Pin());
-nmranet::ConfiguredConsumer consumer_blue(stack.node(),
+openlcb::ConfiguredConsumer consumer_blue(stack.node(),
                                           cfg.seg().consumers().entry<2>(),
                                           OUTPUT_EN1_Pin());
 
-/*nmranet::ConfiguredConsumer consumer_shadow0(stack.node(),
+/*openlcb::ConfiguredConsumer consumer_shadow0(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
                                            STAT5_Pin());
 
-nmranet::ConfiguredConsumer consumer_shadow1(stack.node(),
+openlcb::ConfiguredConsumer consumer_shadow1(stack.node(),
                                            cfg.seg().consumers().entry<2>(),
                                            STAT4_Pin());*/
 
-nmranet::ConfiguredProducer producer_sw1(stack.node(),
+openlcb::ConfiguredProducer producer_sw1(stack.node(),
                                          cfg.seg().producers().entry<0>(),
                                          SW1_Pin());
-nmranet::ConfiguredProducer producer_sw2(stack.node(),
+openlcb::ConfiguredProducer producer_sw2(stack.node(),
                                          cfg.seg().producers().entry<1>(),
                                          SW2_Pin());
 
@@ -107,11 +107,11 @@ const Gpio* const enable_ptrs[] = {
     OUTPUT_EN4_Pin::instance(), OUTPUT_EN5_Pin::instance(),
 };
 
-/*nmranet::MultiConfiguredConsumer consumer_enables(stack.node(), enable_ptrs,
+/*openlcb::MultiConfiguredConsumer consumer_enables(stack.node(), enable_ptrs,
                                                   ARRAYSIZE(enable_ptrs),
                                                   cfg.seg().enables());*/
 
-nmranet::RefreshLoop loop(stack.node(),
+openlcb::RefreshLoop loop(stack.node(),
                           {producer_sw1.polling(), producer_sw2.polling()});
 
 template <class Debouncer>
@@ -184,7 +184,7 @@ class DACThread : public OSThread {
     const int kPeriod = 300000;
     usleep(kPeriod * 2);
     while (true) {
-      nmranet::WriteHelper h;
+      openlcb::WriteHelper h;
       /*      usleep(kPeriod);
       dac.set_div(true);
       STAT1_Pin::set(false);
@@ -199,7 +199,7 @@ class DACThread : public OSThread {
       usleep(kPeriod);
       SyncNotifiable n;
       bool send = false;
-      nmranet::EventId ev = 0xFE00000000000000ULL |
+      openlcb::EventId ev = 0xFE00000000000000ULL |
                             ((sample_count & 0xffffULL) << 32) |
                             ((ch0_count & 0xffff) << 16) | (ch1_count & 0xffff);
       ch0_count = 0;
@@ -207,8 +207,8 @@ class DACThread : public OSThread {
       sample_count = 0;
 
       if (send) {
-        h.WriteAsync(stack.node(), nmranet::Defs::MTI_EVENT_REPORT, h.global(),
-                     nmranet::eventid_to_buffer(ev), &n);
+        h.WriteAsync(stack.node(), openlcb::Defs::MTI_EVENT_REPORT, h.global(),
+                     openlcb::eventid_to_buffer(ev), &n);
         n.wait_for_notification();
       }
 
@@ -226,7 +226,7 @@ class DACThread : public OSThread {
   }
 } dac_thread;
 
-void read_dac_settings(int fd, nmranet::DacSettingsConfig cfg,
+void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
                        DacSettings* out) {
   uint16_t n = cfg.nominator().read(fd);
   uint16_t d = cfg.denom().read(fd);
@@ -249,8 +249,8 @@ void read_dac_settings(int fd, nmranet::DacSettingsConfig cfg,
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
-  stack.check_version_and_factory_reset(cfg.seg().internal(), nmranet::EXPECTED_VERSION);
-  int fd = ::open(nmranet::CONFIG_FILENAME, O_RDWR);
+  stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
+  int fd = ::open(openlcb::CONFIG_FILENAME, O_RDWR);
   HASSERT(fd >= 0);
   read_dac_settings(fd, cfg.seg().current().dac_occupancy(), &dac_occupancy);
   read_dac_settings(fd, cfg.seg().current().dac_overcurrent(),
@@ -304,7 +304,7 @@ int appl_main(int argc, char* argv[]) {
                                                       "/dev/railcom");
   // occupancy info will be proxied by the broadcast decoder
   // railcom_hub.register_port(&occupancy_report);
-  //nmranet::RailcomToOpenLCBDebugProxy debugproxy(&railcom_hub, stack.node(), nullptr);
+  //openlcb::RailcomToOpenLCBDebugProxy debugproxy(&railcom_hub, stack.node(), nullptr);
 
   stack.loop_executor();
   return 0;

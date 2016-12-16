@@ -37,7 +37,7 @@
 #define _BRACZ_CUSTOM_SIGNALLOOP_HXX_
 
 #include "utils/Singleton.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 #include "custom/SignalPacket.hxx"
 
 namespace bracz_custom {
@@ -54,7 +54,7 @@ class SignalLoopInterface : public Singleton<SignalLoopInterface> {
 
 
 class SignalLoop : public StateFlowBase,
-                   private nmranet::ByteRangeEventC,
+                   private openlcb::ByteRangeEventC,
                    public SignalLoopInterface,
                    private Atomic {
  public:
@@ -62,7 +62,7 @@ class SignalLoop : public StateFlowBase,
    * a refresh cycle. */
   static const int REFRESH_DELAY_MSEC = 700;
 
-  SignalLoop(SignalPacketBaseInterface* bus, nmranet::Node* node,
+  SignalLoop(SignalPacketBaseInterface* bus, openlcb::Node* node,
              uint64_t event_base, int num_signals)
       : StateFlowBase(node->iface()),
         ByteRangeEventC(node, event_base, backingStore_ = static_cast<uint8_t*>(

@@ -72,10 +72,16 @@ struct Debug {
 
     typedef DummyPin RailcomDataReceived;
     typedef DummyPin RailcomAnyData;
+    typedef DummyPin RailcomCh2Data;
     typedef DummyPin RailcomPackets;
 
 
   typedef LED_GOLD_SW_Pin DetectRepeat;
+};
+
+namespace TDebug {
+    typedef DummyPin Resync;
+    typedef DummyPin NextPacket;
 };
 
 #endif // _ACC_TIVA_2_HARDWARE_HXX_

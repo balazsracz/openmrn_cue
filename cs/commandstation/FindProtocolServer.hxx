@@ -37,26 +37,26 @@
 
 #include "commandstation/FindProtocolDefs.hxx"
 #include "commandstation/AllTrainNodes.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/TractionTrain.hxx"
 
 namespace commandstation {
 
-class FindProtocolServer : public nmranet::SimpleEventHandler {
+class FindProtocolServer : public openlcb::SimpleEventHandler {
  public:
   FindProtocolServer(AllTrainNodes *nodes) : parent_(nodes) {
-    nmranet::EventRegistry::instance()->register_handler(
+    openlcb::EventRegistry::instance()->register_handler(
         EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
         FindProtocolDefs::TRAIN_FIND_MASK);
   }
 
   ~FindProtocolServer() {
-    nmranet::EventRegistry::instance()->unregister_handler(this);
+    openlcb::EventRegistry::instance()->unregister_handler(this);
   }
 
-  void HandleIdentifyGlobal(const EventRegistryEntry &registry_entry,
-                            EventReport *event,
-                            BarrierNotifiable *done) override {
+  void handle_identify_global(const EventRegistryEntry &registry_entry,
+                              EventReport *event,
+                              BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     if (event && event->dst_node) {
@@ -68,10 +68,10 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
                      1) == 1,
                     "The lowermost bit of the TRAIN_FIND_BASE must be 1 or "
                     "else the event produced range encoding must be updated.");
-      nmranet::event_write_helper1.WriteAsync(
-          event->dst_node, nmranet::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-          nmranet::WriteHelper::global(),
-          nmranet::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
+      openlcb::event_write_helper1.WriteAsync(
+          event->dst_node, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
           done->new_child());
     } else {
       // Identify global
@@ -91,9 +91,9 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     }
   }
 
-  void HandleIdentifyProducer(const EventRegistryEntry &registry_entry,
-                              EventReport *event,
-                              BarrierNotifiable *done) override {
+  void handle_identify_producer(const EventRegistryEntry &registry_entry,
+                                EventReport *event,
+                                BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     auto *b = flow_.alloc();
@@ -118,7 +118,7 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     REQUEST_GLOBAL_IDENTIFY = 0x0001000000000000U,
   };
   struct Request {
-    void reset(nmranet::EventId event) { event_ = event; }
+    void reset(openlcb::EventId event) { event_ = event; }
     EventId event_;
   };
 
@@ -174,15 +174,15 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
       b->set_done(bn_.reset(this));
       if (eventId_ == REQUEST_GLOBAL_IDENTIFY) {
         b->data()->reset(
-            nmranet::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+            openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
             nodes()->get_train_node_id(nextTrainId_),
-            nmranet::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE));
+            openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE));
       } else {
-        b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+        b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
                          nodes()->get_train_node_id(nextTrainId_),
-                         nmranet::eventid_to_buffer(eventId_));
+                         openlcb::eventid_to_buffer(eventId_));
       }
-      b->data()->set_flag_dst(nmranet::NMRAnetMessage::WAIT_FOR_LOCAL_LOOPBACK);
+      b->data()->set_flag_dst(openlcb::GenMessage::WAIT_FOR_LOCAL_LOOPBACK);
       parent_->parent_->tractionService_->iface()
           ->global_message_write_flow()
           ->send(b);
@@ -220,8 +220,8 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     Action send_new_node_response() {
       auto *b = get_allocation_result(
           nodes()->tractionService_->iface()->global_message_write_flow());
-      b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFIED_VALID, newNodeId_,
-                       nmranet::eventid_to_buffer(eventId_));
+      b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID, newNodeId_,
+                       openlcb::eventid_to_buffer(eventId_));
       parent_->parent_->tractionService_->iface()
           ->global_message_write_flow()
           ->send(b);
@@ -231,10 +231,10 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
    private:
     AllTrainNodes *nodes() { return parent_->parent_; }
 
-    nmranet::EventId eventId_;
+    openlcb::EventId eventId_;
     union {
       unsigned nextTrainId_;
-      nmranet::NodeID newNodeId_;
+      openlcb::NodeID newNodeId_;
     };
     BarrierNotifiable bn_;
     bool hasMatches_;
@@ -253,24 +253,24 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
   FindProtocolFlow flow_{this};
 };
 
-class SingleNodeFindProtocolServer : public nmranet::SimpleEventHandler {
+class SingleNodeFindProtocolServer : public openlcb::SimpleEventHandler {
  public:
-  using Node = nmranet::Node;
+  using Node = openlcb::Node;
 
   SingleNodeFindProtocolServer(Node *node, TrainDbEntry *db_entry)
       : node_(node), dbEntry_(db_entry) {
-    nmranet::EventRegistry::instance()->register_handler(
+    openlcb::EventRegistry::instance()->register_handler(
         EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
         FindProtocolDefs::TRAIN_FIND_MASK);
   }
 
   ~SingleNodeFindProtocolServer() {
-    nmranet::EventRegistry::instance()->unregister_handler(this);
+    openlcb::EventRegistry::instance()->unregister_handler(this);
   }
 
-  void HandleIdentifyGlobal(const EventRegistryEntry &registry_entry,
-                            EventReport *event,
-                            BarrierNotifiable *done) override {
+  void handle_identify_global(const EventRegistryEntry &registry_entry,
+                              EventReport *event,
+                              BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     if (event && event->dst_node) {
@@ -283,23 +283,23 @@ class SingleNodeFindProtocolServer : public nmranet::SimpleEventHandler {
                    1) == 1,
                   "The lowermost bit of the TRAIN_FIND_BASE must be 1 or "
                   "else the event produced range encoding must be updated.");
-    nmranet::event_write_helper1.WriteAsync(
-        event->dst_node, nmranet::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-        nmranet::WriteHelper::global(),
-        nmranet::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
+    openlcb::event_write_helper1.WriteAsync(
+        event->dst_node, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+        openlcb::WriteHelper::global(),
+        openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
         done->new_child());
   }
 
-  void HandleIdentifyProducer(const EventRegistryEntry &registry_entry,
-                              EventReport *event,
-                              BarrierNotifiable *done) override {
+  void handle_identify_producer(const EventRegistryEntry &registry_entry,
+                                EventReport *event,
+                                BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     if (FindProtocolDefs::match_query_to_node(event->event, dbEntry_)) {
-      nmranet::event_write_helper1.WriteAsync(
-          node_, nmranet::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-          nmranet::WriteHelper::global(),
-          nmranet::eventid_to_buffer(event->event),
+      openlcb::event_write_helper1.WriteAsync(
+          node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(event->event),
           done->new_child());
     }
   };

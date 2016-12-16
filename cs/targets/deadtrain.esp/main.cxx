@@ -41,10 +41,10 @@
 #include "freertos_drivers/common/DummyGPIO.hxx"
 #include "freertos_drivers/esp8266/Esp8266Gpio.hxx"
 #include "freertos_drivers/esp8266/TimerBasedPwm.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/TractionTrain.hxx"
-#include "nmranet/TrainInterface.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/TractionTrain.hxx"
+#include "openlcb/TrainInterface.hxx"
 #include "os/os.h"
 #include "utils/ESPWifiClient.hxx"
 #include "utils/GpioInitializer.hxx"
@@ -63,7 +63,7 @@ extern void ets_delay_us(uint32_t us);
 #define os_delay_us ets_delay_us
 }
 
-#include "nmranet/TrainInterface.hxx"
+#include "openlcb/TrainInterface.hxx"
 #include "hardware.hxx"
 
 
@@ -72,7 +72,7 @@ OVERRIDE_CONST(num_memory_spaces, 6);
 
 struct SpeedRequest {
   SpeedRequest() { reset(); }
-  nmranet::SpeedType speed_;
+  openlcb::SpeedType speed_;
   uint8_t emergencyStop_ : 1;
   uint8_t doKick_ : 1;
   uint8_t doMeasure_ : 1;
@@ -84,7 +84,7 @@ struct SpeedRequest {
   }
 };
 
-extern nmranet::SimpleTrainCanStack stack;
+extern openlcb::SimpleTrainCanStack stack;
 
 class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
                         private DefaultConfigUpdateListener {
@@ -103,7 +103,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
     pwm_.enable();
   }
 
-  void call_speed(nmranet::Velocity speed) {
+  void call_speed(openlcb::Velocity speed) {
     auto *b = alloc();
     b->data()->speed_ = speed;
     send(b, 1);
@@ -136,7 +136,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   /// set(LOW_OFF) will turn on the low driver.
   static constexpr bool LOW_OFF = invertLow_;
 
-  uint16_t speed_to_desired_feedback(nmranet::SpeedType speed) {
+  uint16_t speed_to_desired_feedback(openlcb::SpeedType speed) {
     if (speed.mph() < 0.99) return 0;
     float tgt = speed.mph() * 0x2300 / 128;
     if (tgt < 0x100) {
@@ -146,7 +146,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   }
 
   /*
-  long long speed_to_fill_rate(nmranet::SpeedType speed, long long period) {
+  long long speed_to_fill_rate(openlcb::SpeedType speed, long long period) {
     int fill_rate = speed.mph();
     if (fill_rate >= 128) fill_rate = 128;
     // Let's do a 1khz
@@ -194,7 +194,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
     }
     // Check if we need to change the direction.
     bool desired_dir =
-        (req()->speed_.direction() == nmranet::SpeedType::FORWARD);
+        (req()->speed_.direction() == openlcb::SpeedType::FORWARD);
     if (lastDirMotAHi_ != desired_dir) {
       pwm_.set_off();
       HW::MOT_B_HI_Pin::set_off();
@@ -208,7 +208,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   Action do_speed() {
     // We set the pins explicitly for safety
     bool desired_dir =
-        (req()->speed_.direction() == nmranet::SpeedType::FORWARD);
+        (req()->speed_.direction() == openlcb::SpeedType::FORWARD);
     lastSetSpeed_ = req()->speed_;
     if (desired_dir) {
       HW::MOT_B_HI_Pin::set_off();
@@ -281,8 +281,8 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
 
   Action send_adc_value() {
     auto *b = get_allocation_result(stack.iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, stack.node()->node_id(),
-                     nmranet::eventid_to_buffer(
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, stack.node()->node_id(),
+                     openlcb::eventid_to_buffer(
                          ADC_REPORT_EVENT | feedbackController_.debug_value()));
     stack.iface()->global_message_write_flow()->send(b);
     return release_and_exit();
@@ -349,7 +349,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
   long long kickDelayNsec_ = 0;
   SpeedFeedbackController feedbackController_{mpar_.load_control()};
   /// Last set speed
-  nmranet::SpeedType lastSetSpeed_;
+  openlcb::SpeedType lastSetSpeed_;
   /// Helper class to control the hardware timer.
   TimerBasedPwm pwm_;
   /// Timer structure for executing delays in the state flow.
@@ -375,7 +375,7 @@ class SpeedController : public StateFlow<Buffer<SpeedRequest>, QList<2>>,
 
 extern SpeedController g_speed_controller;
 
-class ESPHuzzahTrain : public nmranet::TrainImpl {
+class ESPHuzzahTrain : public openlcb::TrainImpl {
  public:
   ESPHuzzahTrain() {
     HW::GpioInit::hw_init();
@@ -383,11 +383,11 @@ class ESPHuzzahTrain : public nmranet::TrainImpl {
     HW::LIGHT_BACK_Pin::set(false);
   }
 
-  void set_speed(nmranet::SpeedType speed) override {
+  void set_speed(openlcb::SpeedType speed) override {
     lastSpeed_ = speed;
     g_speed_controller.call_speed(speed);
     if (f0 && directionAwareSpeed_) {
-      if (speed.direction() == nmranet::SpeedType::FORWARD) {
+      if (speed.direction() == openlcb::SpeedType::FORWARD) {
         HW::LIGHT_FRONT_Pin::set(true);
         HW::LIGHT_BACK_Pin::set(false);
       } else {
@@ -397,7 +397,7 @@ class ESPHuzzahTrain : public nmranet::TrainImpl {
     }
   }
   /** Returns the last set speed of the locomotive. */
-  nmranet::SpeedType get_speed() override { return lastSpeed_; }
+  openlcb::SpeedType get_speed() override { return lastSpeed_; }
 
   /** Sets the train to emergency stop. */
   void set_emergencystop() override {
@@ -421,7 +421,7 @@ class ESPHuzzahTrain : public nmranet::TrainImpl {
         } else if (!directionAwareSpeed_) {
           HW::LIGHT_FRONT_Pin::set(true);
           HW::LIGHT_BACK_Pin::set(true);
-        } else if (lastSpeed_.direction() == nmranet::SpeedType::FORWARD) {
+        } else if (lastSpeed_.direction() == openlcb::SpeedType::FORWARD) {
           HW::LIGHT_FRONT_Pin::set(true);
           HW::LIGHT_BACK_Pin::set(false);
         } else {
@@ -462,7 +462,7 @@ class ESPHuzzahTrain : public nmranet::TrainImpl {
   }
 
  private:
-  nmranet::SpeedType lastSpeed_ = 0.0;
+  openlcb::SpeedType lastSpeed_ = 0.0;
   bool f0 = false;
   bool f1 = false;
   bool directionAwareSpeed_ = false;
@@ -484,20 +484,20 @@ const char kFdiXml[] =
 </group></segment></fdi>)";
 
 ESPHuzzahTrain trainImpl;
-nmranet::ConfigDef cfg(0);
+openlcb::ConfigDef cfg(0);
 
-extern nmranet::NodeID NODE_ID;
+extern openlcb::NodeID NODE_ID;
 
-namespace nmranet {
+namespace openlcb {
 
 extern const char *const CONFIG_FILENAME = "openlcb_config";
 // The size of the memory space to export over the above device.
 extern const size_t CONFIG_FILE_SIZE = cfg.seg().size() + cfg.seg().offset();
 extern const char *const SNIP_DYNAMIC_FILENAME = CONFIG_FILENAME;
 
-}  // namespace nmranet
+}  // namespace openlcb
 
-nmranet::SimpleTrainCanStack stack(&trainImpl, kFdiXml, NODE_ID);
+openlcb::SimpleTrainCanStack stack(&trainImpl, kFdiXml, NODE_ID);
 SpeedController g_speed_controller(stack.service(), cfg.seg().motor_control());
 
 class DbEntry : public commandstation::ExternalTrainDbEntry, private DefaultConfigUpdateListener {
@@ -633,13 +633,13 @@ int appl_main(int argc, char *argv[]) {
   
   // Creates the memory block for the dynamic segment.
   static_assert(sizeof(g_dynamic_config) == cfg.dynseg().size(), "dynamic config segment size is not as expected.");
-  auto* space = new nmranet::ReadWriteMemoryBlock(&g_dynamic_config, sizeof(g_dynamic_config));
+  auto* space = new openlcb::ReadWriteMemoryBlock(&g_dynamic_config, sizeof(g_dynamic_config));
   stack.memory_config_handler()->registry()->insert(stack.node(), DYNAMIC_SEGMENT_ID, space);
 
   if (true)
     stack.create_config_file_if_needed(cfg.seg().internal_data(),
-                                       nmranet::EXPECTED_VERSION,
-                                       nmranet::CONFIG_FILE_SIZE);
+                                       openlcb::EXPECTED_VERSION,
+                                       openlcb::CONFIG_FILE_SIZE);
 
   new ESPWifiClient(WIFI_SSID, WIFI_PASS, stack.can_hub(), WIFI_HUB_HOSTNAME,
                     WIFI_HUB_PORT, 1200, []() {

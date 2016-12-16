@@ -42,11 +42,11 @@
 #include "utils/MockTrain.hxx"
 #include "utils/Clock.hxx"
 
-using nmranet::NodeHandle;
-using nmranet::AsyncDatagramTest;
-using nmranet::TrainService;
-using nmranet::MockTrain;
-using nmranet::TrainNode;
+using openlcb::NodeHandle;
+using openlcb::AsyncDatagramTest;
+using openlcb::TrainService;
+using openlcb::MockTrain;
+using openlcb::TrainNode;
 using commandstation::TrainDb;
 using mobilestation::MobileStationTraction;
 
@@ -196,9 +196,9 @@ class TrainControlServiceTrainTest : public TrainControlServiceTest {
         Return(0x00000056U));
     EXPECT_CALL(m2_, legacy_address_type()).Times(AtLeast(0)).WillRepeatedly(
         Return(dcc::TrainAddressType::DCC_SHORT_ADDRESS));
-    trains_.emplace_back(new nmranet::TrainNodeForProxy(&trainService_, &m1_));
+    trains_.emplace_back(new openlcb::TrainNodeForProxy(&trainService_, &m1_));
     wait();
-    trains_.emplace_back(new nmranet::TrainNodeForProxy(&trainService_, &m2_));
+    trains_.emplace_back(new openlcb::TrainNodeForProxy(&trainService_, &m2_));
     wait();
   }
 
@@ -217,8 +217,8 @@ TEST_F(TrainControlServiceTrainTest, Create) {}
 
 MATCHER_P(VApprox, velocity, "") { return (arg - velocity).speed() < 1e-3; }
 
-nmranet::Velocity mph_to_velocity(float mph, bool is_fwd) {
-  nmranet::Velocity v;
+openlcb::Velocity mph_to_velocity(float mph, bool is_fwd) {
+  openlcb::Velocity v;
   v.set_mph(mph);
   if (!is_fwd) v.reverse();
   return v;
@@ -274,9 +274,9 @@ TEST_F(TrainControlServiceTrainTest, GetSpeed0) {
   const char kRequest[] = "id: 51 request { DoSetSpeed { id: 0 } }";
   EXPECT_CALL(m1_, get_speed()).WillOnce(Return(mph_to_velocity(33, false)));
   EXPECT_CALL(m1_, get_commanded_speed())
-      .WillRepeatedly(Return(nmranet::Velocity()));
+      .WillRepeatedly(Return(openlcb::Velocity()));
   EXPECT_CALL(m1_, get_actual_speed())
-      .WillRepeatedly(Return(nmranet::Velocity()));
+      .WillRepeatedly(Return(openlcb::Velocity()));
   send_request(kRequest);
   wait();
 }

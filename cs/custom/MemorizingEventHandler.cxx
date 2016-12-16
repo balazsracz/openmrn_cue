@@ -35,10 +35,10 @@
  */
 
 #include "custom/MemorizingEventHandler.hxx"
-#include "nmranet/WriteHelper.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/WriteHelper.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 
-namespace nmranet {
+namespace openlcb {
 
 MemorizingHandlerManager::MemorizingHandlerManager(Node* node,
                                                    uint64_t event_base,
@@ -58,7 +58,7 @@ MemorizingHandlerManager::~MemorizingHandlerManager() {
   EventRegistry::instance()->unregister_handler(this);
 }
 
-void MemorizingHandlerManager::HandleEventReport(
+void MemorizingHandlerManager::handle_event_report(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
@@ -66,7 +66,7 @@ void MemorizingHandlerManager::HandleEventReport(
   UpdateValidEvent(event->event);
 }
 
-void MemorizingHandlerManager::HandleConsumerIdentified(
+void MemorizingHandlerManager::handle_consumer_identified(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
@@ -74,7 +74,7 @@ void MemorizingHandlerManager::HandleConsumerIdentified(
   UpdateValidEvent(event->event);
 }
 
-void MemorizingHandlerManager::HandleProducerIdentified(
+void MemorizingHandlerManager::handle_producer_identified(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
@@ -82,7 +82,7 @@ void MemorizingHandlerManager::HandleProducerIdentified(
   UpdateValidEvent(event->event);
 }
 
-void MemorizingHandlerManager::HandleIdentifyGlobal(
+void MemorizingHandlerManager::handle_identify_global(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
@@ -268,4 +268,4 @@ void MemorizingHandlerBlock::ReportRange(EventReport* event,
       eventid_to_buffer(current_event_), done->new_child());
 }
 
-}  // namespace nmranet
+}  // namespace openlcb

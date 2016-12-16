@@ -38,25 +38,25 @@
 #include "os/os.h"
 
 #include "custom/MemorizingEventHandler.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
 #include "utils/ClientConnection.hxx"
 
-static const nmranet::NodeID NODE_ID = 0x050101011442ULL;
-nmranet::SimpleCanStack stack(NODE_ID);
+static const openlcb::NodeID NODE_ID = 0x050101011442ULL;
+openlcb::SimpleCanStack stack(NODE_ID);
 
-nmranet::MockSNIPUserFile snip_user_file(
+openlcb::MockSNIPUserFile snip_user_file(
     "Memorizing node",
     "Provides persistent state information for train location events.");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::MockSNIPUserFile::snip_user_file_path;
 
-extern const nmranet::SimpleNodeStaticValues nmranet::SNIP_STATIC_DATA = {
+extern const openlcb::SimpleNodeStaticValues openlcb::SNIP_STATIC_DATA = {
     4, "Balazs Racz", "Memorizing node", "linux.x86", "1.2"};
 
 static const uint64_t BRACZ_LAYOUT = 0x0501010114FF0000ULL;
 
-nmranet::MemorizingHandlerManager g_permabits(stack.node(),
+openlcb::MemorizingHandlerManager g_permabits(stack.node(),
                                               BRACZ_LAYOUT | 0xC000, 1024, 2);
 
 void usage(const char *e) {

@@ -39,7 +39,7 @@
 #include <algorithm>
 
 #include "commandstation/FindTrainNode.hxx"
-#include "nmranet/If.hxx"
+#include "openlcb/If.hxx"
 #include "utils/format_utils.hxx"
 
 namespace commandstation {
@@ -50,18 +50,18 @@ struct TrainNodeCacheOutput {
 
 class TrainNodeInfoCache : public StateFlowBase {
  public:
-  TrainNodeInfoCache(nmranet::Node* node, RemoteFindTrainNode* find_client,
+  TrainNodeInfoCache(openlcb::Node* node, RemoteFindTrainNode* find_client,
                      TrainNodeCacheOutput* output)
       : StateFlowBase(node->iface()->dispatcher()->service()),
         node_(node),
         findClient_(find_client),
         output_(output), pendingSearch_(0) {
 
-    node_->iface()->dispatcher()->register_handler(&snipResponseHandler_, nmranet::Defs::MTI_IDENT_INFO_REPLY, nmranet::Defs::MTI_EXACT);
+    node_->iface()->dispatcher()->register_handler(&snipResponseHandler_, openlcb::Defs::MTI_IDENT_INFO_REPLY, openlcb::Defs::MTI_EXACT);
   }
 
   ~TrainNodeInfoCache() {
-    node_->iface()->dispatcher()->unregister_handler(&snipResponseHandler_, nmranet::Defs::MTI_IDENT_INFO_REPLY, nmranet::Defs::MTI_EXACT);
+    node_->iface()->dispatcher()->unregister_handler(&snipResponseHandler_, openlcb::Defs::MTI_IDENT_INFO_REPLY, openlcb::Defs::MTI_EXACT);
   }
 
   /// Resets the parameters of the search and triggers a new search request.
@@ -102,7 +102,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// Retrieves the Node ID of a the result at a given offset.
   /// @param offset is an index into the output array (i.e. counting form
   /// first_result_offset). Returns 0 on error.
-  nmranet::NodeID get_result_id(unsigned offset) {
+  openlcb::NodeID get_result_id(unsigned offset) {
     auto it = trainNodes_.lower_bound(topNodeId_);
     if (!try_move_iterator(offset, it)) {
       LOG(VERBOSE, "Requested nonexistant result offset %u", offset);
@@ -206,14 +206,14 @@ class TrainNodeInfoCache : public StateFlowBase {
     unsigned hasNodeName_ : 1;
   };
 
-  typedef std::map<nmranet::NodeID, TrainNodeInfo> NodeCacheMap;
+  typedef std::map<openlcb::NodeID, TrainNodeInfo> NodeCacheMap;
 
   /// How many entries we should keep in our inmemory cache.
   static constexpr unsigned kCacheMaxSize = 16;
   /// Lower bound for all valid node IDs.
-  static constexpr nmranet::NodeID kMinNode = 0;
+  static constexpr openlcb::NodeID kMinNode = 0;
   /// Upper bound for all valid node IDs.
-  static constexpr nmranet::NodeID kMaxNode = 0xFFFFFFFFFFFF;
+  static constexpr openlcb::NodeID kMaxNode = 0xFFFFFFFFFFFF;
   /// How many entries to put into the output vector. THis should probably be
   /// mvoed to a parameter set by the UI soon.
   static constexpr unsigned kNodesToShow = 3;
@@ -280,8 +280,8 @@ class TrainNodeInfoCache : public StateFlowBase {
   Action send_query() {
     auto* b =
         get_allocation_result(node_->iface()->addressed_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_IDENT_INFO_REQUEST, node_->node_id(),
-                     nmranet::NodeHandle(lookupIt_), nmranet::EMPTY_PAYLOAD);
+    b->data()->reset(openlcb::Defs::MTI_IDENT_INFO_REQUEST, node_->node_id(),
+                     openlcb::NodeHandle(lookupIt_), openlcb::EMPTY_PAYLOAD);
     b->set_done(bn_.reset(this));
     node_->iface()->addressed_message_write_flow()->send(b);
     return wait_and_call(STATE(send_query_done));
@@ -312,7 +312,7 @@ class TrainNodeInfoCache : public StateFlowBase {
 
   /// Callback from the train node finder when a node has responded to our
   /// search query. Called on the openlcb executor.
-  void result_callback(nmranet::EventState state, nmranet::NodeID node) {
+  void result_callback(openlcb::EventState state, openlcb::NodeID node) {
     if (!node) return; // some error occured.
     numResults_++;
     if (trainNodes_.find(node) != trainNodes_.end()) {
@@ -378,10 +378,10 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   /// Callback when a SNIP response arrives from the network.
-  void handle_snip_response(Buffer<nmranet::NMRAnetMessage>* b) {
+  void handle_snip_response(Buffer<openlcb::GenMessage>* b) {
     LOG(INFO, "Snip response for %04x%08x",
-        nmranet::node_high(b->data()->src.id),
-        nmranet::node_low(b->data()->src.id));
+        openlcb::node_high(b->data()->src.id),
+        openlcb::node_low(b->data()->src.id));
     auto bd = get_buffer_deleter(b);
     if (!b->data()->src.id) {
       LOG(INFO, "SNIP response coming in without source node ID");
@@ -397,8 +397,8 @@ class TrainNodeInfoCache : public StateFlowBase {
       return;
     }
     const auto& payload = b->data()->payload;
-    nmranet::SnipDecodedData decoded_data;
-    nmranet::decode_snip_response(payload, &decoded_data);
+    openlcb::SnipDecodedData decoded_data;
+    openlcb::decode_snip_response(payload, &decoded_data);
     it->second.hasNodeName_ = 1;
     if (!decoded_data.user_name.empty()) {
       it->second.name_ = std::move(decoded_data.user_name);
@@ -430,7 +430,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       if (it->second.name_.empty()) {
         // Format the node MAC address.
         uint8_t idbuf[6];
-        nmranet::node_id_to_data(it->first, idbuf);  // convert to big-endian
+        openlcb::node_id_to_data(it->first, idbuf);  // convert to big-endian
         it->second.name_ = mac_to_string(idbuf);
       }
       output_->entry_names.push_back(&it->second.name_);
@@ -463,11 +463,11 @@ class TrainNodeInfoCache : public StateFlowBase {
     uiNotifiable_->notify();
   }
 
-  nmranet::MessageHandler::GenericHandler snipResponseHandler_{
+  openlcb::MessageHandler::GenericHandler snipResponseHandler_{
       this, &TrainNodeInfoCache::handle_snip_response};
 
   /// Local node. All outgoing traffic will originate from this node.
-  nmranet::Node* node_;
+  openlcb::Node* node_;
   /// Helper class for executing train search commands. Externally owned.
   RemoteFindTrainNode* findClient_;
   /// We will be writing the output (some number of lines of trains) to this
@@ -479,12 +479,12 @@ class TrainNodeInfoCache : public StateFlowBase {
   BarrierNotifiable bn_;
 
   /// Constrains the results we accept to the cache.
-  nmranet::NodeID minResult_;
+  openlcb::NodeID minResult_;
   /// Constrains the results we accept to the cache.
-  nmranet::NodeID maxResult_;
+  openlcb::NodeID maxResult_;
 
   /// Node ID of the first visible node in the output.
-  nmranet::NodeID topNodeId_;
+  openlcb::NodeID topNodeId_;
 
   /// Number of results we found in the last search.
   uint16_t numResults_{0};
@@ -512,7 +512,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   uint8_t resultSetChanged_ : 1;
 
   /// Iterator for running through the cache and sending lookup requests.
-  nmranet::NodeID lookupIt_;
+  openlcb::NodeID lookupIt_;
 
   /// os_time of when we last changed the output.
   long long lastOutputRefresh_;

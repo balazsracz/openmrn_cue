@@ -3,19 +3,19 @@
 
 #include "utils/async_traction_test_helper.hxx"
 
-#include "nmranet/DatagramCan.hxx"
+#include "openlcb/DatagramCan.hxx"
 #include "commandstation/AllTrainNodes.hxx"
-#include "nmranet/SimpleInfoProtocol.hxx"
-#include "nmranet/MemoryConfig.hxx"
-#include "nmranet/ConfigUpdateFlow.hxx"
+#include "openlcb/SimpleInfoProtocol.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/ConfigUpdateFlow.hxx"
 #include "dcc/FakeTrackIf.hxx"
 #include "dcc/SimpleUpdateLoop.hxx"
 
-namespace nmranet {
+namespace openlcb {
 extern Pool *const g_incoming_datagram_allocator = init_main_buffer_pool();
 
 extern const char *const SNIP_DYNAMIC_FILENAME = "/dev/zero";
-} // namespace nmranet
+} // namespace openlcb
 
 namespace commandstation {
 
@@ -31,7 +31,7 @@ dcc::SimpleUpdateLoop updateLoop{&g_service, &fakeTrack};
 extern const unsigned TRAINDB_TEST_NUM_ALIAS;
 
 
-class TrainDbTestBase : public nmranet::TractionTest {
+class TrainDbTestBase : public openlcb::TractionTest {
  protected:
   TrainDbTestBase() {
     wait();
@@ -42,7 +42,7 @@ class TrainDbTestBase : public nmranet::TractionTest {
 
   ~TrainDbTestBase() { wait(); }
 
-  nmranet::ConfigUpdateFlow cfgflow{ifCan_.get()};
+  openlcb::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
 
 
@@ -51,9 +51,9 @@ class TrainDbTest : public TrainDbTestBase {
   TrainDbTest() { wait(); }
   ~TrainDbTest() { wait(); }
 
-  nmranet::CanDatagramService dgHandler_{ifCan_.get(), 5, 2};
-  nmranet::MemoryConfigHandler memCfgHandler_{&dgHandler_, node_, 5};
-  nmranet::SimpleInfoFlow infoFlow_{&g_service};
+  openlcb::CanDatagramService dgHandler_{ifCan_.get(), 5, 2};
+  openlcb::MemoryConfigHandler memCfgHandler_{&dgHandler_, node_, 5};
+  openlcb::SimpleInfoFlow infoFlow_{&g_service};
   TrainDb db_;
   AllTrainNodes allTrainNodes_{&db_, &trainService_, &infoFlow_,
                                &memCfgHandler_};

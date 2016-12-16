@@ -11,7 +11,7 @@ static T* CHECK_NOTNULL(T* d) {
   return d;
 }
 
-static nmranet::EventId create_query(uint64_t nibbles, uint8_t settings) {
+static openlcb::EventId create_query(uint64_t nibbles, uint8_t settings) {
   static_assert(FindProtocolDefs::TRAIN_FIND_MASK_LOW == 8,
                 "The code above expects settings to be 8-bit.");
   return FindProtocolDefs::TRAIN_FIND_BASE |
@@ -221,7 +221,7 @@ TEST_F(FindProtocolTest, BunchOfQueries) {
   find_nodes(0xFFFFFF, FindProtocolDefs::ADDRESS_ONLY, {});
 }
 
-class SingleFindProtocolTest : public nmranet::AsyncNodeTest {
+class SingleFindProtocolTest : public openlcb::AsyncNodeTest {
  protected:
   ~SingleFindProtocolTest() { wait(); }
 
@@ -256,7 +256,7 @@ class MatchNodeTest : public ::testing::Test {
   uint8_t check_match(uint64_t nibbles, uint8_t settings, const string& name,
                       int address, DccMode mode = DCC_28) {
     ExternalTrainDbEntry tr(name, address, mode);
-    nmranet::EventId event = create_query(nibbles, settings);
+    openlcb::EventId event = create_query(nibbles, settings);
     return FindProtocolDefs::match_query_to_node(event, &tr);
   }
 

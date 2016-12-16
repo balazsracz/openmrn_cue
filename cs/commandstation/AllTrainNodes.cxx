@@ -38,14 +38,14 @@
 #include "commandstation/FindProtocolServer.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "dcc/Loco.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/MemoryConfig.hxx"
-#include "nmranet/SimpleNodeInfo.hxx"
-#include "nmranet/TractionDefs.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/SimpleNodeInfo.hxx"
+#include "openlcb/TractionDefs.hxx"
+#include "openlcb/TractionTrain.hxx"
 #include "utils/format_utils.hxx"
 #ifndef __FreeRTOS__
-#include "nmranet/TractionTestTrain.hxx"
+#include "openlcb/TractionTestTrain.hxx"
 #endif
 
 namespace commandstation {
@@ -118,8 +118,8 @@ class DccTrainDbEntry : public TrainDbEntry {
     }
   }
 
-  nmranet::NodeID get_traction_node() override {
-    return nmranet::TractionDefs::train_node_id_from_legacy(
+  openlcb::NodeID get_traction_node() override {
+    return openlcb::TractionDefs::train_node_id_from_legacy(
         dcc_mode_to_address_type(mode_, address_), address_);
   }
 
@@ -150,17 +150,17 @@ struct AllTrainNodes::Impl {
     delete train_;
   }
   int id;
-  nmranet::SimpleEventHandler* eventHandler_ = nullptr;
-  nmranet::Node* node_ = nullptr;
-  nmranet::TrainImpl* train_ = nullptr;
+  openlcb::SimpleEventHandler* eventHandler_ = nullptr;
+  openlcb::Node* node_ = nullptr;
+  openlcb::TrainImpl* train_ = nullptr;
 };
 
-nmranet::TrainImpl* AllTrainNodes::get_train_impl(int id) {
+openlcb::TrainImpl* AllTrainNodes::get_train_impl(int id) {
   if (id >= (int)trains_.size()) return nullptr;
   return trains_[id]->train_;
 }
 
-AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
+AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::Node* node) {
   for (auto* i : trains_) {
     if (i->node_ == node) {
       return i;
@@ -169,7 +169,7 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::Node* node) {
   return nullptr;
 }
 
-AllTrainNodes::Impl* AllTrainNodes::find_node(nmranet::NodeID node_id) {
+AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::NodeID node_id) {
   for (auto* i : trains_) {
     if (i->node_->node_id() == node_id) {
       return i;
@@ -184,7 +184,7 @@ std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(int id) {
 }
 
 /// Returns a node id or 0 if the id is not known to be a train.
-nmranet::NodeID AllTrainNodes::get_train_node_id(int id) {
+openlcb::NodeID AllTrainNodes::get_train_node_id(int id) {
   if (id >= (int)trains_.size()) return 0;
   if (trains_[id]->node_) {
     return trains_[id]->node_->node_id();
@@ -193,18 +193,18 @@ nmranet::NodeID AllTrainNodes::get_train_node_id(int id) {
 }
 
 class AllTrainNodes::TrainSnipHandler
-    : public nmranet::IncomingMessageStateFlow {
+    : public openlcb::IncomingMessageStateFlow {
  public:
-  TrainSnipHandler(AllTrainNodes* parent, nmranet::SimpleInfoFlow* info_flow)
+  TrainSnipHandler(AllTrainNodes* parent, openlcb::SimpleInfoFlow* info_flow)
       : IncomingMessageStateFlow(parent->tractionService_->iface()),
         parent_(parent),
         responseFlow_(info_flow) {
     iface()->dispatcher()->register_handler(
-        this, nmranet::Defs::MTI_IDENT_INFO_REQUEST, nmranet::Defs::MTI_EXACT);
+        this, openlcb::Defs::MTI_IDENT_INFO_REQUEST, openlcb::Defs::MTI_EXACT);
   }
   ~TrainSnipHandler() {
     iface()->dispatcher()->unregister_handler(
-        this, nmranet::Defs::MTI_IDENT_INFO_REQUEST, nmranet::Defs::MTI_EXACT);
+        this, openlcb::Defs::MTI_IDENT_INFO_REQUEST, openlcb::Defs::MTI_EXACT);
   }
 
   Action entry() OVERRIDE {
@@ -224,7 +224,7 @@ class AllTrainNodes::TrainSnipHandler
     }
     snipResponse_[6].data = snipName_.c_str();
     b->data()->reset(nmsg(), snipResponse_,
-                     nmranet::Defs::MTI_IDENT_INFO_REPLY);
+                     openlcb::Defs::MTI_IDENT_INFO_REPLY);
     // We must wait for the data to be sent out because we have a static member
     // that we are changing constantly.
     b->set_done(n_.reset(this));
@@ -237,41 +237,41 @@ class AllTrainNodes::TrainSnipHandler
 
  private:
   AllTrainNodes* parent_;
-  nmranet::SimpleInfoFlow* responseFlow_;
+  openlcb::SimpleInfoFlow* responseFlow_;
   AllTrainNodes::Impl* impl_;
   BarrierNotifiable n_;
   string snipName_;
-  static nmranet::SimpleInfoDescriptor snipResponse_[];
+  static openlcb::SimpleInfoDescriptor snipResponse_[];
 };
 
-nmranet::SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
-    {{nmranet::SimpleInfoDescriptor::LITERAL_BYTE, 4, 0, nullptr},
-     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0,
-      nmranet::SNIP_STATIC_DATA.manufacturer_name},
-     {nmranet::SimpleInfoDescriptor::C_STRING, 41, 0, "Virtual train node"},
-     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
-     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0,
-      nmranet::SNIP_STATIC_DATA.software_version},
-     {nmranet::SimpleInfoDescriptor::LITERAL_BYTE, 2, 0, nullptr},
-     {nmranet::SimpleInfoDescriptor::C_STRING, 63, 1, nullptr},
-     {nmranet::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
-     {nmranet::SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}};
+openlcb::SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
+    {{openlcb::SimpleInfoDescriptor::LITERAL_BYTE, 4, 0, nullptr},
+     {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0,
+      openlcb::SNIP_STATIC_DATA.manufacturer_name},
+     {openlcb::SimpleInfoDescriptor::C_STRING, 41, 0, "Virtual train node"},
+     {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
+     {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0,
+      openlcb::SNIP_STATIC_DATA.software_version},
+     {openlcb::SimpleInfoDescriptor::LITERAL_BYTE, 2, 0, nullptr},
+     {openlcb::SimpleInfoDescriptor::C_STRING, 63, 1, nullptr},
+     {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
+     {openlcb::SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}};
 
 class AllTrainNodes::TrainPipHandler
-    : public nmranet::IncomingMessageStateFlow {
+    : public openlcb::IncomingMessageStateFlow {
  public:
   TrainPipHandler(AllTrainNodes* parent)
       : IncomingMessageStateFlow(parent->tractionService_->iface()),
         parent_(parent) {
     iface()->dispatcher()->register_handler(
-        this, nmranet::Defs::MTI_PROTOCOL_SUPPORT_INQUIRY,
-        nmranet::Defs::MTI_EXACT);
+        this, openlcb::Defs::MTI_PROTOCOL_SUPPORT_INQUIRY,
+        openlcb::Defs::MTI_EXACT);
   }
 
   ~TrainPipHandler() {
     iface()->dispatcher()->unregister_handler(
-        this, nmranet::Defs::MTI_PROTOCOL_SUPPORT_INQUIRY,
-        nmranet::Defs::MTI_EXACT);
+        this, openlcb::Defs::MTI_PROTOCOL_SUPPORT_INQUIRY,
+        openlcb::Defs::MTI_EXACT);
   }
 
  private:
@@ -292,13 +292,13 @@ class AllTrainNodes::TrainPipHandler
     Impl* impl = parent_->find_node(nmsg()->dstNode);
     if (parent_->db_->is_train_id_known(impl->id) &&
         parent_->db_->get_entry(impl->id)->file_offset() >= 0) {
-      reply |= nmranet::Defs::CDI;
+      reply |= openlcb::Defs::CDI;
       }*/
     // Fills in response. We use node_id_to_buffer because that converts a
     // 48-bit value to a big-endian byte string.
-    b->data()->reset(nmranet::Defs::MTI_PROTOCOL_SUPPORT_REPLY,
+    b->data()->reset(openlcb::Defs::MTI_PROTOCOL_SUPPORT_REPLY,
                      nmsg()->dstNode->node_id(), nmsg()->src,
-                     nmranet::node_id_to_buffer(reply));
+                     openlcb::node_id_to_buffer(reply));
 
     // Passes the response to the addressed message write flow.
     iface()->addressed_message_write_flow()->send(b);
@@ -308,17 +308,17 @@ class AllTrainNodes::TrainPipHandler
 
   AllTrainNodes* parent_;
   static constexpr uint64_t pipReply_ =
-      nmranet::Defs::SIMPLE_PROTOCOL_SUBSET | nmranet::Defs::DATAGRAM |
-      nmranet::Defs::MEMORY_CONFIGURATION | nmranet::Defs::EVENT_EXCHANGE |
-      nmranet::Defs::SIMPLE_NODE_INFORMATION | nmranet::Defs::TRACTION_CONTROL |
-      nmranet::Defs::TRACTION_FDI | nmranet::Defs::CDI;
+      openlcb::Defs::SIMPLE_PROTOCOL_SUBSET | openlcb::Defs::DATAGRAM |
+      openlcb::Defs::MEMORY_CONFIGURATION | openlcb::Defs::EVENT_EXCHANGE |
+      openlcb::Defs::SIMPLE_NODE_INFORMATION | openlcb::Defs::TRACTION_CONTROL |
+      openlcb::Defs::TRACTION_FDI | openlcb::Defs::CDI;
 };
 
-class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
+class AllTrainNodes::TrainFDISpace : public openlcb::MemorySpace {
  public:
   TrainFDISpace(AllTrainNodes* parent) : parent_(parent) {}
 
-  bool set_node(nmranet::Node* node) override {
+  bool set_node(openlcb::Node* node) override {
     if (impl_ && impl_->node_ == node) {
       // same node.
       return true;
@@ -343,11 +343,11 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
     }
     ssize_t result = gen_.read(source, dst, len);
     if (result < 0) {
-      *error = nmranet::Defs::ERROR_PERMANENT;
+      *error = openlcb::Defs::ERROR_PERMANENT;
       return 0;
     }
     if (result == 0) {
-      *error = nmranet::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+      *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
     } else {
       *error = 0;
     }
@@ -363,12 +363,12 @@ class AllTrainNodes::TrainFDISpace : public nmranet::MemorySpace {
   Impl* impl_{nullptr};
 };
 
-class AllTrainNodes::TrainConfigSpace : public nmranet::FileMemorySpace {
+class AllTrainNodes::TrainConfigSpace : public openlcb::FileMemorySpace {
  public:
   TrainConfigSpace(int fd, AllTrainNodes* parent, size_t file_end)
       : FileMemorySpace(fd, file_end), parent_(parent) {}
 
-  bool set_node(nmranet::Node* node) override {
+  bool set_node(openlcb::Node* node) override {
     if (impl_ && impl_->node_ == node) {
       // same node.
       return true;
@@ -406,14 +406,14 @@ extern const size_t TRAINCDI_SIZE;
 extern const char TRAINTMPCDI_DATA[];
 extern const size_t TRAINTMPCDI_SIZE;
 
-class AllTrainNodes::TrainCDISpace : public nmranet::MemorySpace {
+class AllTrainNodes::TrainCDISpace : public openlcb::MemorySpace {
  public:
   TrainCDISpace(AllTrainNodes* parent)
       : parent_(parent),
         dbCdi_(TRAINCDI_DATA, TRAINCDI_SIZE),
         tmpCdi_(TRAINTMPCDI_DATA, TRAINTMPCDI_SIZE) {}
 
-  bool set_node(nmranet::Node* node) override {
+  bool set_node(openlcb::Node* node) override {
     if (impl_ && impl_->node_ == node) {
       // same node.
       return true;
@@ -441,9 +441,9 @@ class AllTrainNodes::TrainCDISpace : public nmranet::MemorySpace {
   AllTrainNodes* parent_;
   // Train object structure.
   Impl* impl_{nullptr};
-  nmranet::MemorySpace* proxySpace_;
-  nmranet::ReadOnlyMemoryBlock dbCdi_;
-  nmranet::ReadOnlyMemoryBlock tmpCdi_;
+  openlcb::MemorySpace* proxySpace_;
+  openlcb::ReadOnlyMemoryBlock dbCdi_;
+  openlcb::ReadOnlyMemoryBlock tmpCdi_;
 };
 
 class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
@@ -459,7 +459,7 @@ class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
     if (initial_load) {
       parent_->configSpace_.reset(new TrainConfigSpace(fd, parent_, file_end));
       parent_->memoryConfigService_->registry()->insert(
-          nullptr, nmranet::MemoryConfigDefs::SPACE_CONFIG,
+          nullptr, openlcb::MemoryConfigDefs::SPACE_CONFIG,
           parent_->configSpace_.get());
     }
     return UPDATED;
@@ -472,9 +472,9 @@ class AllTrainNodes::TrainNodesUpdater : private DefaultConfigUpdateListener {
 };
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
-                             nmranet::TrainService* traction_service,
-                             nmranet::SimpleInfoFlow* info_flow,
-                             nmranet::MemoryConfigHandler* memory_config)
+                             openlcb::TrainService* traction_service,
+                             openlcb::SimpleInfoFlow* info_flow,
+                             openlcb::MemoryConfigHandler* memory_config)
     : db_(db),
       tractionService_(traction_service),
       memoryConfigService_(memory_config),
@@ -488,13 +488,13 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
   }
   fdiSpace_.reset(new TrainFDISpace(this));
   memoryConfigService_->registry()->insert(
-      nullptr, nmranet::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+      nullptr, openlcb::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
   if (db_->has_file()) {
     trainUpdater_.reset(new TrainNodesUpdater(this));
   }
   cdiSpace_.reset(new TrainCDISpace(this));
   memoryConfigService_->registry()->insert(
-      nullptr, nmranet::MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
+      nullptr, openlcb::MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
   findProtocolServer_.reset(new FindProtocolServer(this));
 }
 
@@ -564,7 +564,7 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
     }
 #ifndef __FreeRTOS__
     case FAKE_DRIVE: {
-      impl->train_ = new nmranet::LoggingTrain(address);
+      impl->train_ = new openlcb::LoggingTrain(address);
       break;
     }
 #endif
@@ -573,15 +573,15 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
   }
   if (impl->train_) {
     impl->node_ =
-        new nmranet::TrainNodeForProxy(tractionService_, impl->train_);
+        new openlcb::TrainNodeForProxy(tractionService_, impl->train_);
     impl->eventHandler_ =
-        new nmranet::FixedEventProducer<nmranet::TractionDefs::IS_TRAIN_EVENT>(
+        new openlcb::FixedEventProducer<openlcb::TractionDefs::IS_TRAIN_EVENT>(
             impl->node_);
   }
   return impl;
 }
 
-nmranet::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
+openlcb::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
   // The default drive type is DCC_28.
   if ((drive_type & 7) == 0) {
     drive_type = static_cast<DccMode>(drive_type | DCC_28);
@@ -601,7 +601,7 @@ AllTrainNodes::~AllTrainNodes() {
     delete t;
   }
   memoryConfigService_->registry()->erase(
-      nullptr, nmranet::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+      nullptr, openlcb::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
 }
 
 }  // namespace commandstation

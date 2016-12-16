@@ -1,10 +1,10 @@
 #include "utils/async_traction_test_helper.hxx"
-#include "nmranet/TractionTestTrain.hxx"
+#include "openlcb/TractionTestTrain.hxx"
 #include "custom/WiiChuckThrottle.hxx"
 
 using namespace bracz_custom;
 
-namespace nmranet {
+namespace openlcb {
 
 class ChuckThrottleTest : public TractionTest {
  protected:
@@ -56,4 +56,4 @@ TEST_F(ChuckThrottleTest, ChuckLeftMax) {
 
 
 
-}  // namespace nmranet
+}  // namespace openlcb

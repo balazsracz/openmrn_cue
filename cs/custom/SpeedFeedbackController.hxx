@@ -35,29 +35,29 @@
 #ifndef _BRACZ_CUSTOM_SPEEDFEEDBACKCONTROLLER_HXX_
 #define _BRACZ_CUSTOM_SPEEDFEEDBACKCONTROLLER_HXX_
 
-#include "nmranet/ConfigRepresentation.hxx"
+#include "openlcb/ConfigRepresentation.hxx"
 #include "utils/ConfigUpdateListener.hxx"
 #include "utils/Ewma.hxx"
 
 CDI_GROUP(FeedbackParams, Name("Load control"),
           Description("Adjust parameters of the load compensation feedback."));
-CDI_GROUP_ENTRY(integrate, nmranet::Uint8ConfigEntry,
+CDI_GROUP_ENTRY(integrate, openlcb::Uint8ConfigEntry,
                 Name("Integration parameter"), Min(0), Max(255), Default(20),
                 Description(
                     "0 turns off integrating, 255 makes integrating adjustment "
                     "very slow."));
-CDI_GROUP_ENTRY(adjust_param, nmranet::Uint8ConfigEntry,
+CDI_GROUP_ENTRY(adjust_param, openlcb::Uint8ConfigEntry,
                 Name("Rate of adjustment per cycle"), Default(16),
                 Description(
                     "Amplifies or dampens the load compensation adjustment. "
                     "16=direct takeover; less than 16 will dampen, more than "
                     "16 will enlarge adjustment.."));
 CDI_GROUP_ENTRY(
-    max_adjust, nmranet::Uint8ConfigEntry, Name("Maximum adjustment"),
+    max_adjust, openlcb::Uint8ConfigEntry, Name("Maximum adjustment"),
     Default(16),
     Description("What should be the maximum adjustment per cycle."));
 CDI_GROUP_ENTRY(
-    min_power, nmranet::Uint8ConfigEntry, Name("Minimum output power"),
+    min_power, openlcb::Uint8ConfigEntry, Name("Minimum output power"),
     Default(0x30),
     Description("Minimum power value that the motor needs to turn."));
 CDI_GROUP_END();
