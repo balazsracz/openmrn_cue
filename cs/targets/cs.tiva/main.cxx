@@ -76,7 +76,7 @@
 
 #define STANDALONE
 //#define ENABLE_HOST
-//#define LOGTOSTDOUT
+#define LOGTOSTDOUT
 
 #if !defined(ENABLE_HOST) && !defined(LOGTOSTDOUT)
 #define LOGTOSTDOUT
