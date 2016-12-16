@@ -242,9 +242,9 @@ class RemoteFindTrainNode
       nmranet::EventRegistry::instance()->unregister_handler(this);
     }
 
-    void HandleIdentifyGlobal(const EventRegistryEntry& registry_entry,
-                              EventReport* event,
-                              BarrierNotifiable* done) override {
+    void handle_identify_global(const EventRegistryEntry& registry_entry,
+                                EventReport* event,
+                                BarrierNotifiable* done) override {
       AutoNotify an(done);
 
       nmranet::event_write_helper1.WriteAsync(
@@ -254,9 +254,9 @@ class RemoteFindTrainNode
           done->new_child());
     }
 
-    void HandleProducerIdentified(const EventRegistryEntry& registry_entry,
-                                  EventReport* event,
-                                  BarrierNotifiable* done) override {
+    void handle_producer_identified(const EventRegistryEntry& registry_entry,
+                                    EventReport* event,
+                                    BarrierNotifiable* done) override {
       AutoNotify an(done);
       LOG(VERBOSE, "Reply Handler");
       if (event->event == request_) {

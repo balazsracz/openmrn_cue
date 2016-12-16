@@ -54,9 +54,9 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     nmranet::EventRegistry::instance()->unregister_handler(this);
   }
 
-  void HandleIdentifyGlobal(const EventRegistryEntry &registry_entry,
-                            EventReport *event,
-                            BarrierNotifiable *done) override {
+  void handle_identify_global(const EventRegistryEntry &registry_entry,
+                              EventReport *event,
+                              BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     if (event && event->dst_node) {
@@ -91,9 +91,9 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
     }
   }
 
-  void HandleIdentifyProducer(const EventRegistryEntry &registry_entry,
-                              EventReport *event,
-                              BarrierNotifiable *done) override {
+  void handle_identify_producer(const EventRegistryEntry &registry_entry,
+                                EventReport *event,
+                                BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     auto *b = flow_.alloc();
@@ -268,9 +268,9 @@ class SingleNodeFindProtocolServer : public nmranet::SimpleEventHandler {
     nmranet::EventRegistry::instance()->unregister_handler(this);
   }
 
-  void HandleIdentifyGlobal(const EventRegistryEntry &registry_entry,
-                            EventReport *event,
-                            BarrierNotifiable *done) override {
+  void handle_identify_global(const EventRegistryEntry &registry_entry,
+                              EventReport *event,
+                              BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     if (event && event->dst_node) {
@@ -290,9 +290,9 @@ class SingleNodeFindProtocolServer : public nmranet::SimpleEventHandler {
         done->new_child());
   }
 
-  void HandleIdentifyProducer(const EventRegistryEntry &registry_entry,
-                              EventReport *event,
-                              BarrierNotifiable *done) override {
+  void handle_identify_producer(const EventRegistryEntry &registry_entry,
+                                EventReport *event,
+                                BarrierNotifiable *done) override {
     AutoNotify an(done);
 
     if (FindProtocolDefs::match_query_to_node(event->event, dbEntry_)) {

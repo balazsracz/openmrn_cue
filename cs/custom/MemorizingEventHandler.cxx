@@ -66,7 +66,7 @@ void MemorizingHandlerManager::handle_event_report(
   UpdateValidEvent(event->event);
 }
 
-void MemorizingHandlerManager::HandleConsumerIdentified(
+void MemorizingHandlerManager::handle_consumer_identified(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
@@ -74,7 +74,7 @@ void MemorizingHandlerManager::HandleConsumerIdentified(
   UpdateValidEvent(event->event);
 }
 
-void MemorizingHandlerManager::HandleProducerIdentified(
+void MemorizingHandlerManager::handle_producer_identified(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);
@@ -82,7 +82,7 @@ void MemorizingHandlerManager::HandleProducerIdentified(
   UpdateValidEvent(event->event);
 }
 
-void MemorizingHandlerManager::HandleIdentifyGlobal(
+void MemorizingHandlerManager::handle_identify_global(
     const EventRegistryEntry& registry_entry, EventReport* event,
     BarrierNotifiable* done) {
   AutoNotify n(done);

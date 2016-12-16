@@ -31,16 +31,16 @@ class WatchDogEventHandler : public nmranet::SimpleEventHandler {
     done->notify();
   }
 
-  void HandleIdentifyGlobal(nmranet::EventReport* event,
+  void handle_identify_global(nmranet::EventReport* event,
                             BarrierNotifiable* done) OVERRIDE {
     nmranet::event_write_helper1.WriteAsync(
         node_, nmranet::Defs::MTI_CONSUMER_IDENTIFIED_UNKNOWN,
         nmranet::WriteHelper::global(), nmranet::eventid_to_buffer(event_), done);
   }
-  void HandleIdentifyConsumer(nmranet::EventReport* event,
+  void handle_identify_consumer(nmranet::EventReport* event,
                               BarrierNotifiable* done) OVERRIDE {
     if (event->event == event_) {
-      HandleIdentifyGlobal(event, done);
+      handle_identify_global(event, done);
     } else {
       done->notify();
     }
