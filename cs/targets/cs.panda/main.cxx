@@ -47,12 +47,12 @@
 #include "nmranet_config.h"
 #include "os/watchdog.h"
 
-#include "nmranet/IfCan.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/AliasAllocator.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
 // for logging implementation
@@ -68,7 +68,7 @@
 #include "custom/HostProtocol.hxx"
 
 #include "commandstation/UpdateProcessor.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/TractionTrain.hxx"
 
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/LoggingBit.hxx"
@@ -77,7 +77,7 @@
 #include "commandstation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/AllTrainNodes.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 
 static const openlcb::NodeID NODE_ID = 0x050101011431ULL;
 

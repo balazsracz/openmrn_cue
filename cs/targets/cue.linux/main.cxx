@@ -36,8 +36,8 @@
 #include <unistd.h>
 #include <termios.h> /* tc* functions */
 
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "custom/AutomataControl.hxx"
 #include "utils/Ewma.hxx"
 

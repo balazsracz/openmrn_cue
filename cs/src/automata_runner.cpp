@@ -24,12 +24,12 @@
 #include "dcc-master.h"
 
 #include "utils/logging.h"
-#include "nmranet/Defs.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/WriteHelper.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/TractionDefs.hxx"
+#include "openlcb/Defs.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/WriteHelper.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/TractionDefs.hxx"
 
 extern int debug_variables;
 int debug_variables __attribute__((weak)) = 0;

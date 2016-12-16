@@ -37,8 +37,8 @@
 
 #include "commandstation/FindProtocolDefs.hxx"
 #include "commandstation/AllTrainNodes.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/TractionTrain.hxx"
 
 namespace commandstation {
 

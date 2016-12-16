@@ -38,14 +38,14 @@
 #include "commandstation/FindProtocolServer.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "dcc/Loco.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/MemoryConfig.hxx"
-#include "nmranet/SimpleNodeInfo.hxx"
-#include "nmranet/TractionDefs.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/SimpleNodeInfo.hxx"
+#include "openlcb/TractionDefs.hxx"
+#include "openlcb/TractionTrain.hxx"
 #include "utils/format_utils.hxx"
 #ifndef __FreeRTOS__
-#include "nmranet/TractionTestTrain.hxx"
+#include "openlcb/TractionTestTrain.hxx"
 #endif
 
 namespace commandstation {

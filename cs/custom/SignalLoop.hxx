@@ -37,7 +37,7 @@
 #define _BRACZ_CUSTOM_SIGNALLOOP_HXX_
 
 #include "utils/Singleton.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 #include "custom/SignalPacket.hxx"
 
 namespace bracz_custom {

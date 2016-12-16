@@ -2,8 +2,8 @@
 #ifndef _BRACZ_CUSTOM_AUTOMATACONTROL_HXX_
 #define _BRACZ_CUSTOM_AUTOMATACONTROL_HXX_
 
-#include "nmranet/DatagramHandlerDefault.hxx"
-#include "nmranet/Defs.hxx"
+#include "openlcb/DatagramHandlerDefault.hxx"
+#include "openlcb/Defs.hxx"
 #include "src/automata_runner.h"
 
 namespace bracz_custom {

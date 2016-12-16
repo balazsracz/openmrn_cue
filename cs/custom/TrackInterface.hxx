@@ -41,8 +41,8 @@
 #include "executor/StateFlow.hxx"
 #include "utils/Hub.hxx"
 #include "utils/CanIf.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/SimpleStack.hxx"
 
 /// @TODO(balazs.racz) this is not nice.
 extern openlcb::SimpleCanStack stack;

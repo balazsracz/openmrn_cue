@@ -36,7 +36,7 @@
 #define _SERVER_TRAINCONTROLSERVICE_HXX_
 
 #include "server/RpcService.hxx"
-#include "nmranet/Datagram.hxx"
+#include "openlcb/Datagram.hxx"
 
 class Clock;
 

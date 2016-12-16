@@ -35,8 +35,8 @@
  */
 
 #include "custom/MemorizingEventHandler.hxx"
-#include "nmranet/WriteHelper.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/WriteHelper.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 
 namespace openlcb {
 

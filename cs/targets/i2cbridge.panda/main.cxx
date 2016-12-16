@@ -44,13 +44,13 @@
 #include "nmranet_config.h"
 #include "os/watchdog.h"
 
-#include "nmranet/IfCan.hxx"
-#include "nmranet/NMRAnetIf.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/NMRAnetAsyncEventHandler.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/NMRAnetIf.hxx"
+#include "openlcb/AliasAllocator.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/NMRAnetAsyncEventHandler.hxx"
+#include "openlcb/DefaultNode.hxx"
 
 #include "src/event_range_listener.hxx"
 #define EXT_SIGNAL_COUNT 4

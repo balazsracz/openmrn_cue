@@ -44,15 +44,15 @@ namespace Debug {
 typedef DummyPin DetectRepeat;
 }
 
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleStack.hxx"
 
-#include "nmranet/PolledProducer.hxx"
+#include "openlcb/PolledProducer.hxx"
 #include "custom/AutomataControl.hxx"
 #include "custom/HostPacketCanPort.hxx"
 #include "custom/HostProtocol.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
 #include "os/watchdog.h"
 #include "utils/HubDeviceSelect.hxx"
 #include "utils/Debouncer.hxx"

@@ -9,8 +9,8 @@
 
 #include "mbed.h"
 
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/Node.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/Node.hxx"
 
 namespace openlcb {
 class Node;

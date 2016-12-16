@@ -2,7 +2,7 @@
 #define _BRACZ_TRAIN_EVENT_RANGE_LISTENER_HXX_
 
 #include "updater.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 
 class ListenerToEventProxy : public UpdateListener {
  public:

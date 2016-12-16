@@ -35,7 +35,7 @@
 #ifndef _BRACZ_CUSTOM_TRAINLIGHTBLINKBIT_HXX_
 #define _BRACZ_CUSTOM_TRAINLIGHTBLINKBIT_HXX_
 
-#include "nmranet/TrainInterface.hxx"
+#include "openlcb/TrainInterface.hxx"
 
 class TrainLightBlinkBit : public openlcb::BitEventInterface {
  public:

@@ -35,8 +35,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "custom/AutomataControl.hxx"
 #include "utils/Ewma.hxx"
 

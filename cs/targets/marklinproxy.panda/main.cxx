@@ -48,20 +48,20 @@
 #include "nmranet_config.h"
 #include "os/watchdog.h"
 
-#include "nmranet/IfCan.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/AliasAllocator.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/DefaultNode.hxx"
 
 #include "mobilestation/MobileStationSlave.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "custom/HostLogging.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleStack.hxx"
 #include "custom/LoggingBit.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 
 
 static const openlcb::NodeID NODE_ID = 0x050101011435ULL;

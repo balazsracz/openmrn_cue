@@ -36,7 +36,7 @@
 #define _MOBILESTATION_TRAINDB_HXX_
 
 #include <memory>
-#include "nmranet/Defs.hxx"
+#include "openlcb/Defs.hxx"
 #include "utils/ConfigUpdateListener.hxx"
 #include "commandstation/TrainDbDefs.hxx"
 #include "commandstation/TrainDbCdi.hxx"

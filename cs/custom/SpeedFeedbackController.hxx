@@ -35,7 +35,7 @@
 #ifndef _BRACZ_CUSTOM_SPEEDFEEDBACKCONTROLLER_HXX_
 #define _BRACZ_CUSTOM_SPEEDFEEDBACKCONTROLLER_HXX_
 
-#include "nmranet/ConfigRepresentation.hxx"
+#include "openlcb/ConfigRepresentation.hxx"
 #include "utils/ConfigUpdateListener.hxx"
 #include "utils/Ewma.hxx"
 

@@ -3,11 +3,11 @@
 
 #include "utils/async_traction_test_helper.hxx"
 
-#include "nmranet/DatagramCan.hxx"
+#include "openlcb/DatagramCan.hxx"
 #include "commandstation/AllTrainNodes.hxx"
-#include "nmranet/SimpleInfoProtocol.hxx"
-#include "nmranet/MemoryConfig.hxx"
-#include "nmranet/ConfigUpdateFlow.hxx"
+#include "openlcb/SimpleInfoProtocol.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/ConfigUpdateFlow.hxx"
 #include "dcc/FakeTrackIf.hxx"
 #include "dcc/SimpleUpdateLoop.hxx"
 

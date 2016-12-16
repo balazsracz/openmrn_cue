@@ -35,7 +35,7 @@
 #ifndef _BRACZ_CUSTOM_TIVAGPIOPRODUCERBIT_HXX_
 #define _BRACZ_CUSTOM_TIVAGPIOPRODUCERBIT_HXX_
 
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleStack.hxx"
 
 extern openlcb::SimpleCanStack stack;
 

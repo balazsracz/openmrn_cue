@@ -39,10 +39,10 @@
 #include "commandstation/AllTrainNodes.hxx"
 #include "commandstation/FindProtocolDefs.hxx"
 #include "executor/StateFlow.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/IfCan.hxx"
-#include "nmranet/Node.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/Node.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 
 namespace commandstation {
 

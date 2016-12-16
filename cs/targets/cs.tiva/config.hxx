@@ -2,9 +2,9 @@
 #ifndef _BRACZ_CS_TIVA_CONFIG_HXX_
 #define _BRACZ_CS_TIVA_CONFIG_HXX_
 
-#include "nmranet/ConfigRepresentation.hxx"
-#include "nmranet/MemoryConfig.hxx"
-#include "nmranet/SimpleNodeInfo.hxx"
+#include "openlcb/ConfigRepresentation.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/SimpleNodeInfo.hxx"
 #include "commandstation/TrainDbCdi.hxx"
 
 namespace openlcb {

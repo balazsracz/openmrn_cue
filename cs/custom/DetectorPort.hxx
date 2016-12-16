@@ -37,7 +37,7 @@
 
 #include <functional>
 
-#include "nmranet/CallbackEventHandler.hxx"
+#include "openlcb/CallbackEventHandler.hxx"
 #include "hardware.hxx"
 #include "custom/DetectorPortConfig.hxx"
 

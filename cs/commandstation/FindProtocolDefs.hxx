@@ -35,7 +35,7 @@
 #ifndef _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
 #define _COMMANDSTATION_FINDPROTOCOLDEFS_HXX_
 
-#include "nmranet/EventHandler.hxx"
+#include "openlcb/EventHandler.hxx"
 #include "commandstation/TrainDbDefs.hxx"
 
 namespace commandstation {

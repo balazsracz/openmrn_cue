@@ -40,8 +40,8 @@
 #include "nmranet_config.h"
 
 #include "os/TempFile.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "utils/socket_listener.hxx"
 #include "utils/StringPrintf.hxx"
 #include "utils/HubDevice.hxx"

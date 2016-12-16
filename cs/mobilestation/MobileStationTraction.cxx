@@ -40,14 +40,14 @@
 #include <inttypes.h>
 
 #include "commandstation/TrainDb.hxx"
-#include "nmranet/Defs.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/Node.hxx"
-#include "nmranet/TractionClient.hxx"
-#include "nmranet/TractionDefs.hxx"
-#include "nmranet/Velocity.hxx"
-#include "nmranet/WriteHelper.hxx"
+#include "openlcb/Defs.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/Node.hxx"
+#include "openlcb/TractionClient.hxx"
+#include "openlcb/TractionDefs.hxx"
+#include "openlcb/Velocity.hxx"
+#include "openlcb/WriteHelper.hxx"
 #include "utils/constants.hxx"
 
 #include "utils/CanIf.hxx"

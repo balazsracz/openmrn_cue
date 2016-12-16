@@ -35,7 +35,7 @@
 #ifndef _BRACZ_CUSTOM_DETECTORPORTLOGIC_HXX_
 #define _BRACZ_CUSTOM_DETECTORPORTLOGIC_HXX_
 
-#include "nmranet/ConfigRepresentation.hxx"
+#include "openlcb/ConfigRepresentation.hxx"
 
 namespace bracz_custom {
 

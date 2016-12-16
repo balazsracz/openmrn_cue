@@ -46,8 +46,8 @@
 #include "inc/hw_memmap.h"
 
 #include "executor/StateFlow.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/TractionDefs.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/TractionDefs.hxx"
 #include "utils/logging.h"
 #include "commandstation/dcc_control.hxx"
 #include "DccHardware.hxx"

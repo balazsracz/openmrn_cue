@@ -38,7 +38,7 @@
 #include <unistd.h>
 
 
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleStack.hxx"
 
 #include "commandstation/UpdateProcessor.hxx"
 #include "custom/AutomataControl.hxx"
@@ -55,12 +55,12 @@
 #include "commandstation/AllTrainNodes.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/TrainDb.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/PolledProducer.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/TractionTrain.hxx"
-#include "nmranet/TractionCvSpace.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/PolledProducer.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/TractionTrain.hxx"
+#include "openlcb/TractionCvSpace.hxx"
 #include "os/watchdog.h"
 #include "utils/Debouncer.hxx"
 #include "utils/HubDeviceSelect.hxx"

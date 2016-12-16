@@ -2,10 +2,10 @@
 #include "commandstation/TrainDb.hxx"
 #include "utils/async_traction_test_helper.hxx"
 
-#include "nmranet/SimpleInfoProtocol.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/ConfigUpdateFlow.hxx"
-#include "nmranet/DatagramCan.hxx"
+#include "openlcb/SimpleInfoProtocol.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/ConfigUpdateFlow.hxx"
+#include "openlcb/DatagramCan.hxx"
 #include "dcc/PacketFlowInterface.hxx"
 
 openlcb::MockSNIPUserFile snip_user_file("Default user name",

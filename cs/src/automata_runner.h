@@ -16,8 +16,8 @@ using std::vector;
 #include "automata_control.h"
 #include "automata_defs.h"
 
-#include "nmranet/Velocity.hxx"
-#include "nmranet/TractionClient.hxx"
+#include "openlcb/Velocity.hxx"
+#include "openlcb/TractionClient.hxx"
 #include "executor/Timer.hxx"
 #include "os/OS.hxx"
 

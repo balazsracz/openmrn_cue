@@ -16,10 +16,10 @@
 
 #include "utils/async_if_test_helper.hxx"
 
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/TractionTrain.hxx"
-#include "nmranet/TractionTestTrain.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/TractionTrain.hxx"
+#include "openlcb/TractionTestTrain.hxx"
 
 using ::testing::_;
 using ::testing::Return;

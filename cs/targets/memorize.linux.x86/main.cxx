@@ -38,8 +38,8 @@
 #include "os/os.h"
 
 #include "custom/MemorizingEventHandler.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
 #include "utils/ClientConnection.hxx"
 
 static const openlcb::NodeID NODE_ID = 0x050101011442ULL;

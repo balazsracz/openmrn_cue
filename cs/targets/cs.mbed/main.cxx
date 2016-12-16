@@ -46,12 +46,12 @@
 #include "nmranet_config.h"
 #include "os/watchdog.h"
 
-#include "nmranet/IfCan.hxx"
-#include "nmranet/If.hxx"
-#include "nmranet/AliasAllocator.hxx"
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
-#include "nmranet/DefaultNode.hxx"
+#include "openlcb/IfCan.hxx"
+#include "openlcb/If.hxx"
+#include "openlcb/AliasAllocator.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/DefaultNode.hxx"
 #include "freertos_drivers/nxp/11cxx_async_can.hxx"
 
 // for logging implementation
@@ -68,11 +68,11 @@
 #include "commandstation/TrainDb.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/UpdateProcessor.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/TractionTrain.hxx"
 #include "dcc/Loco.hxx"
 #include "custom/LoggingBit.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 
 // Used to talk to the booster.
 OVERRIDE_CONST(can2_bitrate, 250000);

@@ -35,8 +35,8 @@
 #ifndef _BRACZ_COMMANDSTATION_TRAINDBCDI_HXX_
 #define _BRACZ_COMMANDSTATION_TRAINDBCDI_HXX_
 
-#include "nmranet/ConfigRepresentation.hxx"
-#include "nmranet/TractionCvCdi.hxx"
+#include "openlcb/ConfigRepresentation.hxx"
+#include "openlcb/TractionCvCdi.hxx"
 #include "commandstation/TrainDbDefs.hxx"
 
 namespace commandstation {

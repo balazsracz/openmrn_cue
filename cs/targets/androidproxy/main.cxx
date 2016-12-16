@@ -40,8 +40,8 @@
 #include "nmranet_config.h"
 
 #include "os/TempFile.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "custom/HostProtocol.hxx"
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/TrainDb.hxx"

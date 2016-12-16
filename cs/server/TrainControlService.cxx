@@ -40,8 +40,8 @@
 
 #include "server/LayoutState.hxx"
 #include "custom/HostProtocol.hxx"
-#include "nmranet/Datagram.hxx"
-#include "nmranet/DatagramHandlerDefault.hxx"
+#include "openlcb/Datagram.hxx"
+#include "openlcb/DatagramHandlerDefault.hxx"
 #include "mobilestation/PacketDefs.hxx"
 #include "src/usb_proto.h"
 #include "utils/Clock.hxx"

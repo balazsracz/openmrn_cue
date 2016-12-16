@@ -35,7 +35,7 @@
 #ifndef _BRACZ_CUSTOM_HOSTPROTOCOL_HXX_
 #define _BRACZ_CUSTOM_HOSTPROTOCOL_HXX_
 
-#include "nmranet/DatagramHandlerDefault.hxx"
+#include "openlcb/DatagramHandlerDefault.hxx"
 #include "utils/Hub.hxx"
 #include "utils/Singleton.hxx"
 #include "custom/HostLogging.hxx"

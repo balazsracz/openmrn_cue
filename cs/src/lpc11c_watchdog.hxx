@@ -2,7 +2,7 @@
 #define BRACZ_TRAIN_LPC11C_WATCHDOG
 #ifdef TARGET_LPC11Cxx
 
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 #include "LPC11xx.h"
 
 static const uint64_t WATCHDOG_EVENT_ID = 0x0501010114FF0010ULL;

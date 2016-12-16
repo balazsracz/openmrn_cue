@@ -85,8 +85,8 @@
 #endif
 
 #ifdef ONLY_CPP_EVENT
-#include "nmranet/EventService.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventService.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 #include "executor/executor.hxx"
 #endif
 

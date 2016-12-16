@@ -2,7 +2,7 @@
 #define _BRACZ_CUSTOM_WIICHUCKTHROTTLE_HXX_
 
 #include "custom/WiiChuckData.hxx"
-#include "nmranet/If.hxx"
+#include "openlcb/If.hxx"
 
 namespace bracz_custom {
 

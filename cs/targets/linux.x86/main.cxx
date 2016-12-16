@@ -39,14 +39,14 @@
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "commandstation/AllTrainNodes.hxx"
-#include "nmranet/SimpleNodeInfoMockUserFile.hxx"
-#include "nmranet/SimpleStack.hxx"
-#include "nmranet/TractionTestTrain.hxx"
-#include "nmranet/TractionTrain.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/TractionTestTrain.hxx"
+#include "openlcb/TractionTrain.hxx"
 #include "dcc/FakeTrackIf.hxx"
 #include "executor/PoolToQueueFlow.hxx"
 #include "custom/LoggingBit.hxx"
-#include "nmranet/TractionCvSpace.hxx"
+#include "openlcb/TractionCvSpace.hxx"
 
 static const openlcb::NodeID NODE_ID = 0x050101011440ULL;
 openlcb::SimpleCanStack stack(NODE_ID);

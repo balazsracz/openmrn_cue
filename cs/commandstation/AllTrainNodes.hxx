@@ -38,7 +38,7 @@
 #include <memory>
 #include <vector>
 
-#include "nmranet/SimpleInfoProtocol.hxx"
+#include "openlcb/SimpleInfoProtocol.hxx"
 #include "commandstation/TrainDb.hxx"
 
 namespace openlcb {

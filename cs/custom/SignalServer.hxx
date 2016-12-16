@@ -32,7 +32,7 @@
  * @date 22 Feb 2015
  */
 
-#include "nmranet/DatagramHandlerDefault.hxx"
+#include "openlcb/DatagramHandlerDefault.hxx"
 #include "custom/SignalPacket.hxx"
 
 namespace bracz_custom {

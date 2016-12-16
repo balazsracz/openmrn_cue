@@ -36,7 +36,7 @@
 #ifndef _BRACZ_COMMANDSTATION_FEEDBACKBASEDOCCUPANCY_HXX_
 #define _BRACZ_COMMANDSTATION_FEEDBACKBASEDOCCUPANCY_HXX_
 
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 #include "dcc/RailcomHub.hxx"
 
 namespace commandstation {

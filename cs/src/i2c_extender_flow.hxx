@@ -2,7 +2,7 @@
 #define _BRACZ_TRAIN_I2C_EXTENDER_FLOW_HXX_
 
 #include "src/i2c_driver.hxx"
-#include "nmranet/EventHandlerTemplates.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 
 extern I2CDriver g_i2c_driver;
 

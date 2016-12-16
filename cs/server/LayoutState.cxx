@@ -36,7 +36,7 @@
 #include "server/LayoutState.hxx"
 
 #include "utils/logging.h"
-#include "nmranet/Defs.hxx"
+#include "openlcb/Defs.hxx"
 #include "os/os.h"
 
 namespace server {

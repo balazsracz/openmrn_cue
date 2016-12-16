@@ -39,7 +39,7 @@
 #include <algorithm>
 
 #include "commandstation/FindTrainNode.hxx"
-#include "nmranet/If.hxx"
+#include "openlcb/If.hxx"
 #include "utils/format_utils.hxx"
 
 namespace commandstation {

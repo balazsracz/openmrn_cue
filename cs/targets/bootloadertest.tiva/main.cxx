@@ -49,7 +49,7 @@
 #include "nmranet_config.h"
 #include "hardware.hxx"
 
-#include "nmranet/Bootloader.hxx"
+#include "openlcb/Bootloader.hxx"
 
 //#define STANDALONE
 
