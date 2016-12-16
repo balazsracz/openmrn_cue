@@ -163,7 +163,7 @@ uint8_t send_datagram(nmranet::DatagramPayload p) {
   dst.alias = destination_alias;
   dst.id = destination_nodeid;
 
-  Buffer<nmranet::NMRAnetMessage> *b;
+  Buffer<nmranet::GenMessage> *b;
   mainBufferPool->alloc(&b);
   b->data()->reset(nmranet::Defs::MTI_DATAGRAM, stack.node()->node_id(), dst,
                    std::move(p));

@@ -182,7 +182,7 @@ class FindProtocolServer : public nmranet::SimpleEventHandler {
                          nodes()->get_train_node_id(nextTrainId_),
                          nmranet::eventid_to_buffer(eventId_));
       }
-      b->data()->set_flag_dst(nmranet::NMRAnetMessage::WAIT_FOR_LOCAL_LOOPBACK);
+      b->data()->set_flag_dst(nmranet::GenMessage::WAIT_FOR_LOCAL_LOOPBACK);
       parent_->parent_->tractionService_->iface()
           ->global_message_write_flow()
           ->send(b);

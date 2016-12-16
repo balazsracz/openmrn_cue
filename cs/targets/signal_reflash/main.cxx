@@ -179,7 +179,7 @@ BarrierNotifiable bn;
 void send_datagram(const string &dg) {
   DatagramClient *client = g_datagram_can.client_allocator()->next_blocking();
 
-  Buffer<nmranet::NMRAnetMessage> *b;
+  Buffer<nmranet::GenMessage> *b;
   mainBufferPool->alloc(&b);
 
   NodeHandle dst;

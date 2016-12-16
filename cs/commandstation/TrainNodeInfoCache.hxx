@@ -378,7 +378,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   /// Callback when a SNIP response arrives from the network.
-  void handle_snip_response(Buffer<nmranet::NMRAnetMessage>* b) {
+  void handle_snip_response(Buffer<nmranet::GenMessage>* b) {
     LOG(INFO, "Snip response for %04x%08x",
         nmranet::node_high(b->data()->src.id),
         nmranet::node_low(b->data()->src.id));
