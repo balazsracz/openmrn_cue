@@ -384,11 +384,11 @@ class TivaAccPowerOnOffBit : public nmranet::BitEventInterface {
                        uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  nmranet::EventState GetCurrentState() OVERRIDE {
+  nmranet::EventState get_current_state() OVERRIDE {
     return HW::ACC_ENABLE_Pin::get() ? nmranet::EventState::VALID
                                      : nmranet::EventState::INVALID;
   }
-  void SetState(bool new_value) OVERRIDE {
+  void set_state(bool new_value) OVERRIDE {
     if (!HW::ACC_ENABLE_Pin::get() && new_value) {
       // We are turning power on.
       // sends some event reports to clear off the shorted and overcurrent bits.

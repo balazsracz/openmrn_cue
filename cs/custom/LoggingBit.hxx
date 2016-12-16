@@ -48,11 +48,11 @@ public:
     {
     }
 
-    nmranet::EventState GetCurrentState() override
+    nmranet::EventState get_current_state() override
     {
         return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
     }
-    void SetState(bool new_value) override
+    void set_state(bool new_value) override
     {
         state_ = new_value;
 #ifdef __linux__

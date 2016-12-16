@@ -41,11 +41,11 @@ class TrackPowerBit : public nmranet::BitEventInterface {
   TrackPowerBit(nmranet::Node* node, uint64_t event_on, uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  nmranet::EventState GetCurrentState() OVERRIDE {
+  nmranet::EventState get_current_state() OVERRIDE {
     return query_dcc() ? nmranet::EventState::VALID
                        : nmranet::EventState::INVALID;
   }
-  void SetState(bool new_value) OVERRIDE {
+  void set_state(bool new_value) OVERRIDE {
     if (new_value) {
       LOG(WARNING, "enable dcc");
       enable_dcc();

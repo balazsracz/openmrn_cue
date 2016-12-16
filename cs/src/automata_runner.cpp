@@ -222,7 +222,7 @@ class EventBit : public ReadWriteBit {
   bool Read(uint16_t, nmranet::Node*, Automata* aut) override {
     // TODO(balazs.racz): we should consider CHECK failing here if
     // !defined. That will force us to explicitly reset every bit in StInit.
-    auto state = bit_.GetCurrentState();
+    auto state = bit_.get_current_state();
     if (state == nmranet::EventState::VALID) return true;
     if (state == nmranet::EventState::INVALID) return false;
     LOG_ERROR("Reading event bit of invalid state");
@@ -231,10 +231,10 @@ class EventBit : public ReadWriteBit {
 
   void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) override {
     if (0) fprintf(stderr, "event bit write to node %p\n", node);
-    auto state = bit_.GetCurrentState();
+    auto state = bit_.get_current_state();
     if (state == nmranet::EventState::VALID && defined_ && value) return;
     if (state == nmranet::EventState::INVALID && defined_ && !value) return;
-    bit_.SetState(value);
+    bit_.set_state(value);
     pc_.SendEventReport(&automata_write_helper, get_notifiable());
     wait_for_notification();
     defined_ = true;

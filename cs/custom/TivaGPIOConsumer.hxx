@@ -48,12 +48,12 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
         BitEventConsumer(this),
         memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
 
-  nmranet::EventState GetCurrentState() OVERRIDE {
+  nmranet::EventState get_current_state() OVERRIDE {
     return (*memory_) ? nmranet::EventState::VALID
                       : nmranet::EventState::INVALID;
   }
 
-  void SetState(bool new_value) OVERRIDE {
+  void set_state(bool new_value) OVERRIDE {
     if (new_value) {
       *memory_ = 0xff;
     } else {

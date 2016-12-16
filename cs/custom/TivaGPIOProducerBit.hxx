@@ -48,7 +48,7 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
                                               (((unsigned)port_bit) << 2))),
         display_(display) {}
 
-  nmranet::EventState GetCurrentState() OVERRIDE {
+  nmranet::EventState get_current_state() OVERRIDE {
     bool result = *ptr_;
     if (display_) {
       Debug::DetectRepeat::set(result);
@@ -56,7 +56,7 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
     return result ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
   }
 
-  void SetState(bool new_value) OVERRIDE {
+  void set_state(bool new_value) OVERRIDE {
     DIE("cannot set state of input producer");
   }
 
