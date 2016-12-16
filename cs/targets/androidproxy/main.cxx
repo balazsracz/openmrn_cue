@@ -76,7 +76,7 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 }  // namespace commandstation
 
 
-static const nmranet::NodeID NODE_ID = 0x050101011472ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011472ULL;
 OVERRIDE_CONST(num_memory_spaces, 4);
 OVERRIDE_CONST(num_datagram_registry_entries, 6);
 OVERRIDE_CONST(gc_generate_newlines, 1);
@@ -92,17 +92,17 @@ const char *proxy_host = "28k.ch";
 const char *lokdb_path;
 string lokdb = "LokDb { }";
 
-nmranet::SimpleCanStack stack(NODE_ID);
+openlcb::SimpleCanStack stack(NODE_ID);
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::MockSNIPUserFile::snip_user_file_path;
 
-namespace nmranet {
+namespace openlcb {
 const SimpleNodeStaticValues SNIP_STATIC_DATA = {
     4, "OpenMRN", "Host server", "No hardware here", "0.92"};
-}  // namespace nmranet
+}  // namespace openlcb
 
 server::TrainControlService control_server(stack.executor());
 
@@ -225,7 +225,7 @@ int appl_main(int argc, char *argv[]) {
   }
   control_server.initialize(
       stack.dg_service(), stack.node(),
-      nmranet::NodeHandle(NODE_ID, 0), lokdb, true);
+      openlcb::NodeHandle(NODE_ID, 0), lokdb, true);
   int proxy_fd = ConnectSocket(proxy_host, proxy_port);
   if (proxy_fd < 0) {
     DIE("Could not connect to proxy.");

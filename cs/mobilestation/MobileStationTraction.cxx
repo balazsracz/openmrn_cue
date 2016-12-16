@@ -148,16 +148,16 @@ class TractionImpl : public IncomingFrameFlow {
     b->data()->src.alias = 0;
     b->data()->dst.id = entry->get_traction_node();
     b->data()->dst.alias = 0;
-    b->data()->mti = nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND;
+    b->data()->mti = openlcb::Defs::MTI_TRACTION_CONTROL_COMMAND;
 
     if (frame().can_dlc == 3 && frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a set speed.
-      nmranet::Velocity v;
+      openlcb::Velocity v;
       v.set_mph(frame().data[2] & 0x7F);
       if (frame().data[2] & 0x80) {
         v.reverse();
       }
-      b->data()->payload = nmranet::TractionDefs::speed_set_payload(v);
+      b->data()->payload = openlcb::TractionDefs::speed_set_payload(v);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
       if (need_response()) {
         responseByte_ = frame().data[2];
@@ -170,7 +170,7 @@ class TractionImpl : public IncomingFrameFlow {
       // We are doing a set function.
       unsigned fn_address = frame().data[0] - 2;
       b->data()->payload =
-          nmranet::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
+          openlcb::TractionDefs::fn_set_payload(fn_address, frame().data[2]);
       service()->nmranet_if()->addressed_message_write_flow()->send(b);
       if (need_response()) {
         responseByte_ = frame().data[2];
@@ -182,7 +182,7 @@ class TractionImpl : public IncomingFrameFlow {
     } else if (frame().can_dlc == 2 &&
                frame().data[0] == TRACTION_SET_MOTOR_FN) {
       // We are doing a get speed.
-      b->data()->payload = nmranet::TractionDefs::speed_get_payload();
+      b->data()->payload = openlcb::TractionDefs::speed_get_payload();
       Action a = sleep_and_call(&timer_, MSEC_TO_NSEC(TRACTION_TIMEOUT_MSEC),
                                 STATE(handle_get_speed_response));
       tractionClient_.wait_for_response(b->data()->dst, b->data()->payload[0],
@@ -193,7 +193,7 @@ class TractionImpl : public IncomingFrameFlow {
       // We are doing a get fn.
       LOG(VERBOSE, "sending fn get");
       unsigned fn_address = frame().data[0] - 2;
-      b->data()->payload = nmranet::TractionDefs::fn_get_payload(fn_address);
+      b->data()->payload = openlcb::TractionDefs::fn_get_payload(fn_address);
       Action a = sleep_and_call(&timer_, MSEC_TO_NSEC(TRACTION_TIMEOUT_MSEC),
                                 STATE(handle_get_fn_response));
       tractionClient_.wait_for_response(b->data()->dst, b->data()->payload[0],
@@ -211,15 +211,15 @@ class TractionImpl : public IncomingFrameFlow {
     if (!rb) {
       return release_and_exit();
     }
-    nmranet::Velocity v_sp;
-    if (!nmranet::TractionDefs::speed_get_parse_last(rb->data()->payload,
+    openlcb::Velocity v_sp;
+    if (!openlcb::TractionDefs::speed_get_parse_last(rb->data()->payload,
                                                      &v_sp)) {
       rb->unref();
       return release_and_exit();
     }
     uint8_t speed = v_sp.mph();
     if (speed > 127) speed = 127;
-    if (v_sp.direction() == nmranet::Velocity::REVERSE) {
+    if (v_sp.direction() == openlcb::Velocity::REVERSE) {
       speed |= 0x80;
     }
     responseByte_ = speed;
@@ -236,7 +236,7 @@ class TractionImpl : public IncomingFrameFlow {
       return release_and_exit();
     }
     uint16_t fn_value;
-    if (!nmranet::TractionDefs::fn_get_parse(rb->data()->payload, &fn_value)) {
+    if (!openlcb::TractionDefs::fn_get_parse(rb->data()->payload, &fn_value)) {
       rb->unref();
       return release_and_exit();
     }
@@ -276,22 +276,22 @@ class TractionImpl : public IncomingFrameFlow {
              train_id() >= ((unsigned)config_mobile_station_train_count())));
   }
 
-  nmranet::TractionResponseHandler tractionClient_;
+  openlcb::TractionResponseHandler tractionClient_;
   StateFlowTimer timer_;
   // The third byte of the Mosta response.
   uint8_t responseByte_;
 };
 
 
-class TrackPowerOnOffBit : public nmranet::BitEventInterface {
+class TrackPowerOnOffBit : public openlcb::BitEventInterface {
  public:
   TrackPowerOnOffBit(MobileStationTraction* s)
-      : BitEventInterface(nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
-                          nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT),
+      : BitEventInterface(openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
+                          openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT),
         service_(s) {}
 
-  nmranet::EventState get_current_state() override {
-    return service_->get_estop_state(MobileStationTraction::ESTOP_FROM_OPENLCB) ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+  openlcb::EventState get_current_state() override {
+    return service_->get_estop_state(MobileStationTraction::ESTOP_FROM_OPENLCB) ? openlcb::EventState::VALID : openlcb::EventState::INVALID;
   }
 
   void set_state(bool new_value) override {
@@ -299,7 +299,7 @@ class TrackPowerOnOffBit : public nmranet::BitEventInterface {
                               new_value);
   }
 
-  nmranet::Node* node() override { return service_->node(); }
+  openlcb::Node* node() override { return service_->node(); }
 
  private:
   MobileStationTraction* service_;
@@ -313,7 +313,7 @@ struct MobileStationTraction::Impl {
   ~Impl() {}
   TractionImpl handler_;   //< The implementation flow.
   TrackPowerOnOffBit lcb_power_bit_;
-  nmranet::BitEventConsumer lcb_power_bit_consumer_;
+  openlcb::BitEventConsumer lcb_power_bit_consumer_;
 };
 
 void MobileStationTraction::set_estop_state(EstopSource source,
@@ -346,11 +346,11 @@ void MobileStationTraction::set_estop_state(EstopSource source,
     LOG_ERROR("estop command %d to OpenLCB", is_stopped);
     auto* b = nmranet_if()->global_message_write_flow()->alloc();
     b->data()->reset(
-        nmranet::Defs::MTI_EVENT_REPORT, node()->node_id(),
-        nmranet::eventid_to_buffer(
+        openlcb::Defs::MTI_EVENT_REPORT, node()->node_id(),
+        openlcb::eventid_to_buffer(
             is_stopped
-                ? nmranet::TractionDefs::EMERGENCY_STOP_EVENT
-                : nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
+                ? openlcb::TractionDefs::EMERGENCY_STOP_EVENT
+                : openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
     nmranet_if()->global_message_write_flow()->send(b);
 
     update_estop_bit(bit, is_stopped);
@@ -359,9 +359,9 @@ void MobileStationTraction::set_estop_state(EstopSource source,
 
 
 MobileStationTraction::MobileStationTraction(CanIf* mosta_if,
-                                             nmranet::If* nmranet_if,
+                                             openlcb::If* nmranet_if,
                                              commandstation::TrainDb* train_db,
-                                             nmranet::Node* query_node)
+                                             openlcb::Node* query_node)
     : Service(nmranet_if->dispatcher()->service()->executor()),
       estopState_(0),
       nmranetIf_(nmranet_if),

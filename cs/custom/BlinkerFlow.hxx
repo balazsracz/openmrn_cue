@@ -39,7 +39,7 @@
 
 class BlinkerFlow : public StateFlowBase {
  public:
-  BlinkerFlow(nmranet::Node* node, uint64_t BLINKER_EVENT_ID)
+  BlinkerFlow(openlcb::Node* node, uint64_t BLINKER_EVENT_ID)
       : StateFlowBase(node->iface()),
         state_(1),
         bit_(node, BLINKER_EVENT_ID, BLINKER_EVENT_ID + 1, &state_, (uint8_t)1),
@@ -63,9 +63,9 @@ class BlinkerFlow : public StateFlowBase {
   }
 
   uint8_t state_;
-  nmranet::MemoryBit<uint8_t> bit_;
-  nmranet::BitEventProducer producer_;
-  nmranet::WriteHelper helper_;
+  openlcb::MemoryBit<uint8_t> bit_;
+  openlcb::BitEventProducer producer_;
+  openlcb::WriteHelper helper_;
   StateFlowTimer sleepData_;
   BarrierNotifiable n_;
 };

@@ -36,7 +36,7 @@
 
 namespace mobilestation {
 
-typedef nmranet::Payload Packet;
+typedef openlcb::Payload Packet;
 
 struct PacketDefs {
   static void SetupPacketHeader(Packet* pkt, uint16_t eid, uint16_t sid,

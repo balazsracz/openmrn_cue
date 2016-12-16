@@ -41,7 +41,7 @@
 class CanIf;
 class Executable;
 
-namespace nmranet {
+namespace openlcb {
 class If;
 class Node;
 }
@@ -54,11 +54,11 @@ namespace mobilestation {
 
 class MobileStationTraction : public Service {
  public:
-  MobileStationTraction(CanIf* mosta_if, nmranet::If* nmranet_if,
-                        commandstation::TrainDb* train_db, nmranet::Node* query_node);
+  MobileStationTraction(CanIf* mosta_if, openlcb::If* nmranet_if,
+                        commandstation::TrainDb* train_db, openlcb::Node* query_node);
   ~MobileStationTraction();
 
-  nmranet::If* nmranet_if() {
+  openlcb::If* nmranet_if() {
     return nmranetIf_;
   }
 
@@ -70,7 +70,7 @@ class MobileStationTraction : public Service {
     return trainDb_;
   }
 
-  nmranet::Node* node() {
+  openlcb::Node* node() {
     return node_;
   }
 
@@ -103,10 +103,10 @@ class MobileStationTraction : public Service {
   uint8_t estopState_;
   struct Impl;
   Impl* impl_;
-  nmranet::If* nmranetIf_;
+  openlcb::If* nmranetIf_;
   CanIf* mostaIf_;
   commandstation::TrainDb* trainDb_;
-  nmranet::Node* node_; //< will be used for traction query and set commands
+  openlcb::Node* node_; //< will be used for traction query and set commands
 };
 
 

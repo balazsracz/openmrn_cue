@@ -46,12 +46,12 @@
 #include "src/usb_proto.h"
 #include "utils/Clock.hxx"
 
-using nmranet::DatagramService;
-using nmranet::DatagramClient;
-using nmranet::DefaultDatagramHandler;
-using nmranet::Node;
-using nmranet::NodeHandle;
-using nmranet::Payload;
+using openlcb::DatagramService;
+using openlcb::DatagramClient;
+using openlcb::DefaultDatagramHandler;
+using openlcb::Node;
+using openlcb::NodeHandle;
+using openlcb::Payload;
 using bracz_custom::HostProtocolDefs;
 
 typedef Payload Packet;
@@ -282,7 +282,7 @@ class HostPacketQueue : public PacketQueueFlow {
   Action buf_ready() {
     auto* b = get_allocation_result(
         dg_service()->iface()->addressed_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_DATAGRAM, impl()->node()->node_id(),
+    b->data()->reset(openlcb::Defs::MTI_DATAGRAM, impl()->node()->node_id(),
                      impl()->client_dst_, Payload());
     b->data()->payload.reserve(1 + message()->data()->size());
     b->data()->payload.push_back(HostProtocolDefs::CLIENT_DATAGRAM_ID);
@@ -399,7 +399,7 @@ class ServerFlow : public RpcService::ImplFlowBase,
   TrainControlService::Impl* impl() { return service()->impl(); }
   DatagramService* dg_service() { return impl()->dg_service(); }
 
-  nmranet::If* iface() { return dg_service()->iface(); }
+  openlcb::If* iface() { return dg_service()->iface(); }
 
   void packet_arrived(Buffer<string>* b) OVERRIDE {
     if (packet_filter_(*b->data())) {
@@ -705,9 +705,9 @@ void CreateStateInitQueries(PacketQueueFlow* host_queue,
   }
 }
 
-void TrainControlService::initialize(nmranet::DatagramService* dg_service,
-                                     nmranet::Node* node,
-                                     nmranet::NodeHandle client,
+void TrainControlService::initialize(openlcb::DatagramService* dg_service,
+                                     openlcb::Node* node,
+                                     openlcb::NodeHandle client,
                                      const string& lokdb_ascii,
                                      bool query_state) {
   impl_.reset(new Impl());

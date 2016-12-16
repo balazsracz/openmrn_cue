@@ -38,7 +38,7 @@
 #include "nmranet/WriteHelper.hxx"
 #include "nmranet/EventHandlerTemplates.hxx"
 
-namespace nmranet {
+namespace openlcb {
 
 MemorizingHandlerManager::MemorizingHandlerManager(Node* node,
                                                    uint64_t event_base,
@@ -268,4 +268,4 @@ void MemorizingHandlerBlock::ReportRange(EventReport* event,
       eventid_to_buffer(current_event_), done->new_child());
 }
 
-}  // namespace nmranet
+}  // namespace openlcb

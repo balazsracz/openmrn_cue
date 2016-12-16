@@ -40,7 +40,7 @@
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public nmranet::BitEventInterface
+class LoggingBit : public openlcb::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -48,9 +48,9 @@ public:
     {
     }
 
-    nmranet::EventState get_current_state() override
+    openlcb::EventState get_current_state() override
     {
-        return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+        return state_ ? openlcb::EventState::VALID : openlcb::EventState::INVALID;
     }
     void set_state(bool new_value) override
     {
@@ -62,9 +62,9 @@ public:
 #endif
     }
 
-    nmranet::Node* node() override
+    openlcb::Node* node() override
     {
-      extern nmranet::SimpleCanStack stack;
+      extern openlcb::SimpleCanStack stack;
       return stack.node();
     }
 

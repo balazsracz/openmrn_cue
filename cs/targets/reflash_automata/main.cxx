@@ -40,18 +40,18 @@
 #include "custom/AutomataControl.hxx"
 #include "utils/Ewma.hxx"
 
-using nmranet::MemoryConfigDefs;
-using nmranet::DatagramDefs;
-using nmranet::DatagramClient;
+using openlcb::MemoryConfigDefs;
+using openlcb::DatagramDefs;
+using openlcb::DatagramClient;
 
-static const nmranet::NodeID NODE_ID = 0x050101011403ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011403ULL;
 
-nmranet::SimpleCanStack stack(NODE_ID);
+openlcb::SimpleCanStack stack(NODE_ID);
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::MockSNIPUserFile::snip_user_file_path;
 
 int port = 12021;
 const char *host = "localhost";
@@ -152,20 +152,20 @@ double get_time() {
     return t * 1.0 / 1e9;
 }
 
-uint8_t send_datagram(nmranet::DatagramPayload p) {
+uint8_t send_datagram(openlcb::DatagramPayload p) {
   SyncNotifiable n;
   BarrierNotifiable bn;
 
-  nmranet::DatagramClient *client =
+  openlcb::DatagramClient *client =
       stack.dg_service()->client_allocator()->next_blocking();
 
-  nmranet::NodeHandle dst;
+  openlcb::NodeHandle dst;
   dst.alias = destination_alias;
   dst.id = destination_nodeid;
 
-  Buffer<nmranet::GenMessage> *b;
+  Buffer<openlcb::GenMessage> *b;
   mainBufferPool->alloc(&b);
-  b->data()->reset(nmranet::Defs::MTI_DATAGRAM, stack.node()->node_id(), dst,
+  b->data()->reset(openlcb::Defs::MTI_DATAGRAM, stack.node()->node_id(), dst,
                    std::move(p));
   b->set_done(bn.reset(&n));
 
@@ -174,19 +174,19 @@ uint8_t send_datagram(nmranet::DatagramPayload p) {
   n.wait_for_notification();
   LOG(INFO, "after write notify: %.6lf", get_time());
 
-  if ((client->result() & nmranet::DatagramClient::RESPONSE_CODE_MASK) !=
-      nmranet::DatagramClient::OPERATION_SUCCESS) {
+  if ((client->result() & openlcb::DatagramClient::RESPONSE_CODE_MASK) !=
+      openlcb::DatagramClient::OPERATION_SUCCESS) {
     LOG(FATAL, "Datagram send failed: %04x\n", client->result());
     exit(1);
   }
   uint8_t result_code =
-      client->result() >> nmranet::DatagramClient::RESPONSE_FLAGS_SHIFT;
+      client->result() >> openlcb::DatagramClient::RESPONSE_FLAGS_SHIFT;
 
   stack.dg_service()->client_allocator()->typed_insert(client);
   return result_code;
 }
 
-class WriteResponseHandler : public nmranet::DefaultDatagramHandler {
+class WriteResponseHandler : public openlcb::DefaultDatagramHandler {
  public:
     WriteResponseHandler()
       : DefaultDatagramHandler(stack.dg_service()) {
@@ -196,7 +196,7 @@ class WriteResponseHandler : public nmranet::DefaultDatagramHandler {
   }
 
   Action entry() override {
-      nmranet::IncomingDatagram *datagram = message()->data();
+      openlcb::IncomingDatagram *datagram = message()->data();
     LOG(INFO, "response handler: %.6lf", get_time());
 
     if (datagram->dst != stack.node() ||
@@ -219,7 +219,7 @@ class WriteResponseHandler : public nmranet::DefaultDatagramHandler {
   SyncNotifiable n;
 
  private:
-    nmranet::NodeHandle dst_;
+    openlcb::NodeHandle dst_;
 };
 
 int appl_main(int argc, char *argv[]) {
@@ -236,7 +236,7 @@ int appl_main(int argc, char *argv[]) {
   stack.start_executor_thread("g_executor", 0, 0);
   while (!stack.node()->is_initialized()) usleep(1000);
 
-  nmranet::DatagramPayload p;
+  openlcb::DatagramPayload p;
   p.push_back(bracz_custom::AutomataDefs::DATAGRAM_CODE);
   p.push_back(bracz_custom::AutomataDefs::STOP_AUTOMATA);
   send_datagram(std::move(p));
@@ -246,12 +246,12 @@ int appl_main(int argc, char *argv[]) {
 
   static const uint32_t buflen = 64;
   for (unsigned ofs = 0; ofs < file_data.size(); ofs += buflen) {
-    nmranet::DatagramPayload p =
-        nmranet::MemoryConfigDefs::write_datagram(space_id, ofs);
+    openlcb::DatagramPayload p =
+        openlcb::MemoryConfigDefs::write_datagram(space_id, ofs);
     p.append(file_data.substr(ofs, buflen));
 
     uint8_t flag = send_datagram(std::move(p));
-    if (flag & nmranet::DatagramClient::REPLY_PENDING) {
+    if (flag & openlcb::DatagramClient::REPLY_PENDING) {
         response_handler.n.wait_for_notification();
         LOG(INFO, "response handler notify done: %.6lf", get_time());
     }

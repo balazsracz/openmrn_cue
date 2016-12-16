@@ -40,7 +40,7 @@
 
 class RailcomBroadcastFlow : public dcc::RailcomHubPort {
  public:
-  RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, nmranet::Node* node,
+  RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, openlcb::Node* node,
                        dcc::RailcomHubPortInterface* occupancy_port,
                        dcc::RailcomHubPortInterface* overcurrent_port,
                        dcc::RailcomHubPortInterface* debug_port,
@@ -115,9 +115,9 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
     auto& decoder = channels_[channel];
     auto* b =
         get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
+    b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
                      node_->node_id(),
-                     nmranet::eventid_to_buffer(
+                     openlcb::eventid_to_buffer(
                          address_to_eventid(channel, decoder.lastAddress_)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
@@ -134,8 +134,8 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
     auto& decoder = channels_[channel];
     auto* b =
         get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT, node_->node_id(),
-                     nmranet::eventid_to_buffer(address_to_eventid(
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(address_to_eventid(
                          channel, decoder.current_address())));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
@@ -156,7 +156,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
   }
 
   dcc::RailcomHubFlow* parent_;
-  nmranet::Node* node_;
+  openlcb::Node* node_;
   dcc::RailcomHubPortInterface* occupancyPort_;
   dcc::RailcomHubPortInterface* overcurrentPort_;
   dcc::RailcomHubPortInterface* debugPort_;
@@ -166,7 +166,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
 };
 
 const uint64_t RailcomBroadcastFlow::FEEDBACK_EVENTID_BASE =
-    (0x09ULL << 56) | nmranet::TractionDefs::NODE_ID_DCC;
+    (0x09ULL << 56) | openlcb::TractionDefs::NODE_ID_DCC;
 
 #endif // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
 

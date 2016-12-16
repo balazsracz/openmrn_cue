@@ -35,7 +35,7 @@ extern int debug_variables;
 int debug_variables __attribute__((weak)) = 0;
 
 // This write helper will only ever be used synchronously.
-static nmranet::WriteHelper automata_write_helper;
+static openlcb::WriteHelper automata_write_helper;
 static SyncNotifiable g_notify_wait;
 static BarrierNotifiable g_barrier_notify;
 
@@ -206,7 +206,7 @@ void AutomataRunner::import_variable() {
 
 class EventBit : public ReadWriteBit {
  public:
-  EventBit(nmranet::Node* node, uint64_t event_on, uint64_t event_off,
+  EventBit(openlcb::Node* node, uint64_t event_on, uint64_t event_off,
            uint8_t mask, uint8_t* ptr)
       : bit_(node, event_on, event_off, ptr, mask),
         pc_(&bit_),
@@ -214,26 +214,26 @@ class EventBit : public ReadWriteBit {
     if (0) fprintf(stderr, "event bit create on node %p\n", node);
   }
 
-  void Initialize(nmranet::Node*) override {
+  void Initialize(openlcb::Node*) override {
     pc_.SendQuery(&automata_write_helper, get_notifiable());
     wait_for_notification();
   }
 
-  bool Read(uint16_t, nmranet::Node*, Automata* aut) override {
+  bool Read(uint16_t, openlcb::Node*, Automata* aut) override {
     // TODO(balazs.racz): we should consider CHECK failing here if
     // !defined. That will force us to explicitly reset every bit in StInit.
     auto state = bit_.get_current_state();
-    if (state == nmranet::EventState::VALID) return true;
-    if (state == nmranet::EventState::INVALID) return false;
+    if (state == openlcb::EventState::VALID) return true;
+    if (state == openlcb::EventState::INVALID) return false;
     LOG_ERROR("Reading event bit of invalid state");
     return false;
   }
 
-  void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) override {
+  void Write(uint16_t, openlcb::Node* node, Automata* aut, bool value) override {
     if (0) fprintf(stderr, "event bit write to node %p\n", node);
     auto state = bit_.get_current_state();
-    if (state == nmranet::EventState::VALID && defined_ && value) return;
-    if (state == nmranet::EventState::INVALID && defined_ && !value) return;
+    if (state == openlcb::EventState::VALID && defined_ && value) return;
+    if (state == openlcb::EventState::INVALID && defined_ && !value) return;
     bit_.set_state(value);
     pc_.SendEventReport(&automata_write_helper, get_notifiable());
     wait_for_notification();
@@ -241,59 +241,59 @@ class EventBit : public ReadWriteBit {
   }
 
  private:
-  nmranet::MemoryBit<uint8_t> bit_;
-  nmranet::BitEventPC pc_;
+  openlcb::MemoryBit<uint8_t> bit_;
+  openlcb::BitEventPC pc_;
   // This bit is true if we've already seen an event that defines this bit.
   bool defined_;
 };
 
 class EventBlockBit : public ReadWriteBit {
  public:
-  EventBlockBit(nmranet::WriteHelper::node_type node, uint64_t event_base,
+  EventBlockBit(openlcb::WriteHelper::node_type node, uint64_t event_base,
                 size_t size)
       : storage_(new uint32_t[(size + 31) >> 5]),
         handler_(
-            new nmranet::BitRangeEventPC(node, event_base, storage_, size)) {
+            new openlcb::BitRangeEventPC(node, event_base, storage_, size)) {
     size_t sz = (size + 31) >> 5;
     memset(&storage_[0], 0, sz * sizeof(storage_[0]));
   }
 
   ~EventBlockBit() { delete[] storage_; }
 
-  bool Read(uint16_t arg, nmranet::Node*, Automata* aut) override {
+  bool Read(uint16_t arg, openlcb::Node*, Automata* aut) override {
     return handler_->Get(arg);
   }
 
-  void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) override {
+  void Write(uint16_t arg, openlcb::Node*, Automata* aut, bool value) override {
     handler_->Set(arg, value, &automata_write_helper, get_notifiable());
     wait_for_notification();
   }
 
-  void Initialize(nmranet::Node*) OVERRIDE {
+  void Initialize(openlcb::Node*) OVERRIDE {
     handler_->SendIdentified(&automata_write_helper, get_notifiable());
     wait_for_notification();
   }
 
  private:
   uint32_t* storage_;
-  std::unique_ptr<nmranet::BitRangeEventPC> handler_;
+  std::unique_ptr<openlcb::BitRangeEventPC> handler_;
 };
 
 class EventByteBlock : public ReadWriteBit {
  public:
-  EventByteBlock(nmranet::WriteHelper::node_type node, uint64_t event_base,
+  EventByteBlock(openlcb::WriteHelper::node_type node, uint64_t event_base,
                  size_t size)
       : storage_(new uint8_t[size]),
         handler_(
-            new nmranet::ByteRangeEventP(node, event_base, storage_, size)) {
+            new openlcb::ByteRangeEventP(node, event_base, storage_, size)) {
     memset(&storage_[0], 0, size);
   }
 
   ~EventByteBlock() { delete[] storage_; }
 
-  bool Read(uint16_t arg, nmranet::Node*, Automata* aut) override { HASSERT(0); }
+  bool Read(uint16_t arg, openlcb::Node*, Automata* aut) override { HASSERT(0); }
 
-  void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) override {
+  void Write(uint16_t arg, openlcb::Node*, Automata* aut, bool value) override {
     HASSERT(0);
   }
 
@@ -307,31 +307,31 @@ class EventByteBlock : public ReadWriteBit {
     }
   }
 
-  void Initialize(nmranet::Node*) OVERRIDE {
+  void Initialize(openlcb::Node*) OVERRIDE {
     handler_->SendIdentified(&automata_write_helper, get_notifiable());
     wait_for_notification();
   }
 
  private:
   uint8_t* storage_;
-  std::unique_ptr<nmranet::ByteRangeEventP> handler_;
+  std::unique_ptr<openlcb::ByteRangeEventP> handler_;
 };
 
 class EventByteBlockConsumer : public ReadWriteBit {
  public:
-  EventByteBlockConsumer(nmranet::WriteHelper::node_type node,
+  EventByteBlockConsumer(openlcb::WriteHelper::node_type node,
                          uint64_t event_base, size_t size)
       : storage_(new uint8_t[size]),
         handler_(
-            new nmranet::ByteRangeEventC(node, event_base, storage_, size)) {
+            new openlcb::ByteRangeEventC(node, event_base, storage_, size)) {
     memset(&storage_[0], 0, size);
   }
 
   ~EventByteBlockConsumer() { delete[] storage_; }
 
-  bool Read(uint16_t arg, nmranet::Node*, Automata* aut) override { HASSERT(0); }
+  bool Read(uint16_t arg, openlcb::Node*, Automata* aut) override { HASSERT(0); }
 
-  void Write(uint16_t arg, nmranet::Node*, Automata* aut, bool value) override {
+  void Write(uint16_t arg, openlcb::Node*, Automata* aut, bool value) override {
     HASSERT(0);
   }
 
@@ -341,14 +341,14 @@ class EventByteBlockConsumer : public ReadWriteBit {
     storage_[arg] = state;
   }
 
-  void Initialize(nmranet::Node*) OVERRIDE {
+  void Initialize(openlcb::Node*) OVERRIDE {
     handler_->SendIdentified(&automata_write_helper, get_notifiable());
     wait_for_notification();
   }
 
  private:
   uint8_t* storage_;
-  std::unique_ptr<nmranet::ByteRangeEventC> handler_;
+  std::unique_ptr<openlcb::ByteRangeEventC> handler_;
 };
 
 ReadWriteBit* AutomataRunner::create_variable() {
@@ -403,14 +403,14 @@ class LockBit : public ReadWriteBit {
   LockBit(unsigned offset) : lock_id_(offset) { ASSERT(offset < MAX_LOCK_ID); }
   virtual ~LockBit();
 
-  bool Read(uint16_t, nmranet::Node* node, Automata* aut) override {
+  bool Read(uint16_t, openlcb::Node* node, Automata* aut) override {
     int existing_id = locks[lock_id_];
     if (!existing_id) return false;
     if (existing_id == aut->GetId()) return false;
     return true;
   }
 
-  void Write(uint16_t, nmranet::Node* node, Automata* aut, bool value) override {
+  void Write(uint16_t, openlcb::Node* node, Automata* aut, bool value) override {
     if (locks[lock_id_] == 0 && value) {
       locks[lock_id_] = aut->GetId();
     } else if (locks[lock_id_] == aut->GetId() && !value) {
@@ -453,10 +453,10 @@ bool AutomataRunner::eval_condition(insn_t insn) {
       case _IF_EMERGENCY_STOP: {
         auto* b =
             openmrn_node_->iface()->global_message_write_flow()->alloc();
-        b->data()->reset(nmranet::Defs::MTI_EVENT_REPORT,
+        b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT,
                          openmrn_node_->node_id(),
-                         nmranet::eventid_to_buffer(
-                             nmranet::TractionDefs::EMERGENCY_STOP_EVENT));
+                         openlcb::eventid_to_buffer(
+                             openlcb::TractionDefs::EMERGENCY_STOP_EVENT));
         openmrn_node_->iface()->global_message_write_flow()->send(b);
         return true;
       }
@@ -464,9 +464,9 @@ bool AutomataRunner::eval_condition(insn_t insn) {
         auto* b =
             openmrn_node_->iface()->global_message_write_flow()->alloc();
         b->data()->reset(
-            nmranet::Defs::MTI_EVENT_REPORT, openmrn_node_->node_id(),
-            nmranet::eventid_to_buffer(
-                nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
+            openlcb::Defs::MTI_EVENT_REPORT, openmrn_node_->node_id(),
+            openlcb::eventid_to_buffer(
+                openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
         openmrn_node_->iface()->global_message_write_flow()->send(b);
         return true;
       }
@@ -475,10 +475,10 @@ bool AutomataRunner::eval_condition(insn_t insn) {
         return !aut_speed_.isnan();
       }
       case _IF_FORWARD: {
-        return (aut_speed_.direction() == nmranet::Velocity::FORWARD);
+        return (aut_speed_.direction() == openlcb::Velocity::FORWARD);
       }
       case _IF_REVERSE: {
-        return (aut_speed_.direction() == nmranet::Velocity::REVERSE);
+        return (aut_speed_.direction() == openlcb::Velocity::REVERSE);
       }
       case _SET_TRAIN_SPEED: {
         return set_train_speed(aut_speed_);
@@ -686,23 +686,23 @@ void AutomataRunner::eval_action2(insn_t insn, insn_t arg) {
   diewith(CS_DIE_AUT_HALT);
 }
 
-bool AutomataRunner::set_train_speed(nmranet::Velocity v) {
+bool AutomataRunner::set_train_speed(openlcb::Velocity v) {
   auto* b = openmrn_node_->iface()->addressed_message_write_flow()->alloc();
-  b->data()->reset(nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND,
+  b->data()->reset(openlcb::Defs::MTI_TRACTION_CONTROL_COMMAND,
                    openmrn_node_->node_id(),
                    {aut_eventids_[0], 0},
-                   nmranet::TractionDefs::speed_set_payload(v));
+                   openlcb::TractionDefs::speed_set_payload(v));
   openmrn_node_->iface()->addressed_message_write_flow()->send(b);
   return true;
 }
 
-nmranet::Velocity AutomataRunner::get_train_speed() {
+openlcb::Velocity AutomataRunner::get_train_speed() {
   HASSERT(traction_.get());
   auto* b = openmrn_node_->iface()->addressed_message_write_flow()->alloc();
-  b->data()->reset(nmranet::Defs::MTI_TRACTION_CONTROL_COMMAND,
+  b->data()->reset(openlcb::Defs::MTI_TRACTION_CONTROL_COMMAND,
                    openmrn_node_->node_id(),
                    {aut_eventids_[0], 0},
-                   nmranet::TractionDefs::speed_get_payload());
+                   openlcb::TractionDefs::speed_get_payload());
   /** @TODO(balazs.racz) This timeout is way too long -- we want to run
    * automatas at 10 Hz. We really should not block the current thread for so
    * long. Ideally of course this response would arrive much faster, like
@@ -718,14 +718,14 @@ nmranet::Velocity AutomataRunner::get_train_speed() {
     LOG(VERBOSE,
         "automata: Timeout waiting for traction response from 0x%016" PRIx64
         ".", aut_eventids_[0]);
-    return nmranet::nan_to_speed();
+    return openlcb::nan_to_speed();
   } else {
-    nmranet::Velocity r;
-    if (!nmranet::TractionDefs::speed_get_parse_last(
+    openlcb::Velocity r;
+    if (!openlcb::TractionDefs::speed_get_parse_last(
              traction_->resp_handler_.response()->data()->payload, &r)) {
       LOG(WARNING, "automata: Invalid traction response from 0x%016" PRIx64 ".",
           aut_eventids_[0]);
-      return nmranet::nan_to_speed();
+      return openlcb::nan_to_speed();
     }
     return r;
   }
@@ -765,7 +765,7 @@ void AutomataRunner::InitializeState() {
     it.second->Initialize(openmrn_node_);
     do {
       usleep(config_automata_init_backoff());
-    } while (nmranet::EventService::instance->event_processing_pending());
+    } while (openlcb::EventService::instance->event_processing_pending());
   }
   pending_ticks_ = 0;
 }
@@ -843,11 +843,11 @@ void* automata_thread(void* arg) {
   return NULL;
 }
 
-AutomataRunner::Traction::Traction(nmranet::Node* node)
+AutomataRunner::Traction::Traction(openlcb::Node* node)
     : resp_handler_(node->iface(), node),
       timer_(node->iface()->executor()->active_timers()) {}
 
-AutomataRunner::AutomataRunner(nmranet::Node* node, const insn_t* base_pointer,
+AutomataRunner::AutomataRunner(openlcb::Node* node, const insn_t* base_pointer,
                                bool with_thread)
     : ip_(0),
       aut_srcplace_(254),

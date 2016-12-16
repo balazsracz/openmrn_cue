@@ -50,8 +50,8 @@ class TrainControlService : public RpcService {
   class Impl;
   Impl* impl() { return impl_.get(); }
 
-  void initialize(nmranet::DatagramService* dg_service, nmranet::Node* node,
-                  nmranet::NodeHandle client, const string& lokdb_ascii,
+  void initialize(openlcb::DatagramService* dg_service, openlcb::Node* node,
+                  openlcb::NodeHandle client, const string& lokdb_ascii,
                   bool query_state);
 
   // Takes ownership of the injected object.

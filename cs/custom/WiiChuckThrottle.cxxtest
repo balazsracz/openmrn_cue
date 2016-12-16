@@ -4,7 +4,7 @@
 
 using namespace bracz_custom;
 
-namespace nmranet {
+namespace openlcb {
 
 class ChuckThrottleTest : public TractionTest {
  protected:
@@ -56,4 +56,4 @@ TEST_F(ChuckThrottleTest, ChuckLeftMax) {
 
 
 
-}  // namespace nmranet
+}  // namespace openlcb

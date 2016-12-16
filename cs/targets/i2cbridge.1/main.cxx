@@ -27,7 +27,7 @@ Executor g_executor;
 
 DEFINE_PIPE(can_pipe, &g_executor, sizeof(struct can_frame));
 
-static const nmranet::NodeID NODE_ID = 0x050101011433ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011433ULL;
 
 extern "C" {
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
@@ -38,9 +38,9 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 2);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventIteratorFlow g_event_flow(&g_executor, 5);
+openlcb::AsyncIfCan g_if_can(&g_executor, &can_pipe, 3, 3, 2, 1, 2);
+openlcb::DefaultNode g_node(&g_if_can, NODE_ID);
+openlcb::EventIteratorFlow g_event_flow(&g_executor, 5);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2400ULL;
 const int main_priority = 0;
@@ -58,7 +58,7 @@ Executor* DefaultWriteFlowExecutor() {
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public nmranet::BitEventInterface
+class LoggingBit : public openlcb::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -81,7 +81,7 @@ public:
 #endif
     }
 
-    virtual nmranet::Node* node()
+    virtual openlcb::Node* node()
     {
         return &g_node;
     }
@@ -95,7 +95,7 @@ private:
 class BlinkerFlow : public ControlFlow
 {
 public:
-    BlinkerFlow(nmranet::Node* node)
+    BlinkerFlow(openlcb::Node* node)
         : ControlFlow(node->interface()->dispatcher()->executor(), nullptr),
           state_(1),
           bit_(node, EVENT_ID, EVENT_ID + 1, &state_, (uint8_t)1),
@@ -121,9 +121,9 @@ private:
     }
 
     uint8_t state_;
-    nmranet::MemoryBit<uint8_t> bit_;
-    nmranet::BitEventProducer producer_;
-    nmranet::WriteHelper helper_;
+    openlcb::MemoryBit<uint8_t> bit_;
+    openlcb::BitEventProducer producer_;
+    openlcb::WriteHelper helper_;
     SleepData sleepData_;
 };
 
@@ -144,12 +144,12 @@ int appl_main(int argc, char* argv[])
 #endif
   //BlinkerFlow blinker(&g_node);
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
+    openlcb::BitEventConsumer consumer(&logger);
     g_if_can.set_alias_allocator(
-        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
-    nmranet::AliasInfo info;
+        new openlcb::AsyncAliasAllocator(NODE_ID, &g_if_can));
+    openlcb::AliasInfo info;
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
-    nmranet::AddEventHandlerToIf(&g_if_can);
+    openlcb::AddEventHandlerToIf(&g_if_can);
     g_executor.ThreadBody();
     return 0;
 }

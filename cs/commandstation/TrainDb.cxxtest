@@ -2,16 +2,16 @@
 #include "commandstation/TrainDb.hxx"
 #include "nmranet/ConfigUpdateFlow.hxx"
 
-namespace nmranet {
-void PrintTo(const nmranet::NodeID& id, std::ostream& o) {
+namespace openlcb {
+void PrintTo(const openlcb::NodeID& id, std::ostream& o) {
   o << "Node ID 0x" << StringPrintf("%012x", id);
 }
 }
 
 
 CanHubFlow g_can_hub(&g_service);
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 10, 10, 10);
-nmranet::ConfigUpdateFlow cfgflow(&g_if_can);
+openlcb::IfCan g_if_can(&g_executor, &can_hub0, 10, 10, 10);
+openlcb::ConfigUpdateFlow cfgflow(&g_if_can);
 
 namespace commandstation {
 

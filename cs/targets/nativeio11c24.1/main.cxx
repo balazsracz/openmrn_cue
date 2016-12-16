@@ -30,7 +30,7 @@ Executor<1> g_executor(nt);
 Service g_service(&g_executor);
 CanHubFlow can_hub0(&g_service);
 
-static const nmranet::NodeID NODE_ID = 0x050101011448ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011448ULL;
 
 extern "C" {
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
@@ -41,10 +41,10 @@ const size_t CAN_TX_BUFFER_SIZE = 2;
 const size_t main_stack_size = 900;
 }
 
-nmranet::IfCan g_if_can(&g_executor, &can_hub0, 1, 3, 2);
-static nmranet::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventService g_event_service(&g_if_can);
+openlcb::IfCan g_if_can(&g_executor, &can_hub0, 1, 3, 2);
+static openlcb::AddAliasAllocator _alias_allocator(NODE_ID, &g_if_can);
+openlcb::DefaultNode g_node(&g_if_can, NODE_ID);
+openlcb::EventService g_event_service(&g_if_can);
 WatchDogEventHandler g_watchdog(&g_node, WATCHDOG_EVENT_ID);
 
 static const uint64_t EVENT_ID = 0x0501010114FF2820ULL;
@@ -59,7 +59,7 @@ extern "C" {
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public nmranet::BitEventInterface
+class LoggingBit : public openlcb::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -82,7 +82,7 @@ public:
 #endif
     }
 
-    virtual nmranet::Node* node()
+    virtual openlcb::Node* node()
     {
         return &g_node;
     }
@@ -182,9 +182,9 @@ class AllGPIOProducers : public StateFlowBase {
   // Fresh bits that we need to copy to the exported bits.
   uint32_t last_read_bits_;
 
-  nmranet::BitRangeEventPC producer_;
+  openlcb::BitRangeEventPC producer_;
 
-  nmranet::WriteHelper helper_;
+  openlcb::WriteHelper helper_;
   BarrierNotifiable helper_busy_;
   StateFlowTimer timer_;
 };
@@ -282,10 +282,10 @@ class AllGPIOProducers : public StateFlowBase {
   // Fresh bits that we need to copy to the exported bits.
   uint32_t last_read_bits_;
 
-  nmranet::BitRangeEventPC producer_;
+  openlcb::BitRangeEventPC producer_;
   OSTimer timer_;
 
-  nmranet::WriteHelper helper_;
+  openlcb::WriteHelper helper_;
   BarrierNotifiable helper_busy_;
   };*/
 
@@ -304,12 +304,12 @@ int appl_main(int argc, char* argv[])
 #endif
   //BlinkerFlow blinker(&g_node);
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
+    openlcb::BitEventConsumer consumer(&logger);
     //g_if_can.add_addressed_message_support();
-    nmranet::AliasInfo info;
+    openlcb::AliasInfo info;
     // Bootstraps the alias allocation process.
     g_if_can.alias_allocator()->send(g_if_can.alias_allocator()->alloc());
-    //nmranet::AddEventHandlerToIf(&g_if_can);
+    //openlcb::AddEventHandlerToIf(&g_if_can);
     g_executor.thread_body();
     return 0;
 }

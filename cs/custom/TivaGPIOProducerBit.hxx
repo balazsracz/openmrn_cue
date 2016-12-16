@@ -37,9 +37,9 @@
 
 #include "nmranet/SimpleStack.hxx"
 
-extern nmranet::SimpleCanStack stack;
+extern openlcb::SimpleCanStack stack;
 
-class TivaGPIOProducerBit : public nmranet::BitEventInterface {
+class TivaGPIOProducerBit : public openlcb::BitEventInterface {
  public:
   TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
                       uint8_t port_bit, bool display = false)
@@ -48,19 +48,19 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
                                               (((unsigned)port_bit) << 2))),
         display_(display) {}
 
-  nmranet::EventState get_current_state() OVERRIDE {
+  openlcb::EventState get_current_state() OVERRIDE {
     bool result = *ptr_;
     if (display_) {
       Debug::DetectRepeat::set(result);
     }
-    return result ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+    return result ? openlcb::EventState::VALID : openlcb::EventState::INVALID;
   }
 
   void set_state(bool new_value) OVERRIDE {
     DIE("cannot set state of input producer");
   }
 
-  nmranet::Node* node() OVERRIDE { return stack.node(); }
+  openlcb::Node* node() OVERRIDE { return stack.node(); }
 
  private:
   const uint8_t* ptr_;

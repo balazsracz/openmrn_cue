@@ -65,7 +65,7 @@ Executor g_executor;
 DEFINE_PIPE(can_pipe0, &g_executor, sizeof(struct can_frame));
 //DEFINE_PIPE(can_pipe1, &g_executor, sizeof(struct can_frame));
 
-static const nmranet::NodeID NODE_ID = 0x050101011441ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011441ULL;
 
 extern "C" {
 const size_t WRITE_FLOW_THREAD_STACK_SIZE = 900;
@@ -90,9 +90,9 @@ VIRTUAL_DEVTAB_ENTRY(canp1v1, can_pipe1, "/dev/canp1v1", 16);*/
 
 //I2C i2c(P0_10, P0_11); for panda CS
 
-nmranet::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1, 1);
-nmranet::DefaultNode g_node(&g_if_can, NODE_ID);
-nmranet::EventIteratorFlow g_event_flow(&g_executor, 6);
+openlcb::AsyncIfCan g_if_can(&g_executor, &can_pipe0, 3, 3, 2, 1, 1);
+openlcb::DefaultNode g_node(&g_if_can, NODE_ID);
+openlcb::EventIteratorFlow g_event_flow(&g_executor, 6);
 
 static const uint64_t EVENT_ID = 0x0501010114FF203CULL;
 const int main_priority = 0;
@@ -105,7 +105,7 @@ Executor* DefaultWriteFlowExecutor() {
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-class LoggingBit : public nmranet::BitEventInterface
+class LoggingBit : public openlcb::BitEventInterface
 {
 public:
     LoggingBit(uint64_t event_on, uint64_t event_off, const char* name)
@@ -128,7 +128,7 @@ public:
 #endif
     }
 
-    virtual nmranet::Node* node()
+    virtual openlcb::Node* node()
     {
         return &g_node;
     }
@@ -176,13 +176,13 @@ int appl_main(int argc, char* argv[])
     can_pipe0.AddPhysicalDeviceToPipe("/dev/can0", "can0_rx_thread", 512);
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
+    openlcb::BitEventConsumer consumer(&logger);
     //BlinkerFlow blinker(&g_node);
     g_if_can.set_alias_allocator(
-        new nmranet::AsyncAliasAllocator(NODE_ID, &g_if_can));
-    nmranet::AliasInfo info;
+        new openlcb::AsyncAliasAllocator(NODE_ID, &g_if_can));
+    openlcb::AliasInfo info;
     g_if_can.alias_allocator()->empty_aliases()->Release(&info);
-    nmranet::AddEventHandlerToIf(&g_if_can);
+    openlcb::AddEventHandlerToIf(&g_if_can);
     g_executor.ThreadBody();
     return 0;
 }

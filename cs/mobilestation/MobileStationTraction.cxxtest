@@ -3,7 +3,7 @@
 #include "mobilestation/MobileStationTraction.hxx"
 #include "commandstation/TrainDb.hxx"
 
-namespace nmranet {
+namespace openlcb {
 ::std::ostream& operator<<(::std::ostream& os, const Velocity& v) {
   return os << "Velocity " << (v.direction() == Velocity::FORWARD ? 'F' : 'R')
             << " " << v.speed() << " m/s or " << v.mph() << " mph.";
@@ -29,16 +29,16 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 namespace mobilestation {
 
-class MostaTranslationTest : public nmranet::TractionTest {
+class MostaTranslationTest : public openlcb::TractionTest {
  protected:
   static void SetUpTestCase() {
-    nmranet::AsyncNodeTest::SetUpTestCase();
+    openlcb::AsyncNodeTest::SetUpTestCase();
     g_gc_adapter1 =
         GCAdapterBase::CreateGridConnectAdapter(&gc_hub1, &can_hub1, false);
   }
 
   static void TearDownTestCase() {
-    nmranet::AsyncNodeTest::TearDownTestCase();
+    openlcb::AsyncNodeTest::TearDownTestCase();
     delete g_gc_adapter1;
   }
 
@@ -57,7 +57,7 @@ class MostaTranslationTest : public nmranet::TractionTest {
     expect_packet(":X1070133AN060100000056;");
     // initialized
     expect_packet(":X1910033AN060100000056;");
-    trainNode_.reset(new nmranet::TrainNodeForProxy(&trainService_, &m1_));
+    trainNode_.reset(new openlcb::TrainNodeForProxy(&trainService_, &m1_));
     wait();
   }
 
@@ -78,7 +78,7 @@ class MostaTranslationTest : public nmranet::TractionTest {
   NiceMock<MockSend> canBus1_;
   CanIf can_if1_;
 
-  std::unique_ptr<nmranet::TrainNode> trainNode_;
+  std::unique_ptr<openlcb::TrainNode> trainNode_;
 
   commandstation::TrainDb train_db_;
   MobileStationTraction mosta_traction_;
@@ -92,7 +92,7 @@ MATCHER_P(VApprox, velocity, "") {
 }
 
 TEST_F(MostaTranslationTest, SpeedSetXlate) {
-  nmranet::Velocity v(0);
+  openlcb::Velocity v(0);
   v.reverse();
   EXPECT_CALL(m1_, set_speed(v));
   send_packet1(":X08080500N010080;");
@@ -125,7 +125,7 @@ TEST_F(MostaTranslationTest, FnGetXlate) {
 }
 
 TEST_F(MostaTranslationTest, DISABLED_FnGetSpeed) {
-  nmranet::Velocity v(0);
+  openlcb::Velocity v(0);
   v.set_mph(0x13);
   EXPECT_CALL(m1_, get_speed()).WillOnce(Return(v));
   expect_packet1(":X08080100N010013");

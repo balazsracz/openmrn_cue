@@ -45,7 +45,7 @@
 #include "nmranet/SimpleStack.hxx"
 
 /// @TODO(balazs.racz) this is not nice.
-extern nmranet::SimpleCanStack stack;
+extern openlcb::SimpleCanStack stack;
 
 namespace bracz_custom {
 
@@ -68,13 +68,13 @@ enum {
   TRACKCMD_ENABLE = 21,
 };
 
-class TrackPowerOnOffBit : public nmranet::BitEventInterface {
+class TrackPowerOnOffBit : public openlcb::BitEventInterface {
  public:
   TrackPowerOnOffBit(uint64_t event_on, uint64_t event_off, dcc::PacketFlowInterface* track)
       : BitEventInterface(event_on, event_off), track_(track), state_(false) {}
 
-  nmranet::EventState get_current_state() override {
-    return state_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+  openlcb::EventState get_current_state() override {
+    return state_ ? openlcb::EventState::VALID : openlcb::EventState::INVALID;
   }
   void set_state(bool new_value) override {
     auto* b = track_->alloc();
@@ -84,7 +84,7 @@ class TrackPowerOnOffBit : public nmranet::BitEventInterface {
     state_ = new_value;
   }
 
-  nmranet::Node* node() override
+  openlcb::Node* node() override
   {
     return stack.node();
   }

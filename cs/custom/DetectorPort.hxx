@@ -53,7 +53,7 @@ namespace sp = std::placeholders;
 /// - register the event IDs
 class DetectorPort : public StateFlowBase {
  public:
-  DetectorPort(nmranet::Node* node, uint8_t channel, int config_fd,
+  DetectorPort(openlcb::Node* node, uint8_t channel, int config_fd,
                const DetectorPortConfig& cfg)
     : StateFlowBase(node->iface()),
         channel_(channel),
@@ -81,24 +81,24 @@ class DetectorPort : public StateFlowBase {
 
     eventHandler_.add_entry(
         eventOccupancyOn_,
-        OCCUPANCY_BIT | ARG_ON | nmranet::CallbackEventHandler::IS_PRODUCER);
+        OCCUPANCY_BIT | ARG_ON | openlcb::CallbackEventHandler::IS_PRODUCER);
     eventHandler_.add_entry(
         eventOccupancyOff_,
-        OCCUPANCY_BIT | nmranet::CallbackEventHandler::IS_PRODUCER);
+        OCCUPANCY_BIT | openlcb::CallbackEventHandler::IS_PRODUCER);
 
     eventHandler_.add_entry(
         eventOvercurrentOn_,
-        OVERCURRENT_BIT | ARG_ON | nmranet::CallbackEventHandler::IS_PRODUCER);
+        OVERCURRENT_BIT | ARG_ON | openlcb::CallbackEventHandler::IS_PRODUCER);
     eventHandler_.add_entry(
         eventOvercurrentOff_,
-        OVERCURRENT_BIT | nmranet::CallbackEventHandler::IS_PRODUCER);
+        OVERCURRENT_BIT | openlcb::CallbackEventHandler::IS_PRODUCER);
 
     eventHandler_.add_entry(
         eventEnableOn_,
-        ENABLE_BIT | ARG_ON | nmranet::CallbackEventHandler::IS_CONSUMER);
+        ENABLE_BIT | ARG_ON | openlcb::CallbackEventHandler::IS_CONSUMER);
     eventHandler_.add_entry(
         eventEnableOff_,
-        ENABLE_BIT | nmranet::CallbackEventHandler::IS_CONSUMER);
+        ENABLE_BIT | openlcb::CallbackEventHandler::IS_CONSUMER);
   }
 
   void set_overcurrent(bool value) {
@@ -150,8 +150,8 @@ class DetectorPort : public StateFlowBase {
   }
 
  private:
-  void event_report(const nmranet::EventRegistryEntry& registry_entry,
-                    nmranet::EventReport* report, BarrierNotifiable* done) {
+  void event_report(const openlcb::EventRegistryEntry& registry_entry,
+                    openlcb::EventReport* report, BarrierNotifiable* done) {
     uint32_t user_arg = registry_entry.user_arg;
     switch (user_arg & MASK_FOR_BIT) {
       case ENABLE_BIT:
@@ -166,25 +166,25 @@ class DetectorPort : public StateFlowBase {
     };
   }
 
-  nmranet::EventState get_event_state(
-      const nmranet::EventRegistryEntry& registry_entry,
-      nmranet::EventReport* report) {
-    nmranet::EventState st = nmranet::EventState::UNKNOWN;
+  openlcb::EventState get_event_state(
+      const openlcb::EventRegistryEntry& registry_entry,
+      openlcb::EventReport* report) {
+    openlcb::EventState st = openlcb::EventState::UNKNOWN;
     switch (registry_entry.user_arg & MASK_FOR_BIT) {
       case ENABLE_BIT:
-        st = nmranet::to_event_state(networkEnable_);
+        st = openlcb::to_event_state(networkEnable_);
         break;
       case OVERCURRENT_BIT:
-        st = nmranet::to_event_state(killedOutputDueToOvercurrent_);
+        st = openlcb::to_event_state(killedOutputDueToOvercurrent_);
         break;
       case OCCUPANCY_BIT:
-        st = nmranet::to_event_state(networkOccupancy_);
+        st = openlcb::to_event_state(networkOccupancy_);
         break;
     };
     if (!(registry_entry.user_arg & ARG_ON)) {
       st = invert_event_state(st);
     }
-    return nmranet::EventState::VALID;
+    return openlcb::EventState::VALID;
   }
 
   /// Defines what we use the user_args bits for the registered event handlers.
@@ -292,10 +292,10 @@ class DetectorPort : public StateFlowBase {
     return set_terminated();
   }
 
-  Action produce_event(nmranet::EventId event_id) {
-    h_.WriteAsync(node_, nmranet::Defs::MTI_EVENT_REPORT,
-                  nmranet::WriteHelper::global(),
-                  nmranet::eventid_to_buffer(event_id), n_.reset(this));
+  Action produce_event(openlcb::EventId event_id) {
+    h_.WriteAsync(node_, openlcb::Defs::MTI_EVENT_REPORT,
+                  openlcb::WriteHelper::global(),
+                  openlcb::eventid_to_buffer(event_id), n_.reset(this));
     return wait_and_call(STATE(test_again));
   }
 
@@ -321,16 +321,16 @@ class DetectorPort : public StateFlowBase {
 
   /// how many tries we had yet for turning on output.
   uint8_t turnonTryCount_ : 3;
-  nmranet::Node* node_;
-  nmranet::EventId eventOccupancyOn_;
-  nmranet::EventId eventOccupancyOff_;
-  nmranet::EventId eventOvercurrentOn_;
-  nmranet::EventId eventOvercurrentOff_;
-  nmranet::EventId eventEnableOn_;
-  nmranet::EventId eventEnableOff_;
-  nmranet::WriteHelper h_;
+  openlcb::Node* node_;
+  openlcb::EventId eventOccupancyOn_;
+  openlcb::EventId eventOccupancyOff_;
+  openlcb::EventId eventOvercurrentOn_;
+  openlcb::EventId eventOvercurrentOff_;
+  openlcb::EventId eventEnableOn_;
+  openlcb::EventId eventEnableOff_;
+  openlcb::WriteHelper h_;
   BarrierNotifiable n_;
-  nmranet::CallbackEventHandler eventHandler_;
+  openlcb::CallbackEventHandler eventHandler_;
 };
 
 }  // namespace bracz_custom

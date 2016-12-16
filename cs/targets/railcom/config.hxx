@@ -7,7 +7,7 @@
 #include "nmranet/MemoryConfig.hxx"
 #include "custom/DetectorPortConfig.hxx"
 
-namespace nmranet
+namespace openlcb
 {
 
 /// Defines the identification information for the node. The arguments are:
@@ -100,6 +100,6 @@ CDI_GROUP_ENTRY(seg, IoBoardSegment);
 CDI_GROUP_ENTRY(version, VersionSeg);
 CDI_GROUP_END();
 
-}  // namespace nmranet
+}  // namespace openlcb
 
 #endif // _APPLICATIONS_IO_BOARD_TARGET_CONFIG_HXX_

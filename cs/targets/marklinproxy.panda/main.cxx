@@ -64,13 +64,13 @@
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 
 
-static const nmranet::NodeID NODE_ID = 0x050101011435ULL;
-nmranet::SimpleCanStack stack(NODE_ID);
+static const openlcb::NodeID NODE_ID = 0x050101011435ULL;
+openlcb::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = openlcb::MockSNIPUserFile::snip_user_file_path;
 
 /*void log_output(char* buf, int size) {
     if (size <= 0) return;
@@ -113,7 +113,7 @@ int appl_main(int argc, char* argv[])
 
     static const uint64_t EVENT_ID = 0x0501010114FF203AULL;
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
+    openlcb::BitEventConsumer consumer(&logger);
 
     stack.loop_executor();
     return 0;

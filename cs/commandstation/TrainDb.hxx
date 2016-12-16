@@ -67,7 +67,7 @@ public:
   /** Retrieves the NMRAnet NodeID for the virtual node that represents a
    * particular train known to the database.
    */
-  virtual nmranet::NodeID get_traction_node() = 0;
+  virtual openlcb::NodeID get_traction_node() = 0;
 
   /** Retrieves the name of the train. */
   virtual string get_train_name() = 0;
@@ -86,7 +86,7 @@ public:
       has no functions. */
   virtual int get_max_fn() = 0;
 
-  /** If non-negative, represents a file offset in the nmranet CONFIG_FILENAME
+  /** If non-negative, represents a file offset in the openlcb CONFIG_FILENAME
    * file where this train has its data stored. */
   virtual int file_offset() { return -1; }
 };
@@ -134,7 +134,7 @@ class TrainDb {
 
   /** Searches for an entry by the traction node ID. Returns nullptr if not
    * found. @param hint is a train_id that might be a match. */
-  std::shared_ptr<TrainDbEntry> find_entry(nmranet::NodeID traction_node_id,
+  std::shared_ptr<TrainDbEntry> find_entry(openlcb::NodeID traction_node_id,
                                            unsigned hint = 0) {
     if (hint <= entries_.size() &&
         entries_[hint]->get_traction_node() == traction_node_id) {

@@ -117,24 +117,24 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 }  // namespace commandstation
 
-static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
+static const openlcb::NodeID NODE_ID = 0x050101011432ULL;
 
-nmranet::SimpleCanStack stack(NODE_ID);
+openlcb::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 
-nmranet::ConfigDef cfg(0);
+openlcb::ConfigDef cfg(0);
 
-extern const char *const nmranet::CONFIG_FILENAME = "/dev/eeprom";
-extern const size_t nmranet::CONFIG_FILE_SIZE =
+extern const char *const openlcb::CONFIG_FILENAME = "/dev/eeprom";
+extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.trains().size() + cfg.trains().offset();
-static_assert(nmranet::CONFIG_FILE_SIZE <=  4*1024, "eeprom too small for train database");
-extern const char *const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::CONFIG_FILENAME;
+static_assert(openlcb::CONFIG_FILE_SIZE <=  4*1024, "eeprom too small for train database");
+extern const char *const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::CONFIG_FILENAME;
 
 extern char __automata_start[];
 extern char __automata_end[];
 
-nmranet::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
+openlcb::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
 
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
@@ -180,7 +180,7 @@ void send_host_log_event(HostLogEvent e) {
 OVERRIDE_CONST(local_nodes_count, 30);
 OVERRIDE_CONST(local_alias_cache_size, 30);
 
-class TivaGPIOProducerBit : public nmranet::BitEventInterface {
+class TivaGPIOProducerBit : public openlcb::BitEventInterface {
  public:
   TivaGPIOProducerBit(uint64_t event_on, uint64_t event_off, uint32_t port_base,
                       uint8_t port_bit)
@@ -189,22 +189,22 @@ class TivaGPIOProducerBit : public nmranet::BitEventInterface {
                                               (((unsigned)port_bit) << 2))) {}
 
 
-  nmranet::EventState get_current_state() OVERRIDE {
-    return *ptr_ ? nmranet::EventState::VALID : nmranet::EventState::INVALID;
+  openlcb::EventState get_current_state() OVERRIDE {
+    return *ptr_ ? openlcb::EventState::VALID : openlcb::EventState::INVALID;
   }
 
   void set_state(bool new_value) OVERRIDE {
     DIE("cannot set state of input producer");
   }
 
-  nmranet::Node* node() OVERRIDE { return stack.node(); }
+  openlcb::Node* node() OVERRIDE { return stack.node(); }
 
  private:
   const uint8_t* ptr_;
 };
 
-class TivaGPIOConsumer : public nmranet::BitEventInterface,
-                         public nmranet::BitEventConsumer {
+class TivaGPIOConsumer : public openlcb::BitEventInterface,
+                         public openlcb::BitEventConsumer {
  public:
   TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port,
                    uint8_t pin)
@@ -212,9 +212,9 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
         BitEventConsumer(this),
         memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
 
-  nmranet::EventState get_current_state() OVERRIDE {
-    return (*memory_) ? nmranet::EventState::VALID
-                      : nmranet::EventState::INVALID;
+  openlcb::EventState get_current_state() OVERRIDE {
+    return (*memory_) ? openlcb::EventState::VALID
+                      : openlcb::EventState::INVALID;
   }
   void set_state(bool new_value) OVERRIDE {
     if (new_value) {
@@ -224,7 +224,7 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
     }
   }
 
-  nmranet::Node* node() OVERRIDE { return stack.node(); }
+  openlcb::Node* node() OVERRIDE { return stack.node(); }
 
  private:
   volatile uint8_t* memory_;
@@ -235,20 +235,20 @@ HubDeviceNonBlock<dcc::RailcomHubFlow>* railcom_reader_flow;
 dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
-commandstation::TrackPowerBit on_off(stack.node(), nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                                     nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
-nmranet::BitEventConsumer powerbit(&on_off);
-nmranet::TrainService traction_service(stack.iface());
+commandstation::TrackPowerBit on_off(stack.node(), openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                                     openlcb::TractionDefs::EMERGENCY_STOP_EVENT);
+openlcb::BitEventConsumer powerbit(&on_off);
+openlcb::TrainService traction_service(stack.iface());
 
 TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(stack.node(), BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
-nmranet::BitEventConsumer accpowerbit(&acc_on_off);
+openlcb::BitEventConsumer accpowerbit(&acc_on_off);
 
-typedef nmranet::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
+typedef openlcb::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
                                 TivaGPIOProducerBit> TivaSwitchProducer;
 QuiesceDebouncer::Options opts(3);
 
-TivaSwitchProducer sw1(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                       nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
+TivaSwitchProducer sw1(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                       openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
                        USR_SW1_Pin::GPIO_BASE, USR_SW1_Pin::GPIO_PIN);
 
 TivaSwitchProducer sw2(opts, BRACZ_LAYOUT | 0x0000,
@@ -258,20 +258,20 @@ TivaSwitchProducer sw2(opts, BRACZ_LAYOUT | 0x0000,
 TivaGPIOConsumer led_acc(BRACZ_LAYOUT | 4, BRACZ_LAYOUT | 5, io::AccPwrLed::GPIO_BASE, io::AccPwrLed::GPIO_PIN);
 TivaGPIOConsumer led_go(BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,  io::GoPausedLed::GPIO_BASE, io::GoPausedLed::GPIO_PIN);
 
-nmranet::RefreshLoop loop(stack.node(), {&sw1, &sw2});
+openlcb::RefreshLoop loop(stack.node(), {&sw1, &sw2});
 
 bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const insn_t*) __automata_start);
 
-/*TivaSwitchProducer sw2(opts, nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                       nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
+/*TivaSwitchProducer sw2(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                       openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
                        USR_SW1::GPIO_BASE, USR_SW1::GPIO_PIN);
 */
 
 //dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
-//nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+//openlcb::TrainNode train_Am843_node(&traction_service, &train_Am843);
 //dcc::Dcc28Train train_Re460(dcc::DccShortAddress(22));
 //dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
-//nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
+//openlcb::TrainNode train_Re460_node(&traction_service, &train_Re460);
 
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
@@ -281,9 +281,9 @@ mobilestation::MobileStationTraction mosta_traction(&can1_interface, stack.iface
 
 commandstation::AllTrainNodes all_trains(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
-nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, nmranet::MemoryConfigDefs::SPACE_DCC_CV);
+openlcb::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, openlcb::MemoryConfigDefs::SPACE_DCC_CV);
 
-typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
+typedef openlcb::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
 
 void mydisable()
@@ -323,7 +323,7 @@ HubDeviceSelect<HubFlow>* usb_port;
  */
 int appl_main(int argc, char* argv[])
 {
-    stack.check_version_and_factory_reset(cfg.seg().internal_config(), nmranet::CANONICAL_VERSION, false);
+    stack.check_version_and_factory_reset(cfg.seg().internal_config(), openlcb::CANONICAL_VERSION, false);
 
   //  mydisable();
   // TODO(balazs.racz): add a workign implementation of watchdog.
@@ -346,7 +346,7 @@ int appl_main(int argc, char* argv[])
     dcc::RailcomPrintfFlow railcom_debug(&railcom_hub);
 
 
-    nmranet::Velocity v;
+    openlcb::Velocity v;
     v.set_mph(29);
     //XXtrain_Re460.set_speed(v);
     /*train_Am843.set_speed(v);
@@ -359,7 +359,7 @@ int appl_main(int argc, char* argv[])
 
     static const uint64_t BLINKER_EVENT_ID = 0x0501010114FF2B08ULL;
     LoggingBit logger(BLINKER_EVENT_ID, BLINKER_EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
+    openlcb::BitEventConsumer consumer(&logger);
 
     stack.memory_config_handler()->registry()->insert(stack.node(), 0xA0, &automata_space);
 

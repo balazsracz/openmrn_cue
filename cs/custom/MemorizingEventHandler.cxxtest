@@ -2,7 +2,7 @@
 
 #include "custom/MemorizingEventHandler.hxx"
 
-namespace nmranet {
+namespace openlcb {
 namespace {
 
 static const uint64_t EVENT = 0x0501010114FE0000ULL;
@@ -102,4 +102,4 @@ TEST_F(MemorizingTest, IdentifyGlobal) {
 }
 
 }  // namespace
-}  // namespace nmranet
+}  // namespace openlcb

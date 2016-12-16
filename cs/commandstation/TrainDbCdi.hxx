@@ -73,10 +73,10 @@ static const char FNDISPLAY_MAP[] =
 
 CDI_GROUP(TrainDbCdiFunctionGroup, Name("Functions"),
           Description("Defines what each function button does."));
-CDI_GROUP_ENTRY(icon, nmranet::Uint8ConfigEntry, Name("Display"),
+CDI_GROUP_ENTRY(icon, openlcb::Uint8ConfigEntry, Name("Display"),
                 Description("Defines how throttles display this function."),
                 Default(FN_NONEXISTANT), MapValues(FNDISPLAY_MAP));
-CDI_GROUP_ENTRY(is_momentary, nmranet::Uint8ConfigEntry, Name("Momentary"),
+CDI_GROUP_ENTRY(is_momentary, openlcb::Uint8ConfigEntry, Name("Momentary"),
                 Description(
                     "Momentary functions are automatically turned off when you "
                     "release the respective button on the throttles."),
@@ -84,11 +84,11 @@ CDI_GROUP_ENTRY(is_momentary, nmranet::Uint8ConfigEntry, Name("Momentary"),
 CDI_GROUP_END();
 
 using TrainDbCdiRepFunctionGroup =
-    nmranet::RepeatedGroup<TrainDbCdiFunctionGroup, DCC_MAX_FN - 1>;
+    openlcb::RepeatedGroup<TrainDbCdiFunctionGroup, DCC_MAX_FN - 1>;
 
 CDI_GROUP(F0Group, Name("F0"),
           Description("F0 is permanently assigned to Light."));
-CDI_GROUP_ENTRY(blank, nmranet::EmptyGroup<TrainDbCdiFunctionGroup::size()>);
+CDI_GROUP_ENTRY(blank, openlcb::EmptyGroup<TrainDbCdiFunctionGroup::size()>);
 CDI_GROUP_END();
 
 CDI_GROUP(TrainDbCdiAllFunctionGroup);
@@ -110,46 +110,46 @@ static const char DCC_DRIVE_MODE_MAP[] =
     "address)</value></relation>";
 
 CDI_GROUP(TrainDbCdiEntry, Description("Configures a single train"));
-CDI_GROUP_ENTRY(address, nmranet::Uint16ConfigEntry, Name("Address"),
+CDI_GROUP_ENTRY(address, openlcb::Uint16ConfigEntry, Name("Address"),
                 Description("Track protocol address of the train."),
                 Default(0));
 CDI_GROUP_ENTRY(
-    mode, nmranet::Uint8ConfigEntry, Name("Protocol"),
+    mode, openlcb::Uint8ConfigEntry, Name("Protocol"),
     Description("Protocol to use on the track for driving this train."),
     MapValues(DCC_DRIVE_MODE_MAP), Default(DCC_28));
-CDI_GROUP_ENTRY(name, nmranet::StringConfigEntry<16>, Name("Name"),
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<16>, Name("Name"),
                 Description("Identifies the train node on the LCC bus."));
 CDI_GROUP_ENTRY(functions, TrainDbCdiAllFunctionGroup);
 CDI_GROUP_END();
 
 CDI_GROUP(TrainDbShortCdiEntry, Description("Configures a single train"));
-CDI_GROUP_ENTRY(address, nmranet::Uint16ConfigEntry, Name("Address"),
+CDI_GROUP_ENTRY(address, openlcb::Uint16ConfigEntry, Name("Address"),
                 Description("Track protocol address of the train."),
                 Default(0));
 CDI_GROUP_ENTRY(
-    mode, nmranet::Uint8ConfigEntry, Name("Protocol"),
+    mode, openlcb::Uint8ConfigEntry, Name("Protocol"),
     Description("Protocol to use on the track for driving this train."),
     MapValues(DCC_DRIVE_MODE_MAP), Default(DCC_28));
-CDI_GROUP_ENTRY(name, nmranet::StringConfigEntry<16>, Name("Name"),
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<16>, Name("Name"),
                 Description("Identifies the train node on the LCC bus."));
-CDI_GROUP_ENTRY(all_functions, nmranet::EmptyGroup<TrainDbCdiAllFunctionGroup::size()>);
+CDI_GROUP_ENTRY(all_functions, openlcb::EmptyGroup<TrainDbCdiAllFunctionGroup::size()>);
 CDI_GROUP_END();
 
 static_assert(TrainDbCdiEntry::size() == TrainDbShortCdiEntry::size(), "Short and regular TrainDB CDI entries must match in size, or else the memory layout will drift.");
 
-CDI_GROUP(TrainSegment, Segment(nmranet::MemoryConfigDefs::SPACE_CONFIG));
+CDI_GROUP(TrainSegment, Segment(openlcb::MemoryConfigDefs::SPACE_CONFIG));
 CDI_GROUP_ENTRY(train, TrainDbCdiEntry);
 CDI_GROUP_END();
 
 CDI_GROUP(TrainConfigDef, MainCdi());
 // We do not support ACDI and we do not support adding the <identification>
 // information in here because both of these vary train by train.
-CDI_GROUP_ENTRY(ident, nmranet::Identification, Model("Virtual train node"));
+CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TrainSegment);
-CDI_GROUP_ENTRY(cv, nmranet::TractionShortCvSpace);
+CDI_GROUP_ENTRY(cv, openlcb::TractionShortCvSpace);
 CDI_GROUP_END();
 
-CDI_GROUP(TmpTrainSegment, Segment(nmranet::MemoryConfigDefs::SPACE_CONFIG),
+CDI_GROUP(TmpTrainSegment, Segment(openlcb::MemoryConfigDefs::SPACE_CONFIG),
           Offset(0), Name("Non-stored train"),
           Description(
               "This train is not part of the train database, thus no "
@@ -160,13 +160,13 @@ CDI_GROUP_END();
 /// are not coming from the database. It will not offer any settings for the
 /// user.
 CDI_GROUP(TrainTmpConfigDef, MainCdi());
-CDI_GROUP_ENTRY(ident, nmranet::Identification, Model("Virtual train node"));
+CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TmpTrainSegment);
-CDI_GROUP_ENTRY(cv, nmranet::TractionShortCvSpace);
+CDI_GROUP_ENTRY(cv, openlcb::TractionShortCvSpace);
 CDI_GROUP_END();
 
 using TrainDbConfig =
-    nmranet::RepeatedGroup<TrainDbShortCdiEntry, STORED_TRAIN_COUNT>;
+    openlcb::RepeatedGroup<TrainDbShortCdiEntry, STORED_TRAIN_COUNT>;
 
 }  // namespace commandstation
 

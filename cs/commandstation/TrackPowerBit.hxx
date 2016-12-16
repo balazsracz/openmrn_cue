@@ -36,14 +36,14 @@
 
 namespace commandstation {
 
-class TrackPowerBit : public nmranet::BitEventInterface {
+class TrackPowerBit : public openlcb::BitEventInterface {
  public:
-  TrackPowerBit(nmranet::Node* node, uint64_t event_on, uint64_t event_off)
+  TrackPowerBit(openlcb::Node* node, uint64_t event_on, uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
-  nmranet::EventState get_current_state() OVERRIDE {
-    return query_dcc() ? nmranet::EventState::VALID
-                       : nmranet::EventState::INVALID;
+  openlcb::EventState get_current_state() OVERRIDE {
+    return query_dcc() ? openlcb::EventState::VALID
+                       : openlcb::EventState::INVALID;
   }
   void set_state(bool new_value) OVERRIDE {
     if (new_value) {
@@ -55,10 +55,10 @@ class TrackPowerBit : public nmranet::BitEventInterface {
     }
   }
 
-  nmranet::Node* node() OVERRIDE { return node_; }
+  openlcb::Node* node() OVERRIDE { return node_; }
 
  private:
-  nmranet::Node* node_;
+  openlcb::Node* node_;
 };
 
 }  // namespace commandstation

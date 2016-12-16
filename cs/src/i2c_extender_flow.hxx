@@ -8,16 +8,16 @@ extern I2CDriver g_i2c_driver;
 
 extern "C" { void resetblink(uint32_t pattern); }
 
-namespace nmranet {
+namespace openlcb {
 class Node;
 }
 
 static const int DATA_REPEAT_COUNT = 3;
-static nmranet::WriteHelper g_i2c_write_helper;
+static openlcb::WriteHelper g_i2c_write_helper;
 
 class I2cExtenderBoard : public StateFlowBase {
 public:
- I2cExtenderBoard(I2CDriver* driver, uint8_t address, nmranet::Node* node)
+ I2cExtenderBoard(I2CDriver* driver, uint8_t address, openlcb::Node* node)
      : StateFlowBase(node->interface()->dispatcher()->service()),
        driver_(driver),
        address_(address),
@@ -118,8 +118,8 @@ private:
 
   uint8_t signal_data_[EXT_SIGNAL_COUNT * 2];
   BarrierNotifiable n_;
-  nmranet::BitRangeEventPC bit_pc_;
-  nmranet::ByteRangeEventC signal_c_;
+  openlcb::BitRangeEventPC bit_pc_;
+  openlcb::ByteRangeEventC signal_c_;
 };
 
 #endif // _BRACZ_TRAIN_I2C_EXTENDER_FLOW_HXX_

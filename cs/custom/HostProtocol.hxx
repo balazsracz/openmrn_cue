@@ -57,7 +57,7 @@ class HostClient;
 
 class HostClient : public Service, public Singleton<HostClient> {
  public:
-  HostClient(nmranet::DatagramService* dg_service, nmranet::Node* node,
+  HostClient(openlcb::DatagramService* dg_service, openlcb::Node* node,
              CanHubFlow* can_hub1)
       : Service(dg_service->executor()),
         dg_service_(dg_service),
@@ -68,8 +68,8 @@ class HostClient : public Service, public Singleton<HostClient> {
         sender_(this) {}
   ~HostClient();
 
-  nmranet::DatagramService* dg_service() { return dg_service_; }
-  nmranet::Node* node() { return node_; }
+  openlcb::DatagramService* dg_service() { return dg_service_; }
+  openlcb::Node* node() { return node_; }
   CanHubFlow* can_hub1() { return can_hub1_; }
 
   // These functions can be called from any thread.
@@ -81,7 +81,7 @@ class HostClient : public Service, public Singleton<HostClient> {
 
   /** A datagram handler that allows transmitting the host protocol packets over
       OpenLCB bus with datagrams. */
-  class HostClientHandler : public nmranet::DefaultDatagramHandler {
+  class HostClientHandler : public openlcb::DefaultDatagramHandler {
    public:
     HostClientHandler(HostClient* parent)
         : DefaultDatagramHandler(parent->dg_service()), parent_(parent) {
@@ -106,8 +106,8 @@ class HostClient : public Service, public Singleton<HostClient> {
 
    private:
     HostClient* parent_;
-    nmranet::DatagramClient* dg_client_{nullptr};
-    nmranet::DatagramPayload response_payload_;
+    openlcb::DatagramClient* dg_client_{nullptr};
+    openlcb::DatagramPayload response_payload_;
     BarrierNotifiable n_;
   };
 
@@ -136,7 +136,7 @@ class HostClient : public Service, public Singleton<HostClient> {
     ~HostClientSend();
 
    protected:
-    nmranet::DatagramService* dg_service() { return parent()->dg_service(); }
+    openlcb::DatagramService* dg_service() { return parent()->dg_service(); }
     HostClient* parent() { return static_cast<HostClient*>(service()); }
 
    private:
@@ -145,13 +145,13 @@ class HostClient : public Service, public Singleton<HostClient> {
     Action response_buf_ready();
     Action response_send_complete();
 
-    nmranet::DatagramClient* dg_client_{nullptr};
+    openlcb::DatagramClient* dg_client_{nullptr};
     BarrierNotifiable n_;
   };  // class hostclientsend
 
  private:
-  nmranet::DatagramService* dg_service_;
-  nmranet::Node* node_;
+  openlcb::DatagramService* dg_service_;
+  openlcb::Node* node_;
   CanHubFlow* can_hub1_;
   HostClientHandler client_handler_;
   HostPacketBridge bridge_port_;

@@ -150,17 +150,17 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 }  // namespace commandstation
 
 
-static const nmranet::NodeID NODE_ID = 0x050101011432ULL;
-nmranet::SimpleCanStack stack(NODE_ID);
+static const openlcb::NodeID NODE_ID = 0x050101011432ULL;
+openlcb::SimpleCanStack stack(NODE_ID);
 // XXX CanHubFlow can_hub1(stack.service());  // this CANbus will have no hardware.
 
-nmranet::ConfigDef cfg(0);
+openlcb::ConfigDef cfg(0);
 
-extern const char *const nmranet::CONFIG_FILENAME = "/dev/eeprom";
-extern const size_t nmranet::CONFIG_FILE_SIZE =
+extern const char *const openlcb::CONFIG_FILENAME = "/dev/eeprom";
+extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.trains().size() + cfg.trains().offset();
-extern const char *const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::CONFIG_FILENAME;
+extern const char *const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::CONFIG_FILENAME;
 
 extern "C" {
 extern insn_t automata_code[];
@@ -272,16 +272,16 @@ dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
 commandstation::TrackPowerBit on_off(stack.node(),
-                              nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                              nmranet::TractionDefs::EMERGENCY_STOP_EVENT);
-nmranet::BitEventConsumer powerbit(&on_off);
-nmranet::TrainService traction_service(stack.iface());
+                              openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                              openlcb::TractionDefs::EMERGENCY_STOP_EVENT);
+openlcb::BitEventConsumer powerbit(&on_off);
+openlcb::TrainService traction_service(stack.iface());
 
 //dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
-//nmranet::TrainNode train_Am843_node(&traction_service, &train_Am843);
+//openlcb::TrainNode train_Am843_node(&traction_service, &train_Am843);
 //dcc::Dcc28Train train_Re460(dcc::DccShortAddress(22));
 //dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
-//nmranet::TrainNode train_Re460_node(&traction_service, &train_Re460);
+//openlcb::TrainNode train_Re460_node(&traction_service, &train_Re460);
 
 //mobilestation::MobileStationSlave mosta_slave(stack.executor(), &can1_interface);
 commandstation::TrainDb train_db(cfg.trains().all_trains());
@@ -325,7 +325,7 @@ int appl_main(int argc, char* argv[])
 
     setblink(0x800A02);
 
-    stack.check_version_and_factory_reset(cfg.seg().internal_config(), nmranet::CANONICAL_VERSION, false);
+    stack.check_version_and_factory_reset(cfg.seg().internal_config(), openlcb::CANONICAL_VERSION, false);
 
 
 #ifdef STANDALONE
@@ -362,7 +362,7 @@ int appl_main(int argc, char* argv[])
     HASSERT(mainline > 0);
     track_if.set_fd(mainline);
 
-    nmranet::Velocity v;
+    openlcb::Velocity v;
     v.set_mph(29);
     //XXtrain_Re460.set_speed(v);
     /*train_Am843.set_speed(v);
@@ -374,7 +374,7 @@ int appl_main(int argc, char* argv[])
     dcc_can_init(fd);*/
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
+    openlcb::BitEventConsumer consumer(&logger);
 
     //AutomataRunner runner(stack.node(), automata_code);
     //resume_all_automata();

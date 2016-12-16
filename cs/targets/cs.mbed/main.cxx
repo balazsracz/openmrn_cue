@@ -107,14 +107,14 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 }  // namespace commandstation
 
 
-static const nmranet::NodeID NODE_ID = 0x050101011434ULL;
-nmranet::SimpleCanStack stack(NODE_ID);
+static const openlcb::NodeID NODE_ID = 0x050101011434ULL;
+openlcb::SimpleCanStack stack(NODE_ID);
 CanHubFlow can_hub1(stack.service());
 
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = openlcb::MockSNIPUserFile::snip_user_file_path;
 
 
 extern "C" {
@@ -143,13 +143,13 @@ commandstation::UpdateProcessor cs_loop(stack.service(), &track_send);
 bracz_custom::TrackIfReceive track_recv(&can1_interface, &cs_loop);
 static const uint64_t ON_EVENT_ID = 0x0501010114FF0004ULL;
 bracz_custom::TrackPowerOnOffBit on_off(ON_EVENT_ID, ON_EVENT_ID+1, &track_send);
-nmranet::BitEventConsumer powerbit(&on_off);
-nmranet::TrainService traction_service(stack.iface());
+openlcb::BitEventConsumer powerbit(&on_off);
+openlcb::TrainService traction_service(stack.iface());
 
 dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
-nmranet::TrainNodeForProxy train_Am843_node(&traction_service, &train_Am843);
+openlcb::TrainNodeForProxy train_Am843_node(&traction_service, &train_Am843);
 dcc::MMNewTrain train_Re460(dcc::MMAddress(22));
-nmranet::TrainNodeForProxy train_Re460_node(&traction_service, &train_Re460);
+openlcb::TrainNodeForProxy train_Re460_node(&traction_service, &train_Re460);
 
 //mobilestation::MobileStationSlave mosta_slave(&g_executor, &can1_interface);
 commandstation::TrainDb train_db;
@@ -171,7 +171,7 @@ int appl_main(int argc, char* argv[])
     HubDeviceNonBlock<CanHubFlow> can1_port(&can_hub1, "/dev/can1");
     bracz_custom::init_host_packet_can_bridge(&can_hub1);
 
-    nmranet::Velocity v;
+    openlcb::Velocity v;
     v.set_mph(29);
     //XXtrain_Re460.set_speed(v);
     //XXtrain_Am843.set_speed(v);
@@ -181,7 +181,7 @@ int appl_main(int argc, char* argv[])
     dcc_can_init(fd);*/
 
     LoggingBit logger(EVENT_ID, EVENT_ID + 1, "blinker");
-    nmranet::BitEventConsumer consumer(&logger);
+    openlcb::BitEventConsumer consumer(&logger);
     stack.loop_executor();
     return 0;
 

@@ -42,7 +42,7 @@ namespace {
 bool is_number(char c) { return ('0' <= c) && (c <= '9'); }
 
 /// @returns the same bitmask as match_query_to_node.
-uint8_t attempt_match(const string name, unsigned pos, nmranet::EventId event) {
+uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
   int count_matches = 0;
   for (int shift = FindProtocolDefs::TRAIN_FIND_MASK - 4;
        shift >= FindProtocolDefs::TRAIN_FIND_MASK_LOW; shift -= 4) {
@@ -80,7 +80,7 @@ uint8_t attempt_match(const string name, unsigned pos, nmranet::EventId event) {
 
 
 // static
-unsigned FindProtocolDefs::query_to_address(nmranet::EventId event, DccMode* mode) {
+unsigned FindProtocolDefs::query_to_address(openlcb::EventId event, DccMode* mode) {
   unsigned supplied_address = 0;
   bool has_prefix_zero = false;
   for (int shift = TRAIN_FIND_MASK - 4; shift >= TRAIN_FIND_MASK_LOW;
@@ -108,7 +108,7 @@ unsigned FindProtocolDefs::query_to_address(nmranet::EventId event, DccMode* mod
 }
 
 //static
-nmranet::EventId FindProtocolDefs::address_to_query(unsigned address, bool exact, DccMode mode) {
+openlcb::EventId FindProtocolDefs::address_to_query(unsigned address, bool exact, DccMode mode) {
   uint64_t event = TRAIN_FIND_BASE;
   int shift = TRAIN_FIND_MASK_LOW;
   while (address) {
@@ -133,7 +133,7 @@ nmranet::EventId FindProtocolDefs::address_to_query(unsigned address, bool exact
 }
 
 // static
-uint8_t FindProtocolDefs::match_query_to_node(nmranet::EventId event,
+uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
                                               TrainDbEntry* train) {
   unsigned legacy_address = train->get_legacy_address();
   DccMode mode;

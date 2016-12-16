@@ -55,7 +55,7 @@ class FindTrainNodeTest : public TrainDbTest {
 
   FindTrainNode findFlow_{node_, &db_, &allTrainNodes_};
 
-  nmranet::TrainNodeWithId olcbTrain_{&trainService_, &m1_, 0x0501010118DD};
+  openlcb::TrainNodeWithId olcbTrain_{&trainService_, &m1_, 0x0501010118DD};
   ExternalTrainDbEntry dbEntry_{"Deadrail 415", 415, FAKE_DRIVE};
   SingleNodeFindProtocolServer findProtocolServer_{&olcbTrain_, &dbEntry_};  
 };
@@ -115,18 +115,18 @@ TEST_F(FindTrainNodeTest, FindOlcbtrain) {
 
 class FindResponse {
  public:
-  virtual void response(nmranet::EventState state, nmranet::NodeID id) = 0;
+  virtual void response(openlcb::EventState state, openlcb::NodeID id) = 0;
 };
 
 class MockFindResponse : public FindResponse {
  public:
-  MOCK_METHOD2(response,  void(nmranet::EventState state, nmranet::NodeID id));
+  MOCK_METHOD2(response,  void(openlcb::EventState state, openlcb::NodeID id));
 };
 
 class RemoteFindTrainNodeTest : public FindTrainNodeTest {
  protected:
   RemoteFindTrainNodeTest() {
-    nmranet::AddAliasAllocator(SECOND_NODE_ID, &secondIf_);
+    openlcb::AddAliasAllocator(SECOND_NODE_ID, &secondIf_);
     secondIf_.add_addressed_message_support();
     // Adds one alias buffer to the alias allocation flow.
     auto* b = secondIf_.alias_allocator()->alloc();
@@ -134,9 +134,9 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
 
     b->data()->reset();
     b->data()->alias = 0x922;
-    b->data()->state = nmranet::AliasInfo::STATE_RESERVED;
+    b->data()->state = openlcb::AliasInfo::STATE_RESERVED;
     b->data()->do_not_reallocate();
-    secondIf_.local_aliases()->add(nmranet::AliasCache::RESERVED_ALIAS_NODE_ID,
+    secondIf_.local_aliases()->add(openlcb::AliasCache::RESERVED_ALIAS_NODE_ID,
                                    b->data()->alias);
     secondIf_.alias_allocator()->reserved_aliases()->insert(b);
 
@@ -148,9 +148,9 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
     wait();
   }
 
-  const uint64_t SECOND_NODE_ID = nmranet::TEST_NODE_ID + 256;
-  nmranet::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
-  nmranet::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
+  const uint64_t SECOND_NODE_ID = openlcb::TEST_NODE_ID + 256;
+  openlcb::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
+  openlcb::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
 
   RemoteFindTrainNode remoteClient_{&secondNode_};
   StrictMock<MockFindResponse> responseMock_;
@@ -172,7 +172,7 @@ TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookupAddresNoReply) {
   expect_packet(":X19488922N0662;");
   {
     auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
-    EXPECT_EQ(nmranet::Defs::ERROR_DST_NOT_FOUND, b->data()->resultCode);
+    EXPECT_EQ(openlcb::Defs::ERROR_DST_NOT_FOUND, b->data()->resultCode);
     EXPECT_EQ(0, b->data()->nodeId);
   }
 }
@@ -194,7 +194,7 @@ TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookup) {
 
 TEST_F(RemoteFindTrainNodeTest, FindNonMatchingTrain) {
   auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
-  EXPECT_EQ(nmranet::Defs::ERROR_OPENMRN_NOT_FOUND, b->data()->resultCode);
+  EXPECT_EQ(openlcb::Defs::ERROR_OPENMRN_NOT_FOUND, b->data()->resultCode);
   EXPECT_EQ(0, b->data()->nodeId);
 }
 

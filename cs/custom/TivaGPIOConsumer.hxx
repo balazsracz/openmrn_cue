@@ -37,10 +37,10 @@
 
 #include "nmranet/SimpleStack.hxx"
 
-extern nmranet::SimpleCanStack stack;
+extern openlcb::SimpleCanStack stack;
 
-class TivaGPIOConsumer : public nmranet::BitEventInterface,
-                         public nmranet::BitEventConsumer {
+class TivaGPIOConsumer : public openlcb::BitEventInterface,
+                         public openlcb::BitEventConsumer {
  public:
   TivaGPIOConsumer(uint64_t event_on, uint64_t event_off, uint32_t port,
                    uint8_t pin)
@@ -48,9 +48,9 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
         BitEventConsumer(this),
         memory_(reinterpret_cast<uint8_t*>(port + (pin << 2))) {}
 
-  nmranet::EventState get_current_state() OVERRIDE {
-    return (*memory_) ? nmranet::EventState::VALID
-                      : nmranet::EventState::INVALID;
+  openlcb::EventState get_current_state() OVERRIDE {
+    return (*memory_) ? openlcb::EventState::VALID
+                      : openlcb::EventState::INVALID;
   }
 
   void set_state(bool new_value) OVERRIDE {
@@ -61,7 +61,7 @@ class TivaGPIOConsumer : public nmranet::BitEventInterface,
     }
   }
 
-  nmranet::Node* node() OVERRIDE { 
+  openlcb::Node* node() OVERRIDE { 
     return stack.node(); 
   }
 

@@ -12,12 +12,12 @@
 #include "nmranet/EventHandlerTemplates.hxx"
 #include "nmranet/Node.hxx"
 
-namespace nmranet {
+namespace openlcb {
 class Node;
 }
-extern nmranet::DefaultNode g_node;
+extern openlcb::DefaultNode g_node;
 
-class MbedGPIOListener : public nmranet::BitEventInterface, public nmranet::BitEventConsumer {
+class MbedGPIOListener : public openlcb::BitEventInterface, public openlcb::BitEventConsumer {
  public:
   MbedGPIOListener(uint64_t event_on, uint64_t event_off,
                    PinName pin)
@@ -47,7 +47,7 @@ class MbedGPIOListener : public nmranet::BitEventInterface, public nmranet::BitE
     }
   }
 
-  virtual nmranet::Node* node() {
+  virtual openlcb::Node* node() {
     return &g_node;
   }
 

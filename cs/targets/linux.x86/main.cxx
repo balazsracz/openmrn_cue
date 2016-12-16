@@ -48,8 +48,8 @@
 #include "custom/LoggingBit.hxx"
 #include "nmranet/TractionCvSpace.hxx"
 
-static const nmranet::NodeID NODE_ID = 0x050101011440ULL;
-nmranet::SimpleCanStack stack(NODE_ID);
+static const openlcb::NodeID NODE_ID = 0x050101011440ULL;
+openlcb::SimpleCanStack stack(NODE_ID);
 OVERRIDE_CONST(num_memory_spaces, 12);
 OVERRIDE_CONST(local_nodes_count, 0);
 OVERRIDE_CONST(local_alias_cache_size, 5000);
@@ -115,27 +115,27 @@ extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 }  // namespace commandstation
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char* const nmranet::SNIP_DYNAMIC_FILENAME =
-    nmranet::MockSNIPUserFile::snip_user_file_path;
+const char* const openlcb::SNIP_DYNAMIC_FILENAME =
+    openlcb::MockSNIPUserFile::snip_user_file_path;
 
 dcc::FakeTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
 
-LoggingBit track_on_off(nmranet::TractionDefs::EMERGENCY_STOP_EVENT,
-                        nmranet::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+LoggingBit track_on_off(openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
+                        openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                         "emergency_stop");
-nmranet::BitEventConsumer powerbit(&track_on_off);
+openlcb::BitEventConsumer powerbit(&track_on_off);
 
-nmranet::TrainService traction_service(stack.iface());
+openlcb::TrainService traction_service(stack.iface());
 
 commandstation::TrainDb train_db;
 commandstation::AllTrainNodes all_train_nodes(&train_db, &traction_service, stack.info_flow(), stack.memory_config_handler());
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
-nmranet::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, nmranet::MemoryConfigDefs::SPACE_DCC_CV);
+openlcb::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &railcom_hub, openlcb::MemoryConfigDefs::SPACE_DCC_CV);
 
 /** Entry point to application.
  * @param argc number of command line arguments

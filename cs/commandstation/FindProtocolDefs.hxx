@@ -90,7 +90,7 @@ struct FindProtocolDefs {
       no-match. Returns a bitfield of match types for a match. valid bits are
       MATCH_ANY (always set), ADDRESS_ONLY (set when the match occurred in the
       address), EXACT (clear for prefix match). */
-  static uint8_t match_query_to_node(nmranet::EventId event, TrainDbEntry* train);
+  static uint8_t match_query_to_node(openlcb::EventId event, TrainDbEntry* train);
 
   /** Converts a find protocol query to an address and desired DccMode
       information. Will take into account prefix zeros for forcing a dcc long
@@ -103,7 +103,7 @@ struct FindProtocolDefs {
       DccMode will have the force long address bit set.
 
       @returns the new legacy_address. */
-  static unsigned query_to_address(nmranet::EventId query, DccMode* mode);
+  static unsigned query_to_address(openlcb::EventId query, DccMode* mode);
 
   /** Translates an address as punched in by a (dumb) throttle to a query to
    * issue on the OpenLCB bus as a find protocol request.
@@ -114,7 +114,7 @@ struct FindProtocolDefs {
    * don't care about the address type, but can also be set to
    * DCC_LONG_ADDRESS.
    */
-  static nmranet::EventId address_to_query(unsigned address, bool exact, DccMode mode);
+  static openlcb::EventId address_to_query(unsigned address, bool exact, DccMode mode);
 
  private:
   // Not instantiatable class.

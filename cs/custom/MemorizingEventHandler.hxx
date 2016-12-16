@@ -43,7 +43,7 @@
 #include "nmranet/EventHandler.hxx"
 #include "nmranet/Defs.hxx"
 
-namespace nmranet {
+namespace openlcb {
 
 class MemorizingHandlerBlock;
 
@@ -232,6 +232,6 @@ class MemorizingHandlerBlock : public EventHandler {
   uint64_t current_event_;
 };
 
-}  // namespace nmranet
+}  // namespace openlcb
 
 #endif  // _BRACZ_CUSTOM_MEMORIZINGEVENTHANDLER_HXX_

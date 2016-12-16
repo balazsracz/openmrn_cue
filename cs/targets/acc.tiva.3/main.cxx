@@ -83,12 +83,12 @@
 #include "nmranet/SimpleNodeInfoMockUserFile.hxx"
 
 
-extern const nmranet::NodeID NODE_ID;
-nmranet::SimpleCanStack stack(NODE_ID);
+extern const openlcb::NodeID NODE_ID;
+openlcb::SimpleCanStack stack(NODE_ID);
 
-nmranet::MockSNIPUserFile snip_user_file("Default user name",
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
-const char *const nmranet::SNIP_DYNAMIC_FILENAME = nmranet::MockSNIPUserFile::snip_user_file_path;
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = openlcb::MockSNIPUserFile::snip_user_file_path;
 
 OVERRIDE_CONST(main_thread_stack_size, 2048);
 
@@ -105,7 +105,7 @@ static const uint64_t R_EVENT_ID =
     0x0501010114FF2000ULL | ((NODE_ID & 0xf) << 8);
 
 LoggingBit led_red_bit(R_EVENT_ID + 0, R_EVENT_ID + 1, nullptr);
-nmranet::BitEventConsumer red_consumer(&led_red_bit);
+openlcb::BitEventConsumer red_consumer(&led_red_bit);
 TivaGPIOConsumer led_yellow(R_EVENT_ID + 2, R_EVENT_ID + 3,
                             LED_YELLOW_Pin::GPIO_BASE,
                             LED_YELLOW_Pin::GPIO_PIN);
@@ -139,7 +139,7 @@ TivaGPIOConsumer out6(R_EVENT_ID + 32 + 12, R_EVENT_ID + 33 + 12,
 TivaGPIOConsumer out7(R_EVENT_ID + 32 + 14, R_EVENT_ID + 33 + 14,
                       OUT7_Pin::GPIO_BASE, OUT7_Pin::GPIO_PIN);
 
-typedef nmranet::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
+typedef openlcb::PolledProducer<QuiesceDebouncer, TivaGPIOProducerBit>
     TivaGPIOProducer;
 QuiesceDebouncer::Options opts(8);
 
@@ -160,7 +160,7 @@ TivaGPIOProducer in6(opts, R_EVENT_ID + 48 + 12, R_EVENT_ID + 49 + 12,
 TivaGPIOProducer in7(opts, R_EVENT_ID + 48 + 14, R_EVENT_ID + 49 + 14,
                      IN7_Pin::GPIO_BASE, IN7_Pin::GPIO_PIN);
 
-nmranet::RefreshLoop loop(stack.node(),
+openlcb::RefreshLoop loop(stack.node(),
                           {&in0, &in1, &in2, &in3, &in4, &in5, &in6, &in7});
 
 #define NUM_SIGNALS 32
@@ -173,8 +173,8 @@ bracz_custom::SignalLoop signal_loop(&g_signalbus, stack.node(),
 bracz_custom::SignalServer signal_server(stack.dg_service(), stack.node(),
                                          &g_signalbus);
 
-nmranet::DccPacketDebugFlow g_packet_debug_flow(stack.node());
-nmranet::DccDebugDecodeFlow* g_decode_flow;
+openlcb::DccPacketDebugFlow g_packet_debug_flow(stack.node());
+openlcb::DccDebugDecodeFlow* g_decode_flow;
 
 typedef StructContainer<dcc::Feedback> RailcomHubContainer;
 typedef HubContainer<RailcomHubContainer> RailcomHubData;
@@ -184,7 +184,7 @@ typedef GenericHubFlow<RailcomHubData> RailcomHubFlow;
 
 RailcomHubFlow railcom_hub(stack.service());
 
-namespace nmranet {
+namespace openlcb {
 class RailcomProxy : public RailcomHubPort {
  public:
   RailcomProxy(RailcomHubFlow* parent, Node* node,
@@ -217,7 +217,7 @@ class RailcomProxy : public RailcomHubPort {
         get_allocation_result(node_->iface()->global_message_write_flow());
 
     b->data()->reset(
-        static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 3),
+        static_cast<openlcb::Defs::MTI>(openlcb::Defs::MTI_XPRESSNET + 3),
         node_->node_id(), string());
     b->data()->payload.push_back(message()->data()->channel | 0x10);
     b->data()->payload.append((char*)message()->data()->ch1Data,
@@ -241,7 +241,7 @@ class RailcomProxy : public RailcomHubPort {
         get_allocation_result(node_->iface()->global_message_write_flow());
 
     b->data()->reset(
-        static_cast<nmranet::Defs::MTI>(nmranet::Defs::MTI_XPRESSNET + 4),
+        static_cast<openlcb::Defs::MTI>(openlcb::Defs::MTI_XPRESSNET + 4),
         node_->node_id(), string());
     b->data()->payload.push_back(message()->data()->channel | 0x20);
     b->data()->payload.append((char*)message()->data()->ch2Data,
@@ -384,10 +384,10 @@ class FeedbackBasedOccupancy : public RailcomHubPort {
   BarrierNotifiable n_;
 };
 }
-nmranet::FeedbackBasedOccupancy railcom_occupancy(stack.node(), R_EVENT_ID + 24, 4);
-nmranet::RailcomProxy railcom_proxy(&railcom_hub, stack.node(), &railcom_occupancy);
+openlcb::FeedbackBasedOccupancy railcom_occupancy(stack.node(), R_EVENT_ID + 24, 4);
+openlcb::RailcomProxy railcom_proxy(&railcom_hub, stack.node(), &railcom_occupancy);
 // TODO(balazs.racz) reenable this
-//nmranet::RailcomBroadcastFlow railcom_broadcast(&railcom_hub, &g_node,
+//openlcb::RailcomBroadcastFlow railcom_broadcast(&railcom_hub, &g_node,
 //                                                &railcom_occupancy,
 //                                                &railcom_proxy, 4);
 

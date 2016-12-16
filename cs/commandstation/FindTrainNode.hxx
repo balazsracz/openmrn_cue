@@ -47,7 +47,7 @@
 namespace commandstation {
 
 struct RemoteFindTrainNodeRequest {
-  typedef std::function<void(nmranet::EventState state, nmranet::NodeID)> ResultFn;
+  typedef std::function<void(openlcb::EventState state, openlcb::NodeID)> ResultFn;
   /** Sends and OpenLCB request for finding a train node with a given address
       or cab number.  DccMode should be set to the expected drive type (bits
       0..2) if the train node needs to be freshly allocated. Set the bit
@@ -80,7 +80,7 @@ struct RemoteFindTrainNodeRequest {
   }
   /** Requests all train nodes. */
   void reset(ResultFn res = nullptr) {
-    event = nmranet::TractionDefs::IS_TRAIN_EVENT;
+    event = openlcb::TractionDefs::IS_TRAIN_EVENT;
     nodeId = 0;
     resultCallback = std::move(res);
   }
@@ -99,14 +99,14 @@ struct RemoteFindTrainNodeRequest {
   /// Event to query for.
   uint64_t event;
   /// Response
-  nmranet::NodeID nodeId;
+  openlcb::NodeID nodeId;
 
   BarrierNotifiable done;
   int resultCode;
   /// If this function is non-empty, then multiple results are accepted, and
   /// for each returning result we call this function. In this case the done
   /// notifiable will only be called when the timeout is passed.
-  std::function<void(nmranet::EventState state, nmranet::NodeID)>
+  std::function<void(openlcb::EventState state, openlcb::NodeID)>
       resultCallback;
 };
 
@@ -115,10 +115,10 @@ class RemoteFindTrainNode
  public:
   /// @param node is a local node from which queries can be sent out to the
   /// network. @param train_db is the allocated local train store.
-  RemoteFindTrainNode(nmranet::Node* node)
+  RemoteFindTrainNode(openlcb::Node* node)
       : StateFlow<Buffer<RemoteFindTrainNodeRequest>, QList<1>>(node->iface()),
         node_(node),
-        nodeIdLookup_(static_cast<nmranet::IfCan*>(node_->iface())) {}
+        nodeIdLookup_(static_cast<openlcb::IfCan*>(node_->iface())) {}
 
   Action entry() override {
     // If there was a persistent request, this will kill any more responses.
@@ -151,8 +151,8 @@ class RemoteFindTrainNode
     }
     replyHandler_.listen_for(event);
     remoteMatch_ = {0, 0};
-    b->data()->reset(nmranet::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
-                     nmranet::eventid_to_buffer(event));
+    b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFY, node_->node_id(),
+                     openlcb::eventid_to_buffer(event));
     iface()->global_message_write_flow()->send(b);
     return sleep_and_call(&timer_, MSEC_TO_NSEC(timeout_msec),
                           STATE(reply_timeout));
@@ -160,9 +160,9 @@ class RemoteFindTrainNode
 
   /// Callback from the event handler object when a producer identified comes
   /// back on the bus.
-  virtual void handle_reply(nmranet::NodeHandle src, nmranet::EventState state) {
-    LOG(INFO, "Bus reply %04x%08x alias %03x", nmranet::node_high(src.id),
-        nmranet::node_low(src.id), src.alias);
+  virtual void handle_reply(openlcb::NodeHandle src, openlcb::EventState state) {
+    LOG(INFO, "Bus reply %04x%08x alias %03x", openlcb::node_high(src.id),
+        openlcb::node_low(src.id), src.alias);
     if (input()->resultCallback) {
       if (src.id) {
         // Have Node ID
@@ -209,7 +209,7 @@ class RemoteFindTrainNode
     if (!remoteMatch_.id && !remoteMatch_.alias) {
       LOG(VERBOSE, "Bus match not found, allocating...");
       // No match
-      return return_with_error(nmranet::Defs::ERROR_OPENMRN_NOT_FOUND);
+      return return_with_error(openlcb::Defs::ERROR_OPENMRN_NOT_FOUND);
     }
     if (remoteMatch_.id) {
       return return_ok(remoteMatch_.id);
@@ -226,20 +226,20 @@ class RemoteFindTrainNode
     } else {
       LOG(INFO, "Failed to match found train alias %03x to node id, error %04x",
           b->data()->handle.alias, b->data()->resultCode);
-      return return_with_error(nmranet::Defs::ERROR_DST_NOT_FOUND);
+      return return_with_error(openlcb::Defs::ERROR_DST_NOT_FOUND);
     }
   }
 
-  class ReplyHandler : public nmranet::SimpleEventHandler {
+  class ReplyHandler : public openlcb::SimpleEventHandler {
    public:
     ReplyHandler(RemoteFindTrainNode* parent) : parent_(parent) {
-      nmranet::EventRegistry::instance()->register_handler(
+      openlcb::EventRegistry::instance()->register_handler(
           EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
           FindProtocolDefs::TRAIN_FIND_MASK);
     }
 
     ~ReplyHandler() {
-      nmranet::EventRegistry::instance()->unregister_handler(this);
+      openlcb::EventRegistry::instance()->unregister_handler(this);
     }
 
     void handle_identify_global(const EventRegistryEntry& registry_entry,
@@ -247,10 +247,10 @@ class RemoteFindTrainNode
                                 BarrierNotifiable* done) override {
       AutoNotify an(done);
 
-      nmranet::event_write_helper1.WriteAsync(
-          event->dst_node, nmranet::Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
-          nmranet::WriteHelper::global(),
-          nmranet::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
+      openlcb::event_write_helper1.WriteAsync(
+          event->dst_node, openlcb::Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
           done->new_child());
     }
 
@@ -267,17 +267,17 @@ class RemoteFindTrainNode
       }
     };
 
-    void listen_for(nmranet::EventId request) {
+    void listen_for(openlcb::EventId request) {
       LOG(INFO, "listen for %08x%08x", FAKELLP(request));
       request_ = request;
     }
 
    private:
-    nmranet::EventId request_{0};
+    openlcb::EventId request_{0};
     RemoteFindTrainNode* parent_;
   } replyHandler_{this};
 
-  Action return_ok(nmranet::NodeID nodeId) {
+  Action return_ok(openlcb::NodeID nodeId) {
     input()->nodeId = nodeId;
     return return_with_error(0);
   }
@@ -298,22 +298,22 @@ class RemoteFindTrainNode
     return message()->data();
   }
 
-  nmranet::If* iface() {
+  openlcb::If* iface() {
     // We know that the service pointer is the node's interface from the
     // constructor.
-    return static_cast<nmranet::If*>(service());
+    return static_cast<openlcb::If*>(service());
   }
 
   StateFlowTimer timer_{this};
   /// an openlcb train that may have answered our search
-  nmranet::NodeHandle remoteMatch_;
-  nmranet::Node* node_;
+  openlcb::NodeHandle remoteMatch_;
+  openlcb::Node* node_;
   /// A monotonically increasing identifier to decide if we moved on from the
   /// last request yet.
   volatile uint16_t requestId_{0};
   volatile uint16_t droppedResults_{0};
   BufferPtr<RemoteFindTrainNodeRequest> persistentRequest_;
-  nmranet::NodeIdLookupFlow nodeIdLookup_;
+  openlcb::NodeIdLookupFlow nodeIdLookup_;
 };
 
 struct FindTrainNodeRequest {
@@ -334,14 +334,14 @@ struct FindTrainNodeRequest {
   BarrierNotifiable done;
 
   int resultCode;
-  nmranet::NodeID nodeId;
+  openlcb::NodeID nodeId;
 };
 
 class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
  public:
   /// @param node is a local node from which queries can be sent out to the
   /// network. @param train_db is the allocated local train store.
-  FindTrainNode(nmranet::Node* node, TrainDb* train_db,
+  FindTrainNode(openlcb::Node* node, TrainDb* train_db,
                 AllTrainNodes* local_train_nodes)
       : StateFlow<Buffer<FindTrainNodeRequest>, QList<1>>(node->iface()),
         trainDb_(train_db),
@@ -372,7 +372,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
 
   Action olcb_find_done() {
     auto* b = full_allocation_result(&remoteLookupFlow_);
-    nmranet::NodeID id = b->data()->nodeId;
+    openlcb::NodeID id = b->data()->nodeId;
     b->unref();
     if (id) {
       return return_ok(id);
@@ -383,12 +383,12 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
   /** Asks the AllTrainNodes structure to allocate a new train node. */
   Action allocate_new_train() {
     LOG(VERBOSE, "Allocate train node");
-    nmranet::NodeID n =
+    openlcb::NodeID n =
         allTrainNodes_->allocate_node(input()->type, input()->address);
     return return_ok(n);
   }
 
-  Action return_ok(nmranet::NodeID nodeId) {
+  Action return_ok(openlcb::NodeID nodeId) {
     input()->nodeId = nodeId;
     return return_with_error(0);
   }
@@ -404,10 +404,10 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
 
   FindTrainNodeRequest* input() { return message()->data(); }
 
-  nmranet::If* iface() {
+  openlcb::If* iface() {
     // We know that the service pointer is the node's interface from the
     // constructor.
-    return static_cast<nmranet::If*>(service());
+    return static_cast<openlcb::If*>(service());
   }
 
   TrainDb* trainDb_;
