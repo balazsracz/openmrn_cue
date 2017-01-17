@@ -331,7 +331,7 @@ int appl_main(int argc, char* argv[])
   // add_watchdog_reset_timer(500);
     stack.add_can_port_select("/dev/can0");
     //stack.add_gridconnect_port("/dev/serUSB0");
-    usb_port = new HubDeviceSelect<HubFlow>(stack.gridconnect_hub(), "/dev/serUSB0");
+    //usb_port = new HubDeviceSelect<HubFlow>(stack.gridconnect_hub(), "/dev/serUSB0");
 #ifdef LOGTOSTDOUT
     FdHubPort<HubFlow> stdout_port(&stdout_hub, 0, EmptyNotifiable::DefaultInstance());
 #endif
