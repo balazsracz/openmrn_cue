@@ -236,6 +236,8 @@ class RemoteFindTrainNode
       openlcb::EventRegistry::instance()->register_handler(
           EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
           FindProtocolDefs::TRAIN_FIND_MASK);
+      openlcb::EventRegistry::instance()->register_handler(
+          EventRegistryEntry(this, openlcb::TractionDefs::IS_TRAIN_EVENT), 0);
     }
 
     ~ReplyHandler() {
