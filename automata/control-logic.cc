@@ -984,7 +984,12 @@ void MagnetCommandAutomata::AddCoupledMagnet(CoupledMagnetDef* def) {
   def->command.reset(alloc_->Allocate(def->name_ + ".command"));
   // TODO(balazs.racz): Locked is ignored at the moment.
   def->remote_command.reset(alloc_->Allocate(def->name_ + ".remote_command"));
-  def->locked = def->original->owned_locked.get();
+  def->owned_locked.reset(alloc_->Allocate(def->name_ + ".locked"));
+  def->locked = def->owned_locked.get();
+  // TODO(balazs.racz): we should use the original's locked variable but that's
+  // can lead to conflicts causing flapping of the variable.
+  //
+  //def->locked = def->original->owned_locked.get();
   AddAutomataPlugin(2, NewCallbackPtr(&MagnetAutomataCouple, def));
 }
 
