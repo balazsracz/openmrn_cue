@@ -1028,6 +1028,10 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
       .ActState(StGreenFailed);
   Def().IfState(StGreenRequested)
       .IfReg1(current_block_route_out_)
+      .IfReg1(aut->ImportVariable(*is_moving_))
+      .ActState(StRequestTransition);
+  Def().IfState(StGreenRequested)
+      .IfReg1(current_block_route_out_)
       .ActTimer(2)
       .ActState(StGreenWait);
   Def()
