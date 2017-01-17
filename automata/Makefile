@@ -90,3 +90,6 @@ $(BINS): $(OBJS)
 panel:
 	./gen-panel-html.py ~/.jmri/3h-layout-082.xml panel.html
 
+
+deploy:
+	scp var-bash-list.txt bracz.zrh:bin/
