@@ -1269,8 +1269,6 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
         .IfReg1(current_block_route_out_)
-        // TODO: maybe this is needed in the AddBlockTransitionOnPermit version
-        // too!
         .IfReg0(current_block_routingloc_) 
         .ActReg0(&current_block_permaloc_)
         .ActReg1(&next_block_permaloc_)
@@ -1393,6 +1391,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .IfReg1(current_block_detector_)
         .IfReg1(current_block_route_out_)
         .IfReg1(current_direction_)
+        .IfReg0(current_block_routingloc_) // makes sure permaloc <= rtloc
         .ActReg0(&current_block_permaloc_)
         .ActReg0(&current_direction_)
         .ActReg1(&next_block_permaloc_)
