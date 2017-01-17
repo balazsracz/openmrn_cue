@@ -153,6 +153,9 @@ struct CoupledMagnetDef : public MagnetBase {
   MagnetDef* original;
   bool invert;
 
+  // True if the current state must not be changed
+  std::unique_ptr<GlobalVariable> owned_locked;
+
   // This variable shadows the remote command to determine the direction of
   // command propagation. In a steady state this should be == command.
   std::unique_ptr<GlobalVariable> remote_command;
