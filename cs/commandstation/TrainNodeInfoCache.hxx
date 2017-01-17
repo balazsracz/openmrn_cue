@@ -522,7 +522,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// Internal data structure about the found nodes.
   NodeCacheMap trainNodes_;
   /// When we start a new search, we pre-populate the trainNodes_ structure
-  /// form results of the previous search. This reduces network traffic.
+  /// from results of the previous search. This reduces network traffic.
   NodeCacheMap previousCache_;
 };
 }
