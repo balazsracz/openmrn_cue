@@ -126,7 +126,6 @@ class MockFindResponse : public FindResponse {
 class RemoteFindTrainNodeTest : public FindTrainNodeTest {
  protected:
   RemoteFindTrainNodeTest() {
-    openlcb::AddAliasAllocator(SECOND_NODE_ID, &secondIf_);
     secondIf_.add_addressed_message_support();
     // Adds one alias buffer to the alias allocation flow.
     auto* b = secondIf_.alias_allocator()->alloc();
@@ -150,6 +149,7 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
 
   const uint64_t SECOND_NODE_ID = openlcb::TEST_NODE_ID + 256;
   openlcb::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
+  openlcb::AddAliasAllocator secAdd{SECOND_NODE_ID, &secondIf_};
   openlcb::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
 
   RemoteFindTrainNode remoteClient_{&secondNode_};
