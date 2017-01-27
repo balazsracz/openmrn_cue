@@ -82,6 +82,12 @@ class TrainNodeInfoCache : public StateFlowBase {
     invoke_search();
   }
 
+  /// Prevents further searches going out by forgetting about past
+  /// reset_search() calls.
+  void cancel() {
+    needSearch_ = 0;
+  }
+  
   /// @return the last time (in os_time) that the UI data has changed. Helpfu
   /// in deduping multiple UI refresh notifications.
   long long last_ui_refresh() { return lastOutputRefresh_; }
