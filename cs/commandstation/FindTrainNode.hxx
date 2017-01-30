@@ -71,6 +71,15 @@ struct RemoteFindTrainNodeRequest {
     }
     resultCallback = std::move(res);
   }
+  /** Constructor for recalling a node based on a previous search. */
+  void reset(uint64_t event_id, ResultFn res = nullptr) {
+    event = event_id;
+    nodeId = 0;
+    if (event_id & FindProtocolDefs::ALLOCATE) {
+      resultCode = TIMEOUT_SPECIFIED | 800;
+    }
+    resultCallback = std::move(res);
+  }
   /** Copy-Constructor. */
   void reset(const RemoteFindTrainNodeRequest& params, ResultFn res = nullptr) {
     event = params.event;
