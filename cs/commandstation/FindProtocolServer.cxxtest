@@ -170,8 +170,11 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
   clear_expect(true); // strict
   expect_train_start(0x443, 23, dcc::TrainAddressType::DCC_LONG_ADDRESS);
   expect_packet(":X19544443N090099FFFFFF2390;");
+  auto seq = g_executor.sequence();
   send_packet(":X19914123N090099FFFFFF2390;");
+  EXPECT_TRUE((g_executor.sequence() > seq) || !g_executor.empty());
   wait();
+  ASSERT_TRUE(g_executor.empty());
   while (!trainNodes_->find_flow_is_idle()) {
     usleep(100);
   }

@@ -75,6 +75,11 @@ class AllTrainNodesTestBase : public openlcb::TractionTest {
     inject_allocated_alias(0x33A);
   }
 
+  void wait() {
+    wait_for_event_thread();
+    openlcb::TractionTest::wait();
+  }
+
   openlcb::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
 
@@ -86,8 +91,10 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
     expect_train_start(0x440, const_lokdb[0].address);
     expect_train_start(0x441, const_lokdb[1].address);
     expect_train_start(0x442, const_lokdb[2].address);
+    BlockExecutor b(nullptr);
     trainNodes_.reset(new AllTrainNodes{&trainDb_, &trainService_, &infoFlow_,
-                                        &memoryConfigHandler_});
+	  &memoryConfigHandler_});
+    b.release_block();
     // TODO: there is a race condition here but I'm not sure why.
     wait();
   }
