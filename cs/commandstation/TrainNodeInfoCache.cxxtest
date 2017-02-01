@@ -139,7 +139,7 @@ TEST_F(FindManyTrainTestBase, Search7) {
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
-  EXPECT_EQ(1, get_results_map().size());
+  EXPECT_EQ(1u, get_results_map().size());
   EXPECT_TRUE(get_results_map().begin()->second.hasNodeName_);
   EXPECT_THAT(get_output(), ElementsAre("Node test 7000"));
   printf("scrolling...\n");
@@ -158,13 +158,13 @@ TEST_F(FindManyTrainTestBase, Search5) {
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
-  EXPECT_EQ(12, get_results_map().size());
+  EXPECT_EQ(12u, get_results_map().size());
 
   EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001", "TT 5002"));
 
   // Do some scrolling
-  EXPECT_EQ(12, trainCache_.num_results());
-  EXPECT_EQ(0, trainCache_.first_result_offset());
+  EXPECT_EQ(12u, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 5001", "TT 5002", "TT 5003"));
   trainCache_.scroll_down();
@@ -173,9 +173,9 @@ TEST_F(FindManyTrainTestBase, Search5) {
     trainCache_.scroll_down();
   }
   EXPECT_THAT(get_output(), ElementsAre("TT 5103", "TT 5104", "TT 5105"));
-  EXPECT_EQ(9, trainCache_.first_result_offset());
+  EXPECT_EQ(9u, trainCache_.first_result_offset());
   trainCache_.scroll_down();
-  EXPECT_EQ(9, trainCache_.first_result_offset());
+  EXPECT_EQ(9u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 5103", "TT 5104", "TT 5105"));
 
   clear_expect();
@@ -188,10 +188,10 @@ TEST_F(FindManyTrainTestBase, Search5) {
   EXPECT_CALL(canBus_, mwrite(_)).Times(AtMost(7));
   wait_for_search();
   clear_expect();
-  EXPECT_EQ(6, get_results_map().size());
+  EXPECT_EQ(6u, get_results_map().size());
   EXPECT_THAT(get_output(), ElementsAre("TT 5100", "TT 5101", "TT 5102"));
-  EXPECT_EQ(0, trainCache_.first_result_offset());
-  EXPECT_EQ(6, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
+  EXPECT_EQ(6u, trainCache_.num_results());
 }
 
 TEST_F(FindManyTrainTestBase, Scroll3) {
@@ -201,25 +201,25 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
-  EXPECT_EQ(16, get_results_map().size());
-  EXPECT_EQ(25, trainCache_.num_results());
+  EXPECT_EQ(16u, get_results_map().size());
+  EXPECT_EQ(25u, trainCache_.num_results());
 
   EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
 
   // Do some scrolling
-  EXPECT_EQ(0, trainCache_.first_result_offset());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 3001", "TT 3002", "TT 3003"));
-  EXPECT_EQ(1, trainCache_.first_result_offset());
+  EXPECT_EQ(1u, trainCache_.first_result_offset());
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 3002", "TT 3003", "TT 3004"));
-  EXPECT_EQ(2, trainCache_.first_result_offset());
+  EXPECT_EQ(2u, trainCache_.first_result_offset());
   clear_expect(true);
   for (int i = 0; i < 7; ++i) {
     printf("offset %u, then scroll\n", trainCache_.first_result_offset());
     trainCache_.scroll_down();
   }
-  EXPECT_EQ(9, trainCache_.first_result_offset());
+  EXPECT_EQ(9u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
   wait();
   clear_expect();
@@ -227,10 +227,10 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
-  EXPECT_EQ(10, trainCache_.first_result_offset());
+  EXPECT_EQ(10u, trainCache_.first_result_offset());
   wait_for_search();
   clear_expect(true);
-  EXPECT_EQ(10, trainCache_.first_result_offset());
+  EXPECT_EQ(10u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
   EXPECT_EQ("TT 3006", get_results_map().begin()->second.name_);
   printf("more scroll\n");
@@ -238,7 +238,7 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
     printf("offset %u, then scroll\n", trainCache_.first_result_offset());
     trainCache_.scroll_down();
   }
-  EXPECT_EQ(15, trainCache_.first_result_offset());
+  EXPECT_EQ(15u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3015", "TT 3016", "TT 3017"));
   clear_expect(true);
   wait_for_search();
@@ -248,12 +248,12 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   trainCache_.scroll_down();
   wait_for_search();
   clear_expect(true);
-  EXPECT_EQ(13, get_results_map().size());
+  EXPECT_EQ(13u, get_results_map().size());
   for (int i = 0; i < 10; ++i) {
     printf("offset %u, then scroll\n", trainCache_.first_result_offset());
     trainCache_.scroll_down();
   }
-  EXPECT_EQ(22, trainCache_.first_result_offset());
+  EXPECT_EQ(22u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3022", "TT 3023", "TT 3024"));
   wait_for_search();
 }
@@ -266,7 +266,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollNoPage) {
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
-  EXPECT_EQ(12, get_results_map().size());
+  EXPECT_EQ(12u, get_results_map().size());
 
   EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001", "TT 5002"));
   clear_expect(true);
@@ -298,8 +298,8 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
-  EXPECT_EQ(16, get_results_map().size());
-  EXPECT_EQ(25, trainCache_.num_results());
+  EXPECT_EQ(16u, get_results_map().size());
+  EXPECT_EQ(25u, trainCache_.num_results());
 
   EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
   
@@ -347,7 +347,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   clear_expect(true);
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 3001", "TT 3002", "TT 3003"));
-  EXPECT_EQ(1, trainCache_.first_result_offset());
+  EXPECT_EQ(1u, trainCache_.first_result_offset());
   wait_for_search();
   clear_expect(true);
 }

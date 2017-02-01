@@ -67,35 +67,35 @@ TEST_F(FindTrainNodeTest, FindLocalTrain) {
   auto b = invoke_flow(&findFlow_, (DccMode)0, 51);
 
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x060100000000 | 51, b->data()->nodeId);
+  EXPECT_EQ(0x060100000000u | 51u, b->data()->nodeId);
 }
 
 TEST_F(FindTrainNodeTest, FindLocalTrainLong) { 
   auto b = invoke_flow(&findFlow_, (DccMode) (DCC_28 | DCC_LONG_ADDRESS), 2);
 
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x06010000C000 | 2, b->data()->nodeId);
+  EXPECT_EQ(0x06010000C000u | 2u, b->data()->nodeId);
 }
 
 TEST_F(FindTrainNodeTest, FindLocalTrainLong2) { 
   auto b = invoke_flow(&findFlow_, (DccMode) 0, 350);
 
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x060100000000 | 350, b->data()->nodeId);
+  EXPECT_EQ(0x060100000000u | 350, b->data()->nodeId);
 }
 
 TEST_F(FindTrainNodeTest, AllocateTrainShort) { 
   auto b = invoke_flow(&findFlow_, (DccMode) 0, 13);
 
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x060100000000 | 13, b->data()->nodeId);
+  EXPECT_EQ(0x060100000000u | 13, b->data()->nodeId);
 }
 
 TEST_F(FindTrainNodeTest, AllocateTrainLong) { 
   auto b = invoke_flow(&findFlow_, (DccMode) DCC_LONG_ADDRESS, 13);
 
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x06010000C000 | 13, b->data()->nodeId);
+  EXPECT_EQ(0x06010000C000u | 13, b->data()->nodeId);
 }
 
 TEST_F(FindTrainNodeTest, FindOlcbtrainDefault) { 
@@ -103,14 +103,14 @@ TEST_F(FindTrainNodeTest, FindOlcbtrainDefault) {
   auto b = invoke_flow(&findFlow_, (DccMode)0, 415);
 
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x0501010118DD, b->data()->nodeId);
+  EXPECT_EQ(0x0501010118DDu, b->data()->nodeId);
 }
 
 TEST_F(FindTrainNodeTest, FindOlcbtrain) { 
   auto b = invoke_flow(&findFlow_, OLCBUSER, 415);
 
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x0501010118DD, b->data()->nodeId);
+  EXPECT_EQ(0x0501010118DDu, b->data()->nodeId);
 }
 
 class FindResponse {
@@ -161,7 +161,7 @@ TEST_F(RemoteFindTrainNodeTest, Create) {}
 TEST_F(RemoteFindTrainNodeTest, FindExistingTrain) {
   auto b = invoke_flow(&remoteClient_, 415, true, DccMode::OLCBUSER);
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x0501010118DD, b->data()->nodeId);
+  EXPECT_EQ(0x0501010118DDu, b->data()->nodeId);
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookupAddresNoReply) {
@@ -173,7 +173,7 @@ TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookupAddresNoReply) {
   {
     auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
     EXPECT_EQ(openlcb::Defs::ERROR_DST_NOT_FOUND, b->data()->resultCode);
-    EXPECT_EQ(0, b->data()->nodeId);
+    EXPECT_EQ(0u, b->data()->nodeId);
   }
 }
 
@@ -188,20 +188,20 @@ TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookup) {
   {
     auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
     EXPECT_EQ(0, b->data()->resultCode);
-    EXPECT_EQ(0x0501010114EE, b->data()->nodeId);
+    EXPECT_EQ(0x0501010114EEu, b->data()->nodeId);
   }
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindNonMatchingTrain) {
   auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
   EXPECT_EQ(openlcb::Defs::ERROR_OPENMRN_NOT_FOUND, b->data()->resultCode);
-  EXPECT_EQ(0, b->data()->nodeId);
+  EXPECT_EQ(0u, b->data()->nodeId);
 }
 
 TEST_F(RemoteFindTrainNodeTest, AllocateTrain) {
   auto b = invoke_flow(&remoteClient_, 234, FindProtocolDefs::ALLOCATE);
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x060100000000 + 234, b->data()->nodeId);
+  EXPECT_EQ(0x060100000000u + 234, b->data()->nodeId);
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindExistingTrainCallback) {
@@ -213,7 +213,7 @@ TEST_F(RemoteFindTrainNodeTest, FindExistingTrainCallback) {
   // std::bind(responseMock_, MockFindResponse::response, std::placeholders::_1,
   // std::placeholders::_2)
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0, b->data()->nodeId);
+  EXPECT_EQ(0u, b->data()->nodeId);
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindTwoTrainCallback) {
@@ -224,7 +224,7 @@ TEST_F(RemoteFindTrainNodeTest, FindTwoTrainCallback) {
                 std::placeholders::_2);
   auto b = invoke_flow(&remoteClient_, 2, false, DccMode::OLCBUSER, rf);
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0, b->data()->nodeId);
+  EXPECT_EQ(0u, b->data()->nodeId);
 }
 
 }  // namespace commandstation
