@@ -12,6 +12,20 @@
 //#define USE_WII_CHUCK
 
 GPIO_PIN(SW1, GpioInputPU, F, 4);
+GPIO_PIN(LED_3, LedPin, F, 3);
+
+
+GPIO_HWPIN(BOOSTER_H, GpioHwPin, B, 6, T0CCP0, Timer);
+GPIO_HWPIN(BOOSTER_L, GpioHwPin, B, 7, T0CCP1, Timer);
+
+GPIO_PIN(RAILCOM_TRIGGER, GpioOutputSafeHigh, D, 6);
+
+GPIO_HWPIN(RAILCOM_CH1, GpioHwPin, B, 0, U1RX, UART);
+
+
+
+DECL_PIN(PIN_H_GPIO, B, 6);
+
 
 struct Debug {
   // High between start_cutout and end_cutout from the TivaRailcom driver.
@@ -24,6 +38,7 @@ struct Debug {
   typedef DummyPin RailcomAnyData;
   typedef DummyPin RailcomCh2Data;
   typedef DummyPin RailcomPackets;
+  typedef DummyPin RailcomRxActivate;
 };
 namespace TDebug {
     typedef DummyPin Resync;

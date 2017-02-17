@@ -39,6 +39,8 @@
 #include "driverlib/adc.h"
 #include "driverlib/timer.h"
 #include "TivaGPIO.hxx"
+#include "DummyGPIO.hxx"
+#include "hardware.hxx"
 
 #define DECL_PIN(NAME, PORT, NUM)                \
   static const auto NAME##_PERIPH = SYSCTL_PERIPH_GPIO##PORT; \
@@ -102,6 +104,8 @@ struct DccHwDefs {
   /// interrupt number of the interval timer
   static const unsigned long INTERVAL_INTERRUPT = INT_TIMER1A;
 
+  using BOOSTER_ENABLE_Pin = DummyPin;
+
   /** These timer blocks will be synchronized once per packet, when the
    *  deadband delay is set up. */
   static const auto TIMER_SYNC = TIMER_0A_SYNC | TIMER_0B_SYNC | TIMER_1A_SYNC | TIMER_1B_SYNC;
@@ -109,10 +113,8 @@ struct DccHwDefs {
   // Peripherals to enable at boot.
   static const auto CCP_PERIPH = SYSCTL_PERIPH_TIMER0;
   static const auto INTERVAL_PERIPH = SYSCTL_PERIPH_TIMER1;
-  DECL_PIN(PIN_H_GPIO, B, 6);
-  static const auto PIN_H_GPIO_CONFIG = GPIO_PB6_T0CCP0;
-  DECL_PIN(PIN_L_GPIO, B, 7);
-  static const auto PIN_L_GPIO_CONFIG = GPIO_PB7_T0CCP1;
+  using PIN_H = ::BOOSTER_H_Pin;
+  using PIN_L = ::BOOSTER_L_Pin;
   /** Defines whether the high driver pin is inverted or not. A non-inverted
    *  (value==false) pin will be driven high during the first half of the DCC
    *  bit (minus H_DEADBAND_DELAY_NSEC at the end), and low during the second
@@ -129,12 +131,8 @@ struct DccHwDefs {
    *  packet '1' bit) */
   static int dcc_preamble_count() { return 16; }
 
-  static constexpr uint8_t* LED_PTR =
-    (uint8_t*)(GPIO_PORTF_BASE + (GPIO_PIN_3 << 2));
   static void flip_led() {
-    static uint8_t flip = 0xff;
-    flip = ~flip;
-    *LED_PTR = flip;
+    LED_3_Pin::toggle();
   }
 
   /** the time (in nanoseconds) to wait between turning off the low driver and
@@ -160,14 +158,13 @@ struct DccHwDefs {
   static const auto ADCPIN_CH = ADC_CTL_CH2;
 
   // Pins defined for railcom
-  //DECL_PIN(RAILCOM_TRIGGER, B, 4);
-  DECL_PIN(RAILCOM_TRIGGER, D, 6);
+  using RAILCOM_TRIGGER_Pin = ::RAILCOM_TRIGGER_Pin;
   static const auto RAILCOM_TRIGGER_INVERT = true;
-
+  static const auto RAILCOM_TRIGGER_DELAY_USEC = 6;
+  
   static const auto RAILCOM_UART_BASE = UART1_BASE;
   static const auto RAILCOM_UART_PERIPH = SYSCTL_PERIPH_UART1;
-  DECL_PIN(RAILCOM_UARTPIN, B, 0);
-  static const auto RAILCOM_UARTPIN_CONFIG = GPIO_PB0_U1RX;
+  using RAILCOM_UARTPIN = ::RAILCOM_CH1_Pin;
 };
 
 

@@ -73,15 +73,15 @@ flash: bin
 #	aut-flash.sh *bin
 
 .PHONY: bin
-bin: $(DEFAULT_AUT)
-	./$(DEFAULT_AUT)
+bin: $(strip $(DEFAULT_AUT)).cout
+
 
 #bin: convention-logic
 #	./convention-logic
 
 
 $(OUTPUTS): %.cout : %
-	./$<
+	./$< > $@
 
 
 $(BINS): $(OBJS)
