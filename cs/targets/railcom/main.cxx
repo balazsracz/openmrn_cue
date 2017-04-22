@@ -156,27 +156,9 @@ class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
   uint8_t channel_;
 };
 
-uint8_t dac_next_packet_mode = 0;
-uint8_t RailcomDefs::feedbackChannel_ = 0xff;
-
-DacSettings dac_occupancy = {5, 50, true};  // 1.9 mV
-// DacSettings dac_occupancy = { 5, 10, true };
-
-#if 1
-DacSettings dac_overcurrent = {5, 20, false};
-#else
-DacSettings dac_overcurrent = dac_occupancy;
-#endif
-
-#if 1
-DacSettings dac_railcom = {5, 10, true};  // 8.6 mV
-#else
-DacSettings dac_railcom = dac_occupancy;
-#endif
-
-volatile uint32_t ch0_count, ch1_count, sample_count;
-
 extern unsigned* stat_led_ptr();
+extern volatile uint32_t ch0_count, ch1_count, sample_count;
+extern DacSettings dac_occupancy, dac_overcurrent, dac_railcom;
 
 class DACThread : public OSThread {
  public:
