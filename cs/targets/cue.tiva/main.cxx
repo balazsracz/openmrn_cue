@@ -34,6 +34,15 @@
 
 #define LOGLEVEL INFO
 
+//#define ENABLE_HOST
+#define STANDALONE
+#define LOGTOSTDOUT
+
+#if !defined(ENABLE_HOST) && !defined(LOGTOSTDOUT)
+#define LOGTOSTDOUT
+#endif
+
+
 #include <stdio.h>
 #include <unistd.h>
 
@@ -84,10 +93,12 @@ openlcb::FileMemorySpace automata_space("/etc/automata", __automata_end - __auto
 
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
+#ifdef ENABLE_HOST
 bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1);
+#endif
 
 extern "C" {
-#ifdef STANDALONE
+#ifdef LOGTOSTDOUT
 
 Executor<1> stdout_exec("logger", 1, 1000);
 Service stdout_service(&stdout_exec);
@@ -112,11 +123,13 @@ void log_output(char* buf, int size) {
 #endif
 } // extern c
 
+#ifdef ENABLE_HOST
 namespace bracz_custom {
 void send_host_log_event(HostLogEvent e) {
   host_client.send_host_log_event(e);
 }
 }
+#endif
 
 
 OVERRIDE_CONST(local_nodes_count, 30);
@@ -141,6 +154,16 @@ TivaSwitchProducer sw2(opts, EVENT_ID + 2, EVENT_ID + 3, USR_SW2_Pin::GPIO_BASE,
 openlcb::RefreshLoop loop(stack.node(), {&sw1, &sw2});
 
 bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const insn_t*) __automata_start);
+
+#ifdef HAVE_ACCPOWER
+
+TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(stack.node(), BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
+openlcb::BitEventConsumer accpowerbit(&acc_on_off);
+
+AccessoryOvercurrentMeasurement<AccHwDefs> g_acc_short_detector(stack.service(), stack.node());
+
+#endif
+
 
 /*TivaSwitchProducer sw2(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                        openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
