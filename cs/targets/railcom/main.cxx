@@ -60,8 +60,8 @@
 extern TivaDAC<DACDefs> dac;
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const openlcb::NodeID NODE_ID;
-openlcb::SimpleCanStack stack(NODE_ID);
+extern const openlcb::NodeID __application_node_id;
+openlcb::SimpleCanStack stack(__application_node_id);
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
 
