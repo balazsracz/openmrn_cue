@@ -27,7 +27,7 @@ extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
     4,               "Balazs Racz", "Railcom IO board",
     "ek-tm4c123gxl", "2015-10-25"};
 
-static const uint16_t EXPECTED_VERSION = 0xf37b;
+static const uint16_t EXPECTED_VERSION = 0xf371;
 
 #define NUM_OUTPUTS 3
 #define NUM_INPUTS 2
@@ -73,7 +73,8 @@ CDI_GROUP_ENTRY(producers, AllProducers, Name("Input buttons"));
 CDI_GROUP_ENTRY(current, CurrentParams);
 //CDI_GROUP_ENTRY(enables, EnableConsumers, Name("Channel enable"),
 //                Description("Consumers to turn channels on and off."));
-CDI_GROUP_ENTRY(detectors, DetectorPorts, Name("Channels"));
+CDI_GROUP_ENTRY(detectors, DetectorPorts, Name("Channels"), RepName("Channel"));
+CDI_GROUP_ENTRY(detector_options, bracz_custom::DetectorTuningOptions, Name("Short detector options"));
 CDI_GROUP_END();
 
 /// This segment is only needed temporarily until there is program code to set
@@ -83,6 +84,8 @@ CDI_GROUP(VersionSeg, Segment(MemoryConfigDefs::SPACE_CONFIG),
 CDI_GROUP_ENTRY(acdi_user_version, Uint8ConfigEntry,
     Name("ACDI User Data version"), Description("Set to 2 and do not change."));
 CDI_GROUP_END();
+
+
 
 /// The main structure of the CDI. ConfigDef is the symbol we use in main.cxx
 /// to refer to the configuration defined here.
@@ -97,7 +100,7 @@ CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
 /// Adds the main configuration segment.
 CDI_GROUP_ENTRY(seg, IoBoardSegment);
 /// Adds the versioning segment.
-CDI_GROUP_ENTRY(version, VersionSeg);
+//CDI_GROUP_ENTRY(version, VersionSeg);
 CDI_GROUP_END();
 
 }  // namespace openlcb

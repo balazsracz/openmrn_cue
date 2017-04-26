@@ -47,6 +47,49 @@ namespace bracz_custom {
 
 namespace sp = std::placeholders;
 
+class DetectorOptions : public DefaultConfigUpdateListener {
+ public:
+  DetectorOptions(const DetectorTuningOptions& opts) : opts_(opts) {}
+
+  uint16_t initStraggleDelay_;
+  uint16_t initStaticDelay_;
+
+  uint16_t turnonRetryDelay_;
+  uint16_t shortRetryDelay_;
+
+  uint8_t turnonRetryCount_;
+  
+ private:
+  UpdateAction apply_configuration(int fd, bool initial_load,
+                                   BarrierNotifiable* done) override {
+    AutoNotify an(done);
+    initStraggleDelay_ = opts_.init_straggle_delay().read(fd);
+    if (initStraggleDelay_ == 0xffff) {
+      factory_reset(fd);
+      initStraggleDelay_ = opts_.init_straggle_delay().read(fd);
+    }
+    initStaticDelay_ = opts_.init_static_delay().read(fd);
+    turnonRetryCount_ = opts_.turnon_fast_retry_count().read(fd);
+    turnonRetryDelay_ = opts_.turnon_fast_retry_delay().read(fd);
+
+    shortRetryDelay_ = opts_.short_retry_delay().read(fd);
+    return UPDATED;
+  }
+
+  void factory_reset(int fd) override {
+    SET_PARAM_TO_DEFAULT(fd, opts_.init_straggle_delay);
+    SET_PARAM_TO_DEFAULT(fd, opts_.init_static_delay);
+    SET_PARAM_TO_DEFAULT(fd, opts_.turnon_fast_retry_count);
+    SET_PARAM_TO_DEFAULT(fd, opts_.turnon_fast_retry_delay);
+    SET_PARAM_TO_DEFAULT(fd, opts_.short_retry_delay);
+  }
+  
+ private:
+  const DetectorTuningOptions& opts_;
+  
+  DISALLOW_COPY_AND_ASSIGN(DetectorOptions);
+};
+
 /// TODO:
 /// - add readout of event IDs from config
 /// - add config itself
@@ -54,8 +97,8 @@ namespace sp = std::placeholders;
 class DetectorPort : public StateFlowBase {
  public:
   DetectorPort(openlcb::Node* node, uint8_t channel, int config_fd,
-               const DetectorPortConfig& cfg)
-    : StateFlowBase(node->iface()),
+               const DetectorPortConfig& cfg, const DetectorOptions& opts)
+      : StateFlowBase(node->iface()),
         channel_(channel),
         killedOutputDueToOvercurrent_(0),
         sensedOccupancy_(0),
@@ -67,9 +110,10 @@ class DetectorPort : public StateFlowBase {
         reqEnable_(0),
         turnonTryCount_(0),
         node_(node),
+        opts_(opts),
         eventHandler_(
-            node,
-            std::bind(&DetectorPort::event_report, this, sp::_1, sp::_2, sp::_3),
+            node, std::bind(&DetectorPort::event_report, this, sp::_1, sp::_2,
+                            sp::_3),
             std::bind(&DetectorPort::get_event_state, this, sp::_1, sp::_2)) {
     start_flow(STATE(init_wait));
     eventOccupancyOn_ = cfg.occupancy().occ_on().read(config_fd);
@@ -184,7 +228,7 @@ class DetectorPort : public StateFlowBase {
     if (!(registry_entry.user_arg & ARG_ON)) {
       st = invert_event_state(st);
     }
-    return openlcb::EventState::VALID;
+    return st;
   }
 
   /// Defines what we use the user_args bits for the registered event handlers.
@@ -217,7 +261,7 @@ class DetectorPort : public StateFlowBase {
 
   Action init_wait() {
     isInitialTurnon_ = 1;
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(100 * channel_),
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(300 * channel_),
                           STATE(init_try_turnon));
   }
 
@@ -330,6 +374,7 @@ class DetectorPort : public StateFlowBase {
   openlcb::EventId eventEnableOff_;
   openlcb::WriteHelper h_;
   BarrierNotifiable n_;
+  const DetectorOptions& opts_;
   openlcb::CallbackEventHandler eventHandler_;
 };
 

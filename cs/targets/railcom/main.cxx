@@ -156,6 +156,47 @@ class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
   uint8_t channel_;
 };
 
+
+class DirectRailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
+ public:
+  /// Creates an occupancy decoder port.
+  ///
+  /// @param channel is the railcom channe to listen to. Usually 0xff for
+  /// occupancy or 0xfe for overcurrent.
+  /// @param channel_count tells how many bits are available to check.
+  /// @param update_function will be called with the channel number and the
+  /// channel's value.
+  DirectRailcomOccupancyDecoder(uint8_t channel, unsigned channel_count,
+                          std::function<void(unsigned, bool)> update_function)
+      : updateFunction_(std::move(update_function)), channel_(channel), count_(channel_count) {
+    
+  }
+
+  void send(Buffer<dcc::RailcomHubData>* entry, unsigned prio) override {
+    AutoReleaseBuffer<dcc::RailcomHubData> rb(entry);
+    if (entry->data()->channel != channel_) return;
+    uint8_t new_payload = entry->data()->ch1Data[0];
+    for (unsigned i = 0; i < count_; ++i) {
+      bool new_state_input = new_payload & (1 << i);
+      // Need to produce new value to network.
+      updateFunction_(i, new_state_input);
+    }
+    int current_tick = RailcomDefs::get_timer_tick();
+    int start_tick = 0;
+    memcpy(&start_tick, entry->data()->ch2Data, 4);
+    start_tick -= current_tick;
+    delay_log[next_delay++] = start_tick;
+    if (next_delay >= DELAY_LOG_COUNT) next_delay = 0;
+  }
+
+ private:
+  std::function<void(unsigned, bool)> updateFunction_;
+  uint8_t channel_;
+  uint8_t count_;
+};
+
+
+
 extern unsigned* stat_led_ptr();
 extern volatile uint32_t ch0_count, ch1_count, sample_count;
 extern DacSettings dac_occupancy, dac_overcurrent, dac_railcom;
@@ -249,13 +290,15 @@ int appl_main(int argc, char* argv[]) {
       cfg.seg().current().overcurrent().count_total().read(fd),
       cfg.seg().current().overcurrent().min_active().read(fd)};
 
+  static bracz_custom::DetectorOptions opts(cfg.seg().detector_options());
+  
   static bracz_custom::DetectorPort ports[6] = {
-      {stack.node(), 0, fd, cfg.seg().detectors().entry<0>()},
-      {stack.node(), 1, fd, cfg.seg().detectors().entry<1>()},
-      {stack.node(), 2, fd, cfg.seg().detectors().entry<2>()},
-      {stack.node(), 3, fd, cfg.seg().detectors().entry<3>()},
-      {stack.node(), 4, fd, cfg.seg().detectors().entry<4>()},
-      {stack.node(), 5, fd, cfg.seg().detectors().entry<5>()},
+      {stack.node(), 0, fd, cfg.seg().detectors().entry<0>(), opts},
+      {stack.node(), 1, fd, cfg.seg().detectors().entry<1>(), opts},
+      {stack.node(), 2, fd, cfg.seg().detectors().entry<2>(), opts},
+      {stack.node(), 3, fd, cfg.seg().detectors().entry<3>(), opts},
+      {stack.node(), 4, fd, cfg.seg().detectors().entry<4>(), opts},
+      {stack.node(), 5, fd, cfg.seg().detectors().entry<5>(), opts},
   };
 
   bracz_custom::DetectorPort* pports = ports;
@@ -267,9 +310,12 @@ int appl_main(int argc, char* argv[]) {
 
   static RailcomOccupancyDecoder<CountingDebouncer> occ_decoder(
       0xff, 6, occupancy_proxy, occupancy_debouncer_opts);
-  static RailcomOccupancyDecoder<CountingDebouncer> over_decoder(
-      0xfe, 6, overcurrent_proxy, overcurrent_debouncer_opts);
+  
+  static DirectRailcomOccupancyDecoder over_decoder(
+      0xfe, 6, overcurrent_proxy);
 
+  RailcomDefs::setup_debouncer_opts(overcurrent_debouncer_opts);
+  
   static RailcomBroadcastFlow railcom_broadcast(
       &railcom_hub, stack.node(), &occ_decoder, &over_decoder, nullptr, 6);
 
