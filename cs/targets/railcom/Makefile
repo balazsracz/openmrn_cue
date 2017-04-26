@@ -1,3 +1,4 @@
+EXECUTABLE:=railcom
 include hardware.mk
 
 .PHONY: FORCE
