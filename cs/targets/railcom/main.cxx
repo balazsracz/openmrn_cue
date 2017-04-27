@@ -57,11 +57,27 @@
 #include "hardware.hxx"
 #include "dcc/RailcomPortDebug.hxx"
 
+#include "freertos_drivers/ti/TivaCpuLoad.hxx"
+#include "utils/CpuDisplay.hxx"
+
+
+TivaCpuLoad<TivaCpuLoadDefHw> load_monitor;
+
+extern "C" {
+void timer4a_interrupt_handler(void)
+{
+    load_monitor.interrupt_handler();
+}
+}
+
+
 extern TivaDAC<DACDefs> dac;
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
 extern const openlcb::NodeID __application_node_id;
 openlcb::SimpleCanStack stack(__application_node_id);
+
+CpuDisplay load_display(stack.service(), LED_RED_Pin::instance(), LED_GREEN_Pin::instance());
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
 
@@ -76,15 +92,15 @@ static_assert(openlcb::CONFIG_FILE_SIZE <= 1024, "Need to adjust eeprom size");
 
 typedef BLINKER_Pin LED_RED_Pin;
 
-openlcb::ConfiguredConsumer consumer_red(stack.node(),
+/*openlcb::ConfiguredConsumer consumer_red(stack.node(),
                                          cfg.seg().consumers().entry<0>(),
                                          LED_RED_Pin());
 openlcb::ConfiguredConsumer consumer_green(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
-                                           OUTPUT_EN0_Pin());
+                                           LED_GREEN_Pin());
 openlcb::ConfiguredConsumer consumer_blue(stack.node(),
                                           cfg.seg().consumers().entry<2>(),
-                                          OUTPUT_EN1_Pin());
+                                          LED_BLUE_Pin());*/
 
 /*openlcb::ConfiguredConsumer consumer_shadow0(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
@@ -113,6 +129,13 @@ const Gpio* const enable_ptrs[] = {
 
 openlcb::RefreshLoop loop(stack.node(),
                           {producer_sw1.polling(), producer_sw2.polling()});
+
+constexpr unsigned DELAY_LOG_COUNT = 512;
+volatile int delay_log[DELAY_LOG_COUNT];
+unsigned next_delay = 0;
+uint32_t feedback_sample_overflow_count = 0;
+std::vector<CountingDebouncer> RailcomDefs::debouncers_;
+volatile bool RailcomDefs::enableOvercurrent_ = false;
 
 template <class Debouncer>
 class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
@@ -148,6 +171,12 @@ class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
         updateFunction_(i, debouncer.current_state());
       }
     }
+    int current_tick = RailcomDefs::get_timer_tick();
+    int start_tick = 0;
+    memcpy(&start_tick, entry->data()->ch2Data, 4);
+    start_tick -= current_tick;
+    delay_log[next_delay++] = start_tick;
+    if (next_delay >= DELAY_LOG_COUNT) next_delay = 0;
   }
 
  private:
@@ -234,6 +263,7 @@ class DACThread : public OSThread {
                      openlcb::eventid_to_buffer(ev), &n);
         n.wait_for_notification();
       }
+      LED_BLUE_Pin::set(false);
 
       volatile unsigned* leds = stat_led_ptr();
       for (int i = 0; i < 6; ++i) {
@@ -272,6 +302,7 @@ void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
+  LED_BLUE_Pin::set(false);
   stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
   int fd = ::open(openlcb::CONFIG_FILENAME, O_RDWR);
   HASSERT(fd >= 0);
