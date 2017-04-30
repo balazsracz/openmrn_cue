@@ -158,15 +158,13 @@ class DetectorPort : public StateFlowBase {
 
   void set_occupancy(bool value) {
     sensedOccupancy_ = to_u(value);
-    if (is_terminated()) {
-      start_flow(STATE(test_again));
-    }
+    send_event(node_, value ? eventOccupancyOn_ : eventOccupancyOff_);
   }
 
   void set_network_occupancy(bool value) {
     networkOccupancy_ = to_u(value);
-    if (is_terminated()) {
-      start_flow(STATE(test_again));
+    if (sensedOccupancy_ != networkOccupancy_) {
+      send_event(node_, sensedOccupancy_ ? eventOccupancyOn_ : eventOccupancyOff_);
     }
   }
 
@@ -178,17 +176,13 @@ class DetectorPort : public StateFlowBase {
   }
 
   void set_network_enable(bool value) {
-    if (value && !networkEnable_) {
-      // turn on
-      networkEnable_ = 1;
-      reqEnable_ = 1;
-      if (is_terminated()) {
-        start_flow(STATE(test_again));
-      }
+    networkEnable_ = to_u(value);
+    if (networkEnable_ && is_state(STATE(network_off))) {
+      // wake up from terminal state
+      notify();
     }
-    if (!value && networkEnable_) {
+    if (!value) {
       // turn off
-      networkEnable_ = 0;
       set_output_enable(false);
     }
   }
@@ -249,6 +243,18 @@ class DetectorPort : public StateFlowBase {
 
   unsigned to_u(bool b) { return b ? 1 : 0; }
 
+  // We need to persistently store the following information per port:
+  //
+  // - what is the last state of the occupancy information. This is important
+  //   to keep when we lose track power and/or turn off the track.
+  //
+  // - is the network state of the port OFF ? (e.g. it has been turned off by
+  //   an event by someone else.)
+  //
+  // - if we seem to be going into a short circuit problem with this port
+  //   (though not 100% sure how we should be using that information). Maybe
+  //   also when we have disabled this port due to overcurrent.
+  
   /// @param value is true if the output should be provided with power, false
   /// if the output should have no power.
   void set_output_enable(bool value) {
@@ -261,7 +267,9 @@ class DetectorPort : public StateFlowBase {
 
   Action init_wait() {
     isInitialTurnon_ = 1;
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(300 * channel_),
+    int init_delay_msec =
+        cfg_.initStaticDelay_ + channel_ * cfg_.initStraggleDelay_;
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(init_delay_msec),
                           STATE(init_try_turnon));
   }
 
@@ -274,18 +282,35 @@ class DetectorPort : public StateFlowBase {
   Action try_turnon() {
     if (!networkEnable_) {
       // Someone turned off the output in the meantime.
-      set_output_enable(false);  // this should be redundant
-      return call_immediately(STATE(test_again));
+      return call_immediately(STATE(set_network_off));
     }
     set_output_enable(true);
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(SHORT_RETRY_WAIT_MSEC),
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(cfg_.turnonRetryDelay_),
                           STATE(eval_turnon));
   }
 
+  Action set_network_off() {
+    set_output_enable(false);  // this should be redundant
+    return wait_and_call(STATE(network_off));
+  }
+  
+  Action network_off() {
+    if (!networkEnable_) {
+      // This is a terminal state.
+      return wait();
+    }
+    // Turn back on event came.
+    return call_immediately(STATE(init_try_turnon));
+  }
+  
   Action eval_turnon() {
+    if (!networkEnable_) {
+      // Someone turned off the output in the meantime.
+      return call_immediately(STATE(set_network_off));
+    }
     if (killedOutputDueToOvercurrent_) {
       // Turnon failed. try again.
-      if (turnonTryCount_ < SHORT_RETRY_COUNT) {
+      if (turnonTryCount_ < cfg_.shortRetryDelay_) {
         turnonTryCount_++;
         return call_immediately(STATE(try_turnon));
       }
