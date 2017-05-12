@@ -585,6 +585,28 @@ StandardBlock Block_XXA3(&brd, &XXA3, logic, "XX.A3");
 
 */
 
+PhysicalSignal YYA1(&bc.InOraRed, &bc.Rel0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+
+PhysicalSignal StubYYA1(&bc.InOraRed, &bc.Rel1, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+
+PhysicalSignal XXB2(&be.InBrownGrey, &be.Rel0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+PhysicalSignal StubXXB2(&be.InBrownGrey, &be.Rel1, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+
+
+StandardBlock Block_YYA1(&brd, &YYA1, logic, "YY.A1");
+StubBlock Stub_YYA1(&brd, &StubYYA1, &bc.InOraRed, logic, "YY.A1E");
+
+StandardBlock Block_XXB2(&brd, &XXB2, logic, "XX.B2");
+StubBlock Stub_XXB2(&brd, &StubXXB2, &be.InBrownGrey, logic, "XX.B2E");
+
+bool ignored1 = BindPairs({{Block_XXB2.side_b(), Stub_XXB2.entry()},
+                           {Block_XXB2.side_a(), Block_YYA1.side_a()},
+                           {Block_YYA1.side_b(), Stub_YYA1.entry()}});
+
 /*
 #define CYCLE {&Block_B108, &Block_B129, &Block_A240, &Block_A217, \
         &Block_A406, &Block_XXB1, &Block_B108}
@@ -846,6 +868,9 @@ class LayoutSchedule : public TrainSchedule {
     }*/
   
 
+  void RunXtoY(Automata* aut) {}
+  void RunYtoX(Automata* aut) {}
+
   void RunCycle(Automata* aut) {
   /*
     RunB108_to_A240(aut);
@@ -897,6 +922,13 @@ class IC2000Train : public LayoutSchedule {
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
+
+    StopAndReverseAtStub(Block_YYA1);
+    //RunXtoY(aut);
+    AddDirectBlockTransition(Block_YYA1.rev_signal, Block_XXB2, &g_not_paused_condition);
+    StopAndReverseAtStub(Block_XXB2);
+    AddDirectBlockTransition(Block_XXB2.rev_signal, Block_YYA1, &g_not_paused_condition);
+
     /*    RunB108_to_A240(aut);
 
     AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
@@ -928,7 +960,7 @@ class IC2000Train : public LayoutSchedule {
   }
 };
 
-
+/*
 CircleTrain train_rts("rts_railtraction", MMAddress(32), 10);
 CircleTrain train_wle("wle_er20", MMAddress(27), 10);
 CircleTrain train_re474("Re474", MMAddress(12), 30);
@@ -939,6 +971,9 @@ CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 IC2000Train train_re465("Re465", DccShortAddress(47), 17);
 IC2000Train train_icn("ICN", DccShortAddress(50), 17);
 IC2000Train train_ice("ICE", MMAddress(2), 16);
+*/
+
+IC2000Train train_re460tsr("Re460 TSR", DccShortAddress(22), 35);
 
 
 
