@@ -39,6 +39,7 @@
 #include "driverlib/adc.h"
 #include "driverlib/timer.h"
 #include "TivaGPIO.hxx"
+#include "DummyGPIO.hxx"
 #include "hardware.hxx"
 #include "src/cs_config.h"
 
@@ -98,6 +99,8 @@ struct DccHwDefs {
   /// interrupt number of the interval timer
   static const unsigned long INTERVAL_INTERRUPT = INT_TIMER0A;
 
+  using BOOSTER_ENABLE_Pin = DummyPin;
+  
   /** These timer blocks will be synchronized once per packet, when the
    *  deadband delay is set up. */
   static const auto TIMER_SYNC = TIMER_0A_SYNC | TIMER_0B_SYNC | TIMER_1A_SYNC | TIMER_1B_SYNC;
@@ -105,33 +108,13 @@ struct DccHwDefs {
   // Peripherals to enable at boot.
   static const auto CCP_PERIPH = SYSCTL_PERIPH_TIMER1;
   static const auto INTERVAL_PERIPH = SYSCTL_PERIPH_TIMER0;
-  static const auto PIN_H_GPIO_PERIPH = GPIO_PORTA_BASE;
-  static const auto PIN_H_GPIO_CONFIG = GPIO_PA2_T1CCP0;
-  static const auto PIN_H_GPIO_BASE = GPIO_PORTA_BASE;
-  static const auto PIN_H_GPIO_PIN = GPIO_PIN_2;
-#ifdef BPACK_1_LOW
-  // set the output pin to be on boosterpack 1
-  static const auto PIN_L_GPIO_PERIPH = GPIO_PORTD_BASE;
-  static const auto PIN_L_GPIO_CONFIG = GPIO_PD3_T1CCP1;
-  static const auto PIN_L_GPIO_BASE = GPIO_PORTD_BASE;
-  static const auto PIN_L_GPIO_PIN = GPIO_PIN_3;
+  using PIN_H = ::BOOSTER_H_Pin;
+  using PIN_L = ::BOOSTER_L_Pin;
   /** Defines whether the drive-low pin is inverted or not. A non-inverted pin
    *  (value==false) will be driven high during the second half of the DCC bit
    *  (minus L_DEADBAND_DELAY_NSEC), and low during the first half.  A
    *  non-inverted pin will be driven low as safe setting at startup. */
   static const bool PIN_L_INVERT = true;
-#else
-  // original output pin
-  static const auto PIN_L_GPIO_PERIPH = GPIO_PORTA_BASE;
-  static const auto PIN_L_GPIO_CONFIG = GPIO_PA3_T1CCP1;
-  static const auto PIN_L_GPIO_BASE = GPIO_PORTA_BASE;
-  static const auto PIN_L_GPIO_PIN = GPIO_PIN_3;
-  /** Defines whether the drive-low pin is inverted or not. A non-inverted pin
-   *  (value==false) will be driven high during the second half of the DCC bit
-   *  (minus L_DEADBAND_DELAY_NSEC), and low during the first half.  A
-   *  non-inverted pin will be driven low as safe setting at startup. */
-  static const bool PIN_L_INVERT = true;
-#endif
 
   /** Defines whether the high driver pin is inverted or not. A non-inverted
    *  (value==false) pin will be driven high during the first half of the DCC
@@ -178,14 +161,13 @@ struct DccHwDefs {
 #endif
 
   // Pins defined for railcom
-  //DECL_PIN(RAILCOM_TRIGGER, B, 4);
-  DECL_PIN(RAILCOM_TRIGGER, H, 1);
+  using RAILCOM_TRIGGER_Pin = ::RAILCOM_TRIGGER_Pin;
   static const auto RAILCOM_TRIGGER_INVERT = true;
-
+  static const auto RAILCOM_TRIGGER_DELAY_USEC = 6;
+  
   static const auto RAILCOM_UART_BASE = UART6_BASE;
   static const auto RAILCOM_UART_PERIPH = SYSCTL_PERIPH_UART6;
-  DECL_PIN(RAILCOM_UARTPIN, P, 0);
-  static const auto RAILCOM_UARTPIN_CONFIG = GPIO_PP0_U6RX;
+  using RAILCOM_UARTPIN = ::RAILCOM_CH1_Pin;
 };
 
 

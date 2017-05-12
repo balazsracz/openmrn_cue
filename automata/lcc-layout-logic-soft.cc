@@ -823,7 +823,7 @@ int main(int argc, char** argv) {
   fwrite(output.data(), 1, output.size(), f);
   fclose(f);
 
-  //  f = fopen("convention-logic.cout", "wb");
+  //f = fopen("convention-logic.cout", "wb");
   f = stdout;
   fprintf(f,
           "const char automata_code[] __attribute__((section(\"automata\"))) = "

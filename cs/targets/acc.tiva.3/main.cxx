@@ -65,6 +65,8 @@
 #include "inc/hw_memmap.h"
 
 #define ENABLE_TIVA_SIGNAL_DRIVER
+#define TIVADCC_TIVA
+
 #include "custom/TivaSignalPacket.hxx"
 #include "custom/SignalLoop.hxx"
 #include "custom/SignalServer.hxx"

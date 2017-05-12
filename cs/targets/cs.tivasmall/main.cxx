@@ -94,6 +94,7 @@
 #include "commandstation/TrackPowerBit.hxx"
 #include "DccHardware.hxx"
 #include "hardware.hxx"
+#define TIVADCC_TIVA
 #include "TivaDCC.hxx"
 #include "dcc/RailCom.hxx"
 #include "config.hxx"

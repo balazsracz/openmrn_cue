@@ -98,6 +98,7 @@ CDI_GROUP_END();
 
 
 static const char DCC_DRIVE_MODE_MAP[] =
+    "<relation><property>0</property><value>Unused</value></relation>"
     "<relation><property>5</property><value>DCC 28-step</value></relation>"
     "<relation><property>6</property><value>DCC 128-step</value></relation>"
     "<relation><property>1</property><value>Marklin-Motorola "
