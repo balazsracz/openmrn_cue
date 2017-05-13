@@ -52,10 +52,10 @@ EventBasedVariable watchdog(&brd, "reset_watchdog", BRACZ_LAYOUT | 0x0010,
 EventBasedVariable reset_all_routes(&brd, "reset_routes", BRACZ_LAYOUT | 0x0012,
                                     BRACZ_LAYOUT | 0x0013, 7, 30, 4);
 
-EventBasedVariable route_lock_WW(&brd, "route_lock_WW", BRACZ_LAYOUT | 0x0014,
+EventBasedVariable route_lock_XX(&brd, "route_lock_XX", BRACZ_LAYOUT | 0x0014,
                                  BRACZ_LAYOUT | 0x0015, 7, 30, 3);
 
-EventBasedVariable route_lock_ZZ(&brd, "route_lock_ZZ", BRACZ_LAYOUT | 0x0016,
+EventBasedVariable route_lock_YY(&brd, "route_lock_YY", BRACZ_LAYOUT | 0x0016,
                                  BRACZ_LAYOUT | 0x0017, 7, 30, 2);
 
 
@@ -496,6 +496,15 @@ AllocatorPtr train_tmp(logic2->Allocate("train", 768));
 MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
+
+MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &bc.ActBrownGrey,
+                      &bc.ActBrownBrown, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_YYW1(&brd,
+                                    logic->Allocate("YY.W1", 40),
+                                    &Magnet_YYW1);
+TurnoutWrap TYYW1(&Turnout_YYW1.b, kPointToThrown);
+
+
 /*
 MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen,
                       &be.ActOraRed, MovableTurnout::kClosed);
@@ -591,6 +600,19 @@ PhysicalSignal YYA1(&bc.InOraRed, &bc.Rel0, nullptr, nullptr, nullptr, nullptr,
 PhysicalSignal StubYYA1(&bc.InOraRed, &bc.Rel1, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr);
 
+PhysicalSignal StubYYA2(&bc.InOraGreen, &bc.Rel2, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+
+
+PhysicalSignal A460(&bb.In4, &bb.Rel0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+
+PhysicalSignal B352(&bb.InBrownBrown, &bb.Rel1, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+
+PhysicalSignal A451(&bb.InOraRed, &bb.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+
 PhysicalSignal XXB2(&be.InBrownGrey, &be.Rel0, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr);
 PhysicalSignal StubXXB2(&be.InBrownGrey, &be.Rel1, nullptr, nullptr, nullptr, nullptr,
@@ -600,12 +622,39 @@ PhysicalSignal StubXXB2(&be.InBrownGrey, &be.Rel1, nullptr, nullptr, nullptr, nu
 StandardBlock Block_YYA1(&brd, &YYA1, logic, "YY.A1");
 StubBlock Stub_YYA1(&brd, &StubYYA1, &bc.InOraRed, logic, "YY.A1E");
 
+StubBlock Stub_YYA2(&brd, &StubYYA2, nullptr, logic, "YY.A2");
+
+
+StandardFixedTurnout Turnout_W360(&brd, logic->Allocate("W360", 40), FixedTurnout::TURNOUT_THROWN);
+TurnoutWrap TW360(&Turnout_W360.b, kClosedToPoint);
+
+StandardFixedTurnout Turnout_W341(&brd, logic->Allocate("W341", 40), FixedTurnout::TURNOUT_THROWN);
+TurnoutWrap TW341(&Turnout_W341.b, kPointToThrown);
+
+StandardBlock Block_A451(&brd, &A451, logic, "A451");
+StandardBlock Block_A460(&brd, &A460, logic, "A460");
+
+StandardBlock Block_B352(&brd, &B352, logic, "B352");
+
+
 StandardBlock Block_XXB2(&brd, &XXB2, logic, "XX.B2");
 StubBlock Stub_XXB2(&brd, &StubXXB2, &be.InBrownGrey, logic, "XX.B2E");
 
 bool ignored1 = BindPairs({{Block_XXB2.side_b(), Stub_XXB2.entry()},
-                           {Block_XXB2.side_a(), Block_YYA1.side_a()},
-                           {Block_YYA1.side_b(), Stub_YYA1.entry()}});
+    {Turnout_YYW1.b.side_closed(), Stub_YYA2.entry()}});
+
+bool ignored2 = BindSequence(
+    Block_XXB2.side_a(),
+    {&TW341, &Block_A451, &Block_A460, &TW360, &TYYW1, &Block_YYA1}, Stub_YYA1.entry());
+
+bool ignored3 = BindSequence(
+    Turnout_W360.b.side_thrown(),
+    {&Block_B352},
+    Turnout_W341.b.side_closed());
+
+
+auto& Block_EntryToXX = Block_B352;
+auto& Block_EntryToYY = Block_A460;
 
 /*
 #define CYCLE {&Block_B108, &Block_B129, &Block_A240, &Block_A217, \
@@ -851,6 +900,19 @@ void IfXXW2Free(Automata::Op* op) {
 auto g_xxw2_free = NewCallback(&IfXXW2Free);
 */
 
+void IfXXEntryFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W341.b.any_route()));
+}
+auto g_xx_entry_free = NewCallback(&IfXXEntryFree);
+
+void IfYYEntryFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W360.b.any_route()));
+}
+auto g_yy_entry_free = NewCallback(&IfYYEntryFree);
+
+
 class LayoutSchedule : public TrainSchedule {
  public:
   LayoutSchedule(const string& name, uint64_t train_id, uint8_t default_speed)
@@ -925,9 +987,28 @@ class IC2000Train : public LayoutSchedule {
 
     StopAndReverseAtStub(Block_YYA1);
     //RunXtoY(aut);
-    AddDirectBlockTransition(Block_YYA1.rev_signal, Block_XXB2, &g_not_paused_condition);
-    StopAndReverseAtStub(Block_XXB2);
-    AddDirectBlockTransition(Block_XXB2.rev_signal, Block_YYA1, &g_not_paused_condition);
+    {
+      WithRouteLock l(this, &route_lock_YY);
+      AddDirectBlockTransition(Block_YYA1.rev_signal,
+                               Block_B352,
+                               &g_yy_entry_free);
+    }
+    {
+      WithRouteLock l(this, &route_lock_XX);
+      AddDirectBlockTransition(Block_B352, Block_XXB2, &g_xx_entry_free);
+
+      StopAndReverseAtStub(Block_XXB2);
+      AddDirectBlockTransition(Block_XXB2.rev_signal,
+                               Block_A451, &g_xx_entry_free);
+    }
+
+    AddEagerBlockTransition(Block_A451, Block_A460);
+
+    {
+      WithRouteLock l(this, &route_lock_YY);
+      AddDirectBlockTransition(Block_A460, Block_YYA1, &g_yy_entry_free);
+      SwitchTurnout(Turnout_YYW1.b.magnet(), true);
+    }
 
     /*    RunB108_to_A240(aut);
 
@@ -960,6 +1041,71 @@ class IC2000Train : public LayoutSchedule {
   }
 };
 
+
+class IC2000TrainB : public LayoutSchedule {
+ public:
+  IC2000TrainB(const string& name, uint64_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+
+    StopAndReverseAtStub(Stub_YYA2);
+    //RunXtoY(aut);
+    {
+      WithRouteLock l(this, &route_lock_YY);
+      AddDirectBlockTransition(Stub_YYA2, // TODO: add rev signal
+                               Block_B352,
+                               &g_yy_entry_free);
+    }
+    {
+      WithRouteLock l(this, &route_lock_XX);
+      AddDirectBlockTransition(Block_B352, Block_XXB2, &g_xx_entry_free);
+
+      StopAndReverseAtStub(Block_XXB2);
+      AddDirectBlockTransition(Block_XXB2.rev_signal,
+                               Block_A451, &g_xx_entry_free);
+    }
+
+    AddEagerBlockTransition(Block_A451, Block_A460);
+
+    {
+      WithRouteLock l(this, &route_lock_YY);
+      AddDirectBlockTransition(Block_A460, Stub_YYA2, &g_yy_entry_free);
+      SwitchTurnout(Turnout_YYW1.b.magnet(), false);
+    }
+
+    /*    RunB108_to_A240(aut);
+
+    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
+    SwitchTurnout(Turnout_W231.b.magnet(), false);
+
+    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317, &g_not_paused_condition, true);
+    SwitchTurnout(Turnout_W231.b.magnet(), true);
+
+    {
+      WithRouteLock l(this, &route_lock_WW);
+      AddBlockTransitionOnPermit(Block_A217, Block_A200, &w217_from217,
+                                 &g_dkw209_free);
+      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
+      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
+
+      AddBlockTransitionOnPermit(Block_A317, Block_A200, &w217_from317,
+                                 &g_dkw209_free);
+      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
+      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
+    }
+    
+    AddDirectBlockTransition(Block_A200, Block_XXA2, &g_xxw2_free, true);
+    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCross);
+    StopAndReverseAtStub(Block_XXA2);
+    AddDirectBlockTransition(Block_XXA2.rev_signal, Block_B108);
+    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCurved);
+    */
+
+  }
+};
+
+
 /*
 CircleTrain train_rts("rts_railtraction", MMAddress(32), 10);
 CircleTrain train_wle("wle_er20", MMAddress(27), 10);
@@ -973,7 +1119,10 @@ IC2000Train train_icn("ICN", DccShortAddress(50), 17);
 IC2000Train train_ice("ICE", MMAddress(2), 16);
 */
 
-IC2000Train train_re460tsr("Re460 TSR", DccShortAddress(22), 35);
+IC2000TrainB train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
+IC2000Train train_ice2("ICE2", MMAddress(2), 25);
+IC2000Train train_re465("Re465", DccShortAddress(47), 25);
+IC2000Train train_icn("ICN", DccShortAddress(50), 18);
 
 
 
