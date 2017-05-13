@@ -987,7 +987,8 @@ int main(int argc, char** argv) {
   fwrite(output.data(), 1, output.size(), f);
   fclose(f);
 
-  f = fopen("bracz-layout1i-logic.cout", "wb");
+  //f = fopen("bracz-layout2b-logic.cout", "wb");
+  f = stdout;
   fprintf(f,
           "const char automata_code[] __attribute__((section(\"automata\"))) = "
           "{\n  ");
@@ -1000,7 +1001,7 @@ int main(int argc, char** argv) {
     }
   }
   fprintf(f, "};\n");
-  fclose(f);
+  //fclose(f);
 
   f = fopen("variables.txt", "w");
   assert(f);
