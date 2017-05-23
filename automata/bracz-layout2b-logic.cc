@@ -612,6 +612,8 @@ PhysicalSignal B352(&bb.InBrownBrown, &bb.Rel1, nullptr, nullptr, nullptr,
 
 PhysicalSignal A451(&bb.InOraRed, &bb.Rel2, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
+PhysicalSignal B341(&be.InOraGreen, &be.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
 PhysicalSignal XXB2(&be.InBrownGrey, &be.Rel0, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr);
@@ -635,6 +637,7 @@ StandardBlock Block_A451(&brd, &A451, logic, "A451");
 StandardBlock Block_A460(&brd, &A460, logic, "A460");
 
 StandardBlock Block_B352(&brd, &B352, logic, "B352");
+StandardBlock Block_B341(&brd, &B341, logic, "B341");
 
 
 StandardBlock Block_XXB2(&brd, &XXB2, logic, "XX.B2");
@@ -649,7 +652,7 @@ bool ignored2 = BindSequence(
 
 bool ignored3 = BindSequence(
     Turnout_W360.b.side_thrown(),
-    {&Block_B352},
+    {&Block_B352, &Block_B341},
     Turnout_W341.b.side_closed());
 
 
@@ -930,8 +933,21 @@ class LayoutSchedule : public TrainSchedule {
     }*/
   
 
-  void RunXtoY(Automata* aut) {}
-  void RunYtoX(Automata* aut) {}
+  void RunXtoY(Automata* aut) {
+    AddEagerBlockTransition(Block_A451, Block_A460);
+  }
+  void RunYtoX(Automata* aut) {
+    AddEagerBlockTransition(Block_B352, Block_B341);
+  }
+
+  void RunStubXX(Automata* aut) {
+    WithRouteLock l(this, &route_lock_XX);
+    AddDirectBlockTransition(Block_B341, Block_XXB2, &g_xx_entry_free);
+
+    StopAndReverseAtStub(Block_XXB2);
+    AddDirectBlockTransition(Block_XXB2.rev_signal, Block_A451,
+                             &g_xx_entry_free);
+  }
 
   void RunCycle(Automata* aut) {
   /*
@@ -984,60 +1000,20 @@ class IC2000Train : public LayoutSchedule {
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
-
-    StopAndReverseAtStub(Block_YYA1);
-    //RunXtoY(aut);
-    {
-      WithRouteLock l(this, &route_lock_YY);
-      AddDirectBlockTransition(Block_YYA1.rev_signal,
-                               Block_B352,
-                               &g_yy_entry_free);
-    }
-    {
-      WithRouteLock l(this, &route_lock_XX);
-      AddDirectBlockTransition(Block_B352, Block_XXB2, &g_xx_entry_free);
-
-      StopAndReverseAtStub(Block_XXB2);
-      AddDirectBlockTransition(Block_XXB2.rev_signal,
-                               Block_A451, &g_xx_entry_free);
-    }
-
-    AddEagerBlockTransition(Block_A451, Block_A460);
-
+    RunXtoY(aut);
     {
       WithRouteLock l(this, &route_lock_YY);
       AddDirectBlockTransition(Block_A460, Block_YYA1, &g_yy_entry_free);
       SwitchTurnout(Turnout_YYW1.b.magnet(), true);
+      StopAndReverseAtStub(Block_YYA1);
+
+      AddDirectBlockTransition(Block_YYA1.rev_signal,
+                               Block_B352,
+                               &g_yy_entry_free);
     }
 
-    /*    RunB108_to_A240(aut);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), false);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), true);
-
-    {
-      WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(Block_A217, Block_A200, &w217_from217,
-                                 &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
-
-      AddBlockTransitionOnPermit(Block_A317, Block_A200, &w217_from317,
-                                 &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
-    }
-    
-    AddDirectBlockTransition(Block_A200, Block_XXA2, &g_xxw2_free, true);
-    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCross);
-    StopAndReverseAtStub(Block_XXA2);
-    AddDirectBlockTransition(Block_XXA2.rev_signal, Block_B108);
-    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCurved);
-    */
-
+    RunYtoX(aut);
+    RunStubXX(aut);
   }
 };
 
@@ -1048,60 +1024,21 @@ class IC2000TrainB : public LayoutSchedule {
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
-
-    StopAndReverseAtStub(Stub_YYA2);
-    //RunXtoY(aut);
+    RunXtoY(aut);
     {
       WithRouteLock l(this, &route_lock_YY);
+
+      AddDirectBlockTransition(Block_A460, Stub_YYA2, &g_yy_entry_free);
+      SwitchTurnout(Turnout_YYW1.b.magnet(), false);
+      StopAndReverseAtStub(Stub_YYA2);
+
       AddDirectBlockTransition(Stub_YYA2, // TODO: add rev signal
                                Block_B352,
                                &g_yy_entry_free);
     }
-    {
-      WithRouteLock l(this, &route_lock_XX);
-      AddDirectBlockTransition(Block_B352, Block_XXB2, &g_xx_entry_free);
 
-      StopAndReverseAtStub(Block_XXB2);
-      AddDirectBlockTransition(Block_XXB2.rev_signal,
-                               Block_A451, &g_xx_entry_free);
-    }
-
-    AddEagerBlockTransition(Block_A451, Block_A460);
-
-    {
-      WithRouteLock l(this, &route_lock_YY);
-      AddDirectBlockTransition(Block_A460, Stub_YYA2, &g_yy_entry_free);
-      SwitchTurnout(Turnout_YYW1.b.magnet(), false);
-    }
-
-    /*    RunB108_to_A240(aut);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), false);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), true);
-
-    {
-      WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(Block_A217, Block_A200, &w217_from217,
-                                 &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
-
-      AddBlockTransitionOnPermit(Block_A317, Block_A200, &w217_from317,
-                                 &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCross);
-    }
-    
-    AddDirectBlockTransition(Block_A200, Block_XXA2, &g_xxw2_free, true);
-    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCross);
-    StopAndReverseAtStub(Block_XXA2);
-    AddDirectBlockTransition(Block_XXA2.rev_signal, Block_B108);
-    SwitchTurnout(DKW_XXW2.b.magnet(), MovableDKW::kDKWStateCurved);
-    */
-
+    RunYtoX(aut);
+    RunStubXX(aut);
   }
 };
 
@@ -1122,7 +1059,7 @@ IC2000Train train_ice("ICE", MMAddress(2), 16);
 IC2000TrainB train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
 IC2000Train train_ice2("ICE2", MMAddress(2), 25);
 IC2000Train train_re465("Re465", DccShortAddress(47), 25);
-IC2000Train train_icn("ICN", DccShortAddress(50), 18);
+IC2000Train train_icn("ICN", DccShortAddress(50), 13);
 
 
 
