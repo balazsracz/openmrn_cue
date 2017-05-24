@@ -16,6 +16,7 @@ GPIO_PIN(SW2, GpioInputPU, F, 0);
 GPIO_PIN(BUT0, GpioInputPU, D, 0);
 GPIO_PIN(BUT1, GpioInputPU, D, 1);
 GPIO_PIN(BUT2, GpioInputPU, D, 2);
+GPIO_PIN(BUT3, GpioInputPU, D, 3);
 
 GPIO_PIN(LED_RED, LedPin, F, 1);
 GPIO_PIN(LED_GREEN, LedPin, F, 3);
@@ -40,15 +41,16 @@ GPIO_PIN(RAILCOM_TRIGGER, GpioOutputSafeHigh, D, 6);
 
 GPIO_HWPIN(RAILCOM_CH1, GpioHwPin, B, 0, U1RX, UART);
 
-typedef GpioInitializer<                          //
-    SW1_Pin, SW2_Pin,                             //
-    LED_RED_Pin, LED_GREEN_Pin, LED_BLUE_RAW_Pin, //
-    BUT0_Pin, BUT1_Pin, BUT2_Pin,                 //
-    USB1_Pin, USB2_Pin,                           //
-    UART0RX_Pin, UART0TX_Pin,                     //
-    BOOSTER_H_Pin, BOOSTER_L_Pin,                 //
-    RAILCOM_TRIGGER_Pin, RAILCOM_CH1_Pin,         //
-    CAN0RX_Pin, CAN0TX_Pin> GpioInit;
+typedef GpioInitializer<                           //
+    SW1_Pin, SW2_Pin,                              //
+    LED_RED_Pin, LED_GREEN_Pin, LED_BLUE_RAW_Pin,  //
+    BUT0_Pin, BUT1_Pin, BUT2_Pin, BUT3_Pin,        //
+    USB1_Pin, USB2_Pin,                            //
+    UART0RX_Pin, UART0TX_Pin,                      //
+    BOOSTER_H_Pin, BOOSTER_L_Pin,                  //
+    RAILCOM_TRIGGER_Pin, RAILCOM_CH1_Pin,          //
+    CAN0RX_Pin, CAN0TX_Pin>
+    GpioInit;
 
 namespace TDebug {
 using Resync = DummyPin;
