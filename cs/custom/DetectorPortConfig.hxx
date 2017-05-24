@@ -83,7 +83,9 @@ CDI_GROUP_ENTRY(overcurrent, DetectorPortOvercurrent, Name("Short detector"), De
 CDI_GROUP_ENTRY(enable, DetectorPortEnable, Name("Enable"), Description("Configures events consumed to turn the port on or off."));
 CDI_GROUP_END();
 
-CDI_GROUP(DetectorTuningOptions, Name("Short circuit options"), Description("Advanced setting configuring the short curcuit detector."), FixedSize(48));
+CDI_GROUP(DetectorTuningOptions, Name("Detector options"), Description("Advanced setting configuring the detector."), FixedSize(48));
+CDI_GROUP_ENTRY(sensor_off_delay, openlcb::Uint16ConfigEntry, Name("Unoccupied delay (milliseconds)"), Description("Defines how much time after the last train leaving the block shall the unoccupied event be sent. If another train enters the block, the unoccupied event will never be sent (i.e., bounces shorter than this will be suppressed)."), Default(500));
+
 CDI_GROUP_ENTRY(init_straggle_delay, openlcb::Uint16ConfigEntry, Name("Straggled turn-on port delay (milliseconds)"), Description("Waits this many milliseconds between turning on each port."), Default(300));
 CDI_GROUP_ENTRY(init_static_delay, openlcb::Uint16ConfigEntry, Name("Global turn-on delay (milliseconds)"), Description("Waits this many milliseconds before turning on the first port."), Default(100));
 

@@ -58,6 +58,10 @@ class DetectorOptions : public DefaultConfigUpdateListener {
   uint16_t shortRetryDelay_;
 
   uint8_t turnonRetryCount_;
+  uint8_t isInitialized_{0}; // 1 when data is loaded.
+  
+  uint16_t sensorOffDelay_;
+
   
  private:
   UpdateAction apply_configuration(int fd, bool initial_load,
@@ -73,20 +77,24 @@ class DetectorOptions : public DefaultConfigUpdateListener {
     turnonRetryDelay_ = opts_.turnon_fast_retry_delay().read(fd);
 
     shortRetryDelay_ = opts_.short_retry_delay().read(fd);
+
+    sensorOffDelay_ = opts_.sensor_off_delay().read(fd);
+    isInitialized_ = 1;
     return UPDATED;
   }
 
   void factory_reset(int fd) override {
+    SET_PARAM_TO_DEFAULT(fd, opts_.sensor_off_delay);
     SET_PARAM_TO_DEFAULT(fd, opts_.init_straggle_delay);
     SET_PARAM_TO_DEFAULT(fd, opts_.init_static_delay);
     SET_PARAM_TO_DEFAULT(fd, opts_.turnon_fast_retry_count);
     SET_PARAM_TO_DEFAULT(fd, opts_.turnon_fast_retry_delay);
     SET_PARAM_TO_DEFAULT(fd, opts_.short_retry_delay);
   }
-  
+
  private:
-  const DetectorTuningOptions& opts_;
-  
+  const DetectorTuningOptions opts_;
+
   DISALLOW_COPY_AND_ASSIGN(DetectorOptions);
 };
 
@@ -106,8 +114,11 @@ class DetectorPort : public StateFlowBase {
         networkOccupancy_(0),
         commandedEnable_(0),
         networkEnable_(0),
-        isInitialTurnon_(0),
-        reqEnable_(0),
+        networkOccupancyKnown_(0),
+        networkOvercurrentKnown_(0),
+        seenOccupancyOn_(0),
+        seenOccupancyOff_(0),
+        isWaitingForLoop_(0),
         turnonTryCount_(0),
         node_(node),
         opts_(opts),
@@ -150,28 +161,41 @@ class DetectorPort : public StateFlowBase {
       // We have a short circuit. Stop the output.
       set_output_enable(false);
       killedOutputDueToOvercurrent_ = 1;
-      if (is_terminated()) {
-        start_flow(STATE(test_again));
+      if (isWaitingForLoop_) {
+        isWaitingForLoop_ = 0;
+        notify();
       }
     }
   }
 
   void set_occupancy(bool value) {
     sensedOccupancy_ = to_u(value);
-    send_event(node_, value ? eventOccupancyOn_ : eventOccupancyOff_);
+    if (value) {
+      seenOccupancyOn_ = 1;
+    } else {
+      seenOccupancyOff_ = 1;
+    }
+    if (isWaitingForLoop_) {
+      isWaitingForLoop_ = 0;
+      notify();
+    }
   }
 
   void set_network_occupancy(bool value) {
     networkOccupancy_ = to_u(value);
-    if (sensedOccupancy_ != networkOccupancy_) {
-      send_event(node_, sensedOccupancy_ ? eventOccupancyOn_ : eventOccupancyOff_);
+    if (isWaitingForLoop_) {
+      isWaitingForLoop_ = 0;
+      notify();
     }
   }
 
   void set_network_overcurrent(bool value) {
     networkOvercurrent_ = to_u(value);
-    if (is_terminated()) {
-      start_flow(STATE(test_again));
+    // TODO: maybe we should cancel some timer here, or attempt to go to the
+    // retry immediately.
+    if (isWaitingForLoop_) {
+      isWaitingForLoop_ = 0;
+      notify();
     }
   }
 
@@ -184,6 +208,10 @@ class DetectorPort : public StateFlowBase {
     if (!value) {
       // turn off
       set_output_enable(false);
+    }
+    if (isWaitingForLoop_) {
+      isWaitingForLoop_ = 0;
+      notify();
     }
   }
 
@@ -213,10 +241,14 @@ class DetectorPort : public StateFlowBase {
         st = openlcb::to_event_state(networkEnable_);
         break;
       case OVERCURRENT_BIT:
-        st = openlcb::to_event_state(killedOutputDueToOvercurrent_);
+        if (networkOvercurrentKnown_) {
+          st = openlcb::to_event_state(killedOutputDueToOvercurrent_);
+        }
         break;
       case OCCUPANCY_BIT:
-        st = openlcb::to_event_state(networkOccupancy_);
+        if (networkOccupancyKnown_) {
+          st = openlcb::to_event_state(networkOccupancy_);
+        }
         break;
     };
     if (!(registry_entry.user_arg & ARG_ON)) {
@@ -234,13 +266,7 @@ class DetectorPort : public StateFlowBase {
     ARG_ON = 16,
   };
 
-  /// How much do we wait between retrying shorted outputs. This also defines
-  /// how long we wait after enabling an output to see if it shorted.
-  static const int SHORT_RETRY_WAIT_MSEC = 300;
-  /// Number of times we try to enable an output and find it shorted before
-  /// declaring the output shorted.
-  static const int SHORT_RETRY_COUNT = 3;
-
+  // Converts a bool to an unsigned:1 type.
   unsigned to_u(bool b) { return b ? 1 : 0; }
 
   // We need to persistently store the following information per port:
@@ -254,7 +280,7 @@ class DetectorPort : public StateFlowBase {
   // - if we seem to be going into a short circuit problem with this port
   //   (though not 100% sure how we should be using that information). Maybe
   //   also when we have disabled this port due to overcurrent.
-  
+
   /// @param value is true if the output should be provided with power, false
   /// if the output should have no power.
   void set_output_enable(bool value) {
@@ -266,16 +292,23 @@ class DetectorPort : public StateFlowBase {
   }
 
   Action init_wait() {
-    isInitialTurnon_ = 1;
-    int init_delay_msec =
-        cfg_.initStaticDelay_ + channel_ * cfg_.initStraggleDelay_;
+    if (!opts_.isInitialized_) {
+      return sleep_and_call(&timer_, MSEC_TO_NSEC(5), STATE(init_wait));
+    }
+    // TODO: make the decision here whether we will turn on this port initially
+    // or rather not because it's either persistently turned off or we we know
+    // there is a pending short. Also load the saved state of whether the
+    // output was turned off. For a pending short move after the turnon delay
+    // to the short_wait_for_retry state.
+    networkEnable_ = 1;
+    int init_delay_msec = int(opts_.initStaticDelay_) +
+                          int(channel_) * int(opts_.initStraggleDelay_);
     return sleep_and_call(&timer_, MSEC_TO_NSEC(init_delay_msec),
                           STATE(init_try_turnon));
   }
 
   Action init_try_turnon() {
     turnonTryCount_ = 0;
-    networkEnable_ = 1;
     return call_immediately(STATE(try_turnon));
   }
 
@@ -285,15 +318,34 @@ class DetectorPort : public StateFlowBase {
       return call_immediately(STATE(set_network_off));
     }
     set_output_enable(true);
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(cfg_.turnonRetryDelay_),
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(opts_.turnonRetryDelay_),
                           STATE(eval_turnon));
+  }
+
+  Action eval_turnon() {
+    if (!networkEnable_) {
+      // Someone turned off the output in the meantime.
+      return call_immediately(STATE(set_network_off));
+    }
+    if (killedOutputDueToOvercurrent_) {
+      // TODO: check this part again.
+      // Turnon failed. try again.
+      if (turnonTryCount_ < opts_.turnonRetryCount_) {
+        turnonTryCount_++;
+        return call_immediately(STATE(try_turnon));
+      }
+      // Turnon failed, no more tries left.
+      return call_immediately(STATE(produce_shorted));
+    }
+    // now: not overcurrent -- we're successfully on.
+    return call_immediately(STATE(produce_not_shorted));
   }
 
   Action set_network_off() {
     set_output_enable(false);  // this should be redundant
     return wait_and_call(STATE(network_off));
   }
-  
+
   Action network_off() {
     if (!networkEnable_) {
       // This is a terminal state.
@@ -302,84 +354,129 @@ class DetectorPort : public StateFlowBase {
     // Turn back on event came.
     return call_immediately(STATE(init_try_turnon));
   }
-  
-  Action eval_turnon() {
+
+  Action produce_shorted() {
+    auto n = STATE(short_wait_for_retry);
+    if (!networkOvercurrent_ || !networkOvercurrentKnown_) {
+      networkOvercurrent_ = 1;
+      networkOvercurrentKnown_ = 1;
+      return produce_event(eventOvercurrentOn_, n);
+    } else {
+      return call_immediately(n);
+    }
+  }
+
+  Action produce_not_shorted() {
+    auto n = STATE(eval_normal_state);
+    if (networkOvercurrent_ || !networkOvercurrentKnown_) {
+      networkOvercurrent_ = 0;
+      networkOvercurrentKnown_ = 1;
+      return produce_event(eventOvercurrentOff_, n);
+    } else {
+      return call_immediately(n);
+    }
+  }
+
+  Action short_wait_for_retry() {
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(opts_.shortRetryDelay_),
+                          STATE(try_turnon));
+  }
+
+  // When the track is normally on, and we're doing occupancy sensing, this
+  // state checks if we need to send out any event or start any timer, else
+  // drops into a wait state.
+  Action eval_normal_state() {
+    if (killedOutputDueToOvercurrent_) {
+      turnonTryCount_ = 1;  // already seen a short once
+      return sleep_and_call(&timer_, MSEC_TO_NSEC(opts_.turnonRetryDelay_),
+                            STATE(try_turnon));
+    }
     if (!networkEnable_) {
       // Someone turned off the output in the meantime.
       return call_immediately(STATE(set_network_off));
     }
+    if (!networkOccupancyKnown_) {
+      return call_immediately(STATE(produce_occupancy));
+    }
+    if (networkOccupancy_ != sensedOccupancy_) {
+      // We have a change in occupancy.
+      seenOccupancyOff_ = 0;
+      seenOccupancyOn_ = 0;
+      if (sensedOccupancy_) {
+        // No delay in going to occupied.
+        return call_immediately(STATE(produce_occupancy));
+      } else {
+        // Block release delay / debouncer.
+        return sleep_and_call(&timer_, MSEC_TO_NSEC(opts_.sensorOffDelay_),
+                              STATE(sensor_debounce_done));
+      }
+    }
+    isWaitingForLoop_ = 1;
+    return wait_and_call(STATE(delay_normal));
+  }
+
+  // An interruptible wait state for the "normal" eval loop. When
+  // isWaitingForLoop_ == 1 then notify() will run a single evaluation loop.
+  Action delay_normal() {
+    // will be reset by the caller of notify too
+    isWaitingForLoop_ = 0;
+    return call_immediately(STATE(eval_normal_state));
+  }
+
+  // Sends off the occupancy event.
+  Action produce_occupancy() {
+    networkOccupancyKnown_ = 1;
+    networkOccupancy_ = sensedOccupancy_;
+    return produce_event(
+        sensedOccupancy_ ? eventOccupancyOn_ : eventOccupancyOff_,
+        STATE(eval_normal_state));
+  }
+
+  // When going inactive, this is called after the inactivity period expires.
+  Action sensor_debounce_done() {
     if (killedOutputDueToOvercurrent_) {
-      // Turnon failed. try again.
-      if (turnonTryCount_ < cfg_.shortRetryDelay_) {
-        turnonTryCount_++;
-        return call_immediately(STATE(try_turnon));
-      }
-      // Turnon failed, no more tries left.
-      if (!networkOvercurrent_ || isInitialTurnon_) {
-        networkOvercurrent_ = to_u(true);
-        isInitialTurnon_ = 0;
-        return produce_event(eventOvercurrentOn_);
-      }
-      // Network already knows we are in overcurrent -- Do nothing.
-      return call_immediately(STATE(test_again));
+      turnonTryCount_ = 1;  // already seen a short once
+      return sleep_and_call(&timer_, MSEC_TO_NSEC(opts_.turnonRetryDelay_),
+                            STATE(try_turnon));
     }
-    // now: not overcurrent -- we're successfully on.
-    if (networkOvercurrent_ || isInitialTurnon_) {
-      networkOvercurrent_ = to_u(false);
-      isInitialTurnon_ = 0;
-      return produce_event(eventOvercurrentOff_);
+    if (!networkEnable_) {
+      // Someone turned off the output in the meantime.
+      return call_immediately(STATE(set_network_off));
     }
-    return call_immediately(STATE(test_again));
+
+    if (seenOccupancyOn_) {
+      // failed the inactivity timer test. Do not produce the event.
+      return call_immediately(STATE(eval_normal_state));
+    }
+
+    return call_immediately(STATE(produce_occupancy));
   }
 
-  // Evaluates that the network-visible states are the same as the locally
-  // sensed state.
-  Action test_again() {
-    if (commandedEnable_) {
-      turnonTryCount_ = 0;
-      // If we have track power, we produce occupancy events.
-      if (networkOccupancy_ != sensedOccupancy_) {
-        networkOccupancy_ = sensedOccupancy_;
-        if (sensedOccupancy_) {
-          return produce_event(eventOccupancyOn_);
-        } else {
-          return produce_event(eventOccupancyOff_);
-        }
-      }
-    }
-    if (reqEnable_) {
-      reqEnable_ = 0;
-      return call_immediately(STATE(init_try_turnon));
-    }
-    if (networkEnable_ && !turnonTryCount_ && killedOutputDueToOvercurrent_) {
-      return sleep_and_call(&timer_, MSEC_TO_NSEC(SHORT_RETRY_WAIT_MSEC),
-                            STATE(eval_turnon));
-    }
-    if (isInitialTurnon_) {
-      isInitialTurnon_ = 0;
-    }
-    return set_terminated();
-  }
-
-  Action produce_event(openlcb::EventId event_id) {
+  Action produce_event(openlcb::EventId event_id, Callback c) {
     h_.WriteAsync(node_, openlcb::Defs::MTI_EVENT_REPORT,
                   openlcb::WriteHelper::global(),
                   openlcb::eventid_to_buffer(event_id), n_.reset(this));
-    return wait_and_call(STATE(test_again));
+    return wait_and_call(c);
   }
 
   StateFlowTimer timer_{this};
   uint8_t channel_;
   /// set-once when overcurrent is detected.
   uint8_t killedOutputDueToOvercurrent_ : 1;
-  uint8_t sensedOccupancy_ : 1;     //< Current (debounced) sensor read
-  uint8_t networkOvercurrent_ : 1;  //< Current network state
-  uint8_t networkOccupancy_ : 1;    //< Current network state
-  uint8_t commandedEnable_ : 1;     //< Current output pin state
-  uint8_t networkEnable_ : 1;       //< Current network state
-  uint8_t isInitialTurnon_ : 1;     //< true only for the first turnon try.
-  uint8_t
-      reqEnable_ : 1;  //< 1 if a network request came in to enable the output.
+  uint8_t sensedOccupancy_ : 1;          //< Current (debounced) sensor read
+  uint8_t networkOvercurrent_ : 1;       //< Current network state
+  uint8_t networkOccupancy_ : 1;         //< Current network state
+  uint8_t commandedEnable_ : 1;          //< Current output pin state
+  uint8_t networkEnable_ : 1;            //< Current input network state
+  uint8_t networkOccupancyKnown_ : 1;    //< 1 if we've already produced it
+  uint8_t networkOvercurrentKnown_ : 1;  //< 1 if we've already produced it
+  /// sticky bit set to 1 when sensed occupancy switches to true
+  uint8_t seenOccupancyOn_ : 1;
+  /// sticky bit set to 1 when sensed occupancy switches to false
+  uint8_t seenOccupancyOff_ : 1;
+  /// 1 if the state flow is waiting in delay_normal state and can be notified
+  /// to wake up.
+  uint8_t isWaitingForLoop_ : 1;
 
   /*
   uint8_t reqOccupancyOn_ : 1;      //< produce event occ ON
