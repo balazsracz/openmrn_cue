@@ -3,6 +3,8 @@
 import xml.etree.ElementTree as ET
 import sys
 import re
+import glob
+import os
 
 FLAGS_purge_all = True
 
@@ -1013,7 +1015,26 @@ def main():
     print(("Usage: %s jmri-infile.xml jmri-outfile.xml [skiptable]" % sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
-  xml_tree = ET.parse(sys.argv[1])
+  infilename = sys.argv[1]
+  outfilename = ""
+  symlink = None
+  if not infilename.endswith(".xml"):
+    inlist = glob.glob(infilename + "-*.xml")
+    if not inlist:
+      print(("Could not find input file %s" % sys.argv[0]), file=sys.stderr)
+      sys.exit(1)
+    inlist.sort()
+    infilename = inlist[0]
+    m = re.match('.*-([0-9]+)[.]xml$', infilename)
+    if m:
+      num = int(m.group(1)) - 1
+      outfilename = "%s-%02d.xml" % (sys.argv[1], num)
+      symlink = sys.argv[1] + ".latest.xml"
+  if len(sys.argv) > 2:
+    outfilename = sys.argv[2]
+  print(("infile %s outfile %s" % (infilename, outfilename)), file=sys.stderr)
+
+  xml_tree = ET.parse(infilename)
   root = xml_tree.getroot()
   sensor_tree_root = ReadVariableFile()
   ParseAllSensors(sensor_tree_root)
@@ -1037,8 +1058,14 @@ def main():
   else:
     print("Skipping panel table.")
   print("number of sensors: %d" % len(all_sensors))
-  xml_tree.write(sys.argv[2])
-
+  xml_tree.write(outfilename)
+  if symlink:
+    try:
+      os.remove(symlink)
+    except:
+      pass
+    os.symlink(outfilename, symlink)
+    print("Created symlink %s -> %s." % (symlink, outfilename))
 
 
 main()
