@@ -264,6 +264,11 @@ class CtrlTrackInterface {
   CtrlTrackInterface *binding() const { return binding_; }
 
   bool Bind(CtrlTrackInterface *other) {
+    if (binding_ != nullptr) {
+      Debug("Changing binding on interface on %s from %s to %s.", name_.c_str(),
+            binding_->name_.c_str(), other->name_.c_str());
+    }
+
     binding_ = other;
     other->binding_ = this;
     return true;
@@ -275,6 +280,7 @@ class CtrlTrackInterface {
   }
   
   bool Validate() {
+    if (has_binding_error_) return false;
     if (!binding_) {
       Debug("Unbound interface on %s.", name_.c_str());
       return false;
@@ -291,6 +297,10 @@ class CtrlTrackInterface {
 
   // The other interface connected to this track end.
   CtrlTrackInterface *binding_;
+
+  // Whether we experienced a previous binding error that needs to be told the
+  // validation.
+  bool has_binding_error_{false};
 };
 
 void SimulateOccupancy(Automata *aut, Automata::LocalVariable *sim_occ,
