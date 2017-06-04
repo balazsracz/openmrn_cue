@@ -66,7 +66,7 @@ EventBasedVariable estop_nopwr(&brd, "estop", 0x010000000000FFFFULL,
                                0x010000000000FFFEULL, 7, 30, 0);
 
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
-// NativeIO n8(0x28);
+//NativeIO n9(0x29);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
 
 /*StateRef StGreen(2);
@@ -315,7 +315,7 @@ PhysicalSignal XXA2(&bc.In6, &bc.Rel0, &signal_XXA2_main.signal,
 PhysicalSignal XXA3(&bc.In7, &bc.Rel1, &signal_XXA3_main.signal,
                     &signal_XXA3_adv.signal, &signal_XXB3_main.signal,
                     &signal_XXB3_adv.signal,
-                    nullptr, nullptr); 
+                    nullptr, nullptr);
 */
 
 int next_temp_bit = 480;
@@ -497,195 +497,177 @@ MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 
 
-MagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &bc.ActBrownGrey,
-                      &bc.ActBrownBrown, MovableTurnout::kThrown);
-StandardMovableTurnout Turnout_YYW1(&brd,
-                                    logic->Allocate("YY.W1", 40),
-                                    &Magnet_YYW1);
-TurnoutWrap TYYW1(&Turnout_YYW1.b, kPointToThrown);
-
-
-/*
-MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &be.ActOraGreen,
-                      &be.ActOraRed, MovableTurnout::kClosed);
+MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &bb.ActBrownGrey,
+                      &bb.ActBrownBrown, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_XXW1(&brd,
                                     logic->Allocate("XX.W1", 40),
                                     &Magnet_XXW1);
-TurnoutWrap TXXW1(&Turnout_XXW1.b, kClosedToPoint);
+TurnoutWrap TXXW1(&Turnout_XXW1.b, kThrownToPoint);
 
-MagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &be.ActBlueBrown,
-                      &be.ActBlueGrey, MovableDKW::kDKWStateCross);
-StandardMovableDKW DKW_XXW2(&brd, logic->Allocate("XX.W2", 64),
-                            &Magnet_XXW2);
+CoupledMagnetDef Magnet_XXW2(&g_magnet_aut, "XX.W2", &Magnet_XXW1, true);
+StandardMovableTurnout Turnout_XXW2(&brd,
+                                    logic->Allocate("XX.W2", 40),
+                                    &Magnet_XXW2);
+TurnoutWrap TXXW2(&Turnout_XXW2.b, kClosedToPoint);
 
-MagnetDef Magnet_XXW3(&g_magnet_aut, "XX.W3", &bc.ActBrownGrey,
-                      &bc.ActBrownBrown, MovableTurnout::kThrown);
-StandardMovableTurnout Turnout_XXW3(&brd, logic->Allocate("XX.W3", 40),
-                                    &Magnet_XXW3);
-TurnoutWrap TXXW3(&Turnout_XXW3.b, kThrownToPoint);
-
-MagnetDef Magnet_XXW4(&g_magnet_aut, "XX.W4", &bc.ActOraGreen,
-                      &bc.ActOraRed, MovableTurnout::kClosed);
-StandardMovableTurnout Turnout_XXW4(&brd, logic->Allocate("XX.W4", 40),
-                                    &Magnet_XXW4);
-TurnoutWrap TXXW4(&Turnout_XXW4.b, kPointToClosed);
-*/
-/*
-MagnetDef Magnet_W406(&g_magnet_aut, "W406", &bc.ActBlueGrey,
-                      &be.ActBlueBrown, MovableTurnout::kClosed);
-StandardMovableTurnout Turnout_W406(&brd, logic->Allocate("W406", 40),
-                                    &Magnet_W406);
-TurnoutWrap TW406(&Turnout_W406.b, kThrownToPoint);
-*/
-
-/*
-MagnetDef Magnet_W109(&g_magnet_aut, "W109", &bb.ActGreenGreen,
+MagnetDef Magnet_XXW3(&g_magnet_aut, "XX.W3", &bb.ActGreenGreen,
                       &bb.ActGreenRed, MovableTurnout::kClosed);
-StandardMovableTurnout Turnout_W109(&brd, logic->Allocate("W109", 40),
-                                    &Magnet_W109);
-TurnoutWrap TW109(&Turnout_W109.b, kClosedToPoint);
+StandardMovableTurnout Turnout_XXW3(&brd,
+                                    logic->Allocate("XX.W3", 40),
+                                    &Magnet_XXW3);
+TurnoutWrap TXXW3(&Turnout_XXW3.b, kPointToClosed);
 
-MagnetDef Magnet_W209(&g_magnet_aut, "W209", &bb.ActOraRed,
-                      &bb.ActOraGreen, MovableDKW::kDKWStateCurved);
-StandardMovableDKW DKW_W209(&brd, logic->Allocate("W209", 64),
-                            &Magnet_W209);
+MagnetDef Magnet_XXW4(&g_magnet_aut, "XX.W4", &bb.ActOraGreen,
+                      &bb.ActOraRed, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_XXW4(&brd,
+                                    logic->Allocate("XX.W4", 40),
+                                    &Magnet_XXW4);
+TurnoutWrap TXXW4(&Turnout_XXW4.b, kPointToThrown);
 
-MagnetDef Magnet_W116(&g_magnet_aut, "W116", &bb.ActBlueGrey,
+
+CoupledMagnetDef Magnet_XXW5(&g_magnet_aut, "XX.W5", &Magnet_XXW3, false);
+StandardMovableTurnout Turnout_XXW5(&brd,
+                                    logic->Allocate("XX.W5", 40),
+                                    &Magnet_XXW5);
+TurnoutWrap TXXW5(&Turnout_XXW5.b, kPointToClosed);
+
+MagnetDef Magnet_XXW6(&g_magnet_aut, "XX.W6", &bb.ActBlueGrey,
                       &bb.ActBlueBrown, MovableTurnout::kClosed);
-StandardMovableTurnout Turnout_W116(&brd, logic->Allocate("W116", 40),
-                                    &Magnet_W116);
-TurnoutWrap TW116(&Turnout_W116.b, kPointToClosed);
-
-MagnetDef Magnet_W216(&g_magnet_aut, "W216", &bb.ActBrownBrown,
-                      &bb.ActBrownGrey, MovableDKW::kDKWStateCross);
-StandardMovableDKW DKW_W216(&brd, logic->Allocate("W216", 64),
-                            &Magnet_W216);
-
-MagnetDef Magnet_W130(&g_magnet_aut, "W130", &ba.ActOraGreen,
-                      &ba.ActOraRed, MovableTurnout::kClosed);
-StandardMovableTurnout Turnout_W130(&brd, logic->Allocate("W130", 40),
-                                    &Magnet_W130);
-TurnoutWrap TW130(&Turnout_W130.b, kClosedToPoint);
-
-CoupledMagnetDef Magnet_W230(&g_magnet_aut, "W230", &Magnet_W130, false);
-StandardMovableTurnout Turnout_W230(&brd, logic->Allocate("W230", 40),
-                                    &Magnet_W230);
-TurnoutWrap TW230(&Turnout_W230.b, kClosedToPoint);
-
-MagnetDef Magnet_W231(&g_magnet_aut, "W231", &ba.ActBrownGrey,
-                      &ba.ActBrownBrown, MovableTurnout::kClosed);
-StandardMovableTurnout Turnout_W231(&brd, logic->Allocate("W231", 40),
-                                    &Magnet_W231);
-TurnoutWrap TW231(&Turnout_W231.b, kPointToClosed);
-*/
-
-/*
-StandardBlock Block_B108(&brd, &B108, logic, "B108");
-StandardBlock Block_B129(&brd, &B129, logic, "B129");
-StandardBlock Block_A240(&brd, &A240, logic, "A240");
-StandardBlock Block_A217(&brd, &A217, logic, "A217");
-StandardBlock Block_A317(&brd, &A317, logic, "A317");
-StandardBidirBlock Block_A200(&brd, &A200, B208_raw_detector, logic, "A200");
-
-StandardBidirBlock Block_A406(&brd, &A406, B400_raw_detector, logic, "A406");
-StandardBlock Block_XXB1(&brd, &XXB1, logic, "XX.B1");
-StandardBlock Block_XXA2(&brd, &XXA2, logic, "XX.A2");
-StandardBlock Block_XXA3(&brd, &XXA3, logic, "XX.A3");
-
-*/
-
-PhysicalSignal YYA1(&bc.InOraRed, &bc.Rel0, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
-
-PhysicalSignal StubYYA1(&bc.InOraRed, &bc.Rel1, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
-
-PhysicalSignal StubYYA2(&bc.InOraGreen, &bc.Rel2, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
+StandardMovableTurnout Turnout_XXW6(&brd,
+                                    logic->Allocate("XX.W6", 40),
+                                    &Magnet_XXW6);
+TurnoutWrap TXXW6(&Turnout_XXW6.b, kClosedToPoint);
 
 
-PhysicalSignal A460(&bb.In4, &bb.Rel0, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
-
-PhysicalSignal B352(&bb.InBrownBrown, &bb.Rel1, nullptr, nullptr, nullptr,
+PhysicalSignal YYA1(&ba.InGreenYellow, &ba.Rel3, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal YYA2(&ba.InGreenGreen, &ba.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal YYA3(&ba.InBrownGrey, &ba.Rel1, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal YYA4(&ba.InBrownBrown, &ba.Rel0, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 
-PhysicalSignal A451(&bb.InOraRed, &bb.Rel2, nullptr, nullptr, nullptr,
+PhysicalSignal YYA13(&ba.InOraGreen, &bd.Rel1, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
-PhysicalSignal B341(&be.InOraGreen, &be.Rel2, nullptr, nullptr, nullptr,
+PhysicalSignal YYB22(&bd.InGreenGreen, &bd.Rel0, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 
-PhysicalSignal XXB2(&be.InBrownGrey, &be.Rel0, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
-PhysicalSignal StubXXB2(&be.InBrownGrey, &be.Rel1, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
+
+PhysicalSignal A431(&bd.InBrownBrown, &bd.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal B339(&bc.InOraGreen, &bc.Rel0, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
 
-StandardBlock Block_YYA1(&brd, &YYA1, logic, "YY.A1");
-StubBlock Stub_YYA1(&brd, &StubYYA1, &bc.InOraRed, logic, "YY.A1E");
+PhysicalSignal A441(&bc.InOraRed, &bc.Rel1, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal B349(&bc.InGreenGreen, &bc.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
-StubBlock Stub_YYA2(&brd, &StubYYA2, nullptr, logic, "YY.A2");
+PhysicalSignal A461(&bb.In4, &bb.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal B369(&bb.InBrownBrown, &bb.Rel1, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
+
+PhysicalSignal XXB1(&be.InBrownBrown, &be.Rel0, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal XXB2(&be.InBrownGrey, &be.Rel1, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr); //#
+PhysicalSignal XXB4(&be.InBrownGrey, &be.Rel3, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr); //#
+
+
+StubBlock Stub_XXB1(&brd, &XXB1, nullptr, logic, "XX.B1");
+StubBlock Stub_XXB2(&brd, &XXB2, nullptr, logic, "XX.B2");
+StubBlock Stub_XXB3(&brd, &XXB3, nullptr, logic, "XX.B3");
+StubBlock Stub_XXB4(&brd, &XXB4, nullptr, logic, "XX.B4");
+
+StandardBlock Block_A461(&brd, &A461, logic, "A461");
+StandardBlock Block_B369(&brd, &B369, logic, "B369");
 
 StandardFixedTurnout Turnout_W360(&brd, logic->Allocate("W360", 40), FixedTurnout::TURNOUT_THROWN);
 TurnoutWrap TW360(&Turnout_W360.b, kClosedToPoint);
 
-StandardFixedTurnout Turnout_W341(&brd, logic->Allocate("W341", 40), FixedTurnout::TURNOUT_THROWN);
-TurnoutWrap TW341(&Turnout_W341.b, kPointToThrown);
 
-StandardBlock Block_A451(&brd, &A451, logic, "A451");
-StandardBlock Block_A460(&brd, &A460, logic, "A460");
+MagnetDef Magnet_W349(&g_magnet_aut, "W349", &bc.ActOraGreen,
+                      &bc.ActOraRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_W349(&brd, logic->Allocate("W349", 40), &Magnet_W349);
+TurnoutWrap TW349(&Turnout_W349.b, kPointToClosed);
 
-StandardBlock Block_B352(&brd, &B352, logic, "B352");
-StandardBlock Block_B341(&brd, &B341, logic, "B341");
+StandardBlock Block_A441(&brd, &A441, logic, "A441");
+StandardBlock Block_A431(&brd, &A431, logic, "A431");
+
+StandardBlock Block_B349(&brd, &B349, logic, "B349");
+StandardBlock Block_B339(&brd, &B339, logic, "B339");
 
 
-StandardBlock Block_XXB2(&brd, &XXB2, logic, "XX.B2");
-StubBlock Stub_XXB2(&brd, &StubXXB2, &be.InBrownGrey, logic, "XX.B2E");
+StandardBlock Block_YYA13(&brd, &YYA13, logic, "YY.A13");
+StandardBlock Block_YYB22(&brd, &YYB22, logic, "YY.B22");
 
-bool ignored1 = BindPairs({{Block_XXB2.side_b(), Stub_XXB2.entry()},
-    {Turnout_YYW1.b.side_closed(), Stub_YYA2.entry()}});
+MagnetDef Magnet_YYW4(&g_magnet_aut, "YY.W4", &ba.ActBlueGrey,
+                      &ba.ActBlueBrown, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_YYW4(&brd, logic->Allocate("YY.W4", 40), &Magnet_YYW4);
+TurnoutWrap TYYW4(&Turnout_YYW4.b, kClosedToPoint);
+
+MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen,
+                      &ba.ActOraRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_YYW6(&brd, logic->Allocate("YY.W6", 40), &Magnet_YYW6);
+TurnoutWrap TYYW6(&Turnout_YYW6.b, kPointToClosed);
+
+MagnetDef Magnet_YYW7(&g_magnet_aut, "YY.W7", &ba.ActGreenGreen,
+                      &ba.ActGreenRed, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_YYW7(&brd, logic->Allocate("YY.W7", 40), &Magnet_YYW7);
+TurnoutWrap TYYW7(&Turnout_YYW7.b, kPointToClosed);
+
+MagnetDef Magnet_YYW8(&g_magnet_aut, "YY.W8", &ba.ActBrownGrey,
+                      &ba.ActBrownBrown, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_YYW8(&brd, logic->Allocate("YY.W8", 40), &Magnet_YYW8);
+TurnoutWrap TYYW8(&Turnout_YYW8.b, kPointToClosed);
+
+
+StubBlock Stub_YYA1(&brd, &YYA1, nullptr, logic, "YY.A1");
+StubBlock Stub_YYA2(&brd, &YYA2, nullptr, logic, "YY.A2");
+StubBlock Stub_YYA3(&brd, &YYA3, nullptr, logic, "YY.A3");
+StubBlock Stub_YYA4(&brd, &YYA4, nullptr, logic, "YY.A4");
+
+bool ignored1 = BindPairs({
+    //
+    {Stub_XXB4.entry(), Turnout_XXW6.b.side_thrown()},
+    {Stub_XXB2.entry(), Turnout_XXW4.b.side_closed()},
+    {Turnout_XXW5.b.side_thrown(), Turnout_XXW3.b.side_thrown()},
+    {Turnout_XXW1.b.side_closed(), Turnout_XXW2.b.side_thrown()},
+    {Turnout_YYW6.b.side_thrown(), Stub_YYA1.entry()},
+    {Turnout_YYW7.b.side_thrown(), Stub_YYA2.entry()},
+    {Turnout_YYW8.b.side_thrown(), Stub_YYA3.entry()} //
+});
 
 bool ignored2 = BindSequence(
-    Block_XXB2.side_a(),
-    {&TW341, &Block_A451, &Block_A460, &TW360, &TYYW1, &Block_YYA1}, Stub_YYA1.entry());
+    Stub_XXB3.entry(),
+    {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &TW349, &Block_A441,
+     &Block_A431, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
+    Stub_YYA4.entry());
+
+bool ignored4 = BindSequence(
+    Turnout_YYW4.b.side_thrown(),
+    {&Block_YYB22, &Block_B339, &Block_B349},
+    Turnout_W349.b.side_thrown());
+
 
 bool ignored3 = BindSequence(
     Turnout_W360.b.side_thrown(),
-    {&Block_B352, &Block_B341},
-    Turnout_W341.b.side_closed());
+    {&Block_B369, &TXXW2, &TXXW3, &TXXW4},
+    Stub_XXB1.entry());
 
 
-auto& Block_EntryToXX = Block_B352;
-auto& Block_EntryToYY = Block_A460;
-
-/*
-#define CYCLE {&Block_B108, &Block_B129, &Block_A240, &Block_A217, \
-        &Block_A406, &Block_XXB1, &Block_B108}
-*/
+auto& Block_EntryToXX = Block_B369;
+auto& Block_EntryToYY = Block_YYA13;
 
 
-/*
-bool ignored1 =
-    BindSequence(Turnout_W109.b.side_thrown(),
-                 {&DKW_W209.c2, &Block_A406, &TXXW4, &Block_XXB1, &TXXW1,
-                  &Block_B108, &TW109, &TW116, &Block_B129, &TW130, &Block_A240,
-                  &TW231, &TW230, &Block_A217, &DKW_W216.c1, &DKW_W209.c1,
-                  &Block_A200, &DKW_XXW2.c1, &Block_XXA2, &TXXW3},
-                 Turnout_XXW4.b.side_thrown());
 
-bool ignored2 =
-    BindSequence(Turnout_W231.b.side_thrown(), {&Block_A317, &DKW_W216.c2},
-                 Turnout_W116.b.side_thrown());
-
-bool ignored3 =
-    BindSequence(Turnout_XXW1.b.side_thrown(), {&DKW_XXW2.c2, &Block_XXA3},
-                 Turnout_XXW3.b.side_closed());
-
-bool ignored4 = BindPairs({
-    {Turnout_W230.b.side_thrown(), Turnout_W130.b.side_thrown()}
-  });
-*/
 
 
 DefAut(display, brd, {
@@ -903,17 +885,48 @@ void IfXXW2Free(Automata::Op* op) {
 auto g_xxw2_free = NewCallback(&IfXXW2Free);
 */
 
-void IfXXEntryFree(Automata::Op* op) {
+void IfXX12EntryFree(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*Turnout_W341.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW2.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW4.b.any_route()));
 }
-auto g_xx_entry_free = NewCallback(&IfXXEntryFree);
+auto g_xx12_entry_free = NewCallback(&IfXX12EntryFree);
+
+void IfXX34EntryFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW2.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW6.b.any_route()));
+}
+auto g_xx34_entry_free = NewCallback(&IfXX34EntryFree);
+
+void IfXX12ExitFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW2.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW4.b.any_route()));
+}
+auto g_xx12_exit_free = NewCallback(&IfXX12ExitFree);
+
+void IfXX34ExitFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW6.b.any_route()));
+}
+auto g_xx34_exit_free = NewCallback(&IfXX34ExitFree);
+
+
 
 void IfYYEntryFree(Automata::Op* op) {
   IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*Turnout_W360.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_YYW6.b.any_route()));
 }
 auto g_yy_entry_free = NewCallback(&IfYYEntryFree);
+
+void If355Free(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_W360.b.any_route()));
+}
+auto g_355_free = NewCallback(&If355Free);
 
 
 class LayoutSchedule : public TrainSchedule {
@@ -931,28 +944,45 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(Block_B108, Block_B129);
     AddEagerBlockTransition(Block_B129, Block_A240);
     }*/
-  
+
 
   void RunXtoY(Automata* aut) {
-    AddEagerBlockTransition(Block_A451, Block_A460);
+    AddDirectBlockTransition(Block_A461, Block_A441, &g_355_free);
+    AddEagerBlockTransition(Block_A441, Block_A431);
+    AddEagerBlockTransition(Block_A431, Block_YYA13);
   }
   void RunYtoX(Automata* aut) {
-    AddEagerBlockTransition(Block_B352, Block_B341);
+    AddEagerBlockTransition(Block_YYB22, Block_B339);
+    AddEagerBlockTransition(Block_B339, Block_B349);
+    AddDirectBlockTransition(Block_B349, Block_B369, &g_355_free);
   }
 
   void RunStubXX(Automata* aut) {
     WithRouteLock l(this, &route_lock_XX);
-    AddDirectBlockTransition(Block_B341, Block_XXB2, &g_xx_entry_free);
+    AddDirectBlockTransition(Block_B369, Stub_XXB2, &g_xx12_entry_free);
+    SwitchTurnout(Turnout_XXW3.b.magnet(), false);
+    SwitchTurnout(Turnout_XXW4.b.magnet(), false);
 
-    StopAndReverseAtStub(Block_XXB2);
-    AddDirectBlockTransition(Block_XXB2.rev_signal, Block_A451,
-                             &g_xx_entry_free);
+    StopAndReverseAtStub(Stub_XXB2);
+    AddDirectBlockTransition(Stub_XXB2.b_.rev_signal, Block_A461,
+                             &g_xx12_exit_free);
+    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+  }
+
+  void RunStubYY(Automata* aut) {
+    WithRouteLock l(this, &route_lock_YY);
+    AddDirectBlockTransition(Block_YYA13, Stub_YYA2, &g_yy_entry_free);
+    StopAndReverseAtStub(Stub_YYA2);
+
+    AddDirectBlockTransition(Stub_YYA2.b_.rev_signal,
+                             Block_YYB22,
+                             &g_yy_entry_free);
   }
 
   void RunCycle(Automata* aut) {
   /*
     RunB108_to_A240(aut);
-    
+
     AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
     SwitchTurnout(Turnout_W231.b.magnet(), false);
 
@@ -969,7 +999,7 @@ class LayoutSchedule : public TrainSchedule {
       SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
       SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCurved);
     }
-    
+
     AddEagerBlockTransition(Block_A406, Block_XXB1);
     AddDirectBlockTransition(Block_XXB1, Block_B108, &g_not_paused_condition);
   */
@@ -979,7 +1009,7 @@ class LayoutSchedule : public TrainSchedule {
   void RunAltCycle(Automata* aut) {
   }
 
-  
+
   ByteImportVariable stored_speed_;
 };
 
@@ -1001,17 +1031,7 @@ class IC2000Train : public LayoutSchedule {
 
   void RunTransition(Automata* aut) OVERRIDE {
     RunXtoY(aut);
-    {
-      WithRouteLock l(this, &route_lock_YY);
-      AddDirectBlockTransition(Block_A460, Block_YYA1, &g_yy_entry_free);
-      SwitchTurnout(Turnout_YYW1.b.magnet(), true);
-      StopAndReverseAtStub(Block_YYA1);
-
-      AddDirectBlockTransition(Block_YYA1.rev_signal,
-                               Block_B352,
-                               &g_yy_entry_free);
-    }
-
+    RunStubYY(aut);
     RunYtoX(aut);
     RunStubXX(aut);
   }
@@ -1025,18 +1045,7 @@ class IC2000TrainB : public LayoutSchedule {
 
   void RunTransition(Automata* aut) OVERRIDE {
     RunXtoY(aut);
-    {
-      WithRouteLock l(this, &route_lock_YY);
-
-      AddDirectBlockTransition(Block_A460, Stub_YYA2, &g_yy_entry_free);
-      SwitchTurnout(Turnout_YYW1.b.magnet(), false);
-      StopAndReverseAtStub(Stub_YYA2);
-
-      AddDirectBlockTransition(Stub_YYA2, // TODO: add rev signal
-                               Block_B352,
-                               &g_yy_entry_free);
-    }
-
+    RunStubYY(aut);
     RunYtoX(aut);
     RunStubXX(aut);
   }
