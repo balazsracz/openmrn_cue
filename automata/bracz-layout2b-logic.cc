@@ -485,12 +485,38 @@ void SimpleFollowStrategy(
 
 EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm", 1024 / 2);
 
-EventBlock l2(&brd, BRACZ_LAYOUT | 0xD000, "logic");
-EventBlock l1(&brd, BRACZ_LAYOUT | 0xE000, "logic");
-EventBlock l3(&brd, BRACZ_LAYOUT | 0xB000, "logic");
+EventBlock l1(&brd, BRACZ_LAYOUT | 0xD000, "logic");
+EventBlock l2(&brd, BRACZ_LAYOUT | 0xE000, "logic");
+EventBlock l3(&brd, BRACZ_LAYOUT | 0xF000, "logic");
 AllocatorPtr logic(new UnionAllocator({l1.allocator().get(), l2.allocator().get(), l3.allocator().get()}));
 const AllocatorPtr& logic2(logic);
 const AllocatorPtr& train_perm(perm.allocator());
+
+FlipFlopAutomata xx_flipflop(&brd, "xx_flipflop", logic, 32);
+FlipFlopClient xx_tob1("to_B1", &xx_flipflop);
+FlipFlopClient xx_tob2("to_B2", &xx_flipflop);
+FlipFlopClient xx_tob3("to_B3", &xx_flipflop);
+FlipFlopClient xx_tob4("to_B4", &xx_flipflop);
+
+FlipFlopAutomata xe_flipflop(&brd, "xe_flipflop", logic, 32);
+FlipFlopClient xe_fromb1("from_B1", &xe_flipflop);
+FlipFlopClient xe_fromb2("from_B2", &xe_flipflop);
+FlipFlopClient xe_fromb3("from_B3", &xe_flipflop);
+FlipFlopClient xe_fromb4("from_B4", &xe_flipflop);
+
+
+FlipFlopAutomata yy_flipflop(&brd, "yy_flipflop", logic, 32);
+FlipFlopClient yy_toa1("to_A1", &yy_flipflop);
+FlipFlopClient yy_toa2("to_A2", &yy_flipflop);
+FlipFlopClient yy_toa3("to_A3", &yy_flipflop);
+FlipFlopClient yy_toa4("to_A4", &yy_flipflop);
+
+FlipFlopAutomata ye_flipflop(&brd, "ye_flipflop", logic, 32);
+FlipFlopClient ye_froma1("from_A1", &ye_flipflop);
+FlipFlopClient ye_froma2("from_A2", &ye_flipflop);
+FlipFlopClient ye_froma3("from_A3", &ye_flipflop);
+FlipFlopClient ye_froma4("from_A4", &ye_flipflop);
+
 AllocatorPtr train_tmp(logic2->Allocate("train", 768));
 
 MagnetCommandAutomata g_magnet_aut(&brd, logic2);
@@ -575,10 +601,10 @@ PhysicalSignal XXB1(&be.InBrownBrown, &be.Rel0, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 PhysicalSignal XXB2(&be.InBrownGrey, &be.Rel1, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
-PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel2, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr); //#
-PhysicalSignal XXB4(&be.InBrownGrey, &be.Rel3, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr); //#
+PhysicalSignal XXB3(&be.In7, &be.Rel2, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal XXB4(&be.In6, &be.Rel3, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
 
 StubBlock Stub_XXB1(&brd, &XXB1, nullptr, logic, "XX.B1");
@@ -664,7 +690,9 @@ bool ignored3 = BindSequence(
 
 
 auto& Block_EntryToXX = Block_B369;
+auto& Block_ExitFromXX = Block_A461;
 auto& Block_EntryToYY = Block_YYA13;
+auto& Block_ExitFromYY = Block_YYB22;
 
 
 
@@ -860,13 +888,6 @@ uint64_t MMAddress(uint16_t addr) {
 }
 
 
-FlipFlopAutomata l240_flipflop(&brd, "l240_flipflop", logic, 32);
-FlipFlopClient l240_to217("to_217", &l240_flipflop);
-FlipFlopClient l240_to317("to_317", &l240_flipflop);
-
-FlipFlopAutomata w217_flipflop(&brd, "w217_flipflop", logic, 32);
-FlipFlopClient w217_from217("from_217", &w217_flipflop);
-FlipFlopClient w217_from317("from_317", &w217_flipflop);
 
 /*
 void IfDKW209Free(Automata::Op* op) {
@@ -959,24 +980,56 @@ class LayoutSchedule : public TrainSchedule {
 
   void RunStubXX(Automata* aut) {
     WithRouteLock l(this, &route_lock_XX);
-    AddDirectBlockTransition(Block_B369, Stub_XXB2, &g_xx12_entry_free);
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB2, &xx_tob2, &g_xx12_entry_free, false);
     SwitchTurnout(Turnout_XXW3.b.magnet(), false);
     SwitchTurnout(Turnout_XXW4.b.magnet(), false);
 
     StopAndReverseAtStub(Stub_XXB2);
-    AddDirectBlockTransition(Stub_XXB2.b_.rev_signal, Block_A461,
-                             &g_xx12_exit_free);
+
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB1, &xx_tob1, &g_xx12_entry_free, false);
+    SwitchTurnout(Turnout_XXW3.b.magnet(), false);
+    SwitchTurnout(Turnout_XXW4.b.magnet(), true);
+
+    StopAndReverseAtStub(Stub_XXB1);
+
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB3, &xx_tob3, &g_xx34_entry_free, false);
+    SwitchTurnout(Turnout_XXW3.b.magnet(), true);
+    SwitchTurnout(Turnout_XXW6.b.magnet(), false);
+
+    StopAndReverseAtStub(Stub_XXB3);
+    
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB4, &xx_tob4, &g_xx34_entry_free, false);
+    SwitchTurnout(Turnout_XXW3.b.magnet(), true);
+    SwitchTurnout(Turnout_XXW6.b.magnet(), true);
+
+    StopAndReverseAtStub(Stub_XXB4);
+
+    AddBlockTransitionOnPermit(Stub_XXB2.b_.rev_signal, Block_ExitFromXX,
+                               &xe_fromb2, &g_xx12_exit_free);
     SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+    AddBlockTransitionOnPermit(Stub_XXB1.b_.rev_signal, Block_ExitFromXX,
+                               &xe_fromb1, &g_xx12_exit_free);
+    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+    AddBlockTransitionOnPermit(Stub_XXB3.b_.rev_signal, Block_ExitFromXX,
+                               &xe_fromb3, &g_xx34_exit_free);
+    SwitchTurnout(Turnout_XXW5.b.magnet(), false);
+    AddBlockTransitionOnPermit(Stub_XXB4.b_.rev_signal, Block_ExitFromXX,
+                               &xe_fromb4, &g_xx34_exit_free);
+    SwitchTurnout(Turnout_XXW5.b.magnet(), false);
   }
 
   void RunStubYY(Automata* aut) {
     WithRouteLock l(this, &route_lock_YY);
-    AddDirectBlockTransition(Block_YYA13, Stub_YYA2, &g_yy_entry_free);
+    AddDirectBlockTransition(Block_EntryToYY, Stub_YYA2, &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW6.b.magnet(), false);
+    SwitchTurnout(Turnout_YYW7.b.magnet(), true);
+    
     StopAndReverseAtStub(Stub_YYA2);
 
     AddDirectBlockTransition(Stub_YYA2.b_.rev_signal,
-                             Block_YYB22,
+                             Block_ExitFromYY,
                              &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW4.b.magnet(), true);
   }
 
   void RunCycle(Automata* aut) {
@@ -1069,7 +1122,7 @@ IC2000TrainB train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
 IC2000Train train_ice2("ICE2", MMAddress(2), 25);
 IC2000Train train_re465("Re465", DccShortAddress(47), 25);
 IC2000Train train_icn("ICN", DccShortAddress(50), 13);
-
+IC2000Train train_bde44("BDe-4/4", DccShortAddress(38), 35);
 
 
 int main(int argc, char** argv) {
