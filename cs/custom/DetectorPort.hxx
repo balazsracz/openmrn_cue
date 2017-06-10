@@ -98,6 +98,8 @@ class DetectorOptions : public DefaultConfigUpdateListener {
   DISALLOW_COPY_AND_ASSIGN(DetectorOptions);
 };
 
+extern StoredBitSet* g_gpio_stored_bit_set;
+
 /// TODO:
 /// - add readout of event IDs from config
 /// - add config itself
@@ -292,6 +294,8 @@ class DetectorPort : public StateFlowBase {
   }
 
   Action init_wait() {
+    // Waits for the parallel running flow that loads the default settings from
+    // EEPROM.
     if (!opts_.isInitialized_) {
       return sleep_and_call(&timer_, MSEC_TO_NSEC(5), STATE(init_wait));
     }
