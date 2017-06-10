@@ -67,8 +67,16 @@ typedef DummyPin DetectRepeat;
 #include "utils/Debouncer.hxx"
 #include "custom/TivaGPIOProducerBit.hxx"
 #include "custom/TivaGPIOConsumer.hxx"
+#include "custom/TivaShortDetection.hxx"
 
 
+#define STANDALONE
+//#define ENABLE_HOST
+#define LOGTOSTDOUT
+
+#if !defined(ENABLE_HOST) && !defined(LOGTOSTDOUT)
+#define LOGTOSTDOUT
+#endif
 
 
 OVERRIDE_CONST(automata_init_backoff, 20000);
@@ -98,7 +106,7 @@ bracz_custom::HostClient host_client(stack.dg_service(), stack.node(), &can_hub1
 #endif
 
 extern "C" {
-#ifdef LOGTOSTDOUT
+#if defined(STANDALONE) || defined(LOGTOSTDOUT)
 
 Executor<1> stdout_exec("logger", 1, 1000);
 Service stdout_service(&stdout_exec);
@@ -142,14 +150,26 @@ typedef openlcb::PolledProducer<ToggleDebouncer<QuiesceDebouncer>,
                                 TivaGPIOProducerBit> TivaSwitchProducer;
 QuiesceDebouncer::Options opts(3);
 
-TivaSwitchProducer sw1(opts, EVENT_ID, EVENT_ID + 1, USR_SW1_Pin::GPIO_BASE,
-                       USR_SW1_Pin::GPIO_PIN);
+TivaSwitchProducer sw1(opts, BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,
+                       USR_SW1_Pin::GPIO_BASE, USR_SW1_Pin::GPIO_PIN);
 
-TivaSwitchProducer sw2(opts, EVENT_ID + 2, EVENT_ID + 3, USR_SW2_Pin::GPIO_BASE,
-                       USR_SW2_Pin::GPIO_PIN);
+TivaSwitchProducer sw2(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                       openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
+                       USR_SW2_Pin::GPIO_BASE, USR_SW2_Pin::GPIO_PIN);
 
-//TivaGPIOConsumer led_acc(BRACZ_LAYOUT | 4, BRACZ_LAYOUT | 5, io::AccPwrLed::GPIO_BASE, io::AccPwrLed::GPIO_PIN);
-//TivaGPIOConsumer led_go(BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,  io::GoPausedLed::GPIO_BASE, io::GoPausedLed::GPIO_PIN);
+TivaGPIOConsumer led_acc(BRACZ_LAYOUT | 4, BRACZ_LAYOUT | 5, io::AccPwrLed::GPIO_BASE, io::AccPwrLed::GPIO_PIN);
+TivaGPIOConsumer led_go(BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,  io::GoPausedLed::GPIO_BASE, io::GoPausedLed::GPIO_PIN);
+
+TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(stack.node(), BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
+openlcb::BitEventConsumer accpowerbit(&acc_on_off);
+
+AccessoryOvercurrentMeasurement<AccHwDefs> g_acc_short_detector(stack.service(), stack.node());
+
+extern "C" {
+void adc0_seq2_interrupt_handler(void) {
+  g_acc_short_detector.interrupt_handler();
+}
+}
 
 openlcb::RefreshLoop loop(stack.node(), {&sw1, &sw2});
 

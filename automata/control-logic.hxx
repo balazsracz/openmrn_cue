@@ -1316,22 +1316,26 @@ class StandardMovableDKW {
 class StubBlock {
  public:
   StubBlock(Board *brd, PhysicalSignal *physical,
-            GlobalVariable *entry_sensor_raw,
-            const AllocatorPtr& parent_alloc, const string &base_name,
-            int num_to_allocate = 192)
+            GlobalVariable *entry_sensor_raw, const AllocatorPtr &parent_alloc,
+            const string &base_name, int num_to_allocate = 192)
       : b_(brd, physical, parent_alloc, base_name, num_to_allocate),
-        fake_turnout_(FixedTurnout::TURNOUT_THROWN, b_.alloc_->Allocate("fake_turnout", 40, 8)),
-        entry_det_(b_.alloc_->Allocate("entry_det", 32, 8), entry_sensor_raw),
-        aut_fake_turnout_(name() + ".fake_turnout", brd, &fake_turnout_),
-        aut_entry_det_(name() + ".entry_det", brd, &entry_det_) {
-    BindSequence(fake_turnout_.side_thrown(),
-                 {&entry_det_, &b_},
-                 fake_turnout_.side_closed());
+        fake_turnout_(FixedTurnout::TURNOUT_THROWN,
+                      b_.alloc_->Allocate("fake_turnout", 40, 8)),
+        aut_fake_turnout_(name() + ".fake_turnout", brd, &fake_turnout_) {
+    if (entry_sensor_raw) {
+      entry_det_.reset(new StraightTrackWithRawDetector(
+          b_.alloc_->Allocate("entry_det", 32, 8), entry_sensor_raw));
+      BindSequence(fake_turnout_.side_thrown(), {entry_det_.get(), &b_},
+                   fake_turnout_.side_closed());
+      aut_entry_det_.reset(new StandardPluginAutomata(name() + ".entry_det",
+                                                      brd, entry_det_.get()));
+    } else {
+      BindSequence(fake_turnout_.side_thrown(), {&b_},
+                   fake_turnout_.side_closed());
+    }
   }
 
-  operator const SignalBlock&() const {
-    return b_.fwd_signal;
-  }
+  operator const SignalBlock &() const { return b_.fwd_signal; }
 
  public:
   virtual CtrlTrackInterface *entry() { return fake_turnout_.side_points(); }
@@ -1340,7 +1344,10 @@ class StubBlock {
   const GlobalVariable &route_in() const { return b_.route_in(); }
   const GlobalVariable &route_out() const { return b_.route_out(); }
   const GlobalVariable &detector() const { return b_.detector(); }
-  const GlobalVariable &entry_detector() const { return *entry_det_.simulated_occupancy_; }
+  const GlobalVariable &entry_detector() const {
+    assert(entry_det_.get());
+    return *entry_det_->simulated_occupancy_;
+  }
 
   /** Returns the basename of the block (not including path). */
   const string& base_name() {
@@ -1356,11 +1363,11 @@ class StubBlock {
   StandardBlock b_;
  private:
   FixedTurnout fake_turnout_;
-  StraightTrackWithRawDetector entry_det_;
+  std::unique_ptr<StraightTrackWithRawDetector> entry_det_;
 
  private:
   StandardPluginAutomata aut_fake_turnout_;
-  StandardPluginAutomata aut_entry_det_;
+  std::unique_ptr<StandardPluginAutomata> aut_entry_det_;
 
   DISALLOW_COPY_AND_ASSIGN(StubBlock);
 };
