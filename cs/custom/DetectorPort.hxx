@@ -128,7 +128,7 @@ class DetectorPort : public StateFlowBase {
             node, std::bind(&DetectorPort::event_report, this, sp::_1, sp::_2,
                             sp::_3),
             std::bind(&DetectorPort::get_event_state, this, sp::_1, sp::_2)) {
-    start_flow(STATE(init_wait));
+    start_flow(STATE(init_start));
     eventOccupancyOn_ = cfg.occupancy().occ_on().read(config_fd);
     eventOccupancyOff_ = cfg.occupancy().occ_off().read(config_fd);
     eventOvercurrentOn_ = cfg.overcurrent().over_on().read(config_fd);
@@ -163,10 +163,7 @@ class DetectorPort : public StateFlowBase {
       // We have a short circuit. Stop the output.
       set_output_enable(false);
       killedOutputDueToOvercurrent_ = 1;
-      if (isWaitingForLoop_) {
-        isWaitingForLoop_ = 0;
-        notify();
-      }
+      wakeup_normal_state();
     }
   }
 
@@ -177,32 +174,32 @@ class DetectorPort : public StateFlowBase {
     } else {
       seenOccupancyOff_ = 1;
     }
-    if (isWaitingForLoop_) {
-      isWaitingForLoop_ = 0;
-      notify();
-    }
+    wakeup_normal_state();
   }
 
   void set_network_occupancy(bool value) {
     networkOccupancy_ = to_u(value);
-    if (isWaitingForLoop_) {
-      isWaitingForLoop_ = 0;
-      notify();
+    if (networkOccupancy_ == sensedOccupancy_) {
+      // We write down this bit in case it prevents us from producing the same
+      // event when the timer expires.
+      g_gpio_stored_bit_set->set_bit(get_storage_base() + NETWORK_OCCUPANCY_OFS,
+                                     sensedOccupancy_).lock_and_flush();
+
     }
+    wakeup_normal_state();
   }
 
   void set_network_overcurrent(bool value) {
     networkOvercurrent_ = to_u(value);
     // TODO: maybe we should cancel some timer here, or attempt to go to the
     // retry immediately.
-    if (isWaitingForLoop_) {
-      isWaitingForLoop_ = 0;
-      notify();
-    }
+    wakeup_normal_state();
   }
 
   void set_network_enable(bool value) {
     networkEnable_ = to_u(value);
+    g_gpio_stored_bit_set->set_bit(get_storage_base() + NETWORK_ENABLE_OFS,
+                                   value).lock_and_flush();
     if (networkEnable_ && is_state(STATE(network_off))) {
       // wake up from terminal state
       notify();
@@ -211,10 +208,7 @@ class DetectorPort : public StateFlowBase {
       // turn off
       set_output_enable(false);
     }
-    if (isWaitingForLoop_) {
-      isWaitingForLoop_ = 0;
-      notify();
-    }
+    wakeup_normal_state();
   }
 
  private:
@@ -244,13 +238,13 @@ class DetectorPort : public StateFlowBase {
         break;
       case OVERCURRENT_BIT:
         if (networkOvercurrentKnown_) {
+          /// @TODO: this should look at a different bit here, probably the
+          /// stored state ofthe overcurrent bit.
           st = openlcb::to_event_state(killedOutputDueToOvercurrent_);
         }
         break;
       case OCCUPANCY_BIT:
-        if (networkOccupancyKnown_) {
-          st = openlcb::to_event_state(networkOccupancy_);
-        }
+        st = openlcb::to_event_state(networkOccupancy_);
         break;
     };
     if (!(registry_entry.user_arg & ARG_ON)) {
@@ -293,6 +287,15 @@ class DetectorPort : public StateFlowBase {
     }
   }
 
+  Action init_start() {
+    networkEnable_ = to_u(g_gpio_stored_bit_set->get_bit(get_storage_base() + NETWORK_ENABLE_OFS));
+    networkOccupancy_ = to_u(g_gpio_stored_bit_set->get_bit(get_storage_base() + NETWORK_OCCUPANCY_OFS));
+    networkOccupancyKnown_ = 1;
+    
+    
+    return call_immediately(STATE(init_wait));
+  }
+  
   Action init_wait() {
     // Waits for the parallel running flow that loads the default settings from
     // EEPROM.
@@ -304,7 +307,13 @@ class DetectorPort : public StateFlowBase {
     // there is a pending short. Also load the saved state of whether the
     // output was turned off. For a pending short move after the turnon delay
     // to the short_wait_for_retry state.
-    networkEnable_ = 1;
+    
+    
+
+    if (!networkEnable_) {
+      set_output_enable(false);
+      return call_immediately(STATE(set_network_off));
+    }
     int init_delay_msec = int(opts_.initStaticDelay_) +
                           int(channel_) * int(opts_.initStraggleDelay_);
     return sleep_and_call(&timer_, MSEC_TO_NSEC(init_delay_msec),
@@ -411,6 +420,9 @@ class DetectorPort : public StateFlowBase {
         return call_immediately(STATE(produce_occupancy));
       } else {
         // Block release delay / debouncer.
+        //
+        // TODO: this is not good if the debounce timer is very long, because
+        // it prevents short circuit retries from operating.
         return sleep_and_call(&timer_, MSEC_TO_NSEC(opts_.sensorOffDelay_),
                               STATE(sensor_debounce_done));
       }
@@ -427,10 +439,19 @@ class DetectorPort : public StateFlowBase {
     return call_immediately(STATE(eval_normal_state));
   }
 
+  void wakeup_normal_state() {
+    if (isWaitingForLoop_) {
+      isWaitingForLoop_ = 0;
+      notify();
+    }
+  }
+
   // Sends off the occupancy event.
   Action produce_occupancy() {
     networkOccupancyKnown_ = 1;
     networkOccupancy_ = sensedOccupancy_;
+    g_gpio_stored_bit_set->set_bit(get_storage_base() + NETWORK_OCCUPANCY_OFS,
+                                   sensedOccupancy_).lock_and_flush();
     return produce_event(
         sensedOccupancy_ ? eventOccupancyOn_ : eventOccupancyOff_,
         STATE(eval_normal_state));
@@ -463,6 +484,26 @@ class DetectorPort : public StateFlowBase {
     return wait_and_call(c);
   }
 
+  enum StorageConstants {
+    /// The first bit in the storedbitset that belongs to DetectorPorts.
+    CHANNEL_0_OFS = 0,
+    /// How many bits we have reserved per channel.
+    BITS_PER_CHANNEL = 6,
+    /// This bit is true if the output port should be enabled (by the event
+    /// consumer).
+    NETWORK_ENABLE_OFS = 0,
+    /// Whether the track is occupied, according to the last time it was
+    /// enabled.
+    NETWORK_OCCUPANCY_OFS = 1,
+    /// Last known state of the overcurrent bit. TODO: implement
+    NETWORK_OVERCURRENT_OFS = 2,
+  };
+
+  /// @return the bit 
+  unsigned get_storage_base() {
+    return CHANNEL_0_OFS + (channel_ * BITS_PER_CHANNEL);
+  }
+  
   StateFlowTimer timer_{this};
   uint8_t channel_;
   /// set-once when overcurrent is detected.
