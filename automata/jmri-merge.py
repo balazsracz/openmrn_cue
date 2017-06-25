@@ -392,7 +392,7 @@ class TrainLocLogixConditional:
     self.AddMemoryAction(e, 'train.' + self.train_name, self.location_name)
     self.AddMemoryAction(e, 'loc.' + self.location_name, self.train_name)
     coord = all_location_coordinates[self.location_name]
-    self.AddJythonAction(e, "PositionLocoMarker(\"3H layout\", \""
+    self.AddJythonAction(e, "PositionLocoMarker(\"2B layout\", \""
                          + self.train_name + "\", "
                          + str(int(coord.center[0]))+ ", "
                          + str(int(coord.center[1])) + ", HORIZONTAL)")
@@ -956,7 +956,7 @@ def PrintLocationControls(layout, block, index):
   
 
 def CreateLocoIcon(x, y, text):
-  return ET.XML('    <locoicon x="'+str(x)+'" y="' + str(y) + '" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="'+ text + '" size="12" style="0" red="51" green="51" blue="51" redBack="238" greenBack="238" blueBack="238" justification="centre" orientation="horizontal" icon="yes" dockX="967" dockY="153" class="jmri.jmrit.display.configurexml.LocoIconXml">\n      <icon url="program:resources/icons/markers/loco-white.gif" degrees="0" scale="1.0">\n        <rotation>0</rotation>\n      </icon>\n    </locoicon>\n');
+  return ET.XML('    <locoicon x="'+str(x)+'" y="' + str(y) + '" level="9" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="'+ text + '" size="12" style="0" red="51" green="51" blue="51" hasBackground="no" justification="centre" icon="yes" dockX="967" dockY="153" class="jmri.jmrit.display.configurexml.LocoIconXml">\n      <icon url="program:resources/icons/markers/loco-white.gif" degrees="0" scale="1.0">\n        <rotation>0</rotation>\n      </icon>\n    </locoicon>\n');
 
 def PrintTrainLine(layout, train, x0, y):
   layout.append(CreateTextLabel(x0 - 120, y, train))
@@ -975,7 +975,7 @@ def PrintTrainLine(layout, train, x0, y):
   layout.append(CreateLocoIcon(x0, y, train))
 
 def ClearPanelLocationTable(output_tree_root, index):
-  layout = output_tree_root.find('./LayoutEditor[@name=\'3H layout\']')
+  layout = output_tree_root.find('./LayoutEditor[@name=\'2B layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
   for entry in layout.findall('./sensoricon[@level=\'9\']'):
@@ -993,7 +993,7 @@ def ClearPanelLocationTable(output_tree_root, index):
 
 
 def RenderPanelLocationTable(output_tree_root, index):
-  layout = output_tree_root.find('./LayoutEditor[@name=\'3H layout\']')
+  layout = output_tree_root.find('./LayoutEditor[@name=\'2B layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
   y = 190
@@ -1020,7 +1020,7 @@ def main():
   global all_trains, all_locations, all_location_coordinates
   all_trains = GetAllTrainList()
   all_locations = GetAllLocationList()
-  index = LayoutIndex(root, "3H layout")
+  index = LayoutIndex(root, "2B layout")
   all_location_coordinates = GetLocationCoordinates(all_locations, root, index)
   print (len(all_trains), " trains, ", len(all_locations), " locations found (", len(all_location_coordinates), " with coord)")
   RenderSensors(root)
