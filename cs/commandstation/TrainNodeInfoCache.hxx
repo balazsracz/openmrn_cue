@@ -55,7 +55,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       : StateFlowBase(node->iface()->dispatcher()->service()),
         node_(node),
         findClient_(find_client),
-        output_(output), pendingSearch_(0) {
+        output_(output) {
 
     node_->iface()->dispatcher()->register_handler(&snipResponseHandler_, openlcb::Defs::MTI_IDENT_INFO_REPLY, openlcb::Defs::MTI_EXACT);
   }
@@ -77,7 +77,6 @@ class TrainNodeInfoCache : public StateFlowBase {
     minResult_ = kMinNode;
     maxResult_ = kMaxNode;
     topNodeId_ = kMinNode;
-    resultOffset_ = 0;
     uiNotifiable_ = ui_refresh;
     invoke_search();
   }
@@ -96,26 +95,26 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// @return the number of matches the last search found (unfiltered).
   ///
   unsigned num_results() {
-    return numResults_;
+    return trainNodes_.numResults_;
   }
 
   /// @return where we are in the scrolling of results, i.e. the offset of the
   /// first result in the list of results.
   unsigned first_result_offset() {
-    return resultOffset_;
+    return trainNodes_.resultOffset_;
   }
 
   /// Retrieves the Node ID of a the result at a given offset.
   /// @param offset is an index into the output array (i.e. counting form
   /// first_result_offset). Returns 0 on error.
   openlcb::NodeID get_result_id(unsigned offset) {
-    auto it = trainNodes_.lower_bound(topNodeId_);
+    auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     if (!try_move_iterator(offset, it)) {
       LOG(VERBOSE, "Requested nonexistant result offset %u", offset);
       return 0; // invalid node ID; could not find result.
     }
     if (offset < output_->entry_names.size() && 
-        &it->second.name_ == output_->entry_names[offset]) {
+        &it->second->name_ == output_->entry_names[offset]) {
       // We are sure we have the right train.
       return it->first;
     }
@@ -125,11 +124,7 @@ class TrainNodeInfoCache : public StateFlowBase {
 
   /// Moves the window of displayed entries one down.
   void scroll_down() {
-    if (pendingSearch_) {
-      ++pendingScroll_;
-      return;
-    }
-    auto it = trainNodes_.lower_bound(topNodeId_);
+    auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     if (!try_move_iterator(1, it)) {
       // can't go down at all. Do not change anything.
       return;
@@ -141,14 +136,14 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
     bool need_refill_cache = !try_move_iterator(kMinimumPrefetchSize, it);
     // Now: we can actually move down.
-    it = trainNodes_.lower_bound(topNodeId_);
+    it = trainNodes_.nodes_.lower_bound(topNodeId_);
     ++it;
     topNodeId_ = it->first;
-    ++resultOffset_;
+    ++trainNodes_.resultOffset_;
     update_ui_output();
 
     // Let's see if we need to kick off a new search.
-    if (need_refill_cache && hasEvictBack_) {
+    if (need_refill_cache && trainNodes_.resultsClippedAtBottom_) {
       if (!try_move_iterator(-kMinimumPrefetchSize, it)) {
         LOG(VERBOSE,
             "Tried to paginate forward but cannot find new start position.");
@@ -165,23 +160,19 @@ class TrainNodeInfoCache : public StateFlowBase {
 
   /// Moves the window of displayed entries one up.
   void scroll_up() {
-    if (pendingSearch_) {
-      --pendingScroll_;
-      return;
-    }
-    auto it = trainNodes_.lower_bound(topNodeId_);
+    auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     if (!try_move_iterator(-1, it)) {
       // can't go up at all. Do not change anything.
       return;
     }
     topNodeId_ = it->first;
-    --resultOffset_;
+    --trainNodes_.resultOffset_;
     update_ui_output();
     bool need_refill_cache = !try_move_iterator(-kMinimumPrefetchSize, it);
 
     // Let's see if we need to kick off a new search.
-    if (need_refill_cache && hasEvictFront_) {
-      it = trainNodes_.lower_bound(topNodeId_);
+    if (need_refill_cache && trainNodes_.resultsClippedAtTop_) {
+      it = trainNodes_.nodes_.lower_bound(topNodeId_);
       if (!try_move_iterator(kNodesToShow + kMinimumPrefetchSize - 1, it)) {
         LOG(VERBOSE,
             "Tried to paginate backwards but cannot find new start position.");
@@ -212,10 +203,34 @@ class TrainNodeInfoCache : public StateFlowBase {
     unsigned hasNodeName_ : 1;
   };
 
-  typedef std::map<openlcb::NodeID, TrainNodeInfo> NodeCacheMap;
+  typedef std::map<openlcb::NodeID, std::shared_ptr<TrainNodeInfo> > NodeCacheMap;
+  //typedef std::map<openlcb::NodeID, TrainNodeInfo> NodeCacheMap;
 
+  struct ResultList {
+    NodeCacheMap nodes_;
+    /// Number of results we found in the last search. -1 if this list is not
+    /// active.
+    int16_t numResults_{-1};
+    /// How many results we lost at the top of the scroll due to the restriction
+    /// or size clipping.
+    uint16_t resultsClippedAtTop_;
+    /// How many results we lost at the bottom of the scroll due to the
+    /// restriction or size clipping.
+    uint16_t resultsClippedAtBottom_;
+    /// Offset of the topNodeId_ in the result list, including any topmost
+    /// evictions.
+    int16_t resultOffset_;
+    void reset() {
+      nodes_.clear();
+      numResults_ = 0;
+      resultsClippedAtTop_ = 0;
+      resultsClippedAtBottom_ = 0;
+      resultOffset_ = -1;
+    }
+  };
+  
   /// How many entries we should keep in our inmemory cache.
-  static constexpr unsigned kCacheMaxSize = 16;
+  static constexpr unsigned kCacheMaxSize = 48;
   /// Lower bound for all valid node IDs.
   static constexpr openlcb::NodeID kMinNode = 0;
   /// Upper bound for all valid node IDs.
@@ -225,7 +240,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   static constexpr unsigned kNodesToShow = 3;
   /// How many filled cache entries we should keep ahead and behind before we
   /// redo the search with a different offset.
-  static constexpr int kMinimumPrefetchSize = 4;
+  static constexpr int kMinimumPrefetchSize = 16;
 
   void invoke_search() {
     needSearch_ = 1;
@@ -236,15 +251,11 @@ class TrainNodeInfoCache : public StateFlowBase {
 
   Action send_search_request() {
     needSearch_ = 0;
-    numResults_ = 0;
-    previousCache_ = std::move(trainNodes_);
-    trainNodes_.clear();
-    output_->entry_names.clear();  // will be refreshed later
+    newNodes_.reset();
+    // @TODO: populate previous cache.
+    previousCache_ = trainNodes_.nodes_;
+
     resultSetChanged_ = 0;
-    pendingSearch_ = 1;
-    hasEvictBack_ = 0;
-    hasEvictFront_ = 0;
-    resultsClippedAtTop_ = 0;
     searchParams_->data()->resultCode = RemoteFindTrainNodeRequest::PERSISTENT_REQUEST;
     return invoke_subflow_and_wait(
         findClient_, STATE(search_done), *searchParams_->data(),
@@ -253,24 +264,31 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   Action search_done() {
-    // @todo (balazs.racz): do pending scroll actions.
-    pendingSearch_ = 0;
     resultSetChanged_ = 0;
-    if (needSearch_) {
-      return call_immediately(STATE(send_search_request));
-    }
+    trainNodes_ = std::move(newNodes_);
+    // this is not in use anymore.
+    newNodes_.nodes_.clear();
+    newNodes_.numResults_ = -1;
+
+    // Find selection offset.
+    find_selection_offset(&trainNodes_);
+    
     // let's render the output first with whatever data we have.
     update_ui_output();
     notify_ui();
+
+    if (needSearch_) {
+      return call_immediately(STATE(send_search_request));
+    }
     // Let's see what we got and start kicking off name lookup requests.
     lookupIt_ = kMinNode;
     return call_immediately(STATE(iter_results));
   }
 
   Action iter_results() {
-    auto it = trainNodes_.lower_bound(lookupIt_);
-    while (it != trainNodes_.end()) {
-      if (it->second.hasNodeName_) {
+    auto it = trainNodes_.nodes_.lower_bound(lookupIt_);
+    while (it != trainNodes_.nodes_.end()) {
+      if (it->second->hasNodeName_) {
         // Nothing to look up.
         ++it;
         continue;
@@ -300,9 +318,7 @@ class TrainNodeInfoCache : public StateFlowBase {
 
   Action iter_done() {
     LOG(INFO, "iter done");
-    int ofs = resultsClippedAtTop_;
-    for (auto it = trainNodes_.begin(); it != trainNodes_.end() && it->first < topNodeId_; ++it, ++ofs);
-    resultOffset_ = ofs;
+    find_selection_offset(&trainNodes_);
     update_ui_output();
     notify_ui();
     if (needSearch_) {
@@ -316,61 +332,86 @@ class TrainNodeInfoCache : public StateFlowBase {
     return exit();
   }
 
-  /// Callback from the train node finder when a node has responded to our
-  /// search query. Called on the openlcb executor.
-  void result_callback(openlcb::EventState state, openlcb::NodeID node) {
-    if (!node) return; // some error occured.
-    numResults_++;
-    if (trainNodes_.find(node) != trainNodes_.end()) {
+  void find_selection_offset(ResultList* list) {
+    int ofs = list->resultsClippedAtTop_;
+    for (auto it = list->nodes_.begin(); it != list->nodes_.end() && it->first < topNodeId_; ++it, ++ofs);
+    list->resultOffset_ = ofs;
+  }
+  
+  /// Adds a new search result to a result list.
+  /// @param list is the resultset to add to
+  /// @param node isthe new node id
+  /// @param forced_new if true, increments the result count when the new node
+  /// is clipped, if false, only increments result count if node is not
+  /// clipped.
+  void add_to_list(ResultList* list, openlcb::NodeID node, bool forced_new) {
+    if (list->nodes_.find(node) != list->nodes_.end()) {
       // We already have this node, good.
       return;
     }
     if (node < minResult_) {
+      if (!forced_new) return;
       // Outside of the search range -- ignore.
-      mark_result_clipped_at_top();
+      list->resultsClippedAtTop_++;
+      if (list->resultOffset_ >= 0) {
+        ++list->resultOffset_;
+      }
       return;
     }
     if (node > maxResult_) {
+      if (!forced_new) return;
       // Outside of the search range -- ignore.
-      hasEvictBack_ = 1;
+      list->resultsClippedAtBottom_++;
       return;
     }
-    resultSetChanged_ = 1;
-    auto& node_state = trainNodes_[node];
+    list->numResults_++;
+    auto& node_state = list->nodes_[node];
     // See if we have stored data
     auto it = previousCache_.find(node);
     if (it != previousCache_.end()) {
       LOG(VERBOSE, "Found cached node name for %012" PRIx64, node);
-      node_state = std::move(it->second);
-      previousCache_.erase(it);
+      node_state = it->second;
+    } else if ((list != &trainNodes_) &&
+               ((it = trainNodes_.nodes_.find(node)) !=
+                trainNodes_.nodes_.end())) {
+      node_state = it->second;
+    } else {
+      node_state.reset(new TrainNodeInfo);
     }
 
     // Check if we need to evict something from the cache.
-    while (trainNodes_.size() > kCacheMaxSize) {
+    while (list->nodes_.size() > kCacheMaxSize) {
       if (scrolling_down()) {
         // delete from the end
-        trainNodes_.erase(--trainNodes_.end());
-        hasEvictBack_ = 1;
+        list->nodes_.erase(--list->nodes_.end());
+        list->resultsClippedAtBottom_++;
       } else {
         // delete from the beginning
-        trainNodes_.erase(trainNodes_.begin());
-        mark_result_clipped_at_top();
+        list->nodes_.erase(list->nodes_.begin());
+        list->resultsClippedAtTop_++;
+        if (list->resultOffset_ >= 0) {
+          ++list->resultOffset_;
+        }
       }
     }
+  }
+
+  
+  /// Callback from the train node finder when a node has responded to our
+  /// search query. Called on the openlcb executor.
+  void result_callback(openlcb::EventState state, openlcb::NodeID node) {
+    if (!node) return; // some error occured.
+    if (newNodes_.numResults_ >= 0) {
+      add_to_list(&newNodes_, node, true);
+      add_to_list(&trainNodes_, node, false);
+    } else {
+      add_to_list(&trainNodes_, node, true);
+    }
+    resultSetChanged_ = 1;
 
     if (is_terminated()) {
       LOG(INFO, "restarting flow for additional results");
       start_flow(STATE(search_done));
-    }
-  }
-
-  /// Called from the result callback in every case that a result is dropped
-  /// out on the front of the trainCache_ map.
-  void mark_result_clipped_at_top() {
-    hasEvictFront_ = 1;
-    resultsClippedAtTop_++;
-    if (!pendingSearch_) {
-      resultOffset_++;
     }
   }
 
@@ -393,53 +434,53 @@ class TrainNodeInfoCache : public StateFlowBase {
       LOG(INFO, "SNIP response coming in without source node ID");
       return;
     }
-    auto it = trainNodes_.find(b->data()->src.id);
-    if (it == trainNodes_.end()) {
+    auto it = trainNodes_.nodes_.find(b->data()->src.id);
+    if (it == trainNodes_.nodes_.end()) {
       LOG(INFO, "SNIP response for unknown node");
       return;
     }
-    if (it->second.hasNodeName_) {
+    if (it->second->hasNodeName_) {
       // we already have a name.
       return;
     }
     const auto& payload = b->data()->payload;
     openlcb::SnipDecodedData decoded_data;
     openlcb::decode_snip_response(payload, &decoded_data);
-    it->second.hasNodeName_ = 1;
+    it->second->hasNodeName_ = 1;
     if (!decoded_data.user_name.empty()) {
-      it->second.name_ = std::move(decoded_data.user_name);
+      it->second->name_ = std::move(decoded_data.user_name);
     } else if (!decoded_data.user_description.empty()) {
-      it->second.name_ = std::move(decoded_data.user_description);
+      it->second->name_ = std::move(decoded_data.user_description);
     } else if (!decoded_data.model_name.empty()) {
-      it->second.name_ = std::move(decoded_data.model_name);
+      it->second->name_ = std::move(decoded_data.model_name);
     } else if (!decoded_data.manufacturer_name.empty()) {
-      it->second.name_ = std::move(decoded_data.manufacturer_name);
+      it->second->name_ = std::move(decoded_data.manufacturer_name);
     } else {
-      it->second.hasNodeName_ = 0;
+      it->second->hasNodeName_ = 0;
       LOG(VERBOSE, "Could not figure out node name from SNIP response. '%s'",
           payload.c_str());
     }
-    if (it->second.hasNodeName_) {
+    if (it->second->hasNodeName_) {
       if (std::find(output_->entry_names.begin(), output_->entry_names.end(),
-                    &it->second.name_) != output_->entry_names.end()) {
+                    &it->second->name_) != output_->entry_names.end()) {
         notify_ui();
       }
     }
   }
 
   void update_ui_output() {
-    auto it = trainNodes_.lower_bound(topNodeId_);
+    auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     output_->entry_names.clear();
     output_->entry_names.reserve(kNodesToShow);
-    for (unsigned res = 0; res < kNodesToShow && it != trainNodes_.end();
+    for (unsigned res = 0; res < kNodesToShow && it != trainNodes_.nodes_.end();
          ++res, ++it) {
-      if (it->second.name_.empty()) {
+      if (it->second->name_.empty()) {
         // Format the node MAC address.
         uint8_t idbuf[6];
         openlcb::node_id_to_data(it->first, idbuf);  // convert to big-endian
-        it->second.name_ = mac_to_string(idbuf);
+        it->second->name_ = mac_to_string(idbuf);
       }
-      output_->entry_names.push_back(&it->second.name_);
+      output_->entry_names.push_back(&it->second->name_);
     }
   }
 
@@ -453,11 +494,11 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// false if we hit begin() or end() and still had to do some advancing.
   ///
   bool try_move_iterator(int count, NodeCacheMap::iterator& it) {
-    while (count > 0 && it != trainNodes_.end()) {
+    while (count > 0 && it != trainNodes_.nodes_.end()) {
       ++it;
       --count;
     }
-    while (count < 0 && it != trainNodes_.begin()) {
+    while (count < 0 && it != trainNodes_.nodes_.begin()) {
       --it;
       ++count;
     }
@@ -492,28 +533,10 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// Node ID of the first visible node in the output.
   openlcb::NodeID topNodeId_;
 
-  /// Number of results we found in the last search.
-  uint16_t numResults_{0};
-  /// Offset of the topmost result in the result list.
-  uint16_t resultOffset_{0};
-  /// How many results we lost at the top of the scroll due to the restriction
-  /// or size clipping.
-  uint16_t resultsClippedAtTop_;
-
-  /// If a scroll action comes in while we are doing a search, we record the
-  /// scroll action and execute it delayed.
-  int8_t pendingScroll_{0};
-
   /// 1 if we need to start another search.
   uint8_t needSearch_ : 1;
   /// 1 if there is something in the SNIP cache refreshed.
   uint8_t newSnipData_ : 1;
-  /// 1 if we have a pending search action.
-  uint8_t pendingSearch_ : 1;
-  /// 1 if the last search has seen results cut off at the front
-  uint8_t hasEvictFront_ : 1;
-  /// 1 if the last search has seen results cut off at the back
-  uint8_t hasEvictBack_ : 1;
   /// 1 if the sorted list of results has changed.
   uint8_t resultSetChanged_ : 1;
 
@@ -525,8 +548,10 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// A repeatable notifiable that will be called to refresh the UI.
   Notifiable* uiNotifiable_;
 
-  /// Internal data structure about the found nodes.
-  NodeCacheMap trainNodes_;
+  /// The newly accumulating search results if we have a pending search.
+  ResultList newNodes_;
+  /// The currently displayed search results.
+  ResultList trainNodes_;
   /// When we start a new search, we pre-populate the trainNodes_ structure
   /// from results of the previous search. This reduces network traffic.
   NodeCacheMap previousCache_;
