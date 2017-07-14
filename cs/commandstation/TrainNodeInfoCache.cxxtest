@@ -80,8 +80,8 @@ class FindManyTrainTestBase : public TrainDbTest {
     b->data()->alias = 0x922;
     b->data()->state = openlcb::AliasInfo::STATE_RESERVED;
     b->data()->do_not_reallocate();
-    secondIf_.local_aliases()->add(openlcb::AliasCache::RESERVED_ALIAS_NODE_ID,
-                                   b->data()->alias);
+    run_x([this, b](){secondIf_.local_aliases()->add(openlcb::AliasCache::RESERVED_ALIAS_NODE_ID,
+                                              b->data()->alias);});
     secondIf_.alias_allocator()->reserved_aliases()->insert(b);
 
     wait();
@@ -105,7 +105,7 @@ class FindManyTrainTestBase : public TrainDbTest {
   using NodeCacheMap = TrainNodeInfoCache::NodeCacheMap;
 
   const NodeCacheMap& get_results_map() {
-    return trainCache_.trainNodes_;
+    return trainCache_.trainNodes_.nodes_;
   }
 
   std::vector<string> get_output() {
@@ -140,7 +140,7 @@ TEST_F(FindManyTrainTestBase, Search7) {
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
   EXPECT_EQ(1u, get_results_map().size());
-  EXPECT_TRUE(get_results_map().begin()->second.hasNodeName_);
+  EXPECT_TRUE(get_results_map().begin()->second->hasNodeName_);
   EXPECT_THAT(get_output(), ElementsAre("Node test 7000"));
   printf("scrolling...\n");
   trainCache_.scroll_down();
@@ -232,7 +232,7 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   clear_expect(true);
   EXPECT_EQ(10u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
-  EXPECT_EQ("TT 3006", get_results_map().begin()->second.name_);
+  EXPECT_EQ("TT 3006", get_results_map().begin()->second->name_);
   printf("more scroll\n");
   for (int i = 0; i < 5; ++i) {
     printf("offset %u, then scroll\n", trainCache_.first_result_offset());
@@ -317,7 +317,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
   clear_expect(true);
   
-  EXPECT_EQ("TT 3006", get_results_map().begin()->second.name_);
+  EXPECT_EQ("TT 3006", get_results_map().begin()->second->name_);
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 3011", "TT 3012", "TT 3013"));
   // now one up should be fine, the second shouls trigger a refetch
