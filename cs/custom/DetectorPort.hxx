@@ -40,6 +40,7 @@
 #include "openlcb/CallbackEventHandler.hxx"
 #include "hardware.hxx"
 #include "custom/DetectorPortConfig.hxx"
+#include "utils/StoredBitSet.hxx"
 
 extern const Gpio* const enable_ptrs[];
 
@@ -291,8 +292,6 @@ class DetectorPort : public StateFlowBase {
     networkEnable_ = to_u(g_gpio_stored_bit_set->get_bit(get_storage_base() + NETWORK_ENABLE_OFS));
     networkOccupancy_ = to_u(g_gpio_stored_bit_set->get_bit(get_storage_base() + NETWORK_OCCUPANCY_OFS));
     networkOccupancyKnown_ = 1;
-    
-    
     return call_immediately(STATE(init_wait));
   }
   
