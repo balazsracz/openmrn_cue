@@ -87,6 +87,7 @@ class FindManyTrainTestBase : public TrainDbTest {
     wait();
 
     wait();
+    trainCache_.set_cache_max_size(16);
   }
 
   ~FindManyTrainTestBase() {
@@ -187,11 +188,28 @@ TEST_F(FindManyTrainTestBase, Search5) {
   EXPECT_CALL(mockNotifiable_, notify()).Times(2); // no new SNIP lookup.
   EXPECT_CALL(canBus_, mwrite(_)).Times(AtMost(7));
   wait_for_search();
+  EXPECT_EQ(6u, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
   clear_expect();
   EXPECT_EQ(6u, get_results_map().size());
   EXPECT_THAT(get_output(), ElementsAre("TT 5100", "TT 5101", "TT 5102"));
   EXPECT_EQ(0u, trainCache_.first_result_offset());
   EXPECT_EQ(6u, trainCache_.num_results());
+
+  // clear restrict
+  b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset();
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(2));
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  // wait for one iteration of the executor
+  // It is really difficult to specify how long we need to wait.
+  //EXPECT_EQ(0u, trainCache_.num_results());
+  //EXPECT_EQ(0u, trainCache_.first_result_offset());
+
+  wait_for_search();
+  EXPECT_EQ(38u, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
 }
 
 TEST_F(FindManyTrainTestBase, Scroll3) {
