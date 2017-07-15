@@ -360,6 +360,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     if (node < minResult_) {
       if (!forced_new) return;
       // Outside of the search range -- ignore.
+      list->numResults_++;
       list->resultsClippedAtTop_++;
       if (list->resultOffset_ >= 0) {
         ++list->resultOffset_;
@@ -369,6 +370,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     if (node > maxResult_) {
       if (!forced_new) return;
       // Outside of the search range -- ignore.
+      list->numResults_++;
       list->resultsClippedAtBottom_++;
       return;
     }
