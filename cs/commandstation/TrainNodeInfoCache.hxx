@@ -187,6 +187,10 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   }
 
+  void set_cache_max_size(uint16_t sz) {
+    cacheMaxSize_ = sz;
+  }
+
  private:
   friend class FindManyTrainTestBase;
 
@@ -230,7 +234,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   };
   
   /// How many entries we should keep in our inmemory cache.
-  static constexpr unsigned kCacheMaxSize = 48;
+  static constexpr unsigned kCacheMaxSizeDefault = 48;
   /// Lower bound for all valid node IDs.
   static constexpr openlcb::NodeID kMinNode = 0;
   /// Upper bound for all valid node IDs.
@@ -240,7 +244,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   static constexpr unsigned kNodesToShow = 3;
   /// How many filled cache entries we should keep ahead and behind before we
   /// redo the search with a different offset.
-  static constexpr int kMinimumPrefetchSize = 16;
+  static constexpr int kMinimumPrefetchSize = 4; //TODO 16;
 
   void invoke_search() {
     needSearch_ = 1;
@@ -264,7 +268,6 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   Action search_done() {
-    resultSetChanged_ = 0;
     trainNodes_ = std::move(newNodes_);
     // this is not in use anymore.
     newNodes_.nodes_.clear();
@@ -280,6 +283,11 @@ class TrainNodeInfoCache : public StateFlowBase {
     if (needSearch_) {
       return call_immediately(STATE(send_search_request));
     }
+    return call_immediately(STATE(do_iter));
+  }
+
+  Action do_iter() {
+    resultSetChanged_ = 0;
     // Let's see what we got and start kicking off name lookup requests.
     lookupIt_ = kMinNode;
     return call_immediately(STATE(iter_results));
@@ -327,7 +335,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       return call_immediately(STATE(send_search_request));
     }
     if (resultSetChanged_) {
-      return call_immediately(STATE(search_done));
+      return call_immediately(STATE(do_iter));
     }
     return exit();
   }
@@ -380,7 +388,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
 
     // Check if we need to evict something from the cache.
-    while (list->nodes_.size() > kCacheMaxSize) {
+    while (list->nodes_.size() > cacheMaxSize_) {
       if (scrolling_down()) {
         // delete from the end
         list->nodes_.erase(--list->nodes_.end());
@@ -411,7 +419,7 @@ class TrainNodeInfoCache : public StateFlowBase {
 
     if (is_terminated()) {
       LOG(INFO, "restarting flow for additional results");
-      start_flow(STATE(search_done));
+      start_flow(STATE(do_iter));
     }
   }
 
@@ -539,14 +547,16 @@ class TrainNodeInfoCache : public StateFlowBase {
   uint8_t newSnipData_ : 1;
   /// 1 if the sorted list of results has changed.
   uint8_t resultSetChanged_ : 1;
+  /// How many entries we keep in memory before we start clipping.
+  uint16_t cacheMaxSize_{kCacheMaxSizeDefault};
 
+  /// A repeatable notifiable that will be called to refresh the UI.
+  Notifiable* uiNotifiable_;
   /// Iterator for running through the cache and sending lookup requests.
   openlcb::NodeID lookupIt_;
 
   /// os_time of when we last changed the output.
   long long lastOutputRefresh_;
-  /// A repeatable notifiable that will be called to refresh the UI.
-  Notifiable* uiNotifiable_;
 
   /// The newly accumulating search results if we have a pending search.
   ResultList newNodes_;
