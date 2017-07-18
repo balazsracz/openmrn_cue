@@ -87,7 +87,8 @@ class FindManyTrainTestBase : public TrainDbTest {
     wait();
 
     wait();
-    trainCache_.set_cache_max_size(16);
+    trainCache_.set_cache_max_size(16, 4);
+    trainCache_.set_nodes_to_show(3);
   }
 
   ~FindManyTrainTestBase() {
@@ -210,6 +211,60 @@ TEST_F(FindManyTrainTestBase, Search5) {
   EXPECT_EQ(38u, trainCache_.num_results());
   EXPECT_EQ(0u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
+}
+
+TEST_F(FindManyTrainTestBase, PageSize) {
+  trainCache_.set_nodes_to_show(2);
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(5, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(12u, get_results_map().size());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001"));
+}
+
+
+TEST_F(FindManyTrainTestBase, ScrollToLastLine) {
+  trainCache_.set_nodes_to_show(2);
+  trainCache_.set_scroll_to_last_line(true);
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(5, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(12u, get_results_map().size());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001"));
+
+  // Do some scrolling
+  EXPECT_EQ(12u, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5001", "TT 5002"));
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5002", "TT 5003"));
+  for (int i = 0; i < 20; ++i) {
+    trainCache_.scroll_down();
+  }
+  EXPECT_THAT(get_output(), ElementsAre("TT 5105"));
+  EXPECT_EQ(11u, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_EQ(11u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5105"));
+
+  trainCache_.scroll_up();
+  EXPECT_EQ(10u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5104", "TT 5105"));
+
+  trainCache_.scroll_down();
+  EXPECT_EQ(11u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5105"));
 }
 
 TEST_F(FindManyTrainTestBase, Scroll3) {

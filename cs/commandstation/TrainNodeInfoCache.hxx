@@ -55,7 +55,12 @@ class TrainNodeInfoCache : public StateFlowBase {
       : StateFlowBase(node->iface()->dispatcher()->service()),
         node_(node),
         findClient_(find_client),
-        output_(output) {
+        output_(output),
+        enablePartialScroll_(0),
+        nodesToShow_(kNodesToShowDefault),
+        cacheMaxSize_(kCacheMaxSizeDefault),
+        scrollPrefetchSize_(kScrollPrefetchSizeDefault)
+  {
 
     node_->iface()->dispatcher()->register_handler(&snipResponseHandler_, openlcb::Defs::MTI_IDENT_INFO_REPLY, openlcb::Defs::MTI_EXACT);
   }
@@ -129,12 +134,12 @@ class TrainNodeInfoCache : public StateFlowBase {
       // can't go down at all. Do not change anything.
       return;
     }
-    if (!try_move_iterator(kNodesToShow, it)) {
+    if (!try_move_iterator(enablePartialScroll_ ? 1 : nodesToShow_, it)) {
       // not enough results left to fill the page. Do not change anything.
       // TODO: maybe we need to add a pending search here?
       return;
     }
-    bool need_refill_cache = !try_move_iterator(kMinimumPrefetchSize, it);
+    bool need_refill_cache = !try_move_iterator(scrollPrefetchSize_, it);
     // Now: we can actually move down.
     it = trainNodes_.nodes_.lower_bound(topNodeId_);
     ++it;
@@ -143,8 +148,8 @@ class TrainNodeInfoCache : public StateFlowBase {
     update_ui_output();
 
     // Let's see if we need to kick off a new search.
-    if (need_refill_cache && trainNodes_.resultsClippedAtBottom_) {
-      if (!try_move_iterator(-kMinimumPrefetchSize, it)) {
+    if (need_refill_cache && !pendingSearch_ && trainNodes_.resultsClippedAtBottom_) {
+      if (!try_move_iterator(-scrollPrefetchSize_, it)) {
         LOG(VERBOSE,
             "Tried to paginate forward but cannot find new start position.");
         return;
@@ -168,12 +173,12 @@ class TrainNodeInfoCache : public StateFlowBase {
     topNodeId_ = it->first;
     --trainNodes_.resultOffset_;
     update_ui_output();
-    bool need_refill_cache = !try_move_iterator(-kMinimumPrefetchSize, it);
+    bool need_refill_cache = !try_move_iterator(-scrollPrefetchSize_, it);
 
     // Let's see if we need to kick off a new search.
-    if (need_refill_cache && trainNodes_.resultsClippedAtTop_) {
+    if (need_refill_cache && !pendingSearch_ && trainNodes_.resultsClippedAtTop_) {
       it = trainNodes_.nodes_.lower_bound(topNodeId_);
-      if (!try_move_iterator(kNodesToShow + kMinimumPrefetchSize - 1, it)) {
+      if (!try_move_iterator(nodesToShow_ + scrollPrefetchSize_ - 1, it)) {
         LOG(VERBOSE,
             "Tried to paginate backwards but cannot find new start position.");
         return;
@@ -187,10 +192,25 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   }
 
-  void set_cache_max_size(uint16_t sz) {
+  /// @param sz is the number of nodes to keep in the cache maximum
+  /// @param prefetch is the number of nodes to keep behind the visible screen
+  /// when prefetching.
+  void set_cache_max_size(uint16_t sz, uint16_t prefetch) {
     cacheMaxSize_ = sz;
+    scrollPrefetchSize_ = prefetch;
   }
 
+  /// @param lines is the number of lines on the screen.
+  void set_nodes_to_show(uint16_t lines) {
+    nodesToShow_ = lines;
+  }
+
+  /// @param line is true if scrolling should go to the last line, false if it
+  /// should go to the last page.
+  void set_scroll_to_last_line(bool line) {
+    enablePartialScroll_ = line ? 1 : 0;
+  }
+  
  private:
   friend class FindManyTrainTestBase;
 
@@ -233,21 +253,22 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   };
   
-  /// How many entries we should keep in our inmemory cache.
-  static constexpr unsigned kCacheMaxSizeDefault = 48;
   /// Lower bound for all valid node IDs.
   static constexpr openlcb::NodeID kMinNode = 0;
   /// Upper bound for all valid node IDs.
   static constexpr openlcb::NodeID kMaxNode = 0xFFFFFFFFFFFF;
-  /// How many entries to put into the output vector. THis should probably be
-  /// mvoed to a parameter set by the UI soon.
-  static constexpr unsigned kNodesToShow = 3;
+
+  /// How many entries we should keep in our inmemory cache.
+  static constexpr unsigned kCacheMaxSizeDefault = 48;
+  /// How many entries to put into the output vector.
+  static constexpr unsigned kNodesToShowDefault = 3;
   /// How many filled cache entries we should keep ahead and behind before we
   /// redo the search with a different offset.
-  static constexpr int kMinimumPrefetchSize = 4; //TODO 16;
+  static constexpr int kScrollPrefetchSizeDefault = 16;
 
   void invoke_search() {
     needSearch_ = 1;
+    pendingSearch_ = 1;
     if (is_terminated()) {
       start_flow(STATE(send_search_request));
     }
@@ -283,6 +304,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     if (needSearch_) {
       return call_immediately(STATE(send_search_request));
     }
+    pendingSearch_ = 0;
     return call_immediately(STATE(do_iter));
   }
 
@@ -481,8 +503,8 @@ class TrainNodeInfoCache : public StateFlowBase {
   void update_ui_output() {
     auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     output_->entry_names.clear();
-    output_->entry_names.reserve(kNodesToShow);
-    for (unsigned res = 0; res < kNodesToShow && it != trainNodes_.nodes_.end();
+    output_->entry_names.reserve(nodesToShow_);
+    for (unsigned res = 0; res < nodesToShow_ && it != trainNodes_.nodes_.end();
          ++res, ++it) {
       if (it->second->name_.empty()) {
         // Format the node MAC address.
@@ -544,13 +566,26 @@ class TrainNodeInfoCache : public StateFlowBase {
   openlcb::NodeID topNodeId_;
 
   /// 1 if we need to start another search.
-  uint8_t needSearch_ : 1;
+  uint16_t needSearch_ : 1;
   /// 1 if there is something in the SNIP cache refreshed.
-  uint8_t newSnipData_ : 1;
+  uint16_t newSnipData_ : 1;
   /// 1 if the sorted list of results has changed.
-  uint8_t resultSetChanged_ : 1;
+  uint16_t resultSetChanged_ : 1;
+  /// 1 if we are waiting for refilling the cache
+  uint16_t pendingSearch_ : 1;
+  /// 1 if we are scrolling down.
+  //uint16_t 
+  /// 1 if scrolling down should allow leaving a partial screen output. Allows
+  /// scrolling all the way until only one line is visible on the screen.
+  uint16_t enablePartialScroll_ : 1;
+  /// How many lines are there on the display, i.e. how many entries should we
+  /// render into the output_ vector.
+  uint16_t nodesToShow_ : 3;
   /// How many entries we keep in memory before we start clipping.
-  uint16_t cacheMaxSize_{kCacheMaxSizeDefault};
+  uint16_t cacheMaxSize_ : 6;
+  /// How many entries we should keep ahead or behind when redoing the search
+  /// due to scrolling. Ideally about 1/3rd of the cacheMaxSize_ value.
+  uint16_t scrollPrefetchSize_ : 6;
 
   /// A repeatable notifiable that will be called to refresh the UI.
   Notifiable* uiNotifiable_;
