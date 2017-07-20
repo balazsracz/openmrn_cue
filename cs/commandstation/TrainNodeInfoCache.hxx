@@ -92,7 +92,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     needSearch_ = 0;
   }
   
-  /// @return the last time (in os_time) that the UI data has changed. Helpfu
+  /// @return the last time (in os_time) that the UI data has changed. Helpful
   /// in deduping multiple UI refresh notifications.
   long long last_ui_refresh() { return lastOutputRefresh_; }
 
@@ -128,16 +128,17 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   /// Moves the window of displayed entries one down.
-  void scroll_down() {
+  /// @return true if something changed and the display should be redrawn.
+  bool scroll_down() {
     auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     if (!try_move_iterator(1, it)) {
       // can't go down at all. Do not change anything.
-      return;
+      return false;
     }
     if (!try_move_iterator(enablePartialScroll_ ? 1 : nodesToShow_, it)) {
       // not enough results left to fill the page. Do not change anything.
       // TODO: maybe we need to add a pending search here?
-      return;
+      return false;
     }
     bool need_refill_cache = !try_move_iterator(scrollPrefetchSize_, it);
     // Now: we can actually move down.
@@ -152,7 +153,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       if (!try_move_iterator(-scrollPrefetchSize_, it)) {
         LOG(VERBOSE,
             "Tried to paginate forward but cannot find new start position.");
-        return;
+        return true;
       }
       minResult_ = it->first;
       maxResult_ = kMaxNode;
@@ -161,14 +162,16 @@ class TrainNodeInfoCache : public StateFlowBase {
       // actually get around to killing the state vectors.
       invoke_search();
     }
+    return true;
   }
 
   /// Moves the window of displayed entries one up.
-  void scroll_up() {
+  /// @return true if something changed and the display should be redrawn.
+  bool scroll_up() {
     auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     if (!try_move_iterator(-1, it)) {
       // can't go up at all. Do not change anything.
-      return;
+      return false;
     }
     topNodeId_ = it->first;
     --trainNodes_.resultOffset_;
@@ -181,7 +184,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       if (!try_move_iterator(nodesToShow_ + scrollPrefetchSize_ - 1, it)) {
         LOG(VERBOSE,
             "Tried to paginate backwards but cannot find new start position.");
-        return;
+        return true;
       }
       minResult_ = kMinNode;
       maxResult_ = it->first;
@@ -190,6 +193,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       // actually get around to killing the state vectors.
       invoke_search();
     }
+    return true;
   }
 
   /// @param sz is the number of nodes to keep in the cache maximum
@@ -244,6 +248,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     /// Offset of the topNodeId_ in the result list, including any topmost
     /// evictions.
     int16_t resultOffset_;
+    
     void reset() {
       nodes_.clear();
       numResults_ = 0;
