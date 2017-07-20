@@ -210,7 +210,7 @@ class RemoteFindTrainNode
     if (input()->resultCallback) {
       // Client wanted multiple results, and the time for waiting for results
       // is over
-      if (!nodeIdLookup_.is_waiting()) {
+      if (!persistentRequest_ && !nodeIdLookup_.is_waiting()) {
         return sleep_and_call(&timer_, MSEC_TO_NSEC(50), STATE(reply_timeout));
       }
       return return_with_error(0);
