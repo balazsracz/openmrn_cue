@@ -83,6 +83,10 @@ class TrainNodeInfoCache : public StateFlowBase {
     maxResult_ = kMaxNode;
     topNodeId_ = kMinNode;
     uiNotifiable_ = ui_refresh;
+    // @TODO we need to clear stuff here.
+    previousCache_ = std::move(trainNodes_.nodes_);
+    trainNodes_.reset();
+    
     invoke_search();
   }
 
@@ -100,7 +104,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// @return the number of matches the last search found (unfiltered).
   ///
   unsigned num_results() {
-    return trainNodes_.numResults_;
+    return trainNodes_.num_results();
   }
 
   /// @return where we are in the scrolling of results, i.e. the offset of the
@@ -160,7 +164,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       // We invoke search here, which is an asynchronous operation. The
       // expectation is that the caller will refresh their display before we
       // actually get around to killing the state vectors.
-      invoke_search();
+      invoke_paginate();
     }
     return true;
   }
@@ -191,7 +195,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       // We invoke search here, which is an asynchronous operation. The
       // expectation is that the caller will refresh their display before we
       // actually get around to killing the state vectors.
-      invoke_search();
+      invoke_paginate();
     }
     return true;
   }
@@ -214,7 +218,12 @@ class TrainNodeInfoCache : public StateFlowBase {
   void set_scroll_to_last_line(bool line) {
     enablePartialScroll_ = line ? 1 : 0;
   }
-  
+
+  /// Lower bound for all valid node IDs.
+  static constexpr openlcb::NodeID kMinNode = 0;
+  /// Upper bound for all valid node IDs.
+  static constexpr openlcb::NodeID kMaxNode = 0xFFFFFFFFFFFF;
+
  private:
   friend class FindManyTrainTestBase;
 
@@ -236,9 +245,10 @@ class TrainNodeInfoCache : public StateFlowBase {
 
   struct ResultList {
     NodeCacheMap nodes_;
-    /// Number of results we found in the last search. -1 if this list is not
-    /// active.
-    int16_t numResults_{-1};
+    /// @return the number of results we found in the last search.
+    unsigned num_results() {
+      return resultsClippedAtTop_ + resultsClippedAtBottom_ + nodes_.size();
+    }
     /// How many results we lost at the top of the scroll due to the restriction
     /// or size clipping.
     uint16_t resultsClippedAtTop_;
@@ -248,21 +258,57 @@ class TrainNodeInfoCache : public StateFlowBase {
     /// Offset of the topNodeId_ in the result list, including any topmost
     /// evictions.
     int16_t resultOffset_;
+
+    /// Nodes clipped in the paginated search at the bottom.
+    uint16_t newClippedAtTop_;
+    /// Nodes clipped in the paginated search at the top.
+    uint16_t newClippedAtBottom_;
+    
+    /// Node ID that was the limit of the previous clipping region (exclusive:
+    /// this ID is not clipped).
+    openlcb::NodeID previousMinNode_;
+    /// Node ID that was the limit of the previous clipping region. (exclusive:
+    /// this ID is not clipped).
+    openlcb::NodeID previousMaxNode_;
     
     void reset() {
       nodes_.clear();
-      numResults_ = 0;
       resultsClippedAtTop_ = 0;
       resultsClippedAtBottom_ = 0;
       resultOffset_ = -1;
+      newClippedAtBottom_ = 0;
+      newClippedAtTop_ = 0;
+      previousMaxNode_ = kMaxNode;
+      previousMinNode_ = kMinNode;
+    }
+
+    void finalize_search() {
+      resultsClippedAtBottom_ = newClippedAtBottom_;
+      resultsClippedAtTop_ = newClippedAtTop_;
+    }
+    
+    void clear_to_paginate() {
+      newClippedAtBottom_ = 0;
+      newClippedAtTop_ = 0;
+      previousMaxNode_ = max_node();
+      previousMinNode_ = min_node();
+    }
+    
+    /// @return the smallest node ID that we store in the nodes_ cache, or
+    /// kMinNode if the cache is empty.
+    openlcb::NodeID min_node() const {
+      if (nodes_.empty()) return kMinNode;
+      return nodes_.begin()->first;
+    }
+
+    /// @return the largest node ID that we store in the nodes_ cache or
+    /// kMaxNode if the cache is empty.
+    openlcb::NodeID max_node() const {
+      if (nodes_.empty()) return kMaxNode;
+      return (--nodes_.end())->first;
     }
   };
   
-  /// Lower bound for all valid node IDs.
-  static constexpr openlcb::NodeID kMinNode = 0;
-  /// Upper bound for all valid node IDs.
-  static constexpr openlcb::NodeID kMaxNode = 0xFFFFFFFFFFFF;
-
   /// How many entries we should keep in our inmemory cache.
   static constexpr unsigned kCacheMaxSizeDefault = 48;
   /// How many entries to put into the output vector.
@@ -279,12 +325,14 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   }
 
+  void invoke_paginate() {
+    trainNodes_.finalize_search();
+    trainNodes_.clear_to_paginate();
+    invoke_search();
+  }
+  
   Action send_search_request() {
     needSearch_ = 0;
-    newNodes_.reset();
-    // @TODO: populate previous cache.
-    previousCache_ = trainNodes_.nodes_;
-
     resultSetChanged_ = 0;
     searchParams_->data()->resultCode = RemoteFindTrainNodeRequest::PERSISTENT_REQUEST;
     return invoke_subflow_and_wait(
@@ -294,11 +342,9 @@ class TrainNodeInfoCache : public StateFlowBase {
   }
 
   Action search_done() {
-    trainNodes_ = std::move(newNodes_);
-    // this is not in use anymore.
-    newNodes_.nodes_.clear();
-    newNodes_.numResults_ = -1;
-
+    // @TODO: consider moving the train nodes clipping offsets to the final
+    // offsets values.
+    
     // Find selection offset.
     find_selection_offset(&trainNodes_);
     
@@ -379,11 +425,51 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// @param forced_new if true, increments the result count when the new node
   /// is clipped, if false, only increments result count if node is not
   /// clipped.
-  void add_to_list(ResultList* list, openlcb::NodeID node, bool forced_new) {
+  void add_to_list(ResultList* list, openlcb::NodeID node) {
     if (list->nodes_.find(node) != list->nodes_.end()) {
       // We already have this node, good.
       return;
     }
+    bool add_node = false;
+    // Everything that's within the existing range of the map<> is always
+    // added.
+    add_node |= (node >= list->min_node() && node <= list->max_node());
+    // We also add everything that's within the requested range.
+    add_node |= (node >= minResult_ && node <= maxResult_);
+    if (add_node) {
+      auto& node_state = list->nodes_[node];
+      // See if we have stored data
+      auto it = previousCache_.find(node);
+      if (it != previousCache_.end()) {
+        LOG(VERBOSE, "Found cached node name for %012" PRIx64, node);
+        node_state = it->second;
+      } else {
+        node_state.reset(new TrainNodeInfo);
+      }
+      if (node > list->previousMaxNode_) {
+        list->resultsClippedAtBottom_--;
+      }
+      if (node < list->previousMinNode_) {
+        list->resultsClippedAtTop_--;
+        if (list->resultOffset_ > 0) {
+          --list->resultOffset_;
+        }
+      } else if (node < topNodeId_) {
+        // new node that arrived just now
+        if (list->resultOffset_ > 0) {
+          ++list->resultOffset_;
+        }
+      }
+    } else {
+      // Did not add node to cache. Let's see why.
+      if (node < minResult_ && node < list->previousMinNode_) {
+        list->newClippedAtTop_++;
+      }
+      if (node > maxResult_ && node > list->previousMaxNode_) {
+        list->newClippedAtBottom_++;
+      }
+    }
+    /*
     if (node < minResult_) {
       if (!forced_new) return;
       // Outside of the search range -- ignore.
@@ -400,32 +486,28 @@ class TrainNodeInfoCache : public StateFlowBase {
       list->numResults_++;
       list->resultsClippedAtBottom_++;
       return;
-    }
-    list->numResults_++;
-    auto& node_state = list->nodes_[node];
-    // See if we have stored data
-    auto it = previousCache_.find(node);
-    if (it != previousCache_.end()) {
-      LOG(VERBOSE, "Found cached node name for %012" PRIx64, node);
-      node_state = it->second;
-    } else if ((list != &trainNodes_) &&
-               ((it = trainNodes_.nodes_.find(node)) !=
-                trainNodes_.nodes_.end())) {
-      node_state = it->second;
-    } else {
-      node_state.reset(new TrainNodeInfo);
-    }
+      }*/
 
     // Check if we need to evict something from the cache.
     while (list->nodes_.size() > cacheMaxSize_) {
-      if (scrolling_down()) {
+      bool clip_at_end = scrolling_down();
+      //bool clip_eviction = clip_at_end;
+      if (list->min_node() < minResult_) clip_at_end = false;
+      else if (list->max_node() > maxResult_) clip_at_end = true;
+      if (clip_at_end) {
         // delete from the end
         list->nodes_.erase(--list->nodes_.end());
         list->resultsClippedAtBottom_++;
+        //if (clip_eviction == clip_at_end) {
+          list->newClippedAtBottom_++;
+          //}
       } else {
         // delete from the beginning
         list->nodes_.erase(list->nodes_.begin());
         list->resultsClippedAtTop_++;
+        //if (clip_eviction == clip_at_end) {
+          list->newClippedAtTop_++;
+          //}
         if (list->resultOffset_ >= 0) {
           ++list->resultOffset_;
         }
@@ -438,12 +520,7 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// search query. Called on the openlcb executor.
   void result_callback(openlcb::EventState state, openlcb::NodeID node) {
     if (!node) return; // some error occured.
-    if (newNodes_.numResults_ >= 0) {
-      add_to_list(&newNodes_, node, true);
-      add_to_list(&trainNodes_, node, false);
-    } else {
-      add_to_list(&trainNodes_, node, true);
-    }
+    add_to_list(&trainNodes_, node);
     resultSetChanged_ = 1;
 
     if (is_terminated()) {
@@ -600,8 +677,6 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// os_time of when we last changed the output.
   long long lastOutputRefresh_;
 
-  /// The newly accumulating search results if we have a pending search.
-  ResultList newNodes_;
   /// The currently displayed search results.
   ResultList trainNodes_;
   /// When we start a new search, we pre-populate the trainNodes_ structure
