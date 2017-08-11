@@ -34,6 +34,15 @@
 
 #define LOGLEVEL INFO
 
+//#define ENABLE_HOST
+#define STANDALONE
+#define LOGTOSTDOUT
+
+#if !defined(ENABLE_HOST) && !defined(LOGTOSTDOUT)
+#define LOGTOSTDOUT
+#endif
+
+
 #include <stdio.h>
 #include <unistd.h>
 
@@ -122,13 +131,13 @@ void log_output(char* buf, int size) {
 #endif
 } // extern c
 
-namespace bracz_custom {
 #ifdef ENABLE_HOST
+namespace bracz_custom {
 void send_host_log_event(HostLogEvent e) {
   host_client.send_host_log_event(e);
 }
-#endif
 }
+#endif
 
 
 OVERRIDE_CONST(local_nodes_count, 30);
@@ -165,6 +174,16 @@ void adc0_seq2_interrupt_handler(void) {
 openlcb::RefreshLoop loop(stack.node(), {&sw1, &sw2});
 
 bracz_custom::AutomataControl automatas(stack.node(), stack.dg_service(), (const insn_t*) __automata_start);
+
+#ifdef HAVE_ACCPOWER
+
+TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(stack.node(), BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
+openlcb::BitEventConsumer accpowerbit(&acc_on_off);
+
+AccessoryOvercurrentMeasurement<AccHwDefs> g_acc_short_detector(stack.service(), stack.node());
+
+#endif
+
 
 /*TivaSwitchProducer sw2(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
                        openlcb::TractionDefs::EMERGENCY_STOP_EVENT,

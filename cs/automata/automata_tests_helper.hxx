@@ -375,12 +375,12 @@ protected:
       openlcb::EventRegistry::instance()->unregister_handler(this);
     }
    private:
-    virtual void HandleEventReport(const openlcb::EventRegistryEntry&, openlcb::EventReport* event, BarrierNotifiable* done) {
+    void handle_event_report(const openlcb::EventRegistryEntry&, openlcb::EventReport* event, BarrierNotifiable* done) override {
       IncomingEvent(event->event);
       done->notify();
     }
 
-    virtual void HandleIdentifyGlobal(const openlcb::EventRegistryEntry&, openlcb::EventReport* event, BarrierNotifiable* done) {
+    void handle_identify_global(const openlcb::EventRegistryEntry&, openlcb::EventReport* event, BarrierNotifiable* done) override {
       done->notify();
     }
   };

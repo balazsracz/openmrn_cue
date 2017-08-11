@@ -57,11 +57,27 @@
 #include "hardware.hxx"
 #include "dcc/RailcomPortDebug.hxx"
 
+#include "freertos_drivers/ti/TivaCpuLoad.hxx"
+#include "utils/CpuDisplay.hxx"
+
+
+TivaCpuLoad<TivaCpuLoadDefHw> load_monitor;
+
+extern "C" {
+void timer4a_interrupt_handler(void)
+{
+    load_monitor.interrupt_handler();
+}
+}
+
+
 extern TivaDAC<DACDefs> dac;
 
 OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const openlcb::NodeID NODE_ID;
-openlcb::SimpleCanStack stack(NODE_ID);
+extern const openlcb::NodeID __application_node_id;
+openlcb::SimpleCanStack stack(__application_node_id);
+
+CpuDisplay load_display(stack.service(), LED_RED_Pin::instance(), LED_GREEN_Pin::instance());
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
 
@@ -76,15 +92,15 @@ static_assert(openlcb::CONFIG_FILE_SIZE <= 1024, "Need to adjust eeprom size");
 
 typedef BLINKER_Pin LED_RED_Pin;
 
-openlcb::ConfiguredConsumer consumer_red(stack.node(),
+/*openlcb::ConfiguredConsumer consumer_red(stack.node(),
                                          cfg.seg().consumers().entry<0>(),
                                          LED_RED_Pin());
 openlcb::ConfiguredConsumer consumer_green(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
-                                           OUTPUT_EN0_Pin());
+                                           LED_GREEN_Pin());
 openlcb::ConfiguredConsumer consumer_blue(stack.node(),
                                           cfg.seg().consumers().entry<2>(),
-                                          OUTPUT_EN1_Pin());
+                                          LED_BLUE_Pin());*/
 
 /*openlcb::ConfiguredConsumer consumer_shadow0(stack.node(),
                                            cfg.seg().consumers().entry<1>(),
@@ -113,6 +129,13 @@ const Gpio* const enable_ptrs[] = {
 
 openlcb::RefreshLoop loop(stack.node(),
                           {producer_sw1.polling(), producer_sw2.polling()});
+
+constexpr unsigned DELAY_LOG_COUNT = 512;
+volatile int delay_log[DELAY_LOG_COUNT];
+unsigned next_delay = 0;
+uint32_t feedback_sample_overflow_count = 0;
+std::vector<CountingDebouncer> RailcomDefs::debouncers_;
+volatile bool RailcomDefs::enableOvercurrent_ = false;
 
 template <class Debouncer>
 class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
@@ -148,6 +171,12 @@ class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
         updateFunction_(i, debouncer.current_state());
       }
     }
+    int current_tick = RailcomDefs::get_timer_tick();
+    int start_tick = 0;
+    memcpy(&start_tick, entry->data()->ch2Data, 4);
+    start_tick -= current_tick;
+    delay_log[next_delay++] = start_tick;
+    if (next_delay >= DELAY_LOG_COUNT) next_delay = 0;
   }
 
  private:
@@ -156,27 +185,50 @@ class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
   uint8_t channel_;
 };
 
-uint8_t dac_next_packet_mode = 0;
-uint8_t RailcomDefs::feedbackChannel_ = 0xff;
 
-DacSettings dac_occupancy = {5, 50, true};  // 1.9 mV
-// DacSettings dac_occupancy = { 5, 10, true };
+class DirectRailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
+ public:
+  /// Creates an occupancy decoder port.
+  ///
+  /// @param channel is the railcom channe to listen to. Usually 0xff for
+  /// occupancy or 0xfe for overcurrent.
+  /// @param channel_count tells how many bits are available to check.
+  /// @param update_function will be called with the channel number and the
+  /// channel's value.
+  DirectRailcomOccupancyDecoder(uint8_t channel, unsigned channel_count,
+                          std::function<void(unsigned, bool)> update_function)
+      : updateFunction_(std::move(update_function)), channel_(channel), count_(channel_count) {
+    
+  }
 
-#if 1
-DacSettings dac_overcurrent = {5, 20, false};
-#else
-DacSettings dac_overcurrent = dac_occupancy;
-#endif
+  void send(Buffer<dcc::RailcomHubData>* entry, unsigned prio) override {
+    AutoReleaseBuffer<dcc::RailcomHubData> rb(entry);
+    if (entry->data()->channel != channel_) return;
+    uint8_t new_payload = entry->data()->ch1Data[0];
+    for (unsigned i = 0; i < count_; ++i) {
+      bool new_state_input = new_payload & (1 << i);
+      // Need to produce new value to network.
+      updateFunction_(i, new_state_input);
+    }
+    int current_tick = RailcomDefs::get_timer_tick();
+    int start_tick = 0;
+    memcpy(&start_tick, entry->data()->ch2Data, 4);
+    start_tick -= current_tick;
+    delay_log[next_delay++] = start_tick;
+    if (next_delay >= DELAY_LOG_COUNT) next_delay = 0;
+  }
 
-#if 1
-DacSettings dac_railcom = {5, 10, true};  // 8.6 mV
-#else
-DacSettings dac_railcom = dac_occupancy;
-#endif
+ private:
+  std::function<void(unsigned, bool)> updateFunction_;
+  uint8_t channel_;
+  uint8_t count_;
+};
 
-volatile uint32_t ch0_count, ch1_count, sample_count;
+
 
 extern unsigned* stat_led_ptr();
+extern volatile uint32_t ch0_count, ch1_count, sample_count;
+extern DacSettings dac_occupancy, dac_overcurrent, dac_railcom;
 
 class DACThread : public OSThread {
  public:
@@ -211,6 +263,7 @@ class DACThread : public OSThread {
                      openlcb::eventid_to_buffer(ev), &n);
         n.wait_for_notification();
       }
+      LED_BLUE_Pin::set(false);
 
       volatile unsigned* leds = stat_led_ptr();
       for (int i = 0; i < 6; ++i) {
@@ -249,6 +302,7 @@ void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
+  LED_BLUE_Pin::set(false);
   stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
   int fd = ::open(openlcb::CONFIG_FILENAME, O_RDWR);
   HASSERT(fd >= 0);
@@ -267,13 +321,15 @@ int appl_main(int argc, char* argv[]) {
       cfg.seg().current().overcurrent().count_total().read(fd),
       cfg.seg().current().overcurrent().min_active().read(fd)};
 
+  static bracz_custom::DetectorOptions opts(cfg.seg().detector_options());
+  
   static bracz_custom::DetectorPort ports[6] = {
-      {stack.node(), 0, fd, cfg.seg().detectors().entry<0>()},
-      {stack.node(), 1, fd, cfg.seg().detectors().entry<1>()},
-      {stack.node(), 2, fd, cfg.seg().detectors().entry<2>()},
-      {stack.node(), 3, fd, cfg.seg().detectors().entry<3>()},
-      {stack.node(), 4, fd, cfg.seg().detectors().entry<4>()},
-      {stack.node(), 5, fd, cfg.seg().detectors().entry<5>()},
+      {stack.node(), 0, fd, cfg.seg().detectors().entry<0>(), opts},
+      {stack.node(), 1, fd, cfg.seg().detectors().entry<1>(), opts},
+      {stack.node(), 2, fd, cfg.seg().detectors().entry<2>(), opts},
+      {stack.node(), 3, fd, cfg.seg().detectors().entry<3>(), opts},
+      {stack.node(), 4, fd, cfg.seg().detectors().entry<4>(), opts},
+      {stack.node(), 5, fd, cfg.seg().detectors().entry<5>(), opts},
   };
 
   bracz_custom::DetectorPort* pports = ports;
@@ -285,9 +341,12 @@ int appl_main(int argc, char* argv[]) {
 
   static RailcomOccupancyDecoder<CountingDebouncer> occ_decoder(
       0xff, 6, occupancy_proxy, occupancy_debouncer_opts);
-  static RailcomOccupancyDecoder<CountingDebouncer> over_decoder(
-      0xfe, 6, overcurrent_proxy, overcurrent_debouncer_opts);
+  
+  static DirectRailcomOccupancyDecoder over_decoder(
+      0xfe, 6, overcurrent_proxy);
 
+  RailcomDefs::setup_debouncer_opts(overcurrent_debouncer_opts);
+  
   static RailcomBroadcastFlow railcom_broadcast(
       &railcom_hub, stack.node(), &occ_decoder, &over_decoder, nullptr, 6);
 

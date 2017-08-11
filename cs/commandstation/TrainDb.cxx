@@ -216,7 +216,8 @@ size_t TrainDb::load_from_file(int fd, bool initial_load) {
   if (initial_load) {
     for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
       uint16_t address = cfg_.entry(i).address().read(fd);
-      if (address != 0 && address != 0xffffu) {
+      unsigned mode = cfg_.entry(i).mode().read(fd);
+      if (address != 0 && address != 0xffffu && mode != 0) {
         entries_.emplace_back(new FileTrainDbEntry(fd, cfg_.entry(i).offset()));
       }
     }

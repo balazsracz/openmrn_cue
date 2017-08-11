@@ -83,6 +83,19 @@ CDI_GROUP_ENTRY(overcurrent, DetectorPortOvercurrent, Name("Short detector"), De
 CDI_GROUP_ENTRY(enable, DetectorPortEnable, Name("Enable"), Description("Configures events consumed to turn the port on or off."));
 CDI_GROUP_END();
 
+CDI_GROUP(DetectorTuningOptions, Name("Detector options"), Description("Advanced setting configuring the detector."), FixedSize(48));
+CDI_GROUP_ENTRY(sensor_off_delay, openlcb::Uint16ConfigEntry, Name("Unoccupied delay (milliseconds)"), Description("Defines how much time after the last train leaving the block shall the unoccupied event be sent. If another train enters the block, the unoccupied event will never be sent (i.e., bounces shorter than this will be suppressed)."), Default(500));
+
+CDI_GROUP_ENTRY(init_straggle_delay, openlcb::Uint16ConfigEntry, Name("Straggled turn-on port delay (milliseconds)"), Description("Waits this many milliseconds between turning on each port."), Default(300));
+CDI_GROUP_ENTRY(init_static_delay, openlcb::Uint16ConfigEntry, Name("Global turn-on delay (milliseconds)"), Description("Waits this many milliseconds before turning on the first port."), Default(100));
+
+CDI_GROUP_ENTRY(turnon_fast_retry_count, openlcb::Uint8ConfigEntry, Name("Number of fast re-tries"), Description("When detecting a short during turn-on, tries this many times quickly to turn on the power."), Default(3));
+CDI_GROUP_ENTRY(turnon_fast_retry_delay, openlcb::Uint16ConfigEntry, Name("Delay for fast re-tries (milliseconds)"), Description("Waits this long between fast re-tries."), Default(300));
+
+CDI_GROUP_ENTRY(short_retry_delay, openlcb::Uint16ConfigEntry, Name("Delay for re-tries after shorted (milliseconds)"), Description("Waits this long between attempting to reenable a port after a short."), Default(2000));
+
+CDI_GROUP_END();
+
 }  // namespace bracz_custom
 
 #endif  // _BRACZ_CUSTOM_DETECTORPORTLOGIC_HXX_

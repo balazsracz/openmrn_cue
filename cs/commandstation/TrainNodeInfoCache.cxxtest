@@ -80,13 +80,15 @@ class FindManyTrainTestBase : public TrainDbTest {
     b->data()->alias = 0x922;
     b->data()->state = openlcb::AliasInfo::STATE_RESERVED;
     b->data()->do_not_reallocate();
-    secondIf_.local_aliases()->add(openlcb::AliasCache::RESERVED_ALIAS_NODE_ID,
-                                   b->data()->alias);
+    run_x([this, b](){secondIf_.local_aliases()->add(openlcb::AliasCache::RESERVED_ALIAS_NODE_ID,
+                                              b->data()->alias);});
     secondIf_.alias_allocator()->reserved_aliases()->insert(b);
 
     wait();
 
     wait();
+    trainCache_.set_cache_max_size(16, 4);
+    trainCache_.set_nodes_to_show(3);
   }
 
   ~FindManyTrainTestBase() {
@@ -103,11 +105,24 @@ class FindManyTrainTestBase : public TrainDbTest {
   }
 
   using NodeCacheMap = TrainNodeInfoCache::NodeCacheMap;
+  using ResultList = TrainNodeInfoCache::ResultList;
 
   const NodeCacheMap& get_results_map() {
+    return trainCache_.trainNodes_.nodes_;
+  }
+
+  const ResultList& get_result_struct() {
     return trainCache_.trainNodes_;
   }
 
+  openlcb::NodeID get_clip_min() {
+    return trainCache_.minResult_;
+  }
+
+  openlcb::NodeID get_clip_max() {
+    return trainCache_.maxResult_;
+  }
+  
   std::vector<string> get_output() {
     std::vector<string> ret;
     for (auto* ps : output_.entry_names) {
@@ -140,7 +155,7 @@ TEST_F(FindManyTrainTestBase, Search7) {
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
   wait_for_search();
   EXPECT_EQ(1u, get_results_map().size());
-  EXPECT_TRUE(get_results_map().begin()->second.hasNodeName_);
+  EXPECT_TRUE(get_results_map().begin()->second->hasNodeName_);
   EXPECT_THAT(get_output(), ElementsAre("Node test 7000"));
   printf("scrolling...\n");
   trainCache_.scroll_down();
@@ -187,11 +202,82 @@ TEST_F(FindManyTrainTestBase, Search5) {
   EXPECT_CALL(mockNotifiable_, notify()).Times(2); // no new SNIP lookup.
   EXPECT_CALL(canBus_, mwrite(_)).Times(AtMost(7));
   wait_for_search();
+  EXPECT_EQ(6u, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
   clear_expect();
   EXPECT_EQ(6u, get_results_map().size());
   EXPECT_THAT(get_output(), ElementsAre("TT 5100", "TT 5101", "TT 5102"));
   EXPECT_EQ(0u, trainCache_.first_result_offset());
   EXPECT_EQ(6u, trainCache_.num_results());
+
+  // clear restrict
+  b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset();
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(2));
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  // wait for one iteration of the executor
+  // It is really difficult to specify how long we need to wait.
+  //EXPECT_EQ(0u, trainCache_.num_results());
+  //EXPECT_EQ(0u, trainCache_.first_result_offset());
+
+  wait_for_search();
+  EXPECT_EQ(38u, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
+}
+
+TEST_F(FindManyTrainTestBase, PageSize) {
+  trainCache_.set_nodes_to_show(2);
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(5, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(12u, get_results_map().size());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001"));
+}
+
+
+TEST_F(FindManyTrainTestBase, ScrollToLastLine) {
+  trainCache_.set_nodes_to_show(2);
+  trainCache_.set_scroll_to_last_line(true);
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(5, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(12u, get_results_map().size());
+
+  EXPECT_THAT(get_output(), ElementsAre("TT 5000", "TT 5001"));
+
+  // Do some scrolling
+  EXPECT_EQ(12u, trainCache_.num_results());
+  EXPECT_EQ(0u, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5001", "TT 5002"));
+  trainCache_.scroll_down();
+  EXPECT_THAT(get_output(), ElementsAre("TT 5002", "TT 5003"));
+  for (int i = 0; i < 20; ++i) {
+    trainCache_.scroll_down();
+  }
+  EXPECT_THAT(get_output(), ElementsAre("TT 5105"));
+  EXPECT_EQ(11u, trainCache_.first_result_offset());
+  trainCache_.scroll_down();
+  EXPECT_EQ(11u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5105"));
+
+  trainCache_.scroll_up();
+  EXPECT_EQ(10u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5104", "TT 5105"));
+
+  trainCache_.scroll_down();
+  EXPECT_EQ(11u, trainCache_.first_result_offset());
+  EXPECT_THAT(get_output(), ElementsAre("TT 5105"));
 }
 
 TEST_F(FindManyTrainTestBase, Scroll3) {
@@ -218,11 +304,14 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   for (int i = 0; i < 7; ++i) {
     printf("offset %u, then scroll\n", trainCache_.first_result_offset());
     trainCache_.scroll_down();
+    wait_for_search();
+    EXPECT_EQ(25u, trainCache_.num_results());
   }
   EXPECT_EQ(9u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
   wait();
   clear_expect();
+  EXPECT_EQ(0, get_result_struct().resultsClippedAtTop_);
   printf("scroll and re-fetch\n");
   EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
   trainCache_.scroll_down();
@@ -232,11 +321,21 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   clear_expect(true);
   EXPECT_EQ(10u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
-  EXPECT_EQ("TT 3006", get_results_map().begin()->second.name_);
+  EXPECT_EQ("TT 3006", get_results_map().begin()->second->name_);
+  // there is some whitebox testing here to debug why the scrolling is broken
+  // now.
+  EXPECT_EQ(0x060100000000ULL | 3006, get_clip_min());
+  EXPECT_EQ(6, get_result_struct().resultsClippedAtTop_);
+  EXPECT_EQ(6, get_result_struct().newClippedAtTop_);
+  EXPECT_EQ(16, get_results_map().size());
+  auto maxnode = TrainNodeInfoCache::kMaxNode;
+  EXPECT_EQ(maxnode, get_clip_max());
   printf("more scroll\n");
   for (int i = 0; i < 5; ++i) {
     printf("offset %u, then scroll\n", trainCache_.first_result_offset());
     trainCache_.scroll_down();
+    wait_for_search();
+    EXPECT_EQ(25u, trainCache_.num_results());
   }
   EXPECT_EQ(15u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3015", "TT 3016", "TT 3017"));
@@ -248,10 +347,11 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   trainCache_.scroll_down();
   wait_for_search();
   clear_expect(true);
-  EXPECT_EQ(13u, get_results_map().size());
+  EXPECT_EQ(16u, get_results_map().size());
   for (int i = 0; i < 10; ++i) {
     printf("offset %u, then scroll\n", trainCache_.first_result_offset());
     trainCache_.scroll_down();
+    EXPECT_EQ(25u, trainCache_.num_results());
   }
   EXPECT_EQ(22u, trainCache_.first_result_offset());
   EXPECT_THAT(get_output(), ElementsAre("TT 3022", "TT 3023", "TT 3024"));
@@ -317,7 +417,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
   clear_expect(true);
   
-  EXPECT_EQ("TT 3006", get_results_map().begin()->second.name_);
+  EXPECT_EQ("TT 3006", get_results_map().begin()->second->name_);
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 3011", "TT 3012", "TT 3013"));
   // now one up should be fine, the second shouls trigger a refetch

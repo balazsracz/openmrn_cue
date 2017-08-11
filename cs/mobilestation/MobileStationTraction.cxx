@@ -236,7 +236,9 @@ class TractionImpl : public IncomingFrameFlow {
       return release_and_exit();
     }
     uint16_t fn_value;
-    if (!openlcb::TractionDefs::fn_get_parse(rb->data()->payload, &fn_value)) {
+    unsigned fn_num;
+    if (!openlcb::TractionDefs::fn_get_parse(rb->data()->payload, &fn_value,
+                                             &fn_num)) {
       rb->unref();
       return release_and_exit();
     }
