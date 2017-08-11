@@ -349,6 +349,7 @@ class TrainLocLogixConditional:
     s.tail = '\n'
     s.set('data', '-1')
     s.set('option', '1')
+    s.set('delay', '0')
     s.set('string', value)
     s.set('systemName', memory_name)
     s.set('type', '12')
@@ -383,7 +384,7 @@ class TrainLocLogixConditional:
     s.tail = '\n'
     s = FindOrInsert(e, 'conditionalStateVariable')
     s.tail = '\n'
-    s.set('debugString', '')
+    s.set('dataString', '')
     s.set('negated', 'no')
     s.set('num1', '0')
     s.set('num2', '0')
@@ -740,7 +741,7 @@ def RenderLogixConditionals(output_tree_root):
     MergeEntries(all_cond_node, desired_conditionals, purge = True)
 
   # Finds the main logix node
-  logixnode = output_tree_root.find('./logixs/logix[@systemName=\'IX:GEN:TRAINLOC:\']')
+  logixnode = output_tree_root.find('./logixs/logix[systemName=\'IX:GEN:TRAINLOC:\']')
   if not logixnode:
     print("No logix node - skipping rendering")
     return
