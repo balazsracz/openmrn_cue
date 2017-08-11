@@ -1020,16 +1020,55 @@ class LayoutSchedule : public TrainSchedule {
 
   void RunStubYY(Automata* aut) {
     WithRouteLock l(this, &route_lock_YY);
-    AddDirectBlockTransition(Block_EntryToYY, Stub_YYA2, &g_yy_entry_free);
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA1, &yy_toa1, &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW6.b.magnet(), true);
+    
+    StopAndReverseAtStub(Stub_YYA1);
+
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA2, &yy_toa2, &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW6.b.magnet(), false);
     SwitchTurnout(Turnout_YYW7.b.magnet(), true);
     
     StopAndReverseAtStub(Stub_YYA2);
 
-    AddDirectBlockTransition(Stub_YYA2.b_.rev_signal,
-                             Block_ExitFromYY,
-                             &g_yy_entry_free);
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA3, &yy_toa3, &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW6.b.magnet(), false);
+    SwitchTurnout(Turnout_YYW7.b.magnet(), false);
+    SwitchTurnout(Turnout_YYW8.b.magnet(), true);
+    
+    StopAndReverseAtStub(Stub_YYA3);
+
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA4, &yy_toa4, &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW6.b.magnet(), false);
+    SwitchTurnout(Turnout_YYW7.b.magnet(), false);
+    SwitchTurnout(Turnout_YYW8.b.magnet(), false);
+    
+    StopAndReverseAtStub(Stub_YYA4);
+
+    
+    AddBlockTransitionOnPermit(Stub_YYA1.b_.rev_signal,
+                               Block_ExitFromYY,
+                               &ye_froma1,
+                               &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
+
+    AddBlockTransitionOnPermit(Stub_YYA2.b_.rev_signal,
+                               Block_ExitFromYY,
+                               &ye_froma2,
+                               &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW4.b.magnet(), true);
+
+    AddBlockTransitionOnPermit(Stub_YYA3.b_.rev_signal,
+                               Block_ExitFromYY,
+                               &ye_froma3,
+                               &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW4.b.magnet(), true);
+    AddBlockTransitionOnPermit(Stub_YYA4.b_.rev_signal,
+                               Block_ExitFromYY,
+                               &ye_froma4,
+                               &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW4.b.magnet(), true);
+
   }
 
   void RunCycle(Automata* aut) {
@@ -1119,7 +1158,7 @@ IC2000Train train_ice("ICE", MMAddress(2), 16);
 */
 
 IC2000TrainB train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
-IC2000Train train_ice2("ICE2", MMAddress(2), 25);
+IC2000Train train_ice2("ICE2", MMAddress(2), 15);
 IC2000Train train_re465("Re465", DccShortAddress(47), 25);
 IC2000Train train_icn("ICN", DccShortAddress(50), 13);
 IC2000Train train_bde44("BDe-4/4", DccShortAddress(38), 35);
