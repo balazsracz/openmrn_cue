@@ -28,6 +28,13 @@ namespace openlcb { class Node; }
 
 class Automata;
 
+struct AutomataDebugSpace {
+  uint64_t logEventId_{0};
+  uint32_t ip_{0};
+};
+extern AutomataDebugSpace g_aut_debug_space;
+
+
 class ReadWriteBit {
 public:
   virtual ~ReadWriteBit() {}
@@ -196,6 +203,10 @@ public:
   };
 
 private:
+  // Called repeatedly in the exeuction cycle to perform debugging steps.
+    void debug_hook();
+
+
     ReadWriteBit* GetBit(int offset) {
 	if (!imported_bits_[offset]) {
             LOG_ERROR("Bit %d not imported, ip: %d", offset, ip_);
@@ -230,6 +241,8 @@ private:
 
     //! Instruction pointer.
     aut_offset_t ip_;
+    //! used for the debug hook.
+    aut_offset_t last_ip_;
 
     uint8_t aut_srcplace_; //< "current" (or source) place of train.
     uint8_t aut_trainid_;  //< train id for absolute identification of trains.

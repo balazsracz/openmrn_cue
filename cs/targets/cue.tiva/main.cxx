@@ -99,6 +99,8 @@ extern char __automata_end[];
 
 openlcb::FileMemorySpace automata_space("/etc/automata", __automata_end - __automata_start);
 
+openlcb::ReadWriteMemoryBlock automata_debug_space(&g_aut_debug_space, sizeof(g_aut_debug_space));
+
 //auto* g_gc_adapter = GCAdapterBase::CreateGridConnectAdapter(&stdout_hub, &can_hub0, false);
 
 #ifdef ENABLE_HOST
@@ -199,6 +201,7 @@ int appl_main(int argc, char* argv[])
 {
     stack.add_can_port_select("/dev/can0");
     stack.memory_config_handler()->registry()->insert(stack.node(), 0xA0, &automata_space);
+    stack.memory_config_handler()->registry()->insert(stack.node(), 10, &automata_debug_space);
     stack.loop_executor();
     return 0;
 }

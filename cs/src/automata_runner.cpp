@@ -36,6 +36,7 @@ int debug_variables __attribute__((weak)) = 0;
 
 // This write helper will only ever be used synchronously.
 static openlcb::WriteHelper automata_write_helper;
+AutomataDebugSpace g_aut_debug_space;
 static SyncNotifiable g_notify_wait;
 static BarrierNotifiable g_barrier_notify;
 
@@ -101,6 +102,18 @@ void AutomataRunner::CreateVarzAndAutomatas() {
   Run();
 }
 
+void AutomataRunner::debug_hook() {
+  auto print_ip = last_ip_;
+  last_ip_ = ip_;
+  if (!g_aut_debug_space.logEventId_) return;
+  if (automata_write_helper.last_payload().size() != 8) return;
+  if (*(uint64_t*)(automata_write_helper.last_payload().data()) ==
+      g_aut_debug_space.logEventId_) {
+    g_aut_debug_space.ip_ = htobe16(print_ip);
+  }
+  automata_write_helper.clear_last_payload();
+}
+
 void AutomataRunner::Run() {
   uint8_t insn;
   uint8_t numif, numact;
@@ -119,6 +132,7 @@ void AutomataRunner::Run() {
     keep = true;
     insn_t insn, arg;
     while (ip_ < endif) {
+      debug_hook();
       insn = load_insn();
       if ((insn & _IF_MISCA_MASK) == _IF_MISCA_BASE) {
         if (ip_ >= endif) {
@@ -139,6 +153,7 @@ void AutomataRunner::Run() {
       continue;
     }
     while (ip_ < endcond) {
+      debug_hook();
       insn = load_insn();
       if (insn == _ACT_IMPORT_VAR) {
         import_variable();
@@ -177,6 +192,7 @@ void AutomataRunner::Run() {
         eval_action(insn);
       }
     }
+    debug_hook();
   }
 }
 
