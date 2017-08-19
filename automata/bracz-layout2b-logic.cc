@@ -77,6 +77,85 @@ StateRef StUser1(10);
 StateRef StUser2(11);
 
 
+// This is one double-bridge
+I2CSignal signal_A469_adv(&bb, 19, "A469.adv");
+I2CSignal signal_A369_adv(&bb, 17, "A369.adv");
+
+I2CSignal signal_B469_main(&bb, 14, "B469.main");
+I2CSignal signal_B469_adv(&bb, 15, "B469.adv");
+
+I2CSignal signal_B369_main(&bb, 12, "B369.main");
+I2CSignal signal_B369_adv(&bb, 13, "B369.adv");
+// end bridge
+
+I2CSignal signal_A461_main(&bb, 72, "A461.main");
+I2CSignal signal_A461_adv(&bb, 73, "A461.adv");
+
+I2CSignal signal_A361_main(&bb, 34, "A361.main");
+I2CSignal signal_A361_adv(&bb, 35, "A361.adv");
+
+// 4-way bridge. Heads are from left to right.
+I2CSignal signal_XXA1_main(&bb, 53, "XX.A1.main");
+I2CSignal signal_XXA1_adv(&bb, 54, "XX.A1.adv");
+I2CSignal signal_XXA2_main(&bb, 55, "XX.A2.main");
+I2CSignal signal_XXA2_adv(&bb, 56, "XX.A2.adv");
+I2CSignal signal_XXA3_main(&bb, 55, "XX.A3.main");
+I2CSignal signal_XXA3_adv(&bb, 56, "XX.A3.adv");
+I2CSignal signal_XXA4_main(&bb, 65, "XX.A4.main");
+I2CSignal signal_XXA4_adv(&bb, 66, "XX.A4.adv");
+// end four-way bridge.
+
+// 2-way bridge. This has main signals on both sides. The first head is
+// the one with the wires connected, then goes left-to-right and then other
+// side left-to-right.
+I2CSignal signal_A441_main(&bc, 36, "A441.main");
+I2CSignal signal_A441_adv(&bc, 37, "A441.adv");
+I2CSignal signal_A341_main(&bc, 42, "A341.main");
+I2CSignal signal_A341_adv(&bc, 43, "A341.adv");
+I2CSignal signal_B339_main(&bc, 40, "B339.main");
+I2CSignal signal_B339_adv(&bc, 41, "B339.adv");
+I2CSignal signal_B439_main(&bc, 38, "B439.main");
+I2CSignal signal_B439_adv(&bc, 39, "B439.adv");
+// End bridge.
+
+// 2-way bridge with main signals on one side, advance on the other. Heads are
+// from left to right (starting at main head).
+I2CSignal signal_A431_main(&bd, 6, "A431.main");
+I2CSignal signal_A431_adv(&bd, 7, "A431.adv");
+I2CSignal signal_A331_main(&bd, 32, "A331.main");
+I2CSignal signal_A331_adv(&bd, 33, "A331.adv");
+I2CSignal signal_B331_adv(&bd, 75, "B331.adv");
+I2CSignal signal_B431_adv(&bd, 74, "B431.adv");
+// End bridge
+
+// Lone main-only head with a male-female plug.
+I2CSignal signal_YYB12_main(&bd, 62, "YY.B12.main");
+// Lone main-only head with a male plug.
+I2CSignal signal_YYB22_main(&bd, 63, "YY.B22.main");
+// Double wired main-only head. Shorter wire:
+I2CSignal signal_YYB42_main(&bd, 25, "YY.B42.main"); // yard lead
+// Longer wire
+I2CSignal signal_YYB32_main(&bd, 24, "YY.B32.main"); // staging exit
+
+// 4-way bridge (other). this has about 10cm wire from the base. Heads from left to right.
+I2CSignal signal_YYB4_main(&bb, 69, "YY.B4.main");
+I2CSignal signal_YYB4_adv(&bb, 70, "YY.B4.adv");
+I2CSignal signal_YYB3_main(&bb, 67, "YY.B3.main");
+I2CSignal signal_YYB3_adv(&bb, 68, "YY.B3.adv");
+I2CSignal signal_YYB2_main(&bb, 51, "YY.B2.main");
+I2CSignal signal_YYB2_adv(&bb, 52, "YY.B2.adv");
+I2CSignal signal_YYB1_main(&bb, 49, "YY.B1.main");
+I2CSignal signal_YYB1_adv(&bb, 50, "YY.B1.adv");
+// end bridge
+
+I2CSignal signal_B349_main(&bc, 26, "B349.main");
+I2CSignal signal_B349_adv(&bc, 27, "B349.adv");
+I2CSignal signal_B449_main(&bc, 8, "B449.main");
+I2CSignal signal_B449_adv(&bc, 9, "B449.adv");
+
+
+
+
 /*
 I2CSignal signal_A240_main(&ba, 26, "A240.main");
 I2CSignal signal_A240_adv(&ba, 27, "A240.adv");
@@ -591,11 +670,12 @@ PhysicalSignal A441(&bc.InOraRed, &bc.Rel1, nullptr, nullptr, nullptr,
 PhysicalSignal B349(&bc.InGreenGreen, &bc.Rel2, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 
-PhysicalSignal A461(&bb.In4, &bb.Rel2, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal B369(&bb.InBrownBrown, &bb.Rel1, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-
+PhysicalSignal A461(&bb.In4, &bb.Rel2, &signal_A461_main.signal,
+                    &signal_A461_adv.signal, &signal_B469_main.signal,
+                    &signal_B469_adv.signal, &signal_A469_adv.signal, nullptr);
+PhysicalSignal B369(&bb.InBrownBrown, &bb.Rel1, &signal_B369_main.signal,
+                    &signal_B369_adv.signal, &signal_A361_main.signal,
+                    &signal_A361_adv.signal, nullptr, &signal_A369_adv.signal);
 
 PhysicalSignal XXB1(&be.InBrownBrown, &be.Rel0, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
@@ -803,10 +883,10 @@ void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {
 }
 
 DefAut(signalaut, brd, {
+  BlockSignal(this, &Block_A461);
+  BlockSignal(this, &Block_B369);
 
     /*
-  BlockSignal(this, &Block_XXB1);
-  BlockSignal(this, &Block_XXA2);
   ClearUsedVariables();
   BlockSignal(this, &Block_XXA3);
   BlockSignal(this, &Block_A406);
