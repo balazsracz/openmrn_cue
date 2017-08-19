@@ -582,6 +582,12 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
         aut->ImportVariable(*far_detector);
     // If the train has shown up in a far-away block, it has surely passed
     // through us.
+    //
+    // TODO(bracz): This is broken, because a Turnout will always report as
+    // having a far away detector, and the data that it returns is highly
+    // questionable.
+    // This is also preventing a signal to be manually set to green in case
+    // there is some down the road occupancy.
     Def()
         .IfReg1(route_set)
         .IfReg1(next_trainlength_occ)
