@@ -99,8 +99,8 @@ I2CSignal signal_XXA1_main(&bb, 53, "XX.A1.main");
 I2CSignal signal_XXA1_adv(&bb, 54, "XX.A1.adv");
 I2CSignal signal_XXA2_main(&bb, 55, "XX.A2.main");
 I2CSignal signal_XXA2_adv(&bb, 56, "XX.A2.adv");
-I2CSignal signal_XXA3_main(&bb, 55, "XX.A3.main");
-I2CSignal signal_XXA3_adv(&bb, 56, "XX.A3.adv");
+I2CSignal signal_XXA3_main(&bb, 57, "XX.A3.main");
+I2CSignal signal_XXA3_adv(&bb, 58, "XX.A3.adv");
 I2CSignal signal_XXA4_main(&bb, 65, "XX.A4.main");
 I2CSignal signal_XXA4_adv(&bb, 66, "XX.A4.adv");
 // end four-way bridge.
@@ -138,14 +138,14 @@ I2CSignal signal_YYB42_main(&bd, 25, "YY.B42.main"); // yard lead
 I2CSignal signal_YYB32_main(&bd, 24, "YY.B32.main"); // staging exit
 
 // 4-way bridge (other). this has about 10cm wire from the base. Heads from left to right.
-I2CSignal signal_YYB4_main(&bb, 69, "YY.B4.main");
-I2CSignal signal_YYB4_adv(&bb, 70, "YY.B4.adv");
-I2CSignal signal_YYB3_main(&bb, 67, "YY.B3.main");
-I2CSignal signal_YYB3_adv(&bb, 68, "YY.B3.adv");
-I2CSignal signal_YYB2_main(&bb, 51, "YY.B2.main");
-I2CSignal signal_YYB2_adv(&bb, 52, "YY.B2.adv");
-I2CSignal signal_YYB1_main(&bb, 49, "YY.B1.main");
-I2CSignal signal_YYB1_adv(&bb, 50, "YY.B1.adv");
+I2CSignal signal_YYB4_main(&ba, 69, "YY.B4.main");
+I2CSignal signal_YYB4_adv(&ba, 70, "YY.B4.adv");
+I2CSignal signal_YYB3_main(&ba, 67, "YY.B3.main");
+I2CSignal signal_YYB3_adv(&ba, 68, "YY.B3.adv");
+I2CSignal signal_YYB2_main(&ba, 51, "YY.B2.main");
+I2CSignal signal_YYB2_adv(&ba, 52, "YY.B2.adv");
+I2CSignal signal_YYB1_main(&ba, 49, "YY.B1.main");
+I2CSignal signal_YYB1_adv(&ba, 50, "YY.B1.adv");
 // end bridge
 
 I2CSignal signal_B349_main(&bc, 26, "B349.main");
@@ -153,8 +153,10 @@ I2CSignal signal_B349_adv(&bc, 27, "B349.adv");
 I2CSignal signal_B449_main(&bc, 8, "B449.main");
 I2CSignal signal_B449_adv(&bc, 9, "B449.adv");
 
-
-
+I2CSignal signal_YYA13_main(&ba, 22, "YY.A13.main");
+I2CSignal signal_YYA13_adv(&ba, 23, "YY.A13.adv");
+I2CSignal signal_YYA23_main(&ba, 44, "YY.A23.main");
+I2CSignal signal_YYA23_adv(&ba, 45, "YY.A23.adv");
 
 /*
 I2CSignal signal_A240_main(&ba, 26, "A240.main");
@@ -643,32 +645,39 @@ StandardMovableTurnout Turnout_XXW6(&brd,
                                     &Magnet_XXW6);
 TurnoutWrap TXXW6(&Turnout_XXW6.b, kClosedToPoint);
 
+PhysicalSignal YYA4(&ba.InGreenYellow, &ba.Rel3, &signal_YYB4_main.signal,
+                    &signal_YYB4_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal YYA3(&ba.InGreenGreen, &ba.Rel2, &signal_YYB3_main.signal,
+                    &signal_YYB3_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal YYA2(&ba.InBrownGrey, &ba.Rel1, &signal_YYB2_main.signal,
+                    &signal_YYB2_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal YYA1(&ba.InBrownBrown, &ba.Rel0, &signal_YYB1_main.signal,
+                    &signal_YYB1_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
 
-PhysicalSignal YYA1(&ba.InGreenYellow, &ba.Rel3, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal YYA2(&ba.InGreenGreen, &ba.Rel2, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal YYA3(&ba.InBrownGrey, &ba.Rel1, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal YYA4(&ba.InBrownBrown, &ba.Rel0, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
+PhysicalSignal YYA13(&ba.InOraGreen, &bd.Rel1, &signal_YYA13_main.signal,
+                     &signal_YYA13_adv.signal, &signal_YYB12_main.signal,
+                     nullptr, nullptr, nullptr);
+PhysicalSignal YYB22(&bd.InGreenGreen, &bd.Rel0, &signal_YYB22_main.signal,
+                     nullptr, &signal_YYA23_main.signal,
+                     &signal_YYA23_adv.signal, nullptr, nullptr);
 
-PhysicalSignal YYA13(&ba.InOraGreen, &bd.Rel1, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal YYB22(&bd.InGreenGreen, &bd.Rel0, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
+PhysicalSignal A431(&bd.InBrownBrown, &bd.Rel2, &signal_A431_main.signal,
+                    &signal_A431_adv.signal, &signal_B439_main.signal,
+                    &signal_B439_adv.signal, nullptr, &signal_B431_adv.signal);
+PhysicalSignal B339(&bc.InOraGreen, &bc.Rel0, &signal_B339_main.signal,
+                    &signal_B339_adv.signal, &signal_A331_main.signal,
+                    &signal_A331_adv.signal, &signal_B331_adv.signal, nullptr);
 
-
-PhysicalSignal A431(&bd.InBrownBrown, &bd.Rel2, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal B339(&bc.InOraGreen, &bc.Rel0, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-
-
-PhysicalSignal A441(&bc.InOraRed, &bc.Rel1, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal B349(&bc.InGreenGreen, &bc.Rel2, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
+PhysicalSignal A441(&bc.InOraRed, &bc.Rel1, &signal_A441_main.signal,
+                    &signal_A441_adv.signal, &signal_B449_main.signal,
+                    &signal_B449_adv.signal, nullptr, nullptr);
+PhysicalSignal B349(&bc.InGreenGreen, &bc.Rel2, &signal_B349_main.signal,
+                    &signal_B349_adv.signal, &signal_A341_main.signal,
+                    &signal_A341_adv.signal, nullptr, nullptr);
 
 PhysicalSignal A461(&bb.In4, &bb.Rel2, &signal_A461_main.signal,
                     &signal_A461_adv.signal, &signal_B469_main.signal,
@@ -677,15 +686,18 @@ PhysicalSignal B369(&bb.InBrownBrown, &bb.Rel1, &signal_B369_main.signal,
                     &signal_B369_adv.signal, &signal_A361_main.signal,
                     &signal_A361_adv.signal, nullptr, &signal_A369_adv.signal);
 
-PhysicalSignal XXB1(&be.InBrownBrown, &be.Rel0, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal XXB2(&be.InBrownGrey, &be.Rel1, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal XXB3(&be.In7, &be.Rel2, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal XXB4(&be.In6, &be.Rel3, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-
+PhysicalSignal XXB4(&be.InBrownBrown, &be.Rel0, &signal_XXA4_main.signal,
+                    &signal_XXA4_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel1, &signal_XXA3_main.signal,
+                    &signal_XXA3_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal XXB2(&be.In7, &be.Rel2, &signal_XXA2_main.signal,
+                    &signal_XXA2_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal XXB1(&be.In6, &be.Rel3, &signal_XXA1_main.signal,
+                    &signal_XXA1_adv.signal, nullptr, nullptr, nullptr,
+                    nullptr);
 
 StubBlock Stub_XXB1(&brd, &XXB1, nullptr, logic, "XX.B1");
 StubBlock Stub_XXB2(&brd, &XXB2, nullptr, logic, "XX.B2");
@@ -742,20 +754,20 @@ StubBlock Stub_YYA4(&brd, &YYA4, nullptr, logic, "YY.A4");
 
 bool ignored1 = BindPairs({
     //
-    {Stub_XXB4.entry(), Turnout_XXW6.b.side_thrown()},
-    {Stub_XXB2.entry(), Turnout_XXW4.b.side_closed()},
+    {Stub_XXB1.entry(), Turnout_XXW6.b.side_thrown()},
+    {Stub_XXB3.entry(), Turnout_XXW4.b.side_closed()},
     {Turnout_XXW5.b.side_thrown(), Turnout_XXW3.b.side_thrown()},
     {Turnout_XXW1.b.side_closed(), Turnout_XXW2.b.side_thrown()},
-    {Turnout_YYW6.b.side_thrown(), Stub_YYA1.entry()},
-    {Turnout_YYW7.b.side_thrown(), Stub_YYA2.entry()},
-    {Turnout_YYW8.b.side_thrown(), Stub_YYA3.entry()} //
+    {Turnout_YYW6.b.side_thrown(), Stub_YYA4.entry()},
+    {Turnout_YYW7.b.side_thrown(), Stub_YYA3.entry()},
+    {Turnout_YYW8.b.side_thrown(), Stub_YYA2.entry()} //
 });
 
 bool ignored2 = BindSequence(
-    Stub_XXB3.entry(),
+    Stub_XXB2.entry(),
     {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &TW349, &Block_A441,
      &Block_A431, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
-    Stub_YYA4.entry());
+    Stub_YYA1.entry());
 
 bool ignored4 = BindSequence(
     Turnout_YYW4.b.side_thrown(),
@@ -766,7 +778,7 @@ bool ignored4 = BindSequence(
 bool ignored3 = BindSequence(
     Turnout_W360.b.side_thrown(),
     {&Block_B369, &TXXW2, &TXXW3, &TXXW4},
-    Stub_XXB1.entry());
+    Stub_XXB4.entry());
 
 
 auto& Block_EntryToXX = Block_B369;
@@ -885,24 +897,31 @@ void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {
 DefAut(signalaut, brd, {
   BlockSignal(this, &Block_A461);
   BlockSignal(this, &Block_B369);
-
-    /*
   ClearUsedVariables();
-  BlockSignal(this, &Block_XXA3);
-  BlockSignal(this, &Block_A406);
+  BlockSignal(this, &Block_A441);
+  BlockSignal(this, &Block_B349);
   ClearUsedVariables();
-  BlockSignal(this, &Block_B108);
-  BlockSignal(this, &Block_B129);
-    */
+  BlockSignal(this, &Block_A431);
+  BlockSignal(this, &Block_B339);
 });
 
 DefAut(signalaut1, brd, {
+  BlockSignal(this, &Block_YYA13);
+  BlockSignal(this, &Block_YYB22);
   ClearUsedVariables();
+  BlockSignal(this, &Stub_XXB1.b_);
+  BlockSignal(this, &Stub_XXB2.b_);
   ClearUsedVariables();
+  BlockSignal(this, &Stub_XXB3.b_);
+  BlockSignal(this, &Stub_XXB4.b_);
 });
 
 DefAut(signalaut2, brd, {
+  BlockSignal(this, &Stub_YYA1.b_);
+  BlockSignal(this, &Stub_YYA2.b_);
   ClearUsedVariables();
+  BlockSignal(this, &Stub_YYA3.b_);
+  BlockSignal(this, &Stub_YYA4.b_);
   ClearUsedVariables();
 });
 
@@ -1060,81 +1079,75 @@ class LayoutSchedule : public TrainSchedule {
 
   void RunStubXX(Automata* aut) {
     WithRouteLock l(this, &route_lock_XX);
-    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB2, &xx_tob2, &g_xx12_entry_free, false);
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB3, &xx_tob3, &g_xx12_entry_free, false);
     SwitchTurnout(Turnout_XXW3.b.magnet(), false);
     SwitchTurnout(Turnout_XXW4.b.magnet(), false);
 
-    StopAndReverseAtStub(Stub_XXB2);
+    StopAndReverseAtStub(Stub_XXB3);
 
-    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB1, &xx_tob1, &g_xx12_entry_free, false);
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB4, &xx_tob4, &g_xx12_entry_free, false);
     SwitchTurnout(Turnout_XXW3.b.magnet(), false);
     SwitchTurnout(Turnout_XXW4.b.magnet(), true);
 
-    StopAndReverseAtStub(Stub_XXB1);
+    StopAndReverseAtStub(Stub_XXB4);
 
-    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB3, &xx_tob3, &g_xx34_entry_free, false);
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB2, &xx_tob2, &g_xx34_entry_free, false);
     SwitchTurnout(Turnout_XXW3.b.magnet(), true);
     SwitchTurnout(Turnout_XXW6.b.magnet(), false);
 
-    StopAndReverseAtStub(Stub_XXB3);
+    StopAndReverseAtStub(Stub_XXB2);
     
-    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB4, &xx_tob4, &g_xx34_entry_free, false);
+    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB1, &xx_tob1, &g_xx34_entry_free, false);
     SwitchTurnout(Turnout_XXW3.b.magnet(), true);
     SwitchTurnout(Turnout_XXW6.b.magnet(), true);
 
-    StopAndReverseAtStub(Stub_XXB4);
+    StopAndReverseAtStub(Stub_XXB1);
 
-    AddBlockTransitionOnPermit(Stub_XXB2.b_.rev_signal, Block_ExitFromXX,
-                               &xe_fromb2, &g_xx12_exit_free);
-    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
-    AddBlockTransitionOnPermit(Stub_XXB1.b_.rev_signal, Block_ExitFromXX,
-                               &xe_fromb1, &g_xx12_exit_free);
-    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
     AddBlockTransitionOnPermit(Stub_XXB3.b_.rev_signal, Block_ExitFromXX,
-                               &xe_fromb3, &g_xx34_exit_free);
-    SwitchTurnout(Turnout_XXW5.b.magnet(), false);
+                               &xe_fromb3, &g_xx12_exit_free);
+    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
     AddBlockTransitionOnPermit(Stub_XXB4.b_.rev_signal, Block_ExitFromXX,
-                               &xe_fromb4, &g_xx34_exit_free);
+                               &xe_fromb4, &g_xx12_exit_free);
+    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+    AddBlockTransitionOnPermit(Stub_XXB2.b_.rev_signal, Block_ExitFromXX,
+                               &xe_fromb2, &g_xx34_exit_free);
+    SwitchTurnout(Turnout_XXW5.b.magnet(), false);
+    AddBlockTransitionOnPermit(Stub_XXB1.b_.rev_signal, Block_ExitFromXX,
+                               &xe_fromb1, &g_xx34_exit_free);
     SwitchTurnout(Turnout_XXW5.b.magnet(), false);
   }
 
   void RunStubYY(Automata* aut) {
     WithRouteLock l(this, &route_lock_YY);
-    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA1, &yy_toa1, &g_yy_entry_free);
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA4, &yy_toa4, &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW6.b.magnet(), true);
     
-    StopAndReverseAtStub(Stub_YYA1);
+    StopAndReverseAtStub(Stub_YYA4);
 
-    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA2, &yy_toa2, &g_yy_entry_free);
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA3, &yy_toa3, &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW6.b.magnet(), false);
     SwitchTurnout(Turnout_YYW7.b.magnet(), true);
     
-    StopAndReverseAtStub(Stub_YYA2);
+    StopAndReverseAtStub(Stub_YYA3);
 
-    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA3, &yy_toa3, &g_yy_entry_free);
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA2, &yy_toa2, &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW6.b.magnet(), false);
     SwitchTurnout(Turnout_YYW7.b.magnet(), false);
     SwitchTurnout(Turnout_YYW8.b.magnet(), true);
     
-    StopAndReverseAtStub(Stub_YYA3);
+    StopAndReverseAtStub(Stub_YYA2);
 
-    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA4, &yy_toa4, &g_yy_entry_free);
+    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA1, &yy_toa1, &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW6.b.magnet(), false);
     SwitchTurnout(Turnout_YYW7.b.magnet(), false);
     SwitchTurnout(Turnout_YYW8.b.magnet(), false);
     
-    StopAndReverseAtStub(Stub_YYA4);
+    StopAndReverseAtStub(Stub_YYA1);
 
     
-    AddBlockTransitionOnPermit(Stub_YYA1.b_.rev_signal,
+    AddBlockTransitionOnPermit(Stub_YYA4.b_.rev_signal,
                                Block_ExitFromYY,
-                               &ye_froma1,
-                               &g_yy_entry_free);
-    SwitchTurnout(Turnout_YYW4.b.magnet(), true);
-
-    AddBlockTransitionOnPermit(Stub_YYA2.b_.rev_signal,
-                               Block_ExitFromYY,
-                               &ye_froma2,
+                               &ye_froma4,
                                &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
 
@@ -1143,9 +1156,15 @@ class LayoutSchedule : public TrainSchedule {
                                &ye_froma3,
                                &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
-    AddBlockTransitionOnPermit(Stub_YYA4.b_.rev_signal,
+
+    AddBlockTransitionOnPermit(Stub_YYA2.b_.rev_signal,
                                Block_ExitFromYY,
-                               &ye_froma4,
+                               &ye_froma2,
+                               &g_yy_entry_free);
+    SwitchTurnout(Turnout_YYW4.b.magnet(), true);
+    AddBlockTransitionOnPermit(Stub_YYA1.b_.rev_signal,
+                               Block_ExitFromYY,
+                               &ye_froma1,
                                &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
 
