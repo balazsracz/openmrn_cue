@@ -645,17 +645,17 @@ StandardMovableTurnout Turnout_XXW6(&brd,
                                     &Magnet_XXW6);
 TurnoutWrap TXXW6(&Turnout_XXW6.b, kClosedToPoint);
 
-PhysicalSignal YYA4(&ba.InGreenYellow, &ba.Rel3, &signal_YYB4_main.signal,
-                    &signal_YYB4_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal YYA4(&ba.InGreenYellow, &ba.Rel3, nullptr, nullptr,
+                    &signal_YYB4_main.signal, &signal_YYB4_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal YYA3(&ba.InGreenGreen, &ba.Rel2, &signal_YYB3_main.signal,
-                    &signal_YYB3_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal YYA3(&ba.InGreenGreen, &ba.Rel2, nullptr, nullptr,
+                    &signal_YYB3_main.signal, &signal_YYB3_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal YYA2(&ba.InBrownGrey, &ba.Rel1, &signal_YYB2_main.signal,
-                    &signal_YYB2_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal YYA2(&ba.InBrownGrey, &ba.Rel1, nullptr, nullptr,
+                    &signal_YYB2_main.signal, &signal_YYB2_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal YYA1(&ba.InBrownBrown, &ba.Rel0, &signal_YYB1_main.signal,
-                    &signal_YYB1_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal YYA1(&ba.InBrownBrown, &ba.Rel0, nullptr, nullptr,
+                    &signal_YYB1_main.signal, &signal_YYB1_adv.signal, nullptr,
                     nullptr);
 
 PhysicalSignal YYA13(&ba.InOraGreen, &bd.Rel1, &signal_YYA13_main.signal,
@@ -686,17 +686,17 @@ PhysicalSignal B369(&bb.InBrownBrown, &bb.Rel1, &signal_B369_main.signal,
                     &signal_B369_adv.signal, &signal_A361_main.signal,
                     &signal_A361_adv.signal, nullptr, &signal_A369_adv.signal);
 
-PhysicalSignal XXB4(&be.InBrownBrown, &be.Rel0, &signal_XXA4_main.signal,
-                    &signal_XXA4_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal XXB4(&be.InBrownBrown, &be.Rel0, nullptr, nullptr,
+                    &signal_XXA4_main.signal, &signal_XXA4_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel1, &signal_XXA3_main.signal,
-                    &signal_XXA3_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel1, nullptr, nullptr,
+                    &signal_XXA3_main.signal, &signal_XXA3_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal XXB2(&be.In7, &be.Rel2, &signal_XXA2_main.signal,
-                    &signal_XXA2_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal XXB2(&be.In7, &be.Rel2, nullptr, nullptr,
+                    &signal_XXA2_main.signal, &signal_XXA2_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal XXB1(&be.In6, &be.Rel3, &signal_XXA1_main.signal,
-                    &signal_XXA1_adv.signal, nullptr, nullptr, nullptr,
+PhysicalSignal XXB1(&be.In6, &be.Rel3, nullptr, nullptr,
+                    &signal_XXA1_main.signal, &signal_XXA1_adv.signal, nullptr,
                     nullptr);
 
 StubBlock Stub_XXB1(&brd, &XXB1, nullptr, logic, "XX.B1");
@@ -718,6 +718,14 @@ TurnoutWrap TW349(&Turnout_W349.b, kPointToClosed);
 
 StandardBlock Block_A441(&brd, &A441, logic, "A441");
 StandardBlock Block_A431(&brd, &A431, logic, "A431");
+
+MagnetDef Magnet_W440(&g_magnet_aut, "W440", &bc.ActBlueGrey, &bc.ActBlueBrown, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_W440(&brd, logic->Allocate("W440", 40), &Magnet_W440);
+TurnoutWrap TW440(&Turnout_W440.b, kThrownToPoint);
+
+CoupledMagnetDef Magnet_W340(&g_magnet_aut, "W340", &Magnet_W440, true);
+StandardMovableTurnout Turnout_W340(&brd, logic->Allocate("W340", 40), &Magnet_W340);
+TurnoutWrap TW340(&Turnout_W340.b, kClosedToPoint);
 
 StandardBlock Block_B349(&brd, &B349, logic, "B349");
 StandardBlock Block_B339(&brd, &B339, logic, "B339");
@@ -760,20 +768,20 @@ bool ignored1 = BindPairs({
     {Turnout_XXW1.b.side_closed(), Turnout_XXW2.b.side_thrown()},
     {Turnout_YYW6.b.side_thrown(), Stub_YYA4.entry()},
     {Turnout_YYW7.b.side_thrown(), Stub_YYA3.entry()},
-    {Turnout_YYW8.b.side_thrown(), Stub_YYA2.entry()} //
+    {Turnout_YYW8.b.side_thrown(), Stub_YYA2.entry()},
+    {Turnout_W340.b.side_thrown(), Turnout_W440.b.side_closed()} //
 });
 
 bool ignored2 = BindSequence(
     Stub_XXB2.entry(),
-    {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &TW349, &Block_A441,
+    {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &TW349, &Block_A441, &TW440,
      &Block_A431, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
     Stub_YYA1.entry());
 
-bool ignored4 = BindSequence(
+bool ignored4 = BindSequence(  //
     Turnout_YYW4.b.side_thrown(),
-    {&Block_YYB22, &Block_B339, &Block_B349},
+    {&Block_YYB22, &Block_B339, &TW340, &Block_B349},
     Turnout_W349.b.side_thrown());
-
 
 bool ignored3 = BindSequence(
     Turnout_W360.b.side_thrown(),

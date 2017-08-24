@@ -850,21 +850,35 @@ g_text_direction_by_rotation = [
 ]
 
 g_signal_reverse_names = {
-    "A240" : "A131",
-    "B129" : "A117",
-    "A217" : "B229",
-    "A317" : "B329",
-    "B108" : "A100",
-    "A200" : "B208",
-    "XX.B1" : "XX.A1",
-    "XX.A2" : "XX.B2",
-    "XX.A3" : "XX.B3",
-    "A406" : "B400",
+    "YY.A1": "YY.B1",
+    "YY.A2": "YY.B2",
+    "YY.A3": "YY.B3",
+    "YY.A4": "YY.B4",
+    "XX.B1": "XX.A1",
+    "XX.B2": "XX.A2",
+    "XX.B3": "XX.A3",
+    "XX.B4": "XX.A4",
+    "YY.A13": "YY.B12",
+    "YY.B22": "YY.A23",
+    "A431": "B439",
+    "B339": "A331",
+    "A441": "B449",
+    "B349": "A341",
+    "A461": "B469",
+    "B369": "A361",
 }
 
 g_missing_signals = {
 #  "WW.A11",
 #  "YY.A3"
+    "YY.A1",
+    "YY.A2",
+    "YY.A3",
+    "YY.A4",
+    "XX.B1",
+    "XX.B2",
+    "XX.B3",
+    "XX.B4",
 }
 
 
