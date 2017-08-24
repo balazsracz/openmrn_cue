@@ -135,8 +135,10 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
     b->data()->alias = 0x922;
     b->data()->state = openlcb::AliasInfo::STATE_RESERVED;
     b->data()->do_not_reallocate();
-    secondIf_.local_aliases()->add(openlcb::AliasCache::RESERVED_ALIAS_NODE_ID,
-                                   b->data()->alias);
+    run_x([this, b]() {
+      secondIf_.local_aliases()->add(
+          openlcb::AliasCache::RESERVED_ALIAS_NODE_ID, b->data()->alias);
+    });
     secondIf_.alias_allocator()->reserved_aliases()->insert(b);
 
     wait();
