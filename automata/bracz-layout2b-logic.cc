@@ -30,6 +30,10 @@ Board brd;
 EventBasedVariable is_paused(&brd, "is_paused", BRACZ_LAYOUT | 0x0000,
                              BRACZ_LAYOUT | 0x0001, 7, 31, 3);
 
+EventBasedVariable is_shutdown(&brd, "is_shutdown",
+                               BRACZ_LAYOUT | 0x000c, BRACZ_LAYOUT | 0x000d, 7,
+                               31, 4);
+
 EventBasedVariable blink_off(&brd, "blink_off", BRACZ_LAYOUT | 0x0002,
                              BRACZ_LAYOUT | 0x0003, 7, 31, 2);
 
@@ -522,6 +526,11 @@ void IfNotPaused(Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(is_paused))
       .IfReg0(op->parent()->ImportVariable(reset_all_routes));
 }
+
+void IfNotShutdown(Automata::Op* op) {
+  op->IfReg0(op->parent()->ImportVariable(is_shutdown));
+}
+
 
 namespace automata {
 auto g_not_paused_condition = NewCallback(&IfNotPaused);
@@ -1029,6 +1038,7 @@ auto g_xx34_entry_free = NewCallback(&IfXX34EntryFree);
 
 void IfXX12ExitFree(Automata::Op* op) {
   IfNotPaused(op);
+  IfNotShutdown(op);
   op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
   op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW2.b.any_route()));
   op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW4.b.any_route()));
@@ -1037,6 +1047,7 @@ auto g_xx12_exit_free = NewCallback(&IfXX12ExitFree);
 
 void IfXX34ExitFree(Automata::Op* op) {
   IfNotPaused(op);
+  IfNotShutdown(op);
   op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
   op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW6.b.any_route()));
 }
@@ -1049,6 +1060,14 @@ void IfYYEntryFree(Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(*Turnout_YYW6.b.any_route()));
 }
 auto g_yy_entry_free = NewCallback(&IfYYEntryFree);
+
+void IfYYExitFree(Automata::Op* op) {
+  IfNotPaused(op);
+  IfNotShutdown(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_YYW6.b.any_route()));
+}
+auto g_yy_exit_free = NewCallback(&IfYYExitFree);
+
 
 void If355Free(Automata::Op* op) {
   IfNotPaused(op);
@@ -1152,30 +1171,30 @@ class LayoutSchedule : public TrainSchedule {
     
     StopAndReverseAtStub(Stub_YYA1);
 
-    
     AddBlockTransitionOnPermit(Stub_YYA4.b_.rev_signal,
                                Block_ExitFromYY,
                                &ye_froma4,
-                               &g_yy_entry_free);
+                               &g_yy_exit_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
 
     AddBlockTransitionOnPermit(Stub_YYA3.b_.rev_signal,
                                Block_ExitFromYY,
                                &ye_froma3,
-                               &g_yy_entry_free);
+                               &g_yy_exit_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
 
     AddBlockTransitionOnPermit(Stub_YYA2.b_.rev_signal,
                                Block_ExitFromYY,
                                &ye_froma2,
-                               &g_yy_entry_free);
+                               &g_yy_exit_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
     AddBlockTransitionOnPermit(Stub_YYA1.b_.rev_signal,
                                Block_ExitFromYY,
                                &ye_froma1,
-                               &g_yy_entry_free);
+                               &g_yy_exit_free);
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
 
+    ClearAutomataVariables(aut);
   }
 
   void RunCycle(Automata* aut) {
