@@ -573,6 +573,81 @@ void SimpleFollowStrategy(
       .ActReg1(aut->ImportVariable(src->request_green()));*/
 }
 
+class MagnetButtonAutomata {
+ public:
+  MagnetButtonAutomata(Board* brd) : aut_("magnetbutton", brd, &plugins_) {}
+
+  void Register(AutomataCallback* plugin) {
+    plugins_.AddAutomataPlugin(ofs_++, plugin);
+  }
+
+ private:
+  unsigned ofs_ = 100;
+  AutomataPlugin plugins_;
+  StandardPluginAutomata aut_;
+};
+
+class MagnetButton {
+ public:
+  MagnetButton(MagnetButtonAutomata* parent, const AllocatorPtr& parent_alloc,
+               MagnetDef* magnet, const GlobalVariable& button)
+      : alloc_(parent_alloc->Allocate(string("btn.") + magnet->name_, 4)),
+        button_(button),
+        magnet_(magnet) {
+    parent->Register(NewCallbackPtr(this, &MagnetButton::Run));
+  }
+
+ private:
+  AllocatorPtr alloc_;
+  const GlobalVariable& button_;
+  MagnetDef* magnet_;
+  std::unique_ptr<GlobalVariable> shadow_{alloc_->Allocate("shadow")};
+  std::unique_ptr<GlobalVariable> armed_{alloc_->Allocate("armed")};
+  void Run(Automata* aut);
+};
+
+void MagnetButton::Run(Automata* aut) {
+  aut->ClearUsedVariables();
+  const Automata::LocalVariable& btn = aut->ImportVariable(button_);
+  Automata::LocalVariable* shadow = aut->ImportVariable(shadow_.get());
+  Automata::LocalVariable* armed = aut->ImportVariable(armed_.get());
+  Automata::LocalVariable* cmd = aut->ImportVariable(magnet_->command.get());
+  Def().IfState(StInit).ActReg0(shadow).ActReg0(armed);
+
+  // Flip the state if the button is just pressed.
+  Def()
+      .IfReg0(btn)
+      .IfReg1(*shadow)
+      .IfReg0(btn)
+      .IfReg0(*cmd)
+      .ActReg1(cmd)
+      .ActReg0(shadow);
+  Def()
+      .IfReg0(btn)
+      .IfReg1(*shadow)
+      .IfReg0(btn)
+      .IfReg1(*cmd)
+      .ActReg0(cmd)
+      .ActReg0(shadow);
+
+  // Arm the timer when the button is released.
+  Def().IfReg0(*shadow).IfReg1(btn).IfReg0(*armed).ActTimer(1).ActReg1(armed);
+  // When the timer expires with the button up, reset shadow.
+  Def()
+      .IfReg0(*shadow)
+      .IfReg1(btn)
+      .IfReg1(*armed)
+      .IfTimerDone()
+      .ActReg1(shadow)
+      .ActReg0(armed);
+  // Otherwise if we see a bounce, go back with the arming.
+  Def()
+      .IfReg0(*shadow)
+      .IfReg0(btn)
+      .IfReg1(*armed)
+      .ActReg0(armed);
+}
+
 EventBlock perm(&brd, BRACZ_LAYOUT | 0xC000, "perm", 1024 / 2);
 
 EventBlock l1(&brd, BRACZ_LAYOUT | 0xD000, "logic");
@@ -611,6 +686,7 @@ AllocatorPtr train_tmp(logic2->Allocate("train", 768));
 
 MagnetCommandAutomata g_magnet_aut(&brd, logic2);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
+MagnetButtonAutomata g_btn_aut(&brd);
 
 
 MagnetDef Magnet_XXW1(&g_magnet_aut, "XX.W1", &bb.ActBrownGrey,
@@ -647,8 +723,8 @@ StandardMovableTurnout Turnout_XXW5(&brd,
                                     &Magnet_XXW5);
 TurnoutWrap TXXW5(&Turnout_XXW5.b, kPointToClosed);
 
-MagnetDef Magnet_XXW6(&g_magnet_aut, "XX.W6", &bb.ActBlueGrey,
-                      &bb.ActBlueBrown, MovableTurnout::kClosed);
+MagnetDef Magnet_XXW6(&g_magnet_aut, "XX.W6", &be.ActGreenGreen,
+                      &be.ActGreenRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_XXW6(&brd,
                                     logic->Allocate("XX.W6", 40),
                                     &Magnet_XXW6);
@@ -716,7 +792,10 @@ StubBlock Stub_XXB4(&brd, &XXB4, nullptr, logic, "XX.B4");
 StandardBlock Block_A461(&brd, &A461, logic, "A461");
 StandardBlock Block_B369(&brd, &B369, logic, "B369");
 
-StandardFixedTurnout Turnout_W360(&brd, logic->Allocate("W360", 40), FixedTurnout::TURNOUT_THROWN);
+MagnetDef Magnet_W360(&g_magnet_aut, "W360", &bb.ActBlueGrey, &bb.ActBlueBrown,
+                      MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_W360(&brd, logic->Allocate("W360", 40),
+                                    &Magnet_W360);
 TurnoutWrap TW360(&Turnout_W360.b, kClosedToPoint);
 
 
@@ -729,6 +808,7 @@ StandardBlock Block_A441(&brd, &A441, logic, "A441");
 StandardBlock Block_A431(&brd, &A431, logic, "A431");
 
 MagnetDef Magnet_W440(&g_magnet_aut, "W440", &bc.ActBlueGrey, &bc.ActBlueBrown, MovableTurnout::kThrown);
+MagnetButton BtnW440(&g_btn_aut, logic2, &Magnet_W440, bc.InBrownBrown);
 StandardMovableTurnout Turnout_W440(&brd, logic->Allocate("W440", 40), &Magnet_W440);
 TurnoutWrap TW440(&Turnout_W440.b, kThrownToPoint);
 
@@ -739,6 +819,15 @@ TurnoutWrap TW340(&Turnout_W340.b, kClosedToPoint);
 StandardBlock Block_B349(&brd, &B349, logic, "B349");
 StandardBlock Block_B339(&brd, &B339, logic, "B339");
 
+MagnetDef Magnet_YYW2(&g_magnet_aut, "YY.W2", &bd.ActOraGreen,
+                      &bd.ActOraRed, MovableTurnout::kClosed);
+MagnetButton BtnYYW2(&g_btn_aut, logic2, &Magnet_YYW2, bd.InBrownGrey);
+StandardMovableTurnout Turnout_YYW2(&brd, logic->Allocate("YY.W2", 40), &Magnet_YYW2);
+TurnoutWrap TYYW2(&Turnout_YYW2.b, kPointToClosed);
+
+CoupledMagnetDef Magnet_YYW1(&g_magnet_aut, "YY.W1", &Magnet_YYW2, true);
+StandardMovableTurnout Turnout_YYW1(&brd, logic->Allocate("YY.W1", 40), &Magnet_YYW1);
+TurnoutWrap TYYW1(&Turnout_YYW1.b, kPointToThrown);
 
 StandardBlock Block_YYA13(&brd, &YYA13, logic, "YY.A13");
 StandardBlock Block_YYB22(&brd, &YYB22, logic, "YY.B22");
@@ -778,18 +867,19 @@ bool ignored1 = BindPairs({
     {Turnout_YYW6.b.side_thrown(), Stub_YYA4.entry()},
     {Turnout_YYW7.b.side_thrown(), Stub_YYA3.entry()},
     {Turnout_YYW8.b.side_thrown(), Stub_YYA2.entry()},
+    {Turnout_YYW1.b.side_closed(), Turnout_YYW2.b.side_thrown()},
     {Turnout_W340.b.side_thrown(), Turnout_W440.b.side_closed()} //
 });
 
 bool ignored2 = BindSequence(
     Stub_XXB2.entry(),
     {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &TW349, &Block_A441, &TW440,
-     &Block_A431, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
+     &Block_A431, &TYYW1, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
     Stub_YYA1.entry());
 
 bool ignored4 = BindSequence(  //
     Turnout_YYW4.b.side_thrown(),
-    {&Block_YYB22, &Block_B339, &TW340, &Block_B349},
+    {&Block_YYB22, &TYYW2, &Block_B339, &TW340, &Block_B349},
     Turnout_W349.b.side_thrown());
 
 bool ignored3 = BindSequence(
