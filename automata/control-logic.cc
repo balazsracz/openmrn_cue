@@ -54,15 +54,16 @@ void ReleaseRouteCallback(CtrlTrackInterface* side_out,
 void StraightTrack::SimulateAllOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
   auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
+  auto* tmpfar = aut->ImportVariable(tmp_shadow_train_in_far_.get());
   auto* route_set_ab = aut->ImportVariable(route_set_ab_.get());
   auto* route_set_ba = aut->ImportVariable(route_set_ba_.get());
   auto side_b_release =
       NewCallback(&ReleaseRouteCallback, side_b(), route_set_ab);
   auto side_a_release =
       NewCallback(&ReleaseRouteCallback, side_a(), route_set_ba);
-  SimulateOccupancy(aut, sim_occ, tmp, *route_set_ab, side_a(), side_b(),
+  SimulateOccupancy(aut, sim_occ, tmp, tmpfar, *route_set_ab, side_a(), side_b(),
                     &side_b_release);
-  SimulateOccupancy(aut, sim_occ, tmp, *route_set_ba, side_b(), side_a(),
+  SimulateOccupancy(aut, sim_occ, tmp, tmpfar, *route_set_ba, side_b(), side_a(),
                     &side_a_release);
 }
 
@@ -552,6 +553,7 @@ const CtrlTrackInterface* StraightTrack::FindOtherSide(
 
 void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
                        Automata::LocalVariable* tmp_seen_train_in_next,
+                       Automata::LocalVariable* tmp_shadow_train_in_far,
                        const Automata::LocalVariable& route_set,
                        CtrlTrackInterface* past_if, CtrlTrackInterface* next_if,
                        OpCallback* release_cb) {
@@ -561,6 +563,25 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
   HASSERT(next_if);
   const LocalVariable& previous_occ =
       aut->ImportVariable(*past_if->binding()->LookupNextDetector());
+  auto* far_detector = next_if->binding()->LookupFarDetector();
+  auto* next_detector = next_if->binding()->LookupNextDetector();
+
+  if (far_detector) {
+    const LocalVariable& next_trainlength_occ =
+        aut->ImportVariable(*far_detector);
+    Def()
+        .IfReg1(route_set)
+        .IfReg1(previous_occ)
+        .IfReg0(*sim_occ)
+        .IfReg0(next_trainlength_occ)
+        .ActReg0(tmp_shadow_train_in_far);
+    Def()
+        .IfReg1(route_set)
+        .IfReg1(previous_occ)
+        .IfReg0(*sim_occ)
+        .IfReg1(next_trainlength_occ)
+        .ActReg1(tmp_shadow_train_in_far);
+  }
 
   Def()
       .IfReg1(route_set)
@@ -571,11 +592,10 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
 
   if (reset_routes) {
     Def().IfReg1(aut->ImportVariable(*reset_routes))
-        .ActReg0(tmp_seen_train_in_next);
+        .ActReg0(tmp_seen_train_in_next)
+        .ActReg0(tmp_shadow_train_in_far);
   }
-  
-  auto* far_detector = next_if->binding()->LookupFarDetector();
-  auto* next_detector = next_if->binding()->LookupNextDetector();
+
   if (far_detector) {
     // printf("Have far detector\n");
     const LocalVariable& next_trainlength_occ =
@@ -591,6 +611,8 @@ void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
     Def()
         .IfReg1(route_set)
         .IfReg1(next_trainlength_occ)
+        .IfReg0(*tmp_shadow_train_in_far)
+        .ActReg1(tmp_shadow_train_in_far)
         .ActReg0(sim_occ)
         .RunCallback(release_cb);
   }
@@ -660,23 +682,25 @@ void MovableTurnout::CopyLocked(Automata* aut) {
 void TurnoutBase::TurnoutOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
   auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
+  auto* tmpfar = aut->ImportVariable(tmp_shadow_train_in_far_.get());
 
   for (const auto& d : directions_) {
     auto* route_set = aut->ImportVariable(d.route);
     auto release = NewCallback(&ReleaseRouteCallback, d.to, route_set);
-    SimulateOccupancy(aut, sim_occ, tmp, *route_set, d.from, d.to, &release);
+    SimulateOccupancy(aut, sim_occ, tmp, tmpfar, *route_set, d.from, d.to, &release);
   }
 }
 
 void DKW::DKWOccupancy(Automata* aut) {
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
   auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
+  auto* tmpfar = aut->ImportVariable(tmp_shadow_train_in_far_.get());
 
   for (const auto& d : routes_) {
     auto* route_set = aut->ImportVariable(d.route_set.get());
     auto release = NewCallback(&ReleaseRouteCallback,
                                points_[d.to].interface.get(), route_set);
-    SimulateOccupancy(aut, sim_occ, tmp, *route_set,
+    SimulateOccupancy(aut, sim_occ, tmp, tmpfar, *route_set,
                       points_[d.from].interface.get(),
                       points_[d.to].interface.get(), &release);
   }

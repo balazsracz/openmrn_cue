@@ -305,6 +305,7 @@ class CtrlTrackInterface {
 
 void SimulateOccupancy(Automata *aut, Automata::LocalVariable *sim_occ,
                        Automata::LocalVariable *tmp_seen_train_in_next,
+                       Automata::LocalVariable* tmp_shadow_train_in_far,
                        const Automata::LocalVariable &route_set,
                        CtrlTrackInterface *past_if, CtrlTrackInterface *next_if,
                        OpCallback *release_cb);
@@ -323,7 +324,9 @@ class StraightTrack : public StraightTrackInterface,
         route_pending_ba_(allocator->Allocate("route_pending_ba")),
         tmp_seen_train_in_next_(allocator->Allocate("tmp_seen_train_in_next")),
         tmp_route_setting_in_progress_(
-            allocator->Allocate("tmp_route_setting_in_progress")) {
+            allocator->Allocate("tmp_route_setting_in_progress")),
+        tmp_shadow_train_in_far_(
+            allocator->Allocate("tmp_shadow_train_in_far")) {
     AddAutomataPlugin(
         20, NewCallbackPtr(this, &StraightTrack::SimulateAllOccupancy));
     AddAutomataPlugin(
@@ -390,6 +393,8 @@ class StraightTrack : public StraightTrackInterface,
   std::unique_ptr<GlobalVariable> tmp_seen_train_in_next_;
   // Helper variable for excluding parallel route setting requests.
   std::unique_ptr<GlobalVariable> tmp_route_setting_in_progress_;
+  // Another helper variable for simuating occupancy.
+  std::unique_ptr<GlobalVariable> tmp_shadow_train_in_far_;
 };
 
 class StraightTrackWithDetector : public StraightTrack {
@@ -904,7 +909,10 @@ class TurnoutBase : public TurnoutInterface,
         tmp_route_setting_in_progress_(
             allocator->Allocate("tmp_route_setting_in_progress")),
         detector_next_(allocator->Allocate("detector_next")),
-        detector_far_(allocator->Allocate("detector_far")) {
+        detector_far_(allocator->Allocate("detector_far")),
+        tmp_shadow_train_in_far_(
+            allocator->Allocate("tmp_shadow_train_in_far"))
+  {
     directions_.push_back(Direction(&side_points_, &side_closed_,
                                     route_set_PC_.get(),
                                     route_pending_PC_.get(), TURNOUT_CLOSED));
@@ -919,6 +927,7 @@ class TurnoutBase : public TurnoutInterface,
                                     route_pending_TP_.get(), TURNOUT_DONTCARE));
     AddAutomataPlugin(20, NewCallbackPtr(this, &TurnoutBase::TurnoutOccupancy));
     AddAutomataPlugin(23, NewCallbackPtr(this, &TurnoutBase::ProxySignals));
+    AddAutomataPlugin(24, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(25, NewCallbackPtr(this, &TurnoutBase::ProxyDetectors));
     AddAutomataPlugin(29, NewCallbackPtr(&ClearAutomataVariables));
     AddAutomataPlugin(30, NewCallbackPtr(this, &TurnoutBase::TurnoutRoute));
@@ -989,6 +998,9 @@ class TurnoutBase : public TurnoutInterface,
   std::unique_ptr<GlobalVariable> detector_next_;
   // The "far detector" bit looking from the points.
   std::unique_ptr<GlobalVariable> detector_far_;
+
+  // Another helper variable for simuating occupancy.
+  std::unique_ptr<GlobalVariable> tmp_shadow_train_in_far_;
 
  private:
   const GlobalVariable *LookupNextDetector(
@@ -1134,6 +1146,7 @@ class DKW : private OccupancyLookupInterface,
     tmp_seen_train_in_next_.reset(allocator->Allocate("tmp_seen_train_in_next"));
     tmp_route_setting_in_progress_.reset(
         allocator->Allocate("tmp_route_setting_in_progress"));
+    tmp_shadow_train_in_far_.reset(allocator->Allocate("tmp_shadow_train_in_far"));
 
     AddAutomataPlugin(20, NewCallbackPtr(this, &DKW::DKWOccupancy));
     AddAutomataPlugin(23, NewCallbackPtr(this, &DKW::ProxySignals));
@@ -1243,6 +1256,8 @@ protected:
   std::unique_ptr<GlobalVariable> tmp_seen_train_in_next_;
   // Helper variable for excluding parallel route setting requests.
   std::unique_ptr<GlobalVariable> tmp_route_setting_in_progress_;
+  // Helper variable for simuating occupancy.
+  std::unique_ptr<GlobalVariable> tmp_shadow_train_in_far_;
 
 
   FRIEND_TEST(LogicTest, FixedDKW);
