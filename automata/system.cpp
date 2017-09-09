@@ -94,6 +94,9 @@ const Automata::LocalVariable& Automata::ImportVariable(
   if (ret.id < 0) {
     int next_id = GetNextVariableId();
     ret.id = next_id;
+    if (ret.id >= MAX_IMPORT_VAR) {
+      fprintf(stderr, "aut %s: too many imported variables\n", name_.c_str());
+    }
     assert(ret.id < MAX_IMPORT_VAR);
     if (0) fprintf(stderr, "aut %s: imported variable %p for id %d\n", name_.c_str(), &var, ret.id);
     RenderImportVariable(var, ret.id);
@@ -128,6 +131,9 @@ void Automata::ClearUsedVariables() {
 int Automata::GetNextVariableId() {
   while (reserved_variables_.count(next_variable_id_)) {
     ++next_variable_id_;
+  }
+  if (next_variable_id_ >= MAX_IMPORT_VAR) {
+    fprintf(stderr, "aut %s: too many imported variables\n", name_.c_str());
   }
   HASSERT(next_variable_id_ < MAX_IMPORT_VAR);
   return next_variable_id_++;

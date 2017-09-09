@@ -83,6 +83,10 @@ bin: $(strip $(DEFAULT_AUT)).cout
 #bin: convention-logic
 #	./convention-logic
 
+# Causes output files of failed rules to be removed. THose are usually
+# zero-length and are not valid.
+.DELETE_ON_ERROR:
+
 
 $(OUTPUTS): %.cout : %
 	./$< > $@
