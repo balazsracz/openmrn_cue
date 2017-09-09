@@ -804,6 +804,8 @@ MagnetDef Magnet_W349(&g_magnet_aut, "W349", &bc.ActOraGreen,
 StandardMovableTurnout Turnout_W349(&brd, logic->Allocate("W349", 40), &Magnet_W349);
 TurnoutWrap TW349(&Turnout_W349.b, kPointToClosed);
 
+StandardMiddleLongTrack Mdl450(&brd, logic->Allocate("Mdl450", 24));
+
 StandardBlock Block_A441(&brd, &A441, logic, "A441");
 StandardBlock Block_A431(&brd, &A431, logic, "A431");
 
@@ -873,8 +875,8 @@ bool ignored1 = BindPairs({
 
 bool ignored2 = BindSequence(
     Stub_XXB2.entry(),
-    {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &TW349, &Block_A441, &TW440,
-     &Block_A431, &TYYW1, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
+    {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &Mdl450, &TW349, &Block_A441,
+     &TW440, &Block_A431, &TYYW1, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
     Stub_YYA1.entry());
 
 bool ignored4 = BindSequence(  //

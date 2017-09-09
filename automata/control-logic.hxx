@@ -836,6 +836,16 @@ class StandardMiddleDetector : public StraightTrackWithRawDetector {
   StandardPluginAutomata aut_;
 };
 
+class StandardMiddleLongTrack : public StraightTrackLong {
+ public:
+  StandardMiddleLongTrack(Board *brd, AllocatorPtr alloc)
+      : StraightTrackLong(alloc->Allocate("body", 24, 8)),
+        aut_(alloc->name() + ".body", brd, this) {}
+
+ private:
+  StandardPluginAutomata aut_;
+};
+
 class TurnoutInterface {
  public:
   virtual CtrlTrackInterface *side_points() = 0;
