@@ -8,6 +8,40 @@ import os
 
 FLAGS_purge_all = True
 
+g_signal_reverse_names = {
+    "YY.A1": "YY.B1",
+    "YY.A2": "YY.B2",
+    "YY.A3": "YY.B3",
+    "YY.A4": "YY.B4",
+    "XX.B1": "XX.A1",
+    "XX.B2": "XX.A2",
+    "XX.B3": "XX.A3",
+    "XX.B4": "XX.A4",
+    "YY.A13": "YY.B12",
+    "YY.B22": "YY.A23",
+    "A431": "B439",
+    "B339": "A331",
+    "A441": "B449",
+    "B349": "A341",
+    "A461": "B469",
+    "B369": "A361",
+}
+
+g_missing_signals = {
+#  "WW.A11",
+#  "YY.A3"
+    "YY.A1",
+    "YY.A2",
+    "YY.A3",
+    "YY.A4",
+    "XX.B1",
+    "XX.B2",
+    "XX.B3",
+    "XX.B4",
+}
+
+FLAGS_skip_missing_signals = true
+
 class LocationInfo:
   pass
 
@@ -769,6 +803,7 @@ sensoroffset = 3
 
 def PrintBlockLine(layout, block, x0, y):
   layout.append(CreateTextLabel(x0 - 80, y, block))
+  saved_x0 = x0
   layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".request_green"))
   x0 += 40
   layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".body_det.simulated_occ"))
@@ -778,6 +813,19 @@ def PrintBlockLine(layout, block, x0, y):
   layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".signal.route_set_ab"))
   x0 += 40
   layout.append(CreateMemoryLabel(x0, y, "loc." + block))
+  y += 20
+  x0 = saved_x0 + 10
+  rlabel = block + "r"
+  if block in g_signal_reverse_names:
+    rlabel = g_signal_reverse_names[block]
+  layout.append(CreateTextLabel(x0 - 80, y, rlabel))
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".rev_request_green"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".rsignal.simulated_occ"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".body.route_set_ba"))
+  x0 += 40
+  layout.append(CreateSensorIcon(x0, y + sensoroffset, "logic." + block + ".rsignal.route_set_ab"))
 
 def GetRotationFromVector(v):
   """Returns 0-3 for the best-matching orientation for the given vector, expressed as a tuple of floats.
@@ -849,38 +897,6 @@ g_text_direction_by_rotation = [
   "vertical_up",
 ]
 
-g_signal_reverse_names = {
-    "YY.A1": "YY.B1",
-    "YY.A2": "YY.B2",
-    "YY.A3": "YY.B3",
-    "YY.A4": "YY.B4",
-    "XX.B1": "XX.A1",
-    "XX.B2": "XX.A2",
-    "XX.B3": "XX.A3",
-    "XX.B4": "XX.A4",
-    "YY.A13": "YY.B12",
-    "YY.B22": "YY.A23",
-    "A431": "B439",
-    "B339": "A331",
-    "A441": "B449",
-    "B349": "A341",
-    "A461": "B469",
-    "B369": "A361",
-}
-
-g_missing_signals = {
-#  "WW.A11",
-#  "YY.A3"
-    "YY.A1",
-    "YY.A2",
-    "YY.A3",
-    "YY.A4",
-    "XX.B1",
-    "XX.B2",
-    "XX.B3",
-    "XX.B4",
-}
-
 
 def PrintLocationControls(layout, block, index):
   """Adds signal heads to the layout editor right where the tracks are
@@ -926,13 +942,14 @@ def PrintLocationControls(layout, block, index):
   rotation = GetRotationFromVector(dir_vect)
   signal_vect = g_signal_offset_by_rotation[rotation]
   signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
-  layout.append(CreateRGSignalIcon(int(signal_xy[0]), int(signal_xy[1]), "Sig." + block, rotation))
-  siglabel_vect = g_signallabel_offset_by_rotation[rotation]
   signame = block
   if signame in g_missing_signals: signame = "NA"
-  siglabel_xy = (far_xy[0] + siglabel_vect[0] + siglabel_vect[2] * g_textlength * len(signame) / 4, far_xy[1] + siglabel_vect[1] + siglabel_vect[3] * g_textlength * len(signame) / 4)
-  siglabel_rot = g_text_direction_by_rotation[rotation]
-  layout.append(CreateSignalLabelOnTrack(int(siglabel_xy[0]), int(siglabel_xy[1]), signame, siglabel_rot))
+  if signame != "NA" or not FLAGS_skip_missing_signals:
+    layout.append(CreateRGSignalIcon(int(signal_xy[0]), int(signal_xy[1]), "Sig." + block, rotation))
+    siglabel_vect = g_signallabel_offset_by_rotation[rotation]
+    siglabel_xy = (far_xy[0] + siglabel_vect[0] + siglabel_vect[2] * g_textlength * len(signame) / 4, far_xy[1] + siglabel_vect[1] + siglabel_vect[3] * g_textlength * len(signame) / 4)
+    siglabel_rot = g_text_direction_by_rotation[rotation]
+    layout.append(CreateSignalLabelOnTrack(int(siglabel_xy[0]), int(siglabel_xy[1]), signame, siglabel_rot))
   # Computes the other end of the body segments.
   body_pt_map = {}
   for b in index.block_map[bodyblock]:
@@ -961,14 +978,15 @@ def PrintLocationControls(layout, block, index):
   rotation = GetRotationFromVector(dir_vect)
   signal_vect = g_signal_offset_by_rotation[rotation]
   signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
-  layout.append(CreateRGSignalIcon(int(signal_xy[0]), int(signal_xy[1]), "Sig.R" + block, rotation))
-  siglabel_vect = g_signallabel_offset_by_rotation[rotation]
   signame = "NA"
   if block in g_signal_reverse_names:
     signame = g_signal_reverse_names[block]
-  siglabel_xy = (far_xy[0] + siglabel_vect[0] + siglabel_vect[2] * g_textlength * len(signame) / 4, far_xy[1] + siglabel_vect[1] + siglabel_vect[3] * g_textlength * len(signame) / 4)
-  siglabel_rot = g_text_direction_by_rotation[rotation]
-  layout.append(CreateSignalLabelOnTrack(int(siglabel_xy[0]), int(siglabel_xy[1]), signame, siglabel_rot))
+  if signame != "NA" or not FLAGS_skip_missing_signals:
+    layout.append(CreateRGSignalIcon(int(signal_xy[0]), int(signal_xy[1]), "Sig.R" + block, rotation))
+    siglabel_vect = g_signallabel_offset_by_rotation[rotation]
+    siglabel_xy = (far_xy[0] + siglabel_vect[0] + siglabel_vect[2] * g_textlength * len(signame) / 4, far_xy[1] + siglabel_vect[1] + siglabel_vect[3] * g_textlength * len(signame) / 4)
+    siglabel_rot = g_text_direction_by_rotation[rotation]
+    layout.append(CreateSignalLabelOnTrack(int(siglabel_xy[0]), int(siglabel_xy[1]), signame, siglabel_rot))
 
   
 
