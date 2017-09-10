@@ -803,12 +803,13 @@ MagnetDef Magnet_W360(&g_magnet_aut, "W360", &bb.ActBlueGrey, &bb.ActBlueBrown,
 StandardMovableTurnout Turnout_W360(&brd, logic->Allocate("W360", 40),
                                     &Magnet_W360);
 TurnoutWrap TW360(&Turnout_W360.b, kClosedToPoint);
-
+MagnetButton BtnW360(&g_btn_aut, logic2, &Magnet_W360, bb.InGreenYellow);
 
 MagnetDef Magnet_W349(&g_magnet_aut, "W349", &bc.ActOraGreen,
                       &bc.ActOraRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_W349(&brd, logic->Allocate("W349", 40), &Magnet_W349);
 TurnoutWrap TW349(&Turnout_W349.b, kPointToClosed);
+MagnetButton BtnW349(&g_btn_aut, logic2, &Magnet_W349, bc.InGreenYellow);
 
 StandardMiddleLongTrack Mdl450(&brd, logic->Allocate("Mdl450", 24));
 
