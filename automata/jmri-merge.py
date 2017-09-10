@@ -19,6 +19,7 @@ g_signal_reverse_names = {
     "XX.B4": "XX.A4",
     "YY.A13": "YY.B12",
     "YY.B22": "YY.A23",
+    "YY.A33": "YY.B32",
     "A431": "B439",
     "B339": "A331",
     "A441": "B449",
@@ -34,13 +35,14 @@ g_missing_signals = {
     "YY.A2",
     "YY.A3",
     "YY.A4",
+    "YY.A33",
     "XX.B1",
     "XX.B2",
     "XX.B3",
     "XX.B4",
 }
 
-FLAGS_skip_missing_signals = true
+FLAGS_skip_missing_signals = True
 
 class LocationInfo:
   pass

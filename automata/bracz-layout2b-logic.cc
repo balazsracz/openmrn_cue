@@ -750,6 +750,12 @@ PhysicalSignal YYB22(&bd.InGreenGreen, &bd.Rel0, &signal_YYB22_main.signal,
                      nullptr, &signal_YYA23_main.signal,
                      &signal_YYA23_adv.signal, nullptr, nullptr);
 
+PhysicalSignal YYA33(&be.InOraRed, &bd.Rel2, nullptr, nullptr,
+                     &signal_YYB32_main.signal, nullptr, nullptr, nullptr);
+
+PhysicalSignal YYB42(&bd.InOraGreen, &bd.Rel3, &signal_YYB42_main.signal,
+                     nullptr, nullptr, nullptr, nullptr, nullptr);
+
 PhysicalSignal A431(&bd.InBrownBrown, &bd.Rel2, &signal_A431_main.signal,
                     &signal_A431_adv.signal, &signal_B439_main.signal,
                     &signal_B439_adv.signal, nullptr, &signal_B431_adv.signal);
@@ -834,10 +840,22 @@ TurnoutWrap TYYW1(&Turnout_YYW1.b, kPointToThrown);
 StandardBlock Block_YYA13(&brd, &YYA13, logic, "YY.A13");
 StandardBlock Block_YYB22(&brd, &YYB22, logic, "YY.B22");
 
+StandardFixedTurnout Turnout_YYW3(&brd, logic->Allocate("YY.W3", 40),
+                                  FixedTurnout::TURNOUT_CLOSED);
+TurnoutWrap TYYW3(&Turnout_YYW3.b, kClosedToPoint);
+
+StandardFixedTurnout Turnout_YYW9(&brd, logic->Allocate("YY.W9", 40),
+                                  FixedTurnout::TURNOUT_CLOSED);
+TurnoutWrap TYYW9(&Turnout_YYW9.b, kThrownToPoint);
+
 MagnetDef Magnet_YYW4(&g_magnet_aut, "YY.W4", &ba.ActBlueGrey,
                       &ba.ActBlueBrown, MovableTurnout::kThrown);
 StandardMovableTurnout Turnout_YYW4(&brd, logic->Allocate("YY.W4", 40), &Magnet_YYW4);
 TurnoutWrap TYYW4(&Turnout_YYW4.b, kClosedToPoint);
+
+StandardFixedTurnout Turnout_YYW5(&brd, logic->Allocate("YY.W5", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+TurnoutWrap TYYW5(&Turnout_YYW5.b, kThrownToPoint);
 
 MagnetDef Magnet_YYW6(&g_magnet_aut, "YY.W6", &ba.ActOraGreen,
                       &ba.ActOraRed, MovableTurnout::kClosed);
@@ -860,6 +878,10 @@ StubBlock Stub_YYA2(&brd, &YYA2, nullptr, logic, "YY.A2");
 StubBlock Stub_YYA3(&brd, &YYA3, nullptr, logic, "YY.A3");
 StubBlock Stub_YYA4(&brd, &YYA4, nullptr, logic, "YY.A4");
 
+StubBlock Stub_YYA33(&brd, &YYA33, nullptr, logic, "YY.A33");
+StandardBlock Block_YYB42(&brd, &YYB42, logic, "YY.B42");
+
+
 bool ignored1 = BindPairs({
     //
     {Stub_XXB1.entry(), Turnout_XXW6.b.side_thrown()},
@@ -870,24 +892,31 @@ bool ignored1 = BindPairs({
     {Turnout_YYW7.b.side_thrown(), Stub_YYA3.entry()},
     {Turnout_YYW8.b.side_thrown(), Stub_YYA2.entry()},
     {Turnout_YYW1.b.side_closed(), Turnout_YYW2.b.side_thrown()},
+    {Turnout_YYW9.b.side_closed(), Stub_YYA33.entry()},
     {Turnout_W340.b.side_thrown(), Turnout_W440.b.side_closed()} //
 });
 
-bool ignored2 = BindSequence(
-    Stub_XXB2.entry(),
+bool ignored2 = BindSequence(  //
+    Stub_XXB2.entry(),         //
     {&TXXW6, &TXXW5, &TXXW1, &Block_A461, &TW360, &Mdl450, &TW349, &Block_A441,
-     &TW440, &Block_A431, &TYYW1, &Block_YYA13, &TYYW4, &TYYW6, &TYYW7, &TYYW8},
+     &TW440, &Block_A431, &TYYW1, &Block_YYA13, &TYYW4, &TYYW5, &TYYW6, &TYYW7,
+     &TYYW8},
     Stub_YYA1.entry());
 
 bool ignored4 = BindSequence(  //
     Turnout_YYW4.b.side_thrown(),
-    {&Block_YYB22, &TYYW2, &Block_B339, &TW340, &Block_B349},
+    {&Block_YYB22, &TYYW3, &TYYW2, &Block_B339, &TW340, &Block_B349},
     Turnout_W349.b.side_thrown());
 
 bool ignored3 = BindSequence(
     Turnout_W360.b.side_thrown(),
     {&Block_B369, &TXXW2, &TXXW3, &TXXW4},
     Stub_XXB4.entry());
+
+bool ignored5 = BindSequence(  //
+    Turnout_YYW5.b.side_closed(),
+    {&Block_YYB42, &TYYW9},
+    Turnout_YYW3.b.side_thrown());
 
 
 auto& Block_EntryToXX = Block_B369;
@@ -1032,6 +1061,8 @@ DefAut(signalaut2, brd, {
   BlockSignal(this, &Stub_YYA3.b_);
   BlockSignal(this, &Stub_YYA4.b_);
   ClearUsedVariables();
+  BlockSignal(this, &Stub_YYA33.b_);
+  BlockSignal(this, &Block_YYB42);
 });
 
 DefAut(signalaut3, brd, {
