@@ -134,6 +134,8 @@ class DccTrainDbEntry : public TrainDbEntry {
     return ret;
   }
 
+  void start_read_functions() override { }
+
  private:
   /// @returns true for DCC, false for Marklin trains.
   bool is_dcc_mode() { return (mode_ & DCC_ANY); }
@@ -355,7 +357,11 @@ class AllTrainNodes::TrainFDISpace : public openlcb::MemorySpace {
   }
 
  private:
-  void reset_file() { gen_.reset(parent_->get_traindb_entry(impl_->id)); }
+  void reset_file() {
+    auto e = parent_->get_traindb_entry(impl_->id);
+    e->start_read_functions();
+    gen_.reset(std::move(e));
+  }
 
   FdiXmlGenerator gen_;
   AllTrainNodes* parent_;

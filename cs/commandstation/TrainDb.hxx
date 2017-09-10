@@ -89,6 +89,10 @@ public:
   /** If non-negative, represents a file offset in the openlcb CONFIG_FILENAME
    * file where this train has its data stored. */
   virtual int file_offset() { return -1; }
+
+  /** Notifies that we are going to read all functions. Sometimes a
+   * re-initialization is helpful at this point. */
+  virtual void start_read_functions() = 0;
 };
 
 /// Used for testing code that depends on traindb entries.

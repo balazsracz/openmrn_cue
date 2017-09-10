@@ -48,6 +48,8 @@ class PtrTrainDbEntry : public TrainDbEntry {
       has no functions. */
   int get_max_fn() override { return ((int)maxFn_) - 1; }
 
+  void start_read_functions() override { init(); }
+
  protected:
   /** Child classes must call tis once after creation. */
   void init() {
@@ -156,6 +158,8 @@ class FileTrainDbEntry : public TrainDbEntry {
   int file_offset() override {
     return cdiEntry_.offset();
   }
+
+  void start_read_functions() override { init(); }
 
  private:
   /** Computes maxFn_. */
