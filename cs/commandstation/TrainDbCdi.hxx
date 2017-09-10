@@ -44,7 +44,7 @@ namespace commandstation {
 #ifdef TRAINDB_TRAIN_COUNT
 static constexpr unsigned STORED_TRAIN_COUNT = TRAINDB_TRAIN_COUNT;
 #else
-static constexpr unsigned STORED_TRAIN_COUNT = 16;
+static constexpr unsigned STORED_TRAIN_COUNT = 32;
 #endif
 
 static const char MOMENTARY_MAP[] =
@@ -123,21 +123,6 @@ CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<16>, Name("Name"),
 CDI_GROUP_ENTRY(functions, TrainDbCdiAllFunctionGroup);
 CDI_GROUP_END();
 
-CDI_GROUP(TrainDbShortCdiEntry, Description("Configures a single train"));
-CDI_GROUP_ENTRY(address, openlcb::Uint16ConfigEntry, Name("Address"),
-                Description("Track protocol address of the train."),
-                Default(0));
-CDI_GROUP_ENTRY(
-    mode, openlcb::Uint8ConfigEntry, Name("Protocol"),
-    Description("Protocol to use on the track for driving this train."),
-    MapValues(DCC_DRIVE_MODE_MAP), Default(DCC_28));
-CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<16>, Name("Name"),
-                Description("Identifies the train node on the LCC bus."));
-CDI_GROUP_ENTRY(all_functions, openlcb::EmptyGroup<TrainDbCdiAllFunctionGroup::size()>);
-CDI_GROUP_END();
-
-static_assert(TrainDbCdiEntry::size() == TrainDbShortCdiEntry::size(), "Short and regular TrainDB CDI entries must match in size, or else the memory layout will drift.");
-
 CDI_GROUP(TrainSegment, Segment(openlcb::MemoryConfigDefs::SPACE_CONFIG));
 CDI_GROUP_ENTRY(train, TrainDbCdiEntry);
 CDI_GROUP_END();
@@ -167,7 +152,7 @@ CDI_GROUP_ENTRY(cv, openlcb::TractionShortCvSpace);
 CDI_GROUP_END();
 
 using TrainDbConfig =
-    openlcb::RepeatedGroup<TrainDbShortCdiEntry, STORED_TRAIN_COUNT>;
+    openlcb::RepeatedGroup<TrainDbCdiEntry, STORED_TRAIN_COUNT>;
 
 }  // namespace commandstation
 
