@@ -69,6 +69,9 @@ class ExternalTrainDbEntry : public TrainDbEntry {
       has no functions. */
   int get_max_fn() override { return 0; }
 
+  /** Setup for get_max_fn(). */
+  void start_read_functions() override { }
+  
   string name_;
   int address_;
   DccMode mode_;

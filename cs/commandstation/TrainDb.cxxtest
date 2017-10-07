@@ -32,7 +32,6 @@ const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 
 TEST(CdiTest, sizes) {
   EXPECT_EQ(77u, TrainDbCdiEntry::size());
-  EXPECT_EQ(77u, TrainDbShortCdiEntry::size());
 }
 
 TEST(TrainDbTest, getaddress) {
