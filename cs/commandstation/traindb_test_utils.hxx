@@ -48,9 +48,13 @@ class TrainDbTestBase : public openlcb::TractionTest {
 
 class TrainDbTest : public TrainDbTestBase {
  protected:
-  TrainDbTest() { wait(); }
+  TrainDbTest() {
+    startupBlock_.release_block();
+    wait();
+  }
   ~TrainDbTest() { wait(); }
 
+  BlockExecutor startupBlock_{&g_executor};
   openlcb::CanDatagramService dgHandler_{ifCan_.get(), 5, 2};
   openlcb::MemoryConfigHandler memCfgHandler_{&dgHandler_, node_, 5};
   openlcb::SimpleInfoFlow infoFlow_{&g_service};
