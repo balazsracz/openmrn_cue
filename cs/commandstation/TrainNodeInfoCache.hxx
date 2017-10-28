@@ -234,7 +234,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       // Found enough results downwards. Do we have enough left in the cache
       // though?
       auto itp = itb;
-      if (try_move_iterator(+scrollPrefetchSize_ - 1, itp)) {
+      if (try_move_iterator(+scrollPrefetchSize_, itp)) {
         // if we need to refill for the top, we should start from this node.
         refill_max_node = (--itp)->first;
       } else {
