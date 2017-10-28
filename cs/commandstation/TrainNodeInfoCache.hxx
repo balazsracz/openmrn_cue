@@ -139,33 +139,13 @@ class TrainNodeInfoCache : public StateFlowBase {
       // can't go down at all. Do not change anything.
       return false;
     }
+    auto id = it->first;
     if (!try_move_iterator(enablePartialScroll_ ? 1 : nodesToShow_, it)) {
       // not enough results left to fill the page. Do not change anything.
       // TODO: maybe we need to add a pending search here?
       return false;
     }
-    bool need_refill_cache = !try_move_iterator(scrollPrefetchSize_, it);
-    // Now: we can actually move down.
-    it = trainNodes_.nodes_.lower_bound(topNodeId_);
-    ++it;
-    topNodeId_ = it->first;
-    ++trainNodes_.resultOffset_;
-    update_ui_output();
-
-    // Let's see if we need to kick off a new search.
-    if (need_refill_cache && !pendingSearch_ && trainNodes_.resultsClippedAtBottom_) {
-      if (!try_move_iterator(-scrollPrefetchSize_, it)) {
-        LOG(VERBOSE,
-            "Tried to paginate forward but cannot find new start position.");
-        return true;
-      }
-      minResult_ = it->first;
-      maxResult_ = kMaxNode;
-      // We invoke search here, which is an asynchronous operation. The
-      // expectation is that the caller will refresh their display before we
-      // actually get around to killing the state vectors.
-      invoke_paginate();
-    }
+    scroll_to(id, 0, nodesToShow_);
     return true;
   }
 
@@ -177,26 +157,8 @@ class TrainNodeInfoCache : public StateFlowBase {
       // can't go up at all. Do not change anything.
       return false;
     }
-    topNodeId_ = it->first;
-    --trainNodes_.resultOffset_;
-    update_ui_output();
-    bool need_refill_cache = !try_move_iterator(-scrollPrefetchSize_, it);
-
-    // Let's see if we need to kick off a new search.
-    if (need_refill_cache && !pendingSearch_ && trainNodes_.resultsClippedAtTop_) {
-      it = trainNodes_.nodes_.lower_bound(topNodeId_);
-      if (!try_move_iterator(nodesToShow_ + scrollPrefetchSize_ - 1, it)) {
-        LOG(VERBOSE,
-            "Tried to paginate backwards but cannot find new start position.");
-        return true;
-      }
-      minResult_ = kMinNode;
-      maxResult_ = it->first;
-      // We invoke search here, which is an asynchronous operation. The
-      // expectation is that the caller will refresh their display before we
-      // actually get around to killing the state vectors.
-      invoke_paginate();
-    }
+    // New scrolling implementation in compatibility mode.
+    scroll_to(it->first, 0, nodesToShow_);
     return true;
   }
 
