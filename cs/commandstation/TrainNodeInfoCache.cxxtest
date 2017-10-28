@@ -433,7 +433,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   wait_for_search();
   clear_expect(true);
 
-  LOG(INFO, "30");
+  LOG(INFO, "30, [%012" PRIx64 ",%012" PRIx64 "]", get_clip_min(), get_clip_max());
 
   EXPECT_EQ("TT 3000", get_results_map().begin()->second->name_);
   EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
