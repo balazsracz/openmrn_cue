@@ -402,6 +402,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   EXPECT_EQ(25u, trainCache_.num_results());
 
   EXPECT_THAT(get_output(), ElementsAre("TT 3000", "TT 3001", "TT 3002"));
+  LOG(INFO, "10");
   
   clear_expect(true);
   for (int i = 0; i < 9; ++i) {
@@ -416,11 +417,13 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   wait_for_search();
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
   clear_expect(true);
-  
+
+  LOG(INFO, "20");
+
   EXPECT_EQ("TT 3006", get_results_map().begin()->second->name_);
   trainCache_.scroll_down();
   EXPECT_THAT(get_output(), ElementsAre("TT 3011", "TT 3012", "TT 3013"));
-  // now one up should be fine, the second shouls trigger a refetch
+  // now one up should be fine, the second should trigger a refetch
   trainCache_.scroll_up();
   EXPECT_THAT(get_output(), ElementsAre("TT 3010", "TT 3011", "TT 3012"));
   wait_for_search();
@@ -429,6 +432,10 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   trainCache_.scroll_up();
   wait_for_search();
   clear_expect(true);
+
+  LOG(INFO, "30");
+
+  EXPECT_EQ("TT 3000", get_results_map().begin()->second->name_);
   EXPECT_THAT(get_output(), ElementsAre("TT 3009", "TT 3010", "TT 3011"));
   trainCache_.scroll_up();
   EXPECT_THAT(get_output(), ElementsAre("TT 3008", "TT 3009", "TT 3010"));
@@ -440,12 +447,18 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   EXPECT_THAT(get_output(), ElementsAre("TT 3008", "TT 3009", "TT 3010"));
   wait_for_search();
   clear_expect(true);
+  EXPECT_EQ("TT 3000", get_results_map().begin()->second->name_);
+  LOG(INFO, "40");
   for (int i = 0; i < 20; ++i) {
+    LOG(INFO, "45 %d", i);
     trainCache_.scroll_up();
+    wait();
   }
+  LOG(INFO, "50");
   wait_for_search();
   clear_expect(true);
   trainCache_.scroll_down();
+  LOG(INFO, "60");
   EXPECT_THAT(get_output(), ElementsAre("TT 3001", "TT 3002", "TT 3003"));
   EXPECT_EQ(1u, trainCache_.first_result_offset());
   wait_for_search();
