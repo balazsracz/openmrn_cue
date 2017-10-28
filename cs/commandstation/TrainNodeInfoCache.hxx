@@ -200,6 +200,110 @@ class TrainNodeInfoCache : public StateFlowBase {
     return true;
   }
 
+  /// Result set missing results on the top due to clipping. There are more
+  /// results available there that will be coming asynchronously.
+  static constexpr unsigned FLAGS_CLIPPED_AT_TOP = 1;
+  /// Result set missing results on the bottom due to clipping. There are more
+  /// results available there that will be coming asynchronously.
+  static constexpr unsigned FLAGS_CLIPPED_AT_BOTTOM = 2;
+  /// We will kick off an asynchronous search to refill the cache. This is
+  /// probably not super important for the client.
+  static constexpr unsigned FLAGS_NEED_REFILL_CACHE = 4;
+  /// The given node ID was not found in the result set.
+  static constexpr unsigned FLAGS_TARGET_NOT_FOUND = 8;
+  
+  /// Fills in the output results array with a search to a given target to a
+  /// given position in the page.
+  /// @param target_node is the node ID of the node we're seeking to
+  /// @param num_before up to this many results should be populated before the
+  /// target.
+  /// @param num_after up to this many results should be populated after the
+  /// target.
+  /// @return a bitmask of the FLAGS values.
+  unsigned scroll_to(openlcb::NodeID target_node, uint16_t num_before,
+                 uint16_t num_after) {
+    targetNodeId_ = target_node;
+    resultsBeforeTarget_ = num_before;
+    resultsAfterTarget_ = num_after;
+    unsigned flags = 0;
+    auto it = trainNodes_.nodes_.lower_bound(target_node);
+    if (it == trainNodes_.nodes_.end() || it->first != target_node) {
+      flags |= FLAGS_TARGET_NOT_FOUND;
+    }
+    auto itt = it;
+    openlcb::NodeID refill_min_node = kMinNode;
+    openlcb::NodeID refill_max_node = kMaxNode;
+    // Look around towards the top.
+    if (!try_move_iterator(-resultsBeforeTarget_, itt)) {
+      // ran out of results on the top.
+      if (trainNodes_.resultsClippedAtTop_) {
+        // we should have a loading line now.
+        flags |= FLAGS_CLIPPED_AT_TOP;
+      }
+    } else {
+      // Found enough results upwards. Do we have enough left in the cache
+      // though?
+      auto itp = itt;
+      if (try_move_iterator(-scrollPrefetchSize_, itp)) {
+        // if we need to refill for the bottom, we should start from this node.
+        refill_min_node = itp->first;
+      } else {
+        // we didn't find prefetch count of nodes on the top.
+        if (trainNodes_.resultsClippedAtTop_) {
+          flags |= FLAGS_NEED_REFILL_CACHE;
+        }
+      }
+    }
+    if (itt != trainNodes_.nodes_.end()) {
+      topNodeId_ = itt->first;
+    } else {
+      // the resultset if probably empty
+      topNodeId_ = 0;
+    }
+    // Look around towards the bottom.
+    auto itb = it;
+    if (!try_move_iterator(+resultsAfterTarget_, itb)) {
+      // ran out of results on the bottom.
+      if (trainNodes_.resultsClippedAtBottom_) {
+        // we should have a loading line now.
+        flags |= FLAGS_CLIPPED_AT_BOTTOM;
+      }
+    } else {
+      // Found enough results downwards. Do we have enough left in the cache
+      // though?
+      auto itp = itb;
+      if (try_move_iterator(+scrollPrefetchSize_, itp)) {
+        // if we need to refill for the top, we should start from this node.
+        refill_max_node = itp->first;
+      } else {
+        if (trainNodes_.resultsClippedAtBottom_) {
+          flags |= FLAGS_NEED_REFILL_CACHE;
+        }
+      }
+    }
+    // Updates first_result_offset.
+    find_selection_offset(&trainNodes_);
+    output_->entry_names.clear();
+    while (itt != itb) {
+      add_node_to_resultset(itt);
+      ++itt;
+    }
+    if ((flags & FLAGS_NEED_REFILL_CACHE) && !pendingSearch_) {
+      minResult_ = refill_min_node;
+      maxResult_ = refill_max_node;
+      /// @todo maybe we have a race condition here, when there is a pending
+      /// search; we will not modify the min/max and somehow assume that the
+      /// results of the pending search will be okay. How do we distinguish the
+      /// case when the pending search needs to be repeated?
+      
+      // We invoke search here, which is an asynchronous operation. The
+      // expectation is that the caller will refresh their display before we
+      // actually get around to killing the state vectors.
+      invoke_paginate();
+    }
+    return flags;
+  }
+  
   /// @param sz is the number of nodes to keep in the cache maximum
   /// @param prefetch is the number of nodes to keep behind the visible screen
   /// when prefetching.
@@ -582,19 +686,24 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
   }
 
+  /// Formats a given iterator into the resultset of the 
+  void add_node_to_resultset(const NodeCacheMap::iterator& it) {
+    if (it->second->name_.empty()) {
+      // Format the node MAC address.
+      uint8_t idbuf[6];
+      openlcb::node_id_to_data(it->first, idbuf);  // convert to big-endian
+      it->second->name_ = mac_to_string(idbuf);
+    }
+    output_->entry_names.push_back(&it->second->name_);
+  }
+
   void update_ui_output() {
     auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     output_->entry_names.clear();
     output_->entry_names.reserve(nodesToShow_);
     for (unsigned res = 0; res < nodesToShow_ && it != trainNodes_.nodes_.end();
          ++res, ++it) {
-      if (it->second->name_.empty()) {
-        // Format the node MAC address.
-        uint8_t idbuf[6];
-        openlcb::node_id_to_data(it->first, idbuf);  // convert to big-endian
-        it->second->name_ = mac_to_string(idbuf);
-      }
-      output_->entry_names.push_back(&it->second->name_);
+      add_node_to_resultset(it);
     }
   }
 
@@ -647,6 +756,9 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// Node ID of the first visible node in the output.
   openlcb::NodeID topNodeId_;
 
+  /// Node ID of the target node in the output.
+  openlcb::NodeID targetNodeId_;
+  
   /// 1 if we need to start another search.
   uint16_t needSearch_ : 1;
   /// 1 if there is something in the SNIP cache refreshed.
@@ -668,6 +780,10 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// How many entries we should keep ahead or behind when redoing the search
   /// due to scrolling. Ideally about 1/3rd of the cacheMaxSize_ value.
   uint16_t scrollPrefetchSize_ : 6;
+  /// How many results should we render before the target node.
+  uint16_t resultsBeforeTarget_ : 4;
+  /// How many results should we render after the target node.
+  uint16_t resultsAfterTarget_ : 4;
 
   /// A repeatable notifiable that will be called to refresh the UI.
   Notifiable* uiNotifiable_;
