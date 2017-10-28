@@ -465,4 +465,67 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   clear_expect(true);
 }
 
+TEST_F(FindManyTrainTestBase, PrefetchTest) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(3, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(16u, get_results_map().size());
+  EXPECT_EQ(25u, trainCache_.num_results());
+
+  vector<string> names;
+  for (int i = 0; i < 25; ++i) {
+    names.push_back(StringPrintf("TT %d", 3000 + i));
+  }
+  
+  EXPECT_THAT(get_output(), ElementsAre(names[0], names[1], names[2]));
+
+  for (int i = 0; i <= 22; ++i) {
+    EXPECT_THAT(get_output(), ElementsAre(names[i+0], names[i+1], names[i+2]));
+
+    LOG(INFO, "Round %d", i);
+    clear_expect(true);
+    if (i == 9 || i == 15) {
+      EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+    }
+    trainCache_.scroll_down();
+    wait_for_search();
+    clear_expect(true);
+    if (i < 9) {
+      EXPECT_EQ(names[0], get_results_map().begin()->second->name_);
+    } else if (i < 15) {
+      EXPECT_EQ(names[6], get_results_map().begin()->second->name_);
+    } else if (i < 25) {
+      // 16 entries 3009..3024
+      EXPECT_EQ(names[9], get_results_map().begin()->second->name_);
+    }
+  }
+  
+  // at the peak the output is 22, 23, 24.
+  
+  // let's go backwards
+  for (int i = 22; i > 0; --i) {
+    EXPECT_THAT(get_output(), ElementsAre(names[i+0], names[i+1], names[i+2]));
+
+    LOG(INFO, "Round %d", i);
+    clear_expect(true);
+    if (i == 13 || i == 7) {
+      EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+    }
+    trainCache_.scroll_up();
+    wait_for_search();
+    clear_expect(true);
+    if (i > 13) {
+      EXPECT_EQ(names[9], get_results_map().begin()->second->name_);
+    } else if (i > 7) {
+      EXPECT_EQ(names[3], get_results_map().begin()->second->name_);
+    } else {
+      EXPECT_EQ(names[0], get_results_map().begin()->second->name_);
+    } 
+  }
+}
+
 } // namespace commandstation
