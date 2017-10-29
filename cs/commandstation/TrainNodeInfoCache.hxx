@@ -82,6 +82,9 @@ class TrainNodeInfoCache : public StateFlowBase {
     minResult_ = kMinNode;
     maxResult_ = kMaxNode;
     topNodeId_ = kMinNode;
+    targetNodeId_ = kMinNode;
+    resultsBeforeTarget_ = 0;
+    resultsAfterTarget_ = nodesToShow_ - 1;
     uiNotifiable_ = ui_refresh;
     // @TODO we need to clear stuff here.
     previousCache_ = std::move(trainNodes_.nodes_);
@@ -188,78 +191,11 @@ class TrainNodeInfoCache : public StateFlowBase {
     resultsBeforeTarget_ = num_before;
     resultsAfterTarget_ = num_after;
     unsigned flags = 0;
-    LOG(VERBOSE, "tgt = %u", (unsigned)target_node & 0xffffu);
-    auto it = trainNodes_.nodes_.lower_bound(target_node);
-    if (it == trainNodes_.nodes_.end() || it->first != target_node) {
-      flags |= FLAGS_TARGET_NOT_FOUND;
-    }
-    LOG(VERBOSE, "it = %u", (unsigned)it->first & 0xffffu);
-    auto itt = it;
     openlcb::NodeID refill_min_node = kMinNode;
     openlcb::NodeID refill_max_node = kMaxNode;
-    // Look around towards the top.
-    if (!try_move_iterator(-resultsBeforeTarget_, itt)) {
-      // ran out of results on the top.
-      if (trainNodes_.resultsClippedAtTop_) {
-        // we should have a loading line now.
-        flags |= FLAGS_CLIPPED_AT_TOP | FLAGS_NEED_REFILL_CACHE;
-      }
-    } else {
-      // Found enough results upwards. Do we have enough left in the cache
-      // though?
-      auto itp = itt;
-      if (try_move_iterator(-scrollPrefetchSize_, itp)) {
-        // if we need to refill for the bottom, we should start from this node.
-        refill_min_node = itp->first;
-      } else {
-        // we didn't find prefetch count of nodes on the top.
-        if (trainNodes_.resultsClippedAtTop_) {
-          flags |= FLAGS_NEED_REFILL_CACHE;
-        }
-      }
-    }
-    if (itt != trainNodes_.nodes_.end()) {
-      LOG(VERBOSE, "itt = %u", (unsigned)itt->first & 0xffffu);
-      topNodeId_ = itt->first;
-    } else {
-      LOG(VERBOSE, "itt = empty");
-      // the resultset if probably empty
-      topNodeId_ = 0;
-    }
-    // Look around towards the bottom.
-    auto itb = it;
-    if (!try_move_iterator(+resultsAfterTarget_ + 1, itb)) {
-      // ran out of results on the bottom.
-      if (trainNodes_.resultsClippedAtBottom_) {
-        // we should have a loading line now.
-        flags |= FLAGS_CLIPPED_AT_BOTTOM | FLAGS_NEED_REFILL_CACHE;
-      }
-    } else {
-      // Found enough results downwards. Do we have enough left in the cache
-      // though?
-      auto itp = itb;
-      if (try_move_iterator(+scrollPrefetchSize_, itp)) {
-        // if we need to refill for the top, we should start from this node.
-        refill_max_node = (--itp)->first;
-      } else {
-        if (trainNodes_.resultsClippedAtBottom_) {
-          flags |= FLAGS_NEED_REFILL_CACHE;
-        }
-      }
-    }
-    if (itb != trainNodes_.nodes_.end()) {
-      LOG(VERBOSE, "itb = %u", (unsigned)itb->first & 0xffffu);
-    } else {
-      LOG(VERBOSE, "itb = end");
-    }
-    
-    // Updates first_result_offset.
-    find_selection_offset(&trainNodes_);
-    output_->entry_names.clear();
-    while (itt != itb) {
-      add_node_to_resultset(itt);
-      ++itt;
-    }
+
+    update_ui_output(flags, refill_min_node, refill_max_node);
+
     if ((flags & FLAGS_NEED_REFILL_CACHE) && !pendingSearch_) {
       minResult_ = refill_min_node;
       maxResult_ = refill_max_node;
@@ -425,7 +361,9 @@ class TrainNodeInfoCache : public StateFlowBase {
     find_selection_offset(&trainNodes_);
     
     // let's render the output first with whatever data we have.
-    update_ui_output();
+    unsigned flags;
+    openlcb::NodeID m1, m2;
+    update_ui_output(flags, m1, m2);
     notify_ui();
 
     if (needSearch_) {
@@ -476,7 +414,9 @@ class TrainNodeInfoCache : public StateFlowBase {
   Action iter_done() {
     LOG(INFO, "iter done");
     find_selection_offset(&trainNodes_);
-    update_ui_output();
+    unsigned flags;
+    openlcb::NodeID m1, m2;
+    update_ui_output(flags, m1, m2);
     notify_ui();
     if (needSearch_) {
       // We got another search request while we were processing the previous
@@ -669,14 +609,88 @@ class TrainNodeInfoCache : public StateFlowBase {
     output_->entry_names.push_back(&it->second->name_);
   }
 
-  void update_ui_output() {
+  void update_ui_output(unsigned& flags, openlcb::NodeID& refill_min_node, openlcb::NodeID& refill_max_node) {
+    flags = 0;
+    refill_min_node = kMinNode;
+    refill_max_node = kMaxNode;
+    LOG(VERBOSE, "tgt = %u", (unsigned)targetNodeId_ & 0xffffu);
+    auto it = trainNodes_.nodes_.lower_bound(targetNodeId_);
+    if (it == trainNodes_.nodes_.end() || it->first != targetNodeId_) {
+      flags |= FLAGS_TARGET_NOT_FOUND;
+    }
+    LOG(VERBOSE, "it = %u", (unsigned)it->first & 0xffffu);
+    auto itt = it;
+    // Look around towards the top.
+    if (!try_move_iterator(-resultsBeforeTarget_, itt)) {
+      // ran out of results on the top.
+      if (trainNodes_.resultsClippedAtTop_) {
+        // we should have a loading line now.
+        flags |= FLAGS_CLIPPED_AT_TOP | FLAGS_NEED_REFILL_CACHE;
+      }
+    } else {
+      // Found enough results upwards. Do we have enough left in the cache
+      // though?
+      auto itp = itt;
+      if (try_move_iterator(-scrollPrefetchSize_, itp)) {
+        // if we need to refill for the bottom, we should start from this node.
+        refill_min_node = itp->first;
+      } else {
+        // we didn't find prefetch count of nodes on the top.
+        if (trainNodes_.resultsClippedAtTop_) {
+          flags |= FLAGS_NEED_REFILL_CACHE;
+        }
+      }
+    }
+    if (itt != trainNodes_.nodes_.end()) {
+      LOG(VERBOSE, "itt = %u", (unsigned)itt->first & 0xffffu);
+      topNodeId_ = itt->first;
+    } else {
+      LOG(VERBOSE, "itt = empty");
+      // the resultset if probably empty
+      topNodeId_ = 0;
+    }
+    // Look around towards the bottom.
+    auto itb = it;
+    if (!try_move_iterator(+resultsAfterTarget_ + 1, itb)) {
+      // ran out of results on the bottom.
+      if (trainNodes_.resultsClippedAtBottom_) {
+        // we should have a loading line now.
+        flags |= FLAGS_CLIPPED_AT_BOTTOM | FLAGS_NEED_REFILL_CACHE;
+      }
+    } else {
+      // Found enough results downwards. Do we have enough left in the cache
+      // though?
+      auto itp = itb;
+      if (try_move_iterator(+scrollPrefetchSize_, itp)) {
+        // if we need to refill for the top, we should start from this node.
+        refill_max_node = (--itp)->first;
+      } else {
+        if (trainNodes_.resultsClippedAtBottom_) {
+          flags |= FLAGS_NEED_REFILL_CACHE;
+        }
+      }
+    }
+    if (itb != trainNodes_.nodes_.end()) {
+      LOG(VERBOSE, "itb = %u", (unsigned)itb->first & 0xffffu);
+    } else {
+      LOG(VERBOSE, "itb = end");
+    }
+    
+    // Updates first_result_offset.
+    find_selection_offset(&trainNodes_);
+    output_->entry_names.clear();
+    while (itt != itb) {
+      add_node_to_resultset(itt);
+      ++itt;
+    }
+    /*
     auto it = trainNodes_.nodes_.lower_bound(topNodeId_);
     output_->entry_names.clear();
     output_->entry_names.reserve(nodesToShow_);
     for (unsigned res = 0; res < nodesToShow_ && it != trainNodes_.nodes_.end();
          ++res, ++it) {
       add_node_to_resultset(it);
-    }
+      }*/
   }
 
   /// Tries to advance the iterator forwards or backwards in the
@@ -726,10 +740,10 @@ class TrainNodeInfoCache : public StateFlowBase {
   openlcb::NodeID maxResult_;
 
   /// Node ID of the first visible node in the output.
-  openlcb::NodeID topNodeId_;
+  openlcb::NodeID topNodeId_{0};
 
   /// Node ID of the target node in the output.
-  openlcb::NodeID targetNodeId_;
+  openlcb::NodeID targetNodeId_{0};
   
   /// 1 if we need to start another search.
   uint16_t needSearch_ : 1;

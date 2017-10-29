@@ -607,8 +607,8 @@ TEST_F(FindManyTrainTestBase, ScrollToTest) {
   EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 14, 18)));
   wait_for_search();
   clear_expect(true);
-  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 14, 18)));
-  
+  // After the wait for search we should have complete data.
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 14, 20)));
 }  
 
 } // namespace commandstation
