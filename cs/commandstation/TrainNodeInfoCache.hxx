@@ -188,10 +188,12 @@ class TrainNodeInfoCache : public StateFlowBase {
     resultsBeforeTarget_ = num_before;
     resultsAfterTarget_ = num_after;
     unsigned flags = 0;
+    LOG(VERBOSE, "tgt = %u", (unsigned)target_node & 0xffffu);
     auto it = trainNodes_.nodes_.lower_bound(target_node);
     if (it == trainNodes_.nodes_.end() || it->first != target_node) {
       flags |= FLAGS_TARGET_NOT_FOUND;
     }
+    LOG(VERBOSE, "it = %u", (unsigned)it->first & 0xffffu);
     auto itt = it;
     openlcb::NodeID refill_min_node = kMinNode;
     openlcb::NodeID refill_max_node = kMaxNode;
@@ -200,7 +202,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       // ran out of results on the top.
       if (trainNodes_.resultsClippedAtTop_) {
         // we should have a loading line now.
-        flags |= FLAGS_CLIPPED_AT_TOP;
+        flags |= FLAGS_CLIPPED_AT_TOP | FLAGS_NEED_REFILL_CACHE;
       }
     } else {
       // Found enough results upwards. Do we have enough left in the cache
@@ -217,8 +219,10 @@ class TrainNodeInfoCache : public StateFlowBase {
       }
     }
     if (itt != trainNodes_.nodes_.end()) {
+      LOG(VERBOSE, "itt = %u", (unsigned)itt->first & 0xffffu);
       topNodeId_ = itt->first;
     } else {
+      LOG(VERBOSE, "itt = empty");
       // the resultset if probably empty
       topNodeId_ = 0;
     }
@@ -228,7 +232,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       // ran out of results on the bottom.
       if (trainNodes_.resultsClippedAtBottom_) {
         // we should have a loading line now.
-        flags |= FLAGS_CLIPPED_AT_BOTTOM;
+        flags |= FLAGS_CLIPPED_AT_BOTTOM | FLAGS_NEED_REFILL_CACHE;
       }
     } else {
       // Found enough results downwards. Do we have enough left in the cache
@@ -243,6 +247,12 @@ class TrainNodeInfoCache : public StateFlowBase {
         }
       }
     }
+    if (itb != trainNodes_.nodes_.end()) {
+      LOG(VERBOSE, "itb = %u", (unsigned)itb->first & 0xffffu);
+    } else {
+      LOG(VERBOSE, "itb = end");
+    }
+    
     // Updates first_result_offset.
     find_selection_offset(&trainNodes_);
     output_->entry_names.clear();

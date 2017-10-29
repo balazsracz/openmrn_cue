@@ -5,6 +5,7 @@
 #include "commandstation/TrainNodeInfoCache.hxx"
 
 using ::testing::ElementsAre;
+using ::testing::ContainerEq;
 
 namespace commandstation {
 
@@ -102,6 +103,14 @@ class FindManyTrainTestBase : public TrainDbTest {
       usleep(20000);
     }
     wait();
+  }
+
+  /// @return a subset of the names vector. first and last are indexes to the
+  /// base vector, both interpreted as inclusive.
+  vector<string> get_names_list(const vector<string>& base, int first,
+                                int last) {
+    vector<string> result(base.begin() + first, base.begin() + last + 1);
+    return result;
   }
 
   using NodeCacheMap = TrainNodeInfoCache::NodeCacheMap;
@@ -527,5 +536,79 @@ TEST_F(FindManyTrainTestBase, PrefetchTest) {
     } 
   }
 }
+
+
+
+
+TEST_F(FindManyTrainTestBase, ScrollToTest) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(3, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(16u, get_results_map().size());
+  EXPECT_EQ(25u, trainCache_.num_results());
+  
+  vector<string> names;
+  vector<openlcb::NodeID> ids;
+  for (int i = 0; i < 25; ++i) {
+    names.push_back(StringPrintf("TT %d", 3000 + i));
+    ids.push_back(0x060100000000ULL | (3000 + i));
+  }
+
+  // This is the result of the initial search.
+  /// @todo we need to have the initial search also have the sizes specified.
+  EXPECT_THAT(get_output(), ElementsAre(names[0], names[1], names[2]));
+
+  LOG(INFO, "Initial scrolls");
+  // We scroll around a bit the existing cache contents.
+  clear_expect(true);
+  trainCache_.scroll_to(ids[0], 3, 3);
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 0, 3)));
+  clear_expect(true);
+
+  trainCache_.scroll_to(ids[5], 3, 3);
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 2, 8)));
+  clear_expect(true);
+
+  trainCache_.scroll_to(ids[5], 4, 2);
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 1, 7)));
+  clear_expect(true);
+
+  // Scroll barely to the border. 4 entries spare, no resync needed.
+  LOG(INFO, "Scroll to border");
+  clear_expect(true);
+  EXPECT_EQ(names[15], (--get_results_map().end())->second->name_);
+  EXPECT_EQ(0, trainCache_.scroll_to(ids[10], 4, 1));
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 6, 11)));
+  wait_for_search();
+  clear_expect(true);
+  
+  EXPECT_EQ(0, trainCache_.scroll_to(ids[1], 4, 1));
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 0, 2)));
+
+  // Scroll to the border with refresh.
+  clear_expect(true);
+  LOG(INFO, "Scroll to border with refresh");
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+  EXPECT_EQ((unsigned)trainCache_.FLAGS_NEED_REFILL_CACHE, trainCache_.scroll_to(ids[11], 4, 1));
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 7, 12)));
+  wait_for_search();
+  clear_expect(true);
+  EXPECT_EQ(names[3], get_results_map().begin()->second->name_);
+  EXPECT_EQ(names[18], (--get_results_map().end())->second->name_);
+
+  // Scroll to border with clip.
+  LOG(INFO, "Scroll to border with clip");
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+  EXPECT_EQ(trainCache_.FLAGS_NEED_REFILL_CACHE | trainCache_.FLAGS_CLIPPED_AT_BOTTOM, trainCache_.scroll_to(ids[18], 4, 2));
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 14, 18)));
+  wait_for_search();
+  clear_expect(true);
+  EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 14, 18)));
+  
+}  
 
 } // namespace commandstation
