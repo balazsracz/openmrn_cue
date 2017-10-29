@@ -538,8 +538,6 @@ TEST_F(FindManyTrainTestBase, PrefetchTest) {
 }
 
 
-
-
 TEST_F(FindManyTrainTestBase, ScrollToTest) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
   b->data()->reset(3, false, OLCBUSER);
@@ -610,5 +608,21 @@ TEST_F(FindManyTrainTestBase, ScrollToTest) {
   // After the wait for search we should have complete data.
   EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 14, 20)));
 }  
+
+TEST_F(FindManyTrainTestBase, ScrollToTestEmpty) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(831, false, OLCBUSER);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(0u, get_results_map().size());
+  EXPECT_EQ(0u, trainCache_.num_results());
+  
+  EXPECT_EQ(0 + trainCache_.FLAGS_TARGET_NOT_FOUND, trainCache_.scroll_to(0, 4, 2));
+  EXPECT_EQ(0u, get_results_map().size());
+  EXPECT_EQ(0u, trainCache_.num_results());
+}
 
 } // namespace commandstation

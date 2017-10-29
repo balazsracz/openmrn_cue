@@ -646,7 +646,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       topNodeId_ = itt->first;
     } else {
       LOG(VERBOSE, "itt = empty");
-      // the resultset if probably empty
+      // the resultset is probably empty
       topNodeId_ = 0;
     }
     // Look around towards the bottom.
