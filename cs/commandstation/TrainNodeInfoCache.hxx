@@ -145,7 +145,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       // TODO: maybe we need to add a pending search here?
       return false;
     }
-    scroll_to(id, 0, nodesToShow_);
+    scroll_to(id, 0, nodesToShow_ - 1);
     return true;
   }
 
@@ -158,7 +158,7 @@ class TrainNodeInfoCache : public StateFlowBase {
       return false;
     }
     // New scrolling implementation in compatibility mode.
-    scroll_to(it->first, 0, nodesToShow_);
+    scroll_to(it->first, 0, nodesToShow_ - 1);
     return true;
   }
 
@@ -224,7 +224,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     }
     // Look around towards the bottom.
     auto itb = it;
-    if (!try_move_iterator(+resultsAfterTarget_, itb)) {
+    if (!try_move_iterator(+resultsAfterTarget_ + 1, itb)) {
       // ran out of results on the bottom.
       if (trainNodes_.resultsClippedAtBottom_) {
         // we should have a loading line now.
