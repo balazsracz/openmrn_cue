@@ -69,6 +69,34 @@ EventBasedVariable estop_short(&brd, "estop_short", BRACZ_LAYOUT | 0x0018,
 EventBasedVariable estop_nopwr(&brd, "estop", 0x010000000000FFFFULL,
                                0x010000000000FFFEULL, 7, 30, 0);
 
+EventBasedVariable global_dispatch(&brd, "global_dispatch",
+                                   BRACZ_LAYOUT | 0x001A, BRACZ_LAYOUT | 0x001B,
+                                   7, 29, 7);
+
+EventBasedVariable runaround_olten(&brd, "runaround_olten",
+                                   BRACZ_LAYOUT | 0x001C, BRACZ_LAYOUT | 0x001D,
+                                   7, 29, 6);
+
+EventBasedVariable runaround_daniken(&brd, "runaround_daniken",
+                                   BRACZ_LAYOUT | 0x001E, BRACZ_LAYOUT | 0x001F,
+                                   7, 29, 5);
+
+EventBasedVariable runaround_lenzburg(&brd, "runaround_lenzburg",
+                                   BRACZ_LAYOUT | 0x0020, BRACZ_LAYOUT | 0x0021,
+                                   7, 29, 4);
+
+EventBasedVariable runaround_spreitenbach(&brd, "runaround_spreitenbach",
+                                   BRACZ_LAYOUT | 0x0022, BRACZ_LAYOUT | 0x0023,
+                                   7, 29, 3);
+
+EventBasedVariable runaround_rbl(&brd, "runaround_rbl",
+                                   BRACZ_LAYOUT | 0x0024, BRACZ_LAYOUT | 0x0025,
+                                   7, 29, 2);
+
+EventBasedVariable runaround_yard(&brd, "runaround_yard",
+                                   BRACZ_LAYOUT | 0x0026, BRACZ_LAYOUT | 0x0027,
+                                   7, 29, 1);
+
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n9(0x29);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
@@ -364,40 +392,40 @@ address 136 0x86 main 65 adv 66 reflashed in ZZA3
 
 
 /*
-PhysicalSignal A240(&ba.InBrownGrey, &ba.Rel0, &signal_A240_main.signal,
+PhysicalSignal A240(&ba.InBrownGrey, nullptr, &signal_A240_main.signal,
                     &signal_A240_adv.signal, &signal_A131_main.signal,
                     &signal_A131_adv.signal, nullptr, nullptr);
-PhysicalSignal A217(&bb.InOraRed, &bb.Rel0, &signal_A217_main.signal,
+PhysicalSignal A217(&bb.InOraRed, nullptr, &signal_A217_main.signal,
                     nullptr, &signal_B229_main.signal,
                     &signal_B229_adv.signal, nullptr, nullptr);
-PhysicalSignal A200(&be.In2, &be.Rel0, &signal_A200_main.signal,
+PhysicalSignal A200(&be.In2, nullptr, &signal_A200_main.signal,
                     &signal_A200_adv.signal, &signal_B208_main.signal,
                     &signal_B208_adv.signal, &signal_A208_adv.signal,
                     &signal_B200_adv.signal);
 const GlobalVariable* B208_raw_detector = &bb.InBrownGrey;
-PhysicalSignal B108(&bb.InBrownBrown, &bb.Rel1, &signal_B108_main.signal,
+PhysicalSignal B108(&bb.InBrownBrown, nullptr, &signal_B108_main.signal,
                     &signal_B108_adv.signal, &signal_A100_main.signal,
                     &signal_A100_adv.signal, &signal_B100_adv.signal,
                     &signal_A108_adv.signal);
-PhysicalSignal B129(&ba.InBrownBrown, &ba.Rel1, &signal_B129_main.signal,
+PhysicalSignal B129(&ba.InBrownBrown, nullptr, &signal_B129_main.signal,
                     &signal_B129_adv.signal, &signal_A117_main.signal,
                     nullptr, nullptr, nullptr);
 
-PhysicalSignal A406(&be.In4, &be.Rel1, &signal_A406_main.signal,
+PhysicalSignal A406(&be.In4, nullptr, &signal_A406_main.signal,
                     &signal_A406_adv.signal, &signal_B400_main.signal,
                     &signal_B400_adv.signal, nullptr, nullptr);
 const GlobalVariable* B400_raw_detector = &bb.InGreenGreen;
-PhysicalSignal XXB1(&be.In5, &be.Rel2, &signal_XXB1_main.signal,
+PhysicalSignal XXB1(&be.In5, nullptr, &signal_XXB1_main.signal,
                     &signal_XXB1_adv.signal, &signal_XXA1_main.signal,
                     &signal_XXA1_adv.signal, nullptr, nullptr);
 
-PhysicalSignal A317(&bb.InOraGreen, &bb.Rel2, &signal_A317_main.signal,
+PhysicalSignal A317(&bb.InOraGreen, nullptr, &signal_A317_main.signal,
                     nullptr, &signal_B329_main.signal,
                     &signal_B329_adv.signal, nullptr, nullptr);
-PhysicalSignal XXA2(&bc.In6, &bc.Rel0, &signal_XXA2_main.signal,
+PhysicalSignal XXA2(&bc.In6, nullptr, &signal_XXA2_main.signal,
                     &signal_XXA2_adv.signal, &signal_XXB2_main.signal,
                     &signal_XXB2_adv.signal, nullptr, nullptr);
-PhysicalSignal XXA3(&bc.In7, &bc.Rel1, &signal_XXA3_main.signal,
+PhysicalSignal XXA3(&bc.In7, nullptr, &signal_XXA3_main.signal,
                     &signal_XXA3_adv.signal, &signal_XXB3_main.signal,
                     &signal_XXB3_adv.signal,
                     nullptr, nullptr);
@@ -730,63 +758,63 @@ StandardMovableTurnout Turnout_XXW6(&brd,
                                     &Magnet_XXW6);
 TurnoutWrap TXXW6(&Turnout_XXW6.b, kClosedToPoint);
 
-PhysicalSignal YYA4(&ba.InGreenYellow, &ba.Rel3, nullptr, nullptr,
+PhysicalSignal YYA4(&ba.InGreenYellow, nullptr, nullptr, nullptr,
                     &signal_YYB4_main.signal, &signal_YYB4_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal YYA3(&ba.InGreenGreen, &ba.Rel2, nullptr, nullptr,
+PhysicalSignal YYA3(&ba.InGreenGreen, nullptr, nullptr, nullptr,
                     &signal_YYB3_main.signal, &signal_YYB3_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal YYA2(&ba.InBrownGrey, &ba.Rel1, nullptr, nullptr,
+PhysicalSignal YYA2(&ba.InBrownGrey, nullptr, nullptr, nullptr,
                     &signal_YYB2_main.signal, &signal_YYB2_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal YYA1(&ba.InBrownBrown, &ba.Rel0, nullptr, nullptr,
+PhysicalSignal YYA1(&ba.InBrownBrown, nullptr, nullptr, nullptr,
                     &signal_YYB1_main.signal, &signal_YYB1_adv.signal, nullptr,
                     nullptr);
 
-PhysicalSignal YYA13(&ba.InOraGreen, &bd.Rel1, &signal_YYA13_main.signal,
+PhysicalSignal YYA13(&ba.InOraGreen, nullptr, &signal_YYA13_main.signal,
                      &signal_YYA13_adv.signal, &signal_YYB12_main.signal,
                      nullptr, nullptr, nullptr);
-PhysicalSignal YYB22(&bd.InGreenGreen, &bd.Rel0, &signal_YYB22_main.signal,
+PhysicalSignal YYB22(&bd.InGreenGreen, nullptr, &signal_YYB22_main.signal,
                      nullptr, &signal_YYA23_main.signal,
                      &signal_YYA23_adv.signal, nullptr, nullptr);
 
-PhysicalSignal YYA33(&be.InOraRed, &bd.Rel2, nullptr, nullptr,
+PhysicalSignal YYA33(&be.InOraRed, nullptr, nullptr, nullptr,
                      &signal_YYB32_main.signal, nullptr, nullptr, nullptr);
 
-PhysicalSignal YYB42(&bd.InOraGreen, &bd.Rel3, &signal_YYB42_main.signal,
+PhysicalSignal YYB42(&bd.InOraGreen, nullptr, &signal_YYB42_main.signal,
                      nullptr, nullptr, nullptr, nullptr, nullptr);
 
-PhysicalSignal A431(&bd.InBrownBrown, &bd.Rel2, &signal_A431_main.signal,
+PhysicalSignal A431(&bd.InBrownBrown, nullptr, &signal_A431_main.signal,
                     &signal_A431_adv.signal, &signal_B439_main.signal,
                     &signal_B439_adv.signal, nullptr, &signal_B431_adv.signal);
-PhysicalSignal B339(&bc.InOraGreen, &bc.Rel0, &signal_B339_main.signal,
+PhysicalSignal B339(&bc.InOraGreen, nullptr, &signal_B339_main.signal,
                     &signal_B339_adv.signal, &signal_A331_main.signal,
                     &signal_A331_adv.signal, &signal_B331_adv.signal, nullptr);
 
-PhysicalSignal A441(&bc.InOraRed, &bc.Rel1, &signal_A441_main.signal,
+PhysicalSignal A441(&bc.InOraRed, nullptr, &signal_A441_main.signal,
                     &signal_A441_adv.signal, &signal_B449_main.signal,
                     &signal_B449_adv.signal, nullptr, nullptr);
-PhysicalSignal B349(&bc.InGreenGreen, &bc.Rel2, &signal_B349_main.signal,
+PhysicalSignal B349(&bc.InGreenGreen, nullptr, &signal_B349_main.signal,
                     &signal_B349_adv.signal, &signal_A341_main.signal,
                     &signal_A341_adv.signal, nullptr, nullptr);
 
-PhysicalSignal A461(&bb.In4, &bb.Rel2, &signal_A461_main.signal,
+PhysicalSignal A461(&bb.In4, nullptr, &signal_A461_main.signal,
                     &signal_A461_adv.signal, &signal_B469_main.signal,
                     &signal_B469_adv.signal, &signal_A469_adv.signal, nullptr);
-PhysicalSignal B369(&bb.InBrownBrown, &bb.Rel1, &signal_B369_main.signal,
+PhysicalSignal B369(&bb.InBrownBrown, nullptr, &signal_B369_main.signal,
                     &signal_B369_adv.signal, &signal_A361_main.signal,
                     &signal_A361_adv.signal, nullptr, &signal_A369_adv.signal);
 
-PhysicalSignal XXB4(&be.InBrownBrown, &be.Rel0, nullptr, nullptr,
+PhysicalSignal XXB4(&be.InBrownBrown, nullptr, nullptr, nullptr,
                     &signal_XXA4_main.signal, &signal_XXA4_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal XXB3(&be.InBrownGrey, &be.Rel1, nullptr, nullptr,
+PhysicalSignal XXB3(&be.InBrownGrey, nullptr, nullptr, nullptr,
                     &signal_XXA3_main.signal, &signal_XXA3_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal XXB2(&be.In7, &be.Rel2, nullptr, nullptr,
+PhysicalSignal XXB2(&be.In7, nullptr, nullptr, nullptr,
                     &signal_XXA2_main.signal, &signal_XXA2_adv.signal, nullptr,
                     nullptr);
-PhysicalSignal XXB1(&be.In6, &be.Rel3, nullptr, nullptr,
+PhysicalSignal XXB1(&be.In6, nullptr, nullptr, nullptr,
                     &signal_XXA1_main.signal, &signal_XXA1_adv.signal, nullptr,
                     nullptr);
 
@@ -953,10 +981,15 @@ void RedSignal(Automata* aut, Automata::LocalVariable* signal) {
 void BlockSignalDir(Automata* aut, CtrlTrackInterface* side_front,
                     CtrlTrackInterface* side_back, SignalVariable* main_sgn,
                     SignalVariable* adv_sgn, SignalVariable* in_adv_sgn,
+                    const GlobalVariable& runaround,
                     const Automata::LocalVariable& green) {
+  const auto& disp = aut->ImportVariable(global_dispatch);
+  const auto& local_ra = aut->ImportVariable(runaround);
   if (main_sgn) {
     auto* sgn = aut->ImportVariable(main_sgn);
-    Def().IfReg0(green).ActSetValue(sgn, 1, A_STOP);
+    Def().IfReg1(disp).IfReg0(green).ActSetValue(sgn, 1, A_SHUNT);
+    Def().IfReg1(local_ra).IfReg0(green).ActSetValue(sgn, 1, A_SHUNT);
+    Def().IfReg0(disp).IfReg0(local_ra).IfReg0(green).ActSetValue(sgn, 1, A_STOP);
     const auto& sg1 = aut->ImportVariable(*side_front->in_next_signal_1);
     const auto& sg2 = aut->ImportVariable(*side_front->in_next_signal_2);
     Def().IfReg1(green).IfReg0(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_40);
@@ -979,18 +1012,22 @@ void BlockSignalDir(Automata* aut, CtrlTrackInterface* side_front,
     auto* sgn = aut->ImportVariable(adv_sgn);
     const auto& sg1 = aut->ImportVariable(*side_front->in_next_signal_1);
     const auto& sg2 = aut->ImportVariable(*side_front->in_next_signal_2);
-    Def().IfReg0(green).ActSetValue(sgn, 1, A_STOP);
-    Def().IfReg0(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_STOP);
+    Def().IfReg1(disp).IfReg0(green).ActSetValue(sgn, 1, A_SHUNT);
+    Def().IfReg1(local_ra).IfReg0(green).ActSetValue(sgn, 1, A_SHUNT);
+    Def().IfReg0(disp).IfReg0(local_ra).IfReg0(green).ActSetValue(sgn, 1, A_STOP);
+    Def().IfReg1(green).IfReg0(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_STOP);
     Def().IfReg1(green).IfReg0(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_40);
     Def().IfReg1(green).IfReg1(sg2).IfReg0(sg1).ActSetValue(sgn, 1, A_60);
     Def().IfReg1(green).IfReg1(sg2).IfReg1(sg1).ActSetValue(sgn, 1, A_90);
   }
 }
 
-void BlockSignal(Automata* aut, StandardBlock* block) {
+void BlockSignal(Automata* aut, StandardBlock* block,
+                 const GlobalVariable& runaround,
+                 const GlobalVariable* rev_runaround = nullptr) {
   if (block->p()->main_sgn || block->p()->adv_sgn || block->p()->in_adv_sgn) {
     BlockSignalDir(aut, block->side_b(), block->side_a(), block->p()->main_sgn,
-                   block->p()->adv_sgn, block->p()->in_adv_sgn,
+                   block->p()->adv_sgn, block->p()->in_adv_sgn, runaround,
                    aut->ImportVariable(block->route_out()));
   }
   if (block->p()->r_main_sgn || block->p()->r_adv_sgn ||
@@ -998,12 +1035,13 @@ void BlockSignal(Automata* aut, StandardBlock* block) {
     BlockSignalDir(aut, block->side_a(), block->side_b(),
                    block->p()->r_main_sgn, block->p()->r_adv_sgn,
                    block->p()->r_in_adv_sgn,
+                   rev_runaround ? *rev_runaround : runaround,
                    aut->ImportVariable(block->rev_route_out()));
   }
 }
 
 void MiddleSignal(Automata* aut, StandardMiddleSignal* piece, SignalVariable* main_sgn, SignalVariable* adv_sgn) {
-  BlockSignalDir(aut, piece->side_b(), piece->side_a(), main_sgn, adv_sgn, nullptr, aut->ImportVariable(piece->route_out()));
+  BlockSignalDir(aut, piece->side_b(), piece->side_a(), main_sgn, adv_sgn, nullptr, global_dispatch, aut->ImportVariable(piece->route_out()));
 }
 
 void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {
@@ -1034,36 +1072,36 @@ void XXOLDBlockSignal(Automata* aut, StandardBlock* block) {
 }
 
 DefAut(signalaut, brd, {
-  BlockSignal(this, &Block_A461);
-  BlockSignal(this, &Block_B369);
+  BlockSignal(this, &Block_A461, runaround_olten);
+  BlockSignal(this, &Block_B369, runaround_olten);
   ClearUsedVariables();
-  BlockSignal(this, &Block_A441);
-  BlockSignal(this, &Block_B349);
+  BlockSignal(this, &Block_A441, runaround_lenzburg);
+  BlockSignal(this, &Block_B349, runaround_lenzburg);
   ClearUsedVariables();
-  BlockSignal(this, &Block_A431);
-  BlockSignal(this, &Block_B339);
+  BlockSignal(this, &Block_A431, runaround_spreitenbach);
+  BlockSignal(this, &Block_B339, runaround_spreitenbach);
 });
 
 DefAut(signalaut1, brd, {
-  BlockSignal(this, &Block_YYA13);
-  BlockSignal(this, &Block_YYB22);
+  BlockSignal(this, &Block_YYA13, runaround_yard, &runaround_rbl);
+  BlockSignal(this, &Block_YYB22, runaround_rbl, &runaround_yard);
   ClearUsedVariables();
-  BlockSignal(this, &Stub_XXB1.b_);
-  BlockSignal(this, &Stub_XXB2.b_);
+  BlockSignal(this, &Stub_XXB1.b_, global_dispatch);
+  BlockSignal(this, &Stub_XXB2.b_, global_dispatch);
   ClearUsedVariables();
-  BlockSignal(this, &Stub_XXB3.b_);
-  BlockSignal(this, &Stub_XXB4.b_);
+  BlockSignal(this, &Stub_XXB3.b_, global_dispatch);
+  BlockSignal(this, &Stub_XXB4.b_, global_dispatch);
 });
 
 DefAut(signalaut2, brd, {
-  BlockSignal(this, &Stub_YYA1.b_);
-  BlockSignal(this, &Stub_YYA2.b_);
+  BlockSignal(this, &Stub_YYA1.b_, runaround_yard);
+  BlockSignal(this, &Stub_YYA2.b_, runaround_yard);
   ClearUsedVariables();
-  BlockSignal(this, &Stub_YYA3.b_);
-  BlockSignal(this, &Stub_YYA4.b_);
+  BlockSignal(this, &Stub_YYA3.b_, runaround_yard);
+  BlockSignal(this, &Stub_YYA4.b_, runaround_yard);
   ClearUsedVariables();
-  BlockSignal(this, &Stub_YYA33.b_);
-  BlockSignal(this, &Block_YYB42);
+  BlockSignal(this, &Stub_YYA33.b_, runaround_rbl);
+  BlockSignal(this, &Block_YYB42, runaround_rbl);
 });
 
 DefAut(signalaut3, brd, {
