@@ -203,12 +203,22 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
         DccMode mode;
         unsigned address = FindProtocolDefs::query_to_address(eventId_, &mode);
         newNodeId_ = nodes()->allocate_node(mode, address);
-        // We sleep a bit to ensure that the new node is registered and the
-        // initialized is enqueued.
-        return sleep_and_call(&timer_, MSEC_TO_NSEC(100),
-                              STATE(new_node_reply));
+        return call_immediately(STATE(wait_for_new_node));
       }
       return exit();
+    }
+
+    /// Yields until the new node is initiaqlized and we are allowed to send
+    /// traffic out from it.
+    Action wait_for_new_node() {
+      openlcb::Node *n =
+          nodes()->tractionService_->iface()->lookup_local_node(newNodeId_);
+      HASSERT(n);
+      if (n->is_initialized()) {
+        return call_immediately(STATE(new_node_reply));
+      } else {
+        return yield();
+      }
     }
 
     Action new_node_reply() {
