@@ -191,6 +191,9 @@ class RemoteFindTrainNode
               }
               input()->resultCallback(state, b->data()->handle.id);
             }));
+        /// @TODO this flow is too slow in resolving the aliases to node
+        /// IDs. We need to have a solution that does parallell lookups instead
+        /// of processing the data sequentially.
         nodeIdLookup_.send(b);
       }
     } else {
