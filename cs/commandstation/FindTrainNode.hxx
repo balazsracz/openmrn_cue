@@ -43,6 +43,7 @@
 #include "openlcb/IfCan.hxx"
 #include "openlcb/Node.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
+#include "openlcb/TractionDefs.hxx"
 
 namespace commandstation {
 
