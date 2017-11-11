@@ -59,7 +59,7 @@ enum Symbols {
   ENGINE = 13,
   LIGHT1 = 14,
   LIGHT2 = 15,
-  TELEX = 17,
+  TELEX = 128 + 17,
   FN_UNKNOWN = 127,
   MOMENTARY = 128,
   FNP = 139,
