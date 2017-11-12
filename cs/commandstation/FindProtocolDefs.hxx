@@ -92,6 +92,16 @@ struct FindProtocolDefs {
       address), EXACT (clear for prefix match). */
   static uint8_t match_query_to_node(openlcb::EventId event, TrainDbEntry* train);
 
+  /** Compares an incoming search query to a train node described by the major
+   * parameters only. mode should be set to 0 for ignore, or DCC_LONG_ADDRESS.
+   * Returns a bitfield of match types for a match. valid bits are MATCH_ANY
+   * (always set), ADDRESS_ONLY (set when the match occurred in the address),
+   * EXACT (clear for prefix match).
+   */
+  static uint8_t match_query_to_train(openlcb::EventId event,
+                                      const string& name, unsigned address,
+                                      DccMode mode);
+
   /** Converts a find protocol query to an address and desired DccMode
       information. Will take into account prefix zeros for forcing a dcc long
       address, as well as all mode and flag bits coming in via the query.

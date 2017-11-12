@@ -34,6 +34,7 @@
 
 #include "commandstation/FindProtocolDefs.hxx"
 #include "commandstation/TrainDb.hxx"
+#include "commandstation/ExternalTrainDbEntry.hxx"
 #include "openlcb/TractionDefs.hxx"
 
 namespace commandstation {
@@ -244,6 +245,13 @@ openlcb::EventId FindProtocolDefs::input_to_allocate(const string& input) {
   event &= ~UINT64_C(0xFF);
   event |= (mode & 0xff);
   return event;
+}
+
+uint8_t FindProtocolDefs::match_query_to_train(openlcb::EventId event,
+                                               const string& name,
+                                               unsigned address, DccMode mode) {
+  ExternalTrainDbEntry entry(name, address, mode);
+  return match_query_to_node(event, &entry);
 }
 
 }  // namespace commandstation
