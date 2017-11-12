@@ -116,6 +116,26 @@ struct FindProtocolDefs {
    */
   static openlcb::EventId address_to_query(unsigned address, bool exact, DccMode mode);
 
+  /** Translates a sequence of input digits punched in by a throttle to a query
+   * to issue on the OpenLCB bus as a find protocol request.
+   *
+   * @param input is the sequence of numbers that the user typed. This is
+   * expected to have form like '415' or '021' or '474014'
+   * @return an event ID representing the search. This event ID could be
+   * IS_TRAIN_EVENT.
+   */
+  static openlcb::EventId input_to_search(const string& input);
+  
+  /** Translates a sequence of input digits punched in by a throttle to an
+   * allocate request to issue on the OpenLCB bus.
+   *
+   * @param input is the sequence of numbers that the user typed. This is
+   * expected to have form like '415' or '021' or '474014'
+   * @return an event ID representing the search. This event ID will be zero if
+   * the user input is invalid.
+   */
+  static openlcb::EventId input_to_allocate(const string& input);
+
  private:
   // Not instantiatable class.
   FindProtocolDefs();
