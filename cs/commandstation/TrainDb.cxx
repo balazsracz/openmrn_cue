@@ -8,8 +8,6 @@
 
 namespace commandstation {
 
-TrainDbEntry::~TrainDbEntry() {}
-
 class PtrTrainDbEntry : public TrainDbEntry {
  public:
   /** Retrieves the NMRAnet NodeID for the virtual node that represents a

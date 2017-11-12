@@ -58,7 +58,7 @@ extern const size_t const_lokdb_size;
 
 class TrainDbEntry {
 public:
-  virtual ~TrainDbEntry();
+  virtual ~TrainDbEntry() {}
 
   /** Returns an internal identifier that uniquely defines where this traindb
    * entry was allocated from. */
