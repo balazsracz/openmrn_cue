@@ -336,7 +336,7 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   EXPECT_EQ(0x060100000000ULL | 3006, get_clip_min());
   EXPECT_EQ(6, get_result_struct().resultsClippedAtTop_);
   EXPECT_EQ(6, get_result_struct().newClippedAtTop_);
-  EXPECT_EQ(16, get_results_map().size());
+  EXPECT_EQ(16U, get_results_map().size());
   auto maxnode = TrainNodeInfoCache::kMaxNode;
   EXPECT_EQ(maxnode, get_clip_max());
   printf("more scroll\n");
@@ -579,12 +579,12 @@ TEST_F(FindManyTrainTestBase, ScrollToTest) {
   LOG(INFO, "Scroll to border");
   clear_expect(true);
   EXPECT_EQ(names[15], (--get_results_map().end())->second->name_);
-  EXPECT_EQ(0, trainCache_.scroll_to(ids[10], 4, 1));
+  EXPECT_EQ(0U, trainCache_.scroll_to(ids[10], 4, 1));
   EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 6, 11)));
   wait_for_search();
   clear_expect(true);
   
-  EXPECT_EQ(0, trainCache_.scroll_to(ids[1], 4, 1));
+  EXPECT_EQ(0U, trainCache_.scroll_to(ids[1], 4, 1));
   EXPECT_THAT(get_output(), ContainerEq(get_names_list(names, 0, 2)));
 
   // Scroll to the border with refresh.
