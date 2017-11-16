@@ -217,7 +217,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       if (n->is_initialized()) {
         return call_immediately(STATE(new_node_reply));
       } else {
-        return yield();
+        return sleep_and_call(&timer_, MSEC_TO_NSEC(1), STATE(wait_for_new_node));
       }
     }
 
