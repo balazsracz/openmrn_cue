@@ -223,13 +223,17 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
   int shift = TRAIN_FIND_MASK - 4;
   unsigned pos = 0;
   bool has_space = true;
+  uint32_t qry = 0xFFFFFFFF;
   while (shift >= TRAIN_FIND_MASK_LOW && pos < input.size()) {
     if (is_number(input[pos])) {
-      event |= uint64_t(input[pos] - '0') << shift;
-      shift -= 4;
+      qry <<= 4;
+      qry |= input[pos] - '0';
       has_space = false;
+      shift -= 4;
     } else {
       if (!has_space) {
+        qry <<= 4;
+        qry |= 0xF;
         event |= uint64_t(0xf) << shift;
         shift -= 4;
       }
@@ -237,10 +241,7 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
     }
     pos++;
   }
-  while (shift >= TRAIN_FIND_MASK_LOW) {
-    event |= uint64_t(0xf) << shift;
-    shift -= 4;
-  }
+  event |= uint64_t(qry & 0xFFFFFF) << TRAIN_FIND_MASK_LOW;
   return event;
 }
 
