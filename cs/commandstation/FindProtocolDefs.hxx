@@ -147,6 +147,9 @@ struct FindProtocolDefs {
   static openlcb::EventId input_to_allocate(const string& input);
 
  private:
+  /// Helper function for the input_to_* calls.
+  static openlcb::EventId input_to_event(const string& input);
+  
   // Not instantiatable class.
   FindProtocolDefs();
 };

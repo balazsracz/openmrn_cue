@@ -146,7 +146,7 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     auto desired_mode = dcc_mode_to_address_type(mode, supplied_address);
     auto actual_mode = dcc_mode_to_address_type(train->get_legacy_drive_mode(),
                                                 legacy_address);
-    if ((mode & 7) == 0 || desired_mode == actual_mode) {
+    if (/*(mode & 7) == 0 ||*/ desired_mode == actual_mode) {
       // If the caller did not specify the drive mode, or the drive mode
       // matches.
       return MATCH_ANY | ADDRESS_ONLY | EXACT;
@@ -168,7 +168,7 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     }
   }
   if (event & ADDRESS_ONLY) {
-    if (!has_address_prefix_match) return 0;
+    if (((event & EXACT) != 0) || (!has_address_prefix_match)) return 0;
     return MATCH_ANY | ADDRESS_ONLY;
   }
   // Match against the train name string.
@@ -207,42 +207,68 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     // No numbers in the train name.
     best_name_match = 0;
   }
-  if (((best_name_match & EXACT) == 0) && has_address_prefix_match) {
+  if (((best_name_match & EXACT) == 0) && has_address_prefix_match &&
+      ((event & EXACT) == 0)) {
     // We prefer a partial address match over a non-exact name match.  If
     // address_prefix_match == true then the query had the EXACT bit false.
     return MATCH_ANY | ADDRESS_ONLY;
   }
+  if ((event & EXACT) && !(best_name_match & EXACT)) return 0;
   return best_name_match;
+}
+
+// static
+openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
+  uint64_t event = TRAIN_FIND_BASE;
+  int shift = TRAIN_FIND_MASK - 4;
+  unsigned pos = 0;
+  bool has_space = true;
+  while (shift >= TRAIN_FIND_MASK_LOW && pos < input.size()) {
+    if (is_number(input[pos])) {
+      event |= uint64_t(input[pos] - '0') << shift;
+      shift -= 4;
+      has_space = false;
+    } else {
+      if (!has_space) {
+        event |= uint64_t(0xf) << shift;
+        shift -= 4;
+      }
+      has_space = true;
+    }
+    pos++;
+  }
+  while (shift >= TRAIN_FIND_MASK_LOW) {
+    event |= uint64_t(0xf) << shift;
+    shift -= 4;
+  }
+  return event;
 }
 
 openlcb::EventId FindProtocolDefs::input_to_search(const string& input) {
   if (input.empty()) {
     return openlcb::TractionDefs::IS_TRAIN_EVENT;
   }
+  auto event = input_to_event(input);
   // @todo: figure out what flags we should exactly be giving here.
-  int flags = commandstation::OLCBUSER;
+  unsigned flags = 0;
   if (input[0] == '0') {
-    flags |= commandstation::DCC_LONG_ADDRESS;
+    flags |= DCC_FORCE_LONG;
   }
-  // @todo It is not very nice that we parse to an integer just what
-  // We got as a string input. Maybe the input argument should be an
-  // integer?
-  int address = atoi(input.c_str());
-  return address_to_query(address, /*exact*/ false,
-                          (commandstation::DccMode)flags);
+  event &= ~UINT64_C(0xff);
+  event |= (flags & 0xff);
+  return event;
 }
 
 openlcb::EventId FindProtocolDefs::input_to_allocate(const string& input) {
   if (input.empty()) {
     return 0;
   }
+  auto event = input_to_event(input);
   int mode = FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT;
   if (input[0] == '0') {
     mode |= FindProtocolDefs::DCC_FORCE_LONG;
   }
-  auto address = atoi(input.c_str());
-  auto event = FindProtocolDefs::address_to_query(address, false, (DccMode)0);
-  event &= ~UINT64_C(0xFF);
+  event &= ~UINT64_C(0xff);
   event |= (mode & 0xff);
   return event;
 }
