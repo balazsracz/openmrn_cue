@@ -391,46 +391,6 @@ address 136 0x86 main 65 adv 66 reflashed in ZZA3
 */
 
 
-/*
-PhysicalSignal A240(&ba.InBrownGrey, nullptr, &signal_A240_main.signal,
-                    &signal_A240_adv.signal, &signal_A131_main.signal,
-                    &signal_A131_adv.signal, nullptr, nullptr);
-PhysicalSignal A217(&bb.InOraRed, nullptr, &signal_A217_main.signal,
-                    nullptr, &signal_B229_main.signal,
-                    &signal_B229_adv.signal, nullptr, nullptr);
-PhysicalSignal A200(&be.In2, nullptr, &signal_A200_main.signal,
-                    &signal_A200_adv.signal, &signal_B208_main.signal,
-                    &signal_B208_adv.signal, &signal_A208_adv.signal,
-                    &signal_B200_adv.signal);
-const GlobalVariable* B208_raw_detector = &bb.InBrownGrey;
-PhysicalSignal B108(&bb.InBrownBrown, nullptr, &signal_B108_main.signal,
-                    &signal_B108_adv.signal, &signal_A100_main.signal,
-                    &signal_A100_adv.signal, &signal_B100_adv.signal,
-                    &signal_A108_adv.signal);
-PhysicalSignal B129(&ba.InBrownBrown, nullptr, &signal_B129_main.signal,
-                    &signal_B129_adv.signal, &signal_A117_main.signal,
-                    nullptr, nullptr, nullptr);
-
-PhysicalSignal A406(&be.In4, nullptr, &signal_A406_main.signal,
-                    &signal_A406_adv.signal, &signal_B400_main.signal,
-                    &signal_B400_adv.signal, nullptr, nullptr);
-const GlobalVariable* B400_raw_detector = &bb.InGreenGreen;
-PhysicalSignal XXB1(&be.In5, nullptr, &signal_XXB1_main.signal,
-                    &signal_XXB1_adv.signal, &signal_XXA1_main.signal,
-                    &signal_XXA1_adv.signal, nullptr, nullptr);
-
-PhysicalSignal A317(&bb.InOraGreen, nullptr, &signal_A317_main.signal,
-                    nullptr, &signal_B329_main.signal,
-                    &signal_B329_adv.signal, nullptr, nullptr);
-PhysicalSignal XXA2(&bc.In6, nullptr, &signal_XXA2_main.signal,
-                    &signal_XXA2_adv.signal, &signal_XXB2_main.signal,
-                    &signal_XXB2_adv.signal, nullptr, nullptr);
-PhysicalSignal XXA3(&bc.In7, nullptr, &signal_XXA3_main.signal,
-                    &signal_XXA3_adv.signal, &signal_XXB3_main.signal,
-                    &signal_XXB3_adv.signal,
-                    nullptr, nullptr);
-*/
-
 int next_temp_bit = 480;
 GlobalVariable* NewTempVariable(Board* board) {
   int counter = next_temp_bit++;
