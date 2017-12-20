@@ -85,10 +85,10 @@ class DccTrainDbEntry : public TrainDbEntry {
       switch (fn_id) {
         case 0:
           return LIGHT;
+        case 1:
+          return BELL;
         case 2:
           return HORN;
-        case 3:
-          return BELL;
         default:
           return FN_UNKNOWN;
       }
