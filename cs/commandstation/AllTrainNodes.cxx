@@ -67,7 +67,10 @@ class DccTrainDbEntry : public TrainDbEntry {
     ret.resize(e - &ret[0]);
     if (!is_dcc_mode()) {
       ret.push_back('M');
-      ret.push_back('M');
+    } else if ((mode_ & DCC_LONG_ADDRESS) == 0) {
+      ret.push_back('S');
+    } else if (address_ < 128) {
+      ret.push_back('L');
     }
     return ret;
   }

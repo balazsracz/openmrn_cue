@@ -150,6 +150,11 @@ TEST_F(FindProtocolTest, WithAllocate) {
   }
   wait();
   clear_expect();
+  // Checks that the new train is indeed marklin with address 23.
+  auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  EXPECT_EQ(5, entry->get_legacy_drive_mode());
+  EXPECT_EQ(23, entry->get_legacy_address());
+  EXPECT_EQ("23S", entry->get_train_name());
 }
 
 TEST_F(FindProtocolTest, AllocateMarklin) {
@@ -169,7 +174,7 @@ TEST_F(FindProtocolTest, AllocateMarklin) {
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
   EXPECT_EQ(2, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
-  EXPECT_EQ("23MM", entry->get_train_name());
+  EXPECT_EQ("23M", entry->get_train_name());
 }
 
 TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
@@ -192,7 +197,7 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
   EXPECT_EQ(DCC_28_LONG_ADDRESS, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
-  EXPECT_EQ("023", entry->get_train_name());
+  EXPECT_EQ("023L", entry->get_train_name());
 }
 
 TEST_F(FindProtocolTest, AllocateLongAddressViaPrefixZero) {
@@ -212,7 +217,7 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaPrefixZero) {
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
   EXPECT_EQ(DCC_28_LONG_ADDRESS, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
-  EXPECT_EQ("023", entry->get_train_name());
+  EXPECT_EQ("023L", entry->get_train_name());
 }
 
 TEST_F(FindProtocolTest, AllocateAndFind) {
