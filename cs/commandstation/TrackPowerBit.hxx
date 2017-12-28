@@ -33,6 +33,9 @@
  */
 
 #include "commandstation/dcc_control.hxx"
+#include "dcc/PacketSource.hxx"
+#include "dcc/UpdateLoop.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 
 namespace commandstation {
 
@@ -48,16 +51,76 @@ class TrackPowerBit : public openlcb::BitEventInterface {
   void set_state(bool new_value) OVERRIDE {
     if (new_value) {
       LOG(WARNING, "enable dcc");
+      if (estopSource_.isRegistered_) {
+        packet_processor_remove_refresh_source(&estopSource_);
+        estopSource_.isRegistered_ = 0;
+      }
       enable_dcc();
     } else {
-      LOG(WARNING, "disable dcc");
-      disable_dcc();
+      LOG(WARNING, "send ESTOP");
+      if (estopSource_.isRegistered_) {
+        return estop_expired();
+      } else {
+        packet_processor_add_refresh_source(
+            &estopSource_, dcc::UpdateLoopBase::ESTOP_PRIORITY);
+        estopSource_.start(std::bind(&TrackPowerBit::estop_expired, this));
+        estopSource_.isRegistered_ = 1;
+      }
     }
   }
 
   openlcb::Node* node() OVERRIDE { return node_; }
 
  private:
+  void estop_expired() {
+    LOG(WARNING, "disable dcc");
+    disable_dcc();
+  }
+
+  class EstopPacketSource : public dcc::NonTrainPacketSource {
+   public:
+    EstopPacketSource() : isRegistered_(0) {}
+
+    /// Call this function to start sending ESTOP packets and get a callback
+    /// when 20 estop packets were sent to the track.
+    void start(std::function<void()> done) {
+      nextDcc_ = 1;
+      numToNotify_ = 20;
+      done_ = std::move(done);
+    }
+
+   private:
+    void get_next_packet(unsigned code, dcc::Packet* packet) override {
+      if (nextDcc_) {
+        packet->set_dcc_speed14(dcc::DccShortAddress(0), true, false,
+                                dcc::Packet::EMERGENCY_STOP);
+      } else {
+        packet->start_mm_packet();
+        packet->add_mm_address(dcc::MMAddress(0), false);
+        packet->add_mm_speed(dcc::Packet::EMERGENCY_STOP);
+      }
+      nextDcc_ ^= 1;
+      if (numToNotify_) {
+        if (--numToNotify_ == 0 && done_) {
+          done_();
+          done_ = nullptr;
+        }
+      }
+    }
+
+   public:
+    /// Used by the caller to keep state.
+    uint8_t isRegistered_ : 1;
+
+   private:
+    /// Whether the next estop packet should be dcc or mm.
+    uint8_t nextDcc_ : 1;
+    /// How many packets to wait for notify.
+    uint8_t numToNotify_ : 6;
+    /// When the num to notify expires, we call this.
+    std::function<void()> done_{nullptr};
+  } estopSource_;
+
   openlcb::Node* node_;
 };
 
