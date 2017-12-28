@@ -21,7 +21,7 @@ class MockPacketQueue : public dcc::PacketFlowInterface {
 
 OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 50);
 
-class UpdateProcessorTest : public AsyncCanTest {
+class UpdateProcessorTest : public openlcb::AsyncNodeTest {
  protected:
   UpdateProcessorTest() : updateProcessor_(&g_service, &trackSendQueue_) {}
 
