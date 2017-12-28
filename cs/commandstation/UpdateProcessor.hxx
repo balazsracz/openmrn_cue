@@ -71,7 +71,8 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
     if (priority >= EXCLUSIVE_MIN_PRIORITY) {
       unsigned last_priority = 0;
       if (exclusiveIndex_ != NO_EXCLUSIVE) {
-        last_priority = packetSourceStates_[refreshSources_[exclusiveIndex_]].priority_;
+        last_priority =
+            packetSourceStates_[refreshSources_[exclusiveIndex_]].priority_;
       }
       if (priority > last_priority) {
         exclusiveIndex_ = refreshSources_.size() - 1;
@@ -119,10 +120,8 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
   };
 
   /// @return if we have an exclusive source.
-  bool has_exclusive() {
-    return exclusiveIndex_ != NO_EXCLUSIVE;
-  }
-  
+  bool has_exclusive() { return exclusiveIndex_ != NO_EXCLUSIVE; }
+
   /// Place where we forward the packets filled in.
   dcc::PacketFlowInterface* trackSend_;
 
@@ -135,7 +134,7 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
 
   /// Stores additional data about each packet source.
   map<dcc::PacketSource*, SourceState> packetSourceStates_;
-  
+
   /// Which is the next guy on the refresh source list to add.
   unsigned nextRefreshIndex_ : 15;
   /// The highest priority refresh index, if we have a exclusive index.

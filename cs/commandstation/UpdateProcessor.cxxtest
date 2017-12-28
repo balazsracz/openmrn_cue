@@ -249,10 +249,9 @@ class ExclusiveSource : public dcc::PacketSource {
 } exclusive_source;
 
 class SecondExclusiveSource : public ExclusiveSource {
-public:
+ public:
   void get_next_packet(unsigned code, dcc::Packet* packet) override {
-    packet->set_dcc_speed14(dcc::DccShortAddress(13), true, false,
-                            0);
+    packet->set_dcc_speed14(dcc::DccShortAddress(13), true, false, 0);
   }
 } second_exclusive_source;
 
@@ -318,21 +317,23 @@ TEST_F(UpdateProcessorTest, TwoExclusives) {
   wait();
 
   // Adds the exclusive packet source.
-  updateProcessor_.add_refresh_source(&second_exclusive_source,
-                                      dcc::UpdateLoopBase::PROGRAMMING_PRIORITY);
+  updateProcessor_.add_refresh_source(
+      &second_exclusive_source, dcc::UpdateLoopBase::PROGRAMMING_PRIORITY);
   EXPECT_CALL(trackSendQueue_,
-              arrived(PacketIs(0x4, dcc_from(13, 0b01100000, -2)))).Times(4);
+              arrived(PacketIs(0x4, dcc_from(13, 0b01100000, -2))))
+      .Times(4);
   send_empty_packet();
   send_empty_packet();
   send_empty_packet();
   send_empty_packet();
   qwait();
-  
+
   updateProcessor_.add_refresh_source(&exclusive_source,
                                       dcc::UpdateLoopBase::ESTOP_PRIORITY);
 
   EXPECT_CALL(trackSendQueue_,
-              arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2)))).Times(4);
+              arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2))))
+      .Times(4);
   send_empty_packet();
   send_empty_packet();
   send_empty_packet();
@@ -347,7 +348,8 @@ TEST_F(UpdateProcessorTest, TwoExclusives) {
   t.set_speed(-37.5);
   // but it won't appear until later
   EXPECT_CALL(trackSendQueue_,
-              arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2)))).Times(2);
+              arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2))))
+      .Times(2);
   send_empty_packet();
   send_empty_packet();
   wait();
@@ -359,13 +361,14 @@ TEST_F(UpdateProcessorTest, TwoExclusives) {
   updateProcessor_.remove_refresh_source(&exclusive_source);
 
   EXPECT_CALL(trackSendQueue_,
-              arrived(PacketIs(0x4, dcc_from(13, 0b01100000, -2)))).Times(4);
+              arrived(PacketIs(0x4, dcc_from(13, 0b01100000, -2))))
+      .Times(4);
   send_empty_packet();
   send_empty_packet();
   send_empty_packet();
   send_empty_packet();
   wait();
-  
+
   // Removes the outer exclusive source. User change packet shows up now.
   updateProcessor_.remove_refresh_source(&second_exclusive_source);
 
