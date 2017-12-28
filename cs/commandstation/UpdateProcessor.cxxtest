@@ -1,52 +1,4 @@
-#include "utils/async_if_test_helper.hxx"
-
-#include "commandstation/UpdateProcessor.hxx"
-#include "dcc/Loco.hxx"
-#include "dcc/UpdateLoop.hxx"
-
-#include "dcc/dcc_test_utils.hxx"
-
-using ::testing::ElementsAre;
-
-class MockPacketQueue : public dcc::PacketFlowInterface {
- public:
-  MOCK_METHOD1(arrived, void(const dcc::Packet&));
-
-  void send(Buffer<dcc::Packet>* b, unsigned prio) {
-    dcc::Packet* pkt = b->data();
-    arrived(*pkt);
-    b->unref();
-  }
-};
-
-OVERRIDE_CONST(dcc_packet_min_refresh_delay_ms, 50);
-
-class UpdateProcessorTest : public AsyncCanTest {
- protected:
-  UpdateProcessorTest() : updateProcessor_(&g_service, &trackSendQueue_) {}
-
-  ~UpdateProcessorTest() { wait(); }
-
-  void send_empty_packet() {
-    Buffer<dcc::Packet>* b;
-    mainBufferPool->alloc(&b, nullptr);
-    updateProcessor_.send(b);
-  }
-
-  void wait() {
-    usleep(70000);
-    AsyncCanTest::wait();
-    Mock::VerifyAndClear(&updateProcessor_);
-  }
-
-  void qwait() {
-    AsyncCanTest::wait();
-    Mock::VerifyAndClear(&updateProcessor_);
-  }
-
-  StrictMock<MockPacketQueue> trackSendQueue_;
-  commandstation::UpdateProcessor updateProcessor_;
-};
+#include "commandstation/track_test_helper.hxx"
 
 TEST_F(UpdateProcessorTest, CreateDestroy) {}
 
@@ -231,24 +183,15 @@ TEST_F(UpdateProcessorTest, OneTrainRefreshAndUpdate) {
 
 using dcc::SpeedType;
 
-class ExclusiveSource : public dcc::PacketSource {
+class ExclusiveSource : public dcc::NonTrainPacketSource {
  public:
   void get_next_packet(unsigned code, dcc::Packet* packet) override {
     packet->set_dcc_speed14(dcc::DccShortAddress(0), true, false,
                             dcc::Packet::EMERGENCY_STOP);
   }
-  void set_speed(SpeedType speed) override {}
-  SpeedType get_speed() override { return SpeedType(); }
-  void set_emergencystop() override {}
-  void set_fn(uint32_t address, uint16_t value) override {}
-  uint16_t get_fn(uint32_t address) override { return 0; }
-  uint32_t legacy_address() override { return 0; }
-  dcc::TrainAddressType legacy_address_type() override {
-    return dcc::TrainAddressType::DCC_SHORT_ADDRESS;
-  }
 } exclusive_source;
 
-class SecondExclusiveSource : public ExclusiveSource {
+class SecondExclusiveSource : public dcc::NonTrainPacketSource {
  public:
   void get_next_packet(unsigned code, dcc::Packet* packet) override {
     packet->set_dcc_speed14(dcc::DccShortAddress(13), true, false, 0);
