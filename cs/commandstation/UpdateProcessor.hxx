@@ -139,11 +139,12 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
   unsigned nextRefreshIndex_ : 15;
   /// The highest priority refresh index, if we have a exclusive index.
   unsigned exclusiveIndex_ : 15;
+  /// Non-zero if we have any refresh sources.
+  unsigned hasRefreshSource_ : 1;
+
   /// This is stored in the exclusiveIndex_ when we have no exclusive refresh
   /// source.
   static constexpr unsigned NO_EXCLUSIVE = 0x7FF;
-  /// Non-zero if we have any refresh sources.
-  unsigned hasRefreshSource_ : 1;
 };
 
 }  // namespace commandstation

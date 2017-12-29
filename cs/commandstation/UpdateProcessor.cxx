@@ -102,7 +102,7 @@ StateFlowBase::Action UpdateProcessor::entry() {
       b->unref();
       s = nullptr;
     } else if (it->second.lastPacketTime_ >
-               now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms())) {
+               (now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms()))) {
       // Last update for this loco is too recent. Let's put it back to the
       // queue.
       {
@@ -127,7 +127,7 @@ StateFlowBase::Action UpdateProcessor::entry() {
         code = 0;
       }
       if (packetSourceStates_[s].lastPacketTime_ <
-          now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms())) {
+          (now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms()))) {
         break;
       } else {
         s = nullptr;
