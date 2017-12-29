@@ -108,6 +108,11 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
   // Entry to the state flow -- when a new packet needs to be sent.
   Action entry() OVERRIDE;
 
+  // Used by unittests to inject a packet processor mock.
+  void TEST_set_packet_processor(dcc::PacketFlowInterface* track_send) {
+    trackSend_ = track_send;
+  }
+
  private:
   struct SourceState {
     /// Stores the last time we sent a packet to a given loco. Suppresses
