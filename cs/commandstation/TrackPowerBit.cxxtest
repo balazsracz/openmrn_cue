@@ -1,0 +1,115 @@
+#include "commandstation/TrackPowerBit.hxx"
+#include "commandstation/track_test_helper.hxx"
+#include "utils/Singleton.hxx"
+
+class MockDccControl : public Singleton<MockDccControl> {
+ public:
+  MOCK_METHOD0(query_dcc, bool());
+  MOCK_METHOD0(enable_dcc, void());
+  MOCK_METHOD0(disable_dcc, void());
+};
+
+bool query_dcc() { return Singleton<MockDccControl>::instance()->query_dcc(); }
+
+void enable_dcc() { Singleton<MockDccControl>::instance()->enable_dcc(); }
+
+void disable_dcc() { Singleton<MockDccControl>::instance()->disable_dcc(); }
+
+namespace commandstation {
+namespace {
+
+class TrackPowerTest : public UpdateProcessorTest {
+ protected:
+  StrictMock<MockDccControl> mockDcc_;
+  TrackPowerBit powerBit_{node_,
+                          openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+                          openlcb::TractionDefs::EMERGENCY_STOP_EVENT};
+  openlcb::BitEventConsumer powerC_{&powerBit_};
+};
+
+TEST_F(TrackPowerTest, create) {
+  EXPECT_CALL(trackSendQueue_,
+              arrived(PacketIs(0x04, dcc_from(0xFF, 0, 0xFF))));
+  send_empty_packet();
+  qwait();
+}
+
+TEST_F(TrackPowerTest, enable) {
+  EXPECT_CALL(mockDcc_, enable_dcc());
+  send_packet(":X195B4123N010000000000FFFE;");
+  wait();
+}
+
+TEST_F(TrackPowerTest, disable_no_packet) {
+  send_packet(":X195B4123N010000000000FFFF;");
+  wait();
+  Mock::VerifyAndClear(&mockDcc_);
+}
+
+TEST_F(TrackPowerTest, disable_estop_packets) {
+  EXPECT_CALL(trackSendQueue_, arrived(PacketIs(0x04, dcc_from(0xFF, 0, 0xFF))))
+      .Times(4);
+  for (int i = 0; i < 4; ++i) {
+    send_empty_packet();
+  }
+  qwait();
+  send_packet(":X195B4123N010000000000FFFF;");
+  wait();
+  Mock::VerifyAndClear(&mockDcc_);
+  EXPECT_CALL(trackSendQueue_,
+              arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2))))
+      .Times(10);
+  EXPECT_CALL(trackSendQueue_, arrived(PacketIs(0x66, dcc_from(0, 0, 0xC0))))
+      .Times(10);
+  for (int i = 0; i < 19; ++i) {
+    send_empty_packet();
+  }
+  wait();
+  EXPECT_CALL(mockDcc_, disable_dcc());
+  send_empty_packet();
+  wait();
+  Mock::VerifyAndClear(&mockDcc_);
+  // after disabling dcc we are still getting estop packets.
+  EXPECT_CALL(trackSendQueue_,
+              arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2))))
+      .Times(2);
+  EXPECT_CALL(trackSendQueue_, arrived(PacketIs(0x66, dcc_from(0, 0, 0xC0))))
+      .Times(2);
+  for (int i = 0; i < 4; ++i) {
+    send_empty_packet();
+  }
+  wait();
+
+  // After reenable we'll get idle packets.
+  EXPECT_CALL(mockDcc_, enable_dcc());
+  send_packet(":X195B4123N010000000000FFFE;");
+  qwait();
+  EXPECT_CALL(trackSendQueue_, arrived(PacketIs(0x04, dcc_from(0xFF, 0, 0xFF))))
+      .Times(4);
+  for (int i = 0; i < 4; ++i) {
+    send_empty_packet();
+  }
+  qwait();
+}
+
+TEST_F(TrackPowerTest, query) {
+  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(true));
+  send_packet_and_expect_response(":X198F4123N010000000000FFFF;",
+                                  ":X194C522AN010000000000FFFF;");
+  qwait();
+  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(true));
+  send_packet_and_expect_response(":X198F4123N010000000000FFFE;",
+                                  ":X194C422AN010000000000FFFE;");
+  qwait();
+  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(false));
+  send_packet_and_expect_response(":X198F4123N010000000000FFFF;",
+                                  ":X194C422AN010000000000FFFF;");
+  qwait();
+  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(false));
+  send_packet_and_expect_response(":X198F4123N010000000000FFFE;",
+                                  ":X194C522AN010000000000FFFE;");
+  qwait();
+}
+
+}  // namespace
+}  // namespace commandstation
