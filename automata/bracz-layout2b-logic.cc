@@ -738,7 +738,7 @@ PhysicalSignal YYB22(&bd.InGreenGreen, nullptr, &signal_YYB22_main.signal,
                      nullptr, &signal_YYA23_main.signal,
                      &signal_YYA23_adv.signal, nullptr, nullptr);
 
-PhysicalSignal YYA33(&ba.InOraRed, nullptr, nullptr, nullptr,
+PhysicalSignal YYA33(&ba.In7, nullptr, nullptr, nullptr,
                      &signal_YYB32_main.signal, nullptr, nullptr, nullptr);
 
 PhysicalSignal YYB42(&bd.InOraGreen, nullptr, &signal_YYB42_main.signal,
