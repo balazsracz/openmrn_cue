@@ -45,11 +45,73 @@ string A2Q(unsigned address, bool exact, int mode) {
       FindProtocolDefs::address_to_query(address, exact, (DccMode)mode));
 }
 
+string I2Q(const string& input) {
+  return eventtohex(FindProtocolDefs::input_to_search(input));
+}
+
+string I2A(const string& input) {
+  return eventtohex(FindProtocolDefs::input_to_allocate(input));
+}
+
+uint8_t match(const string& input, bool query, const string& name,
+              unsigned address, DccMode mode) {
+  auto event = query ? FindProtocolDefs::input_to_search(input)
+                     : FindProtocolDefs::input_to_allocate(input);
+  return FindProtocolDefs::match_query_to_train(event, name, address, mode);
+}
+
 TEST(AddressToQueryTest, simplexlate) {
   EXPECT_EQ("090099FFFFFF1300", A2Q(13, false, OLCBUSER));
   // Forced long
   EXPECT_EQ("090099FFFFFF1314", A2Q(13, false, DCC_LONG_ADDRESS | DCC_ANY));
   EXPECT_EQ("090099FF13572100", A2Q(135721, false, 0));
+}
+
+TEST(InputToQueryTest, simplexlate) {
+  EXPECT_EQ("090099FFFFFF1300", I2Q("13"));
+  // Forced long
+  EXPECT_EQ("090099FFFFF01310", I2Q("013"));
+  EXPECT_EQ("090099FFFF123400", I2Q("1234"));
+  // some more exotic
+  EXPECT_EQ("090099FF013F4110", I2Q("013 41"));
+  EXPECT_EQ("090099FF013F4110", I2Q("013///41"));
+}
+
+TEST(InputToAllocTest, simplexlate) {
+  EXPECT_EQ("090099FFFFFF13C0", I2A("13"));
+  // Forced long
+  EXPECT_EQ("090099FFFFF013D0", I2A("013"));
+  EXPECT_EQ("090099FFFF1234C0", I2A("1234"));
+}
+
+typedef FindProtocolDefs F;
+
+TEST(MatchTest, testmatch) {
+  EXPECT_EQ(0, match("13", true, "FooBar", 45, DCC_ANY));
+  EXPECT_EQ(0, match("13", true, "FooBar", 4513, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            match("13", true, "FooBar13", 45, DCC_ANY));
+  EXPECT_EQ(F::MATCH_ANY,
+            match("13", true, "FooBar135", 45, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("13", true, "FooBar777", 13, DCC_128));
+
+  EXPECT_EQ(F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("013", true, "FooBar777", 13, DCC_ANY));
+  EXPECT_EQ(0, // allocate will not match due to short vs long
+            match("013", false, "FooBar777", 13, DCC_ANY));
+
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("013", true, "FooBar777", 13, DCC_14_LONG_ADDRESS));
+}
+
+TEST(MatchTest, longtoshortmatch) {
+  // In this test we have a dcc long address locomotive and then a short
+  // address allocate arrives. The match should fail.
+  EXPECT_EQ(0, match("13", false, "013", 13, DCC_28_LONG_ADDRESS));
+
+  // Another example in reverse: a short locomotive and a long address query.
+  EXPECT_EQ(0, match("013", false, "13", 13, DCC_28));
 }
 
 }  // namespace

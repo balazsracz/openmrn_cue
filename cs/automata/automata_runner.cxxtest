@@ -77,7 +77,7 @@ TEST(TimerBitTest, DiesOnWrite) {
 TEST(AutObjTest, IdAndStartingOffset) {
   Automata a(33, 1882);
   EXPECT_EQ(33, a.GetId());
-  EXPECT_EQ(1882, a.GetStartingOffset());
+  EXPECT_EQ(1882u, a.GetStartingOffset());
 }
 
 TEST(AutObjTest, State) {
@@ -138,7 +138,7 @@ TEST_F(RunnerTest, SingleEmptyAutomataBoard) {
     const auto& all_automata = r.GetAllAutomatas();
     EXPECT_EQ(1U, all_automata.size());
     EXPECT_EQ(0, all_automata[0]->GetId());
-    EXPECT_EQ(5, all_automata[0]->GetStartingOffset());
+    EXPECT_EQ(5U, all_automata[0]->GetStartingOffset());
     r.RunAllAutomata();
     r.RunAllAutomata();
     r.RunAllAutomata();

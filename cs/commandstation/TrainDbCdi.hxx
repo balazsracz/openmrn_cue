@@ -35,17 +35,18 @@
 #ifndef _BRACZ_COMMANDSTATION_TRAINDBCDI_HXX_
 #define _BRACZ_COMMANDSTATION_TRAINDBCDI_HXX_
 
+#include "ConfigLocal.hxx"
+
 #include "openlcb/ConfigRepresentation.hxx"
 #include "openlcb/TractionCvCdi.hxx"
 #include "commandstation/TrainDbDefs.hxx"
 
 namespace commandstation {
 
-#ifdef TRAINDB_TRAIN_COUNT
-static constexpr unsigned STORED_TRAIN_COUNT = TRAINDB_TRAIN_COUNT;
-#else
-static constexpr unsigned STORED_TRAIN_COUNT = 32;
+#ifndef TRAINDB_TRAIN_COUNT
+#error must define TRAINDB_TRAIN_COUNT in your headers
 #endif
+static constexpr unsigned STORED_TRAIN_COUNT = TRAINDB_TRAIN_COUNT;
 
 static const char MOMENTARY_MAP[] =
     "<relation><property>0</property><value>Latching</value></relation>"

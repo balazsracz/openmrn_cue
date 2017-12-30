@@ -34,6 +34,8 @@
 
 #include "commandstation/FindProtocolDefs.hxx"
 #include "commandstation/TrainDb.hxx"
+#include "commandstation/ExternalTrainDbEntry.hxx"
+#include "openlcb/TractionDefs.hxx"
 
 namespace commandstation {
 
@@ -78,9 +80,9 @@ uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
 
 }  // namespace
 
-
 // static
-unsigned FindProtocolDefs::query_to_address(openlcb::EventId event, DccMode* mode) {
+unsigned FindProtocolDefs::query_to_address(openlcb::EventId event,
+                                            DccMode* mode) {
   unsigned supplied_address = 0;
   bool has_prefix_zero = false;
   for (int shift = TRAIN_FIND_MASK - 4; shift >= TRAIN_FIND_MASK_LOW;
@@ -107,8 +109,9 @@ unsigned FindProtocolDefs::query_to_address(openlcb::EventId event, DccMode* mod
   return supplied_address;
 }
 
-//static
-openlcb::EventId FindProtocolDefs::address_to_query(unsigned address, bool exact, DccMode mode) {
+// static
+openlcb::EventId FindProtocolDefs::address_to_query(unsigned address,
+                                                    bool exact, DccMode mode) {
   uint64_t event = TRAIN_FIND_BASE;
   int shift = TRAIN_FIND_MASK_LOW;
   while (address) {
@@ -143,12 +146,13 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     auto desired_mode = dcc_mode_to_address_type(mode, supplied_address);
     auto actual_mode = dcc_mode_to_address_type(train->get_legacy_drive_mode(),
                                                 legacy_address);
-    if ((mode & 7) == 0 || desired_mode == actual_mode) {
+    if (/*(mode & 7) == 0 ||*/ desired_mode == actual_mode) {
       // If the caller did not specify the drive mode, or the drive mode
       // matches.
       return MATCH_ANY | ADDRESS_ONLY | EXACT;
     } else {
-      LOG(INFO, "exact match failed due to mode: desired %d actual %d", static_cast<int>(desired_mode), static_cast<int>(actual_mode));
+      LOG(INFO, "exact match failed due to mode: desired %d actual %d",
+          static_cast<int>(desired_mode), static_cast<int>(actual_mode));
     }
     has_address_prefix_match = ((event & EXACT) == 0);
   }
@@ -164,7 +168,7 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     }
   }
   if (event & ADDRESS_ONLY) {
-    if (!has_address_prefix_match) return 0;
+    if (((event & EXACT) != 0) || (!has_address_prefix_match)) return 0;
     return MATCH_ANY | ADDRESS_ONLY;
   }
   // Match against the train name string.
@@ -180,14 +184,13 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
         first_name_match = current_match;
         best_name_match = current_match;
       }
-      if ((!best_name_match && current_match) ||
-          (current_match & EXACT)) {
+      if ((!best_name_match && current_match) || (current_match & EXACT)) {
         // We overwrite the best name match if there was no previous match, or
         // if the current match is exact. This is somewhat questionable,
         // because it will allow an exact match on the middle of the train name
         // even though there may have been numbers before. However, this is
         // arguably okay in case the train name is a model number and a cab
-        // number, and we're matching against the cab number, e.g. 
+        // number, and we're matching against the cab number, e.g.
         // "Re 4/4 11239" which should be exact-matching the query 11239.
         best_name_match = current_match;
       }
@@ -204,12 +207,78 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     // No numbers in the train name.
     best_name_match = 0;
   }
-  if (((best_name_match & EXACT) == 0) && has_address_prefix_match) {
+  if (((best_name_match & EXACT) == 0) && has_address_prefix_match &&
+      ((event & EXACT) == 0)) {
     // We prefer a partial address match over a non-exact name match.  If
     // address_prefix_match == true then the query had the EXACT bit false.
     return MATCH_ANY | ADDRESS_ONLY;
   }
+  if ((event & EXACT) && !(best_name_match & EXACT)) return 0;
   return best_name_match;
+}
+
+// static
+openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
+  uint64_t event = TRAIN_FIND_BASE;
+  int shift = TRAIN_FIND_MASK - 4;
+  unsigned pos = 0;
+  bool has_space = true;
+  uint32_t qry = 0xFFFFFFFF;
+  while (shift >= TRAIN_FIND_MASK_LOW && pos < input.size()) {
+    if (is_number(input[pos])) {
+      qry <<= 4;
+      qry |= input[pos] - '0';
+      has_space = false;
+      shift -= 4;
+    } else {
+      if (!has_space) {
+        qry <<= 4;
+        qry |= 0xF;
+        event |= uint64_t(0xf) << shift;
+        shift -= 4;
+      }
+      has_space = true;
+    }
+    pos++;
+  }
+  event |= uint64_t(qry & 0xFFFFFF) << TRAIN_FIND_MASK_LOW;
+  return event;
+}
+
+openlcb::EventId FindProtocolDefs::input_to_search(const string& input) {
+  if (input.empty()) {
+    return openlcb::TractionDefs::IS_TRAIN_EVENT;
+  }
+  auto event = input_to_event(input);
+  // @todo: figure out what flags we should exactly be giving here.
+  unsigned flags = 0;
+  if (input[0] == '0') {
+    flags |= DCC_FORCE_LONG;
+  }
+  event &= ~UINT64_C(0xff);
+  event |= (flags & 0xff);
+  return event;
+}
+
+openlcb::EventId FindProtocolDefs::input_to_allocate(const string& input) {
+  if (input.empty()) {
+    return 0;
+  }
+  auto event = input_to_event(input);
+  int mode = FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT;
+  if (input[0] == '0') {
+    mode |= FindProtocolDefs::DCC_FORCE_LONG;
+  }
+  event &= ~UINT64_C(0xff);
+  event |= (mode & 0xff);
+  return event;
+}
+
+uint8_t FindProtocolDefs::match_query_to_train(openlcb::EventId event,
+                                               const string& name,
+                                               unsigned address, DccMode mode) {
+  ExternalTrainDbEntry entry(name, address, mode);
+  return match_query_to_node(event, &entry);
 }
 
 }  // namespace commandstation

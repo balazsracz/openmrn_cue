@@ -60,8 +60,8 @@ UpdateProcessor::UpdateProcessor(Service* service,
     : StateFlow<Buffer<dcc::Packet>, QList<1> >(service),
       trackSend_(track_send),
       nextRefreshIndex_(0),
-      hasRefreshSource_(0) {
-}
+      exclusiveIndex_(NO_EXCLUSIVE),
+      hasRefreshSource_(0) {}
 
 UpdateProcessor::~UpdateProcessor() {}
 
@@ -78,26 +78,31 @@ DECLARE_CONST(dcc_packet_min_refresh_delay_ms);
 
 StateFlowBase::Action UpdateProcessor::entry() {
   // We have an empty packet to fill. It is accessible in message()->data().
-  // First we check if there is an urgent update.
+  dcc::PacketSource* s = nullptr;
   Buffer<PriorityUpdate>* b = nullptr;
   {
     AtomicHolder h(this);
-    b = static_cast<Buffer<PriorityUpdate>*>(priorityUpdates_.next().item);
+    // First we check if there is an exclusive update.
+    if (has_exclusive()) {
+      s = refreshSources_[exclusiveIndex_];
+    } else {
+      // Then we check if there is an urgent update.
+      b = static_cast<Buffer<PriorityUpdate>*>(priorityUpdates_.next().item);
+    }
   }
   long long now = os_get_time_monotonic();
-  dcc::PacketSource* s = nullptr;
   unsigned code = 0;
   if (b) {
     // found a priority entry.
     s = b->data()->source;
     code = b->data()->code;
-    auto it = lastPacketTime_.find(s);
-    if (it == lastPacketTime_.end()) {
+    auto it = packetSourceStates_.find(s);
+    if (it == packetSourceStates_.end()) {
       // This packet source has been removed. Do not call it!
       b->unref();
       s = nullptr;
-    } else if (it->second >
-        now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms())) {
+    } else if (it->second.lastPacketTime_ >
+               (now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms()))) {
       // Last update for this loco is too recent. Let's put it back to the
       // queue.
       {
@@ -121,8 +126,8 @@ StateFlowBase::Action UpdateProcessor::entry() {
         s = refreshSources_[nextRefreshIndex_++];
         code = 0;
       }
-      if (lastPacketTime_[s] <
-          now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms())) {
+      if (packetSourceStates_[s].lastPacketTime_ <
+          (now - MSEC_TO_NSEC(config_dcc_packet_min_refresh_delay_ms()))) {
         break;
       } else {
         s = nullptr;
@@ -132,7 +137,7 @@ StateFlowBase::Action UpdateProcessor::entry() {
   if (s) {
     // requests next packet from that source.
     s->get_next_packet(code, message()->data());
-    lastPacketTime_[s] = now;
+    packetSourceStates_[s].lastPacketTime_ = now;
   } else {
     // No update, no source. We are idle!
     //bracz_custom::send_host_log_event(bracz_custom::HostLogEvent::TRACK_IDLE);

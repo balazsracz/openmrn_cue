@@ -1,6 +1,14 @@
 *.d
 *.o
 test-aut
+bracz-layout*-logic
+debug.txt
+jmri-out.xml
+lcc-layout-logic
+lcc-layout-logic-soft
+logic-demo
+var-bash-list.txt
+variables.txt
 rr-crossing
 gen_callback
 core

@@ -59,7 +59,7 @@ enum Symbols {
   ENGINE = 13,
   LIGHT1 = 14,
   LIGHT2 = 15,
-  TELEX = 17,
+  TELEX = 128 + 17,
   FN_UNKNOWN = 127,
   MOMENTARY = 128,
   FNP = 139,
@@ -92,7 +92,7 @@ enum DccMode {
 
 inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
                                                       uint32_t address) {
-  if ((mode & DCC_ANY) == 0) {
+  if ((mode == MARKLIN_OLD || mode == MARKLIN_NEW)) {
     return dcc::TrainAddressType::MM;
   }
   if ((mode & DCC_LONG_ADDRESS) || (address >= 128)) {

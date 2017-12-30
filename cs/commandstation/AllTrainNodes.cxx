@@ -67,7 +67,12 @@ class DccTrainDbEntry : public TrainDbEntry {
     ret.resize(e - &ret[0]);
     if (!is_dcc_mode()) {
       ret.push_back('M');
-      ret.push_back('M');
+    } else if (address_ < 128) {
+      if ((mode_ & DCC_LONG_ADDRESS) == 0) {
+        ret.push_back('S');
+      } else {
+        ret.push_back('L');
+      }
     }
     return ret;
   }
@@ -85,10 +90,10 @@ class DccTrainDbEntry : public TrainDbEntry {
       switch (fn_id) {
         case 0:
           return LIGHT;
+        case 1:
+          return BELL;
         case 2:
           return HORN;
-        case 3:
-          return BELL;
         default:
           return FN_UNKNOWN;
       }

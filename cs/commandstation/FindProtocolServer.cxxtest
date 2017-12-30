@@ -43,6 +43,14 @@ class FindProtocolTest : public AllTrainNodesTest {
         StringPrintf(":X19914123N%016" PRIX64 ";", event));
   }
 
+  void twait() {
+    wait();
+    while (!trainNodes_->find_flow_is_idle()) {
+      usleep(100);
+    }
+    wait();
+  }
+  
   // This handler has been moved into AllTrainNodes.
   // FindProtocolServer handler_{CHECK_NOTNULL(trainNodes_.get())};
 };
@@ -142,6 +150,11 @@ TEST_F(FindProtocolTest, WithAllocate) {
   }
   wait();
   clear_expect();
+  // Checks that the new train is indeed marklin with address 23.
+  auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  EXPECT_EQ(5, entry->get_legacy_drive_mode());
+  EXPECT_EQ(23, entry->get_legacy_address());
+  EXPECT_EQ("23S", entry->get_train_name());
 }
 
 TEST_F(FindProtocolTest, AllocateMarklin) {
@@ -161,7 +174,7 @@ TEST_F(FindProtocolTest, AllocateMarklin) {
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
   EXPECT_EQ(2, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
-  EXPECT_EQ("23MM", entry->get_train_name());
+  EXPECT_EQ("23M", entry->get_train_name());
 }
 
 TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
@@ -184,7 +197,7 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
   EXPECT_EQ(DCC_28_LONG_ADDRESS, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
-  EXPECT_EQ("023", entry->get_train_name());
+  EXPECT_EQ("023L", entry->get_train_name());
 }
 
 TEST_F(FindProtocolTest, AllocateLongAddressViaPrefixZero) {
@@ -204,7 +217,51 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaPrefixZero) {
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
   EXPECT_EQ(DCC_28_LONG_ADDRESS, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
-  EXPECT_EQ("023", entry->get_train_name());
+  EXPECT_EQ("023L", entry->get_train_name());
+}
+
+TEST_F(FindProtocolTest, AllocateLongAddressDefault) {
+  // Check down the train initialization part.
+  wait();
+  clear_expect(true); // strict
+  expect_train_start(0x443, 323, dcc::TrainAddressType::DCC_LONG_ADDRESS);
+  expect_packet(":X19544443N090099FFFFF32380;");
+  send_packet(":X19914123N090099FFFFF32380;");
+  wait();
+  while (!trainNodes_->find_flow_is_idle()) {
+    usleep(100);
+  }
+  wait();
+  clear_expect();
+  // Checks that the new train is indeed DCC with address 23 long.
+  auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  EXPECT_EQ(323, entry->get_legacy_address());
+  EXPECT_EQ("323", entry->get_train_name());
+}
+
+TEST_F(FindProtocolTest, AllocateAndFind) {
+  // Check down the train initialization part.
+  wait();
+  clear_expect(true); // strict
+  send_packet(":X19914123N090099FFFFFF2300;");
+  wait();
+  clear_expect(true); // strict
+  expect_train_start(0x443, 23, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544443N090099FFFFFF2380;");
+  send_packet(":X19914123N090099FFFFFF2380;");
+  twait();
+  clear_expect(true); // strict
+  // slightly different alignment but gives back the same node
+  expect_packet(":X19544443N090099FFFF23FF80;");
+  send_packet(":X19914123N090099FFFF23FF80;");
+  twait();
+
+  clear_expect(true); // strict
+  expect_train_start(0x33A, 23, dcc::TrainAddressType::DCC_LONG_ADDRESS);
+  // now address 23 long
+  expect_packet(":X1954433AN090099FFFFF023C0;");
+  send_packet(":X19914123N090099FFFFF023C0;");
+  twait();
 }
 
 TEST_F(FindProtocolTest, FindOneNodeInfra) { find_nodes(0xFFFF22, 0, {0x441}); }
@@ -279,28 +336,28 @@ TEST_F(MatchNodeTest, simple) {
 
 TEST_F(MatchNodeTest, middle) {
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0xF123F, 0, "Foo", 123));
+            check_match(0xF523F, 0, "Foo", 523));
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0xFF123F, 0, "Foo", 123));
+            check_match(0xFF523F, 0, "Foo", 523));
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0xF123FF, 0, "Foo", 123));
+            check_match(0xF523FF, 0, "Foo", 523));
 
-  EXPECT_FALSE(check_match(0xF124F, 0, "Foo", 123));
-  EXPECT_FALSE(check_match(0xFF124F, 0, "Foo", 123));
-  EXPECT_FALSE(check_match(0xF124FF, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0xF524F, 0, "Foo", 523));
+  EXPECT_FALSE(check_match(0xFF524F, 0, "Foo", 523));
+  EXPECT_FALSE(check_match(0xF524FF, 0, "Foo", 523));
 }
 
 TEST_F(MatchNodeTest, begin) {
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0x123F, 0, "Foo", 123));
+            check_match(0x523F, 0, "Foo", 523));
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0x123FF, 0, "Foo", 123));
+            check_match(0x523FF, 0, "Foo", 523));
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0x123FFF, 0, "Foo", 123));
+            check_match(0x523FFF, 0, "Foo", 523));
 
-  EXPECT_FALSE(check_match(0x124F, 0, "Foo", 123));
-  EXPECT_FALSE(check_match(0x124FF, 0, "Foo", 123));
-  EXPECT_FALSE(check_match(0x124FFF, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0x524F, 0, "Foo", 523));
+  EXPECT_FALSE(check_match(0x524FF, 0, "Foo", 523));
+  EXPECT_FALSE(check_match(0x524FFF, 0, "Foo", 523));
 }
 
 TEST_F(MatchNodeTest, toolong) {
@@ -310,15 +367,15 @@ TEST_F(MatchNodeTest, toolong) {
 TEST_F(MatchNodeTest, scattered) {
   // In this test we put in unused characters into the middle of the query
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0x1F23F, 0, "Foo", 123));
+            check_match(0x5F23F, 0, "Foo", 523));
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0xF12F3F, 0, "Foo", 123));
+            check_match(0xF52F3F, 0, "Foo", 523));
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0x1F2F3F, 0, "Foo", 123));
+            check_match(0x5F2F3F, 0, "Foo", 523));
 
-  EXPECT_FALSE(check_match(0x1F24F, 0, "Foo", 123));
-  EXPECT_FALSE(check_match(0xF12F4F, 0, "Foo", 123));
-  EXPECT_FALSE(check_match(0x1F2F4F, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0x5F24F, 0, "Foo", 523));
+  EXPECT_FALSE(check_match(0xF52F4F, 0, "Foo", 523));
+  EXPECT_FALSE(check_match(0x5F2F4F, 0, "Foo", 523));
 }
 
 TEST_F(MatchNodeTest, label) {
@@ -331,10 +388,10 @@ TEST_F(MatchNodeTest, label) {
 
 TEST_F(MatchNodeTest, prefix) {
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
-            check_match(0x123, FindProtocolDefs::EXACT, "Foo", 123));
-  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY, check_match(0x12, 0, "Foo", 123));
-  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY, check_match(0x1, 0, "Foo", 123));
-  EXPECT_FALSE(check_match(0x12, FindProtocolDefs::EXACT, "Foo", 123));
+            check_match(0xFFF123, FindProtocolDefs::EXACT, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY, check_match(0xFFFF12, 0, "Foo", 123));
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY, check_match(0xFFFFF1, 0, "Foo", 123));
+  EXPECT_FALSE(check_match(0xFFFF12, FindProtocolDefs::EXACT, "Foo", 123));
 
   EXPECT_EQ(MATCH_ANY | EXACT,
             check_match(0xFFF123, FindProtocolDefs::EXACT, "BR 123", 555));

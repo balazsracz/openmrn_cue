@@ -150,7 +150,7 @@ R"(<?xml version='1.0' encoding='UTF-8'?>
 <name>Light</name>
 <number>0</number>
 </function>
-<function size='1' kind='binary'>
+<function size='1' kind='momentary'>
 <name>Coupler</name>
 <number>1</number>
 </function>

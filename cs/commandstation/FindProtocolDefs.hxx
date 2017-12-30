@@ -92,6 +92,16 @@ struct FindProtocolDefs {
       address), EXACT (clear for prefix match). */
   static uint8_t match_query_to_node(openlcb::EventId event, TrainDbEntry* train);
 
+  /** Compares an incoming search query to a train node described by the major
+   * parameters only. mode should be set to 0 for ignore, or DCC_LONG_ADDRESS.
+   * Returns a bitfield of match types for a match. valid bits are MATCH_ANY
+   * (always set), ADDRESS_ONLY (set when the match occurred in the address),
+   * EXACT (clear for prefix match).
+   */
+  static uint8_t match_query_to_train(openlcb::EventId event,
+                                      const string& name, unsigned address,
+                                      DccMode mode);
+
   /** Converts a find protocol query to an address and desired DccMode
       information. Will take into account prefix zeros for forcing a dcc long
       address, as well as all mode and flag bits coming in via the query.
@@ -116,7 +126,30 @@ struct FindProtocolDefs {
    */
   static openlcb::EventId address_to_query(unsigned address, bool exact, DccMode mode);
 
+  /** Translates a sequence of input digits punched in by a throttle to a query
+   * to issue on the OpenLCB bus as a find protocol request.
+   *
+   * @param input is the sequence of numbers that the user typed. This is
+   * expected to have form like '415' or '021' or '474014'
+   * @return an event ID representing the search. This event ID could be
+   * IS_TRAIN_EVENT.
+   */
+  static openlcb::EventId input_to_search(const string& input);
+  
+  /** Translates a sequence of input digits punched in by a throttle to an
+   * allocate request to issue on the OpenLCB bus.
+   *
+   * @param input is the sequence of numbers that the user typed. This is
+   * expected to have form like '415' or '021' or '474014'
+   * @return an event ID representing the search. This event ID will be zero if
+   * the user input is invalid.
+   */
+  static openlcb::EventId input_to_allocate(const string& input);
+
  private:
+  /// Helper function for the input_to_* calls.
+  static openlcb::EventId input_to_event(const string& input);
+  
   // Not instantiatable class.
   FindProtocolDefs();
 };
