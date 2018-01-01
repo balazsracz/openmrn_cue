@@ -430,11 +430,12 @@ class TrainLocLogixConditional:
     s.set('type', '1')
     self.AddMemoryAction(e, 'train.' + self.train_name, self.location_name)
     self.AddMemoryAction(e, 'loc.' + self.location_name, self.train_name)
-    coord = all_location_coordinates[self.location_name]
-    self.AddJythonAction(e, "PositionLocoMarker(\"2B layout\", \""
-                         + self.train_name + "\", "
-                         + str(int(coord.center[0]))+ ", "
-                         + str(int(coord.center[1])) + ", HORIZONTAL)")
+    if self.location_name in all_location_coordinates:
+      coord = all_location_coordinates[self.location_name]
+      self.AddJythonAction(e, "PositionLocoMarker(\"2B layout\", \""
+                           + self.train_name + "\", "
+                           + str(int(coord.center[0]))+ ", "
+                           + str(int(coord.center[1])) + ", HORIZONTAL)")
 
 all_sensors = []
 sensor_by_user_name = {}
