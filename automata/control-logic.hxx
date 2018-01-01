@@ -828,7 +828,7 @@ class StandardMiddleDetector : public StraightTrackWithRawDetector {
  public:
   StandardMiddleDetector(Board *brd, const GlobalVariable *sensor_raw,
                          AllocatorPtr alloc)
-      : StraightTrackWithRawDetector(alloc->Allocate("body_det", 24, 8),
+      : StraightTrackWithRawDetector(alloc->Allocate("body_det", 32, 8),
                                      sensor_raw, 8 /*min_occupied_time*/),
         aut_(alloc->name() + ".det", brd, this) {}
 
