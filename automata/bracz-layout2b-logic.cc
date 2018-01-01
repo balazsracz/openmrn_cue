@@ -778,10 +778,25 @@ PhysicalSignal XXB1(&be.In6, nullptr, nullptr, nullptr,
                     &signal_XXA1_main.signal, &signal_XXA1_adv.signal, nullptr,
                     nullptr);
 
+PhysicalSignal ZZB2(&be.InOraGreen, nullptr, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+PhysicalSignal ZZA1(&be.InOraRed, nullptr, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+
 StubBlock Stub_XXB1(&brd, &XXB1, nullptr, logic, "XX.B1");
 StubBlock Stub_XXB2(&brd, &XXB2, nullptr, logic, "XX.B2");
 StubBlock Stub_XXB3(&brd, &XXB3, nullptr, logic, "XX.B3");
-StubBlock Stub_XXB4(&brd, &XXB4, nullptr, logic, "XX.B4");
+//StubBlock Stub_XXB4(&brd, &XXB4, nullptr, logic, "XX.B4");
+StandardMiddleLongTrack MdlXXB4(&brd, logic->Allocate("MdlXXB4", 24));
+StandardMiddleDetector Det_XXB4(&brd, &be.InBrownBrown,
+                               logic->Allocate("DetXXB4", 32, 8));
+
+StandardFixedTurnout Turnout_ZZW1(&brd, logic->Allocate("ZZ.W1", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+StandardBlock Block_ZZB2(&brd, &ZZB2, logic, "ZZ.B2");
+StandardBlock Block_ZZA1(&brd, &ZZA1, logic, "ZZ.A1");
+TurnoutWrap TZZW1(&Turnout_ZZW1.b, kPointToThrown);
+
 
 StandardBlock Block_A461(&brd, &A461, logic, "A461");
 StandardBlock Block_B369(&brd, &B369, logic, "B369");
@@ -897,10 +912,10 @@ bool ignored4 = BindSequence(  //
     {&Block_YYB22, &TYYW3, &TYYW2, &Block_B339, &TW340, &Block_B349},
     Turnout_W349.b.side_thrown());
 
-bool ignored3 = BindSequence(
-    Turnout_W360.b.side_thrown(),
-    {&Block_B369, &TXXW2, &TXXW3, &TXXW4},
-    Stub_XXB4.entry());
+bool ignored3 = BindSequence(Turnout_W360.b.side_thrown(),
+                             {&Block_B369, &TXXW2, &TXXW3, &TXXW4, &MdlXXB4,
+                              &Det_XXB4, &TZZW1, &Block_ZZB2, &Block_ZZA1},
+                             Turnout_ZZW1.b.side_closed());
 
 bool ignored5 = BindSequence(  //
     Turnout_YYW5.b.side_closed(),
@@ -1050,7 +1065,7 @@ DefAut(signalaut1, brd, {
   BlockSignal(this, &Stub_XXB2.b_, global_dispatch);
   ClearUsedVariables();
   BlockSignal(this, &Stub_XXB3.b_, global_dispatch);
-  BlockSignal(this, &Stub_XXB4.b_, global_dispatch);
+  //BlockSignal(this, &Stub_XXB4.b_, global_dispatch);
 });
 
 DefAut(signalaut2, brd, {
@@ -1167,6 +1182,16 @@ void IfXX12ExitFree(Automata::Op* op) {
 }
 auto g_xx12_exit_free = NewCallback(&IfXX12ExitFree);
 
+void IfZZExitFree(Automata::Op* op) {
+  IfNotPaused(op);
+  IfNotShutdown(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW1.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW2.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW4.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_ZZW1.b.any_route()));
+}
+auto g_zz_exit_free = NewCallback(&IfZZExitFree);
+
 void IfXX34ExitFree(Automata::Op* op) {
   IfNotPaused(op);
   IfNotShutdown(op);
@@ -1234,11 +1259,11 @@ class LayoutSchedule : public TrainSchedule {
 
     StopAndReverseAtStub(Stub_XXB3);
 
-    AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB4, &xx_tob4, &g_xx12_entry_free, false);
-    SwitchTurnout(Turnout_XXW3.b.magnet(), false);
-    SwitchTurnout(Turnout_XXW4.b.magnet(), true);
+    //AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB4, &xx_tob4, &g_xx12_entry_free, false);
+    //SwitchTurnout(Turnout_XXW3.b.magnet(), false);
+    //SwitchTurnout(Turnout_XXW4.b.magnet(), true);
 
-    StopAndReverseAtStub(Stub_XXB4);
+    //StopAndReverseAtStub(Stub_XXB4);
 
     AddBlockTransitionOnPermit(Block_EntryToXX, Stub_XXB2, &xx_tob2, &g_xx34_entry_free, false);
     SwitchTurnout(Turnout_XXW3.b.magnet(), true);
@@ -1255,15 +1280,31 @@ class LayoutSchedule : public TrainSchedule {
     AddBlockTransitionOnPermit(Stub_XXB3.b_.rev_signal, Block_ExitFromXX,
                                &xe_fromb3, &g_xx12_exit_free);
     SwitchTurnout(Turnout_XXW2.b.magnet(), true);
-    AddBlockTransitionOnPermit(Stub_XXB4.b_.rev_signal, Block_ExitFromXX,
-                               &xe_fromb4, &g_xx12_exit_free);
-    SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+    //AddBlockTransitionOnPermit(Stub_XXB4.b_.rev_signal, Block_ExitFromXX,
+    //                           &xe_fromb4, &g_xx12_exit_free);
+    //SwitchTurnout(Turnout_XXW2.b.magnet(), true);
     AddBlockTransitionOnPermit(Stub_XXB2.b_.rev_signal, Block_ExitFromXX,
                                &xe_fromb2, &g_xx34_exit_free);
     SwitchTurnout(Turnout_XXW5.b.magnet(), false);
     AddBlockTransitionOnPermit(Stub_XXB1.b_.rev_signal, Block_ExitFromXX,
                                &xe_fromb1, &g_xx34_exit_free);
     SwitchTurnout(Turnout_XXW5.b.magnet(), false);
+  }
+
+  void RunLoopXX(Automata* aut) {
+    {
+      WithRouteLock l(this, &route_lock_XX);
+      AddDirectBlockTransition(Block_EntryToXX, Block_ZZB2, &g_xx12_entry_free);
+      SwitchTurnout(Turnout_XXW3.b.magnet(), false);
+      SwitchTurnout(Turnout_XXW4.b.magnet(), true);
+    }
+    AddEagerBlockTransition(Block_ZZB2, Block_ZZA1);
+    {
+      WithRouteLock l(this, &route_lock_XX);
+      AddBlockTransitionOnPermit(Block_ZZB2, Block_ExitFromXX,
+                                 &xe_fromb4, &g_zz_exit_free);
+      SwitchTurnout(Turnout_XXW2.b.magnet(), true);
+    }
   }
 
   void RunStubYY(Automata* aut) {
@@ -1391,6 +1432,19 @@ class IC2000TrainB : public LayoutSchedule {
   }
 };
 
+class FreightTrain : public LayoutSchedule {
+ public:
+  FreightTrain(const string& name, uint64_t train_id, uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    RunXtoY(aut);
+    RunStubYY(aut);
+    RunYtoX(aut);
+    RunLoopXX(aut);
+  }
+};
+
 
 /*
 CircleTrain train_rts("rts_railtraction", MMAddress(32), 10);
@@ -1410,7 +1464,7 @@ IC2000Train train_ice2("ICE2", MMAddress(2), 15);
 IC2000Train train_re465("Re465", DccShortAddress(47), 25);
 IC2000Train train_icn("ICN", DccShortAddress(50), 13);
 IC2000Train train_bde44("BDe-4/4", DccShortAddress(38), 35);
-
+FreightTrain train_re620("Re620", DccShortAddress(5), 45);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
