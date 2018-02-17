@@ -41,6 +41,7 @@
 #include "hardware.hxx"
 #include "custom/DetectorPortConfig.hxx"
 #include "utils/StoredBitSet.hxx"
+#include "utils/ConfigUpdateListener.hxx"
 
 extern const Gpio* const enable_ptrs[];
 
@@ -85,12 +86,12 @@ class DetectorOptions : public DefaultConfigUpdateListener {
   }
 
   void factory_reset(int fd) override {
-    SET_PARAM_TO_DEFAULT(fd, opts_.sensor_off_delay);
-    SET_PARAM_TO_DEFAULT(fd, opts_.init_straggle_delay);
-    SET_PARAM_TO_DEFAULT(fd, opts_.init_static_delay);
-    SET_PARAM_TO_DEFAULT(fd, opts_.turnon_fast_retry_count);
-    SET_PARAM_TO_DEFAULT(fd, opts_.turnon_fast_retry_delay);
-    SET_PARAM_TO_DEFAULT(fd, opts_.short_retry_delay);
+    CDI_FACTORY_RESET(opts_.sensor_off_delay);
+    CDI_FACTORY_RESET(opts_.init_straggle_delay);
+    CDI_FACTORY_RESET(opts_.init_static_delay);
+    CDI_FACTORY_RESET(opts_.turnon_fast_retry_count);
+    CDI_FACTORY_RESET(opts_.turnon_fast_retry_delay);
+    CDI_FACTORY_RESET(opts_.short_retry_delay);
   }
 
  private:
@@ -99,7 +100,7 @@ class DetectorOptions : public DefaultConfigUpdateListener {
   DISALLOW_COPY_AND_ASSIGN(DetectorOptions);
 };
 
-extern StoredBitSet* g_gpio_stored_bit_set;
+extern StoredBitSet* const g_gpio_stored_bit_set;
 
 /// TODO:
 /// - add readout of event IDs from config
@@ -157,6 +158,10 @@ class DetectorPort : public StateFlowBase {
     eventHandler_.add_entry(
         eventEnableOff_,
         ENABLE_BIT | openlcb::CallbackEventHandler::IS_CONSUMER);
+  }
+
+  bool is_enabled() {
+    return commandedEnable_;
   }
 
   void set_overcurrent(bool value) {
