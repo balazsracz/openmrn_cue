@@ -99,7 +99,7 @@ EventBasedVariable runaround_yard(&brd, "runaround_yard",
 
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n9(0x29);
-AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e);
+AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e), b9(0x29);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -718,6 +718,13 @@ StandardMovableTurnout Turnout_XXW6(&brd,
                                     &Magnet_XXW6);
 TurnoutWrap TXXW6(&Turnout_XXW6.b, kClosedToPoint);
 
+PhysicalSignal QQA1(&b9.In6, nullptr, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+PhysicalSignal QQA2(&b9.In7, nullptr, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+PhysicalSignal QQB3(&b9.InOraGreen, nullptr, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr);
+
 PhysicalSignal YYA4(&ba.InGreenYellow, nullptr, nullptr, nullptr,
                     &signal_YYB4_main.signal, &signal_YYB4_adv.signal, nullptr,
                     nullptr);
@@ -880,11 +887,23 @@ TurnoutWrap TYYW8(&Turnout_YYW8.b, kPointToClosed);
 StubBlock Stub_YYA1(&brd, &YYA1, nullptr, logic, "YY.A1");
 StubBlock Stub_YYA2(&brd, &YYA2, nullptr, logic, "YY.A2");
 StubBlock Stub_YYA3(&brd, &YYA3, nullptr, logic, "YY.A3");
-StubBlock Stub_YYA4(&brd, &YYA4, nullptr, logic, "YY.A4");
+//StubBlock Stub_YYA4(&brd, &YYA4, nullptr, logic, "YY.A4");
+StandardMiddleLongTrack MdlYYA4(&brd, logic->Allocate("MdlYYA4", 24));
+StandardMiddleDetector DetYYA4(&brd, YYA4.sensor_raw,
+                               logic->Allocate("DetYYA4", 32, 8));
+
 
 StubBlock Stub_YYA33(&brd, &YYA33, nullptr, logic, "YY.A33");
 StandardBlock Block_YYB42(&brd, &YYB42, logic, "YY.B42");
 
+StandardFixedTurnout Turnout_QQW1(&brd, logic->Allocate("QQ.W1", 40), FixedTurnout::TURNOUT_CLOSED);
+TurnoutWrap TQQW1(&Turnout_QQW1.b, kPointToClosed);
+StandardFixedTurnout Turnout_QQW2(&brd, logic->Allocate("QQ.W2", 40), FixedTurnout::TURNOUT_THROWN);
+TurnoutWrap TQQW2(&Turnout_QQW2.b, kPointToThrown);
+
+StubBlock Stub_QQA1(&brd, &QQA1, nullptr, logic, "QQ.A1");
+StandardBlock Block_QQA2(&brd, &QQA2, logic, "QQ.A2");
+StandardBlock Block_QQB3(&brd, &QQB3, logic, "QQ.B3");
 
 bool ignored1 = BindPairs({
     //
@@ -892,12 +911,12 @@ bool ignored1 = BindPairs({
     {Stub_XXB3.entry(), Turnout_XXW4.b.side_closed()},
     {Turnout_XXW5.b.side_thrown(), Turnout_XXW3.b.side_thrown()},
     {Turnout_XXW1.b.side_closed(), Turnout_XXW2.b.side_thrown()},
-    {Turnout_YYW6.b.side_thrown(), Stub_YYA4.entry()},
     {Turnout_YYW7.b.side_thrown(), Stub_YYA3.entry()},
     {Turnout_YYW8.b.side_thrown(), Stub_YYA2.entry()},
     {Turnout_YYW1.b.side_closed(), Turnout_YYW2.b.side_thrown()},
     {Turnout_YYW9.b.side_closed(), Stub_YYA33.entry()},
-    {Turnout_W340.b.side_thrown(), Turnout_W440.b.side_closed()} //
+    {Turnout_QQW2.b.side_closed(), Stub_QQA1.entry()},
+    {Turnout_W340.b.side_thrown(), Turnout_W440.b.side_closed()}  //
 });
 
 bool ignored2 = BindSequence(  //
@@ -921,6 +940,11 @@ bool ignored5 = BindSequence(  //
     Turnout_YYW5.b.side_closed(),
     {&Block_YYB42, &TYYW9},
     Turnout_YYW3.b.side_thrown());
+
+bool ignored6 = BindSequence( //
+    Turnout_YYW6.b.side_thrown(), //
+    { &MdlYYA4, &DetYYA4, &TQQW1, &TQQW2, &Block_QQA2, &Block_QQB3 }, //
+    Turnout_QQW1.b.side_thrown());
 
 
 auto& Block_EntryToXX = Block_B369;
@@ -1073,7 +1097,7 @@ DefAut(signalaut2, brd, {
   BlockSignal(this, &Stub_YYA2.b_, runaround_yard);
   ClearUsedVariables();
   BlockSignal(this, &Stub_YYA3.b_, runaround_yard);
-  BlockSignal(this, &Stub_YYA4.b_, runaround_yard);
+  //BlockSignal(this, &Stub_YYA4.b_, runaround_yard);
   ClearUsedVariables();
   BlockSignal(this, &Stub_YYA33.b_, runaround_rbl);
   BlockSignal(this, &Block_YYB42, runaround_rbl);
@@ -1208,12 +1232,27 @@ void IfYYEntryFree(Automata::Op* op) {
 }
 auto g_yy_entry_free = NewCallback(&IfYYEntryFree);
 
+void IfQQEntryFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_YYW6.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_QQW1.b.any_route()));
+}
+auto g_qq_entry_free = NewCallback(&IfQQEntryFree);
+
 void IfYYExitFree(Automata::Op* op) {
   IfNotPaused(op);
   IfNotShutdown(op);
   op->IfReg0(op->parent()->ImportVariable(*Turnout_YYW6.b.any_route()));
 }
 auto g_yy_exit_free = NewCallback(&IfYYExitFree);
+
+void IfQQExitFree(Automata::Op* op) {
+  IfNotPaused(op);
+  IfNotShutdown(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_YYW6.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_QQW1.b.any_route()));
+}
+auto g_qq_exit_free = NewCallback(&IfQQExitFree);
 
 
 void If355Free(Automata::Op* op) {
@@ -1301,7 +1340,7 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(Block_ZZB2, Block_ZZA1);
     {
       WithRouteLock l(this, &route_lock_XX);
-      AddBlockTransitionOnPermit(Block_ZZB2, Block_ExitFromXX,
+      AddBlockTransitionOnPermit(Block_ZZA1, Block_ExitFromXX,
                                  &xe_fromb4, &g_zz_exit_free);
       SwitchTurnout(Turnout_XXW2.b.magnet(), true);
     }
@@ -1309,10 +1348,10 @@ class LayoutSchedule : public TrainSchedule {
 
   void RunStubYY(Automata* aut) {
     WithRouteLock l(this, &route_lock_YY);
-    AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA4, &yy_toa4, &g_yy_entry_free);
-    SwitchTurnout(Turnout_YYW6.b.magnet(), true);
+    //AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA4, &yy_toa4, &g_yy_entry_free);
+    //SwitchTurnout(Turnout_YYW6.b.magnet(), true);
     
-    StopAndReverseAtStub(Stub_YYA4);
+    //StopAndReverseAtStub(Stub_YYA4);
 
     AddBlockTransitionOnPermit(Block_EntryToYY, Stub_YYA3, &yy_toa3, &g_yy_entry_free);
     SwitchTurnout(Turnout_YYW6.b.magnet(), false);
@@ -1334,11 +1373,11 @@ class LayoutSchedule : public TrainSchedule {
     
     StopAndReverseAtStub(Stub_YYA1);
 
-    AddBlockTransitionOnPermit(Stub_YYA4.b_.rev_signal,
+    /*AddBlockTransitionOnPermit(Stub_YYA4.b_.rev_signal,
                                Block_ExitFromYY,
                                &ye_froma4,
                                &g_yy_exit_free);
-    SwitchTurnout(Turnout_YYW4.b.magnet(), true);
+                               SwitchTurnout(Turnout_YYW4.b.magnet(), true);*/
 
     AddBlockTransitionOnPermit(Stub_YYA3.b_.rev_signal,
                                Block_ExitFromYY,
@@ -1358,6 +1397,21 @@ class LayoutSchedule : public TrainSchedule {
     SwitchTurnout(Turnout_YYW4.b.magnet(), true);
 
     ClearAutomataVariables(aut);
+  }
+
+  void RunLoopYY(Automata* aut) {
+    {
+      WithRouteLock l(this, &route_lock_YY);
+      AddDirectBlockTransition(Block_EntryToYY, Block_QQA2, &g_qq_entry_free);
+      SwitchTurnout(Turnout_YYW6.b.magnet(), true);
+    }
+    AddEagerBlockTransition(Block_QQA2, Block_QQB3);
+    {
+      WithRouteLock l(this, &route_lock_YY);
+      AddBlockTransitionOnPermit(Block_QQB3, Block_ExitFromYY, &ye_froma4,
+                                 &g_qq_exit_free);
+      SwitchTurnout(Turnout_YYW4.b.magnet(), true);
+    }
   }
 
   void RunCycle(Automata* aut) {
@@ -1439,7 +1493,7 @@ class FreightTrain : public LayoutSchedule {
 
   void RunTransition(Automata* aut) OVERRIDE {
     RunXtoY(aut);
-    RunStubYY(aut);
+    RunLoopYY(aut);
     RunYtoX(aut);
     RunLoopXX(aut);
   }
@@ -1465,6 +1519,12 @@ IC2000Train train_re465("Re465", DccShortAddress(47), 25);
 IC2000Train train_icn("ICN", DccShortAddress(50), 13);
 IC2000Train train_bde44("BDe-4/4", DccShortAddress(38), 35);
 FreightTrain train_re620("Re620", DccShortAddress(5), 45);
+FreightTrain train_re420("Re420", DccShortAddress(4), 45);
+FreightTrain train_rheingold("Rheingold", MMAddress(19), 35);
+FreightTrain train_rts("rts_railtraction", MMAddress(32), 10);
+FreightTrain train_wle("wle_er20", MMAddress(27), 10);
+FreightTrain train_re474("Re474", MMAddress(12), 30);
+FreightTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
