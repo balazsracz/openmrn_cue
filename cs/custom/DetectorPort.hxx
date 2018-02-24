@@ -164,6 +164,10 @@ class DetectorPort : public StateFlowBase {
     return commandedEnable_;
   }
 
+  bool is_overcurrent() {
+    return killedOutputDueToOvercurrent_;
+  }
+  
   void set_overcurrent(bool value) {
     if (value) {
       // We have a short circuit. Stop the output.
