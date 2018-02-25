@@ -113,6 +113,7 @@ class DetectorPort : public StateFlowBase {
       : StateFlowBase(node->iface()),
         channel_(channel),
         killedOutputDueToOvercurrent_(0),
+        lostDccSignal_(1),
         sensedOccupancy_(0),
         networkOvercurrent_(0),
         networkOccupancy_(0),
@@ -177,6 +178,12 @@ class DetectorPort : public StateFlowBase {
     }
   }
 
+  // This function needs to be called when the DCC signal has been lost,
+  // presumably due to a recent short.
+  void set_have_dcc_signal(bool have) {
+    lostDccSignal_ = to_u(!have);
+  }
+  
   void set_occupancy(bool value) {
     sensedOccupancy_ = to_u(value);
     if (value) {
@@ -315,9 +322,9 @@ class DetectorPort : public StateFlowBase {
     // there is a pending short. Also load the saved state of whether the
     // output was turned off. For a pending short move after the turnon delay
     // to the short_wait_for_retry state.
-    
-    
-
+    if (lostDccSignal_) {
+      return sleep_and_call(&timer_, MSEC_TO_NSEC(300), STATE(init_wait));
+    }
     if (!networkEnable_) {
       set_output_enable(false);
       return call_immediately(STATE(set_network_off));
@@ -338,11 +345,32 @@ class DetectorPort : public StateFlowBase {
       // Someone turned off the output in the meantime.
       return call_immediately(STATE(set_network_off));
     }
+    if (lostDccSignal_) {
+      return call_immediately(STATE(wait_for_dcc_to_turn_on));
+    }
     set_output_enable(true);
     return sleep_and_call(&timer_, MSEC_TO_NSEC(opts_.turnonRetryDelay_),
                           STATE(eval_turnon));
   }
 
+  Action wait_for_dcc_to_turn_on() {
+    if (!lostDccSignal_) {
+      return call_immediately(STATE(init_try_turnon));
+    }
+    if (turnonTryCount_ < opts_.turnonRetryCount_) {
+      ++turnonTryCount_;
+    } else if (killedOutputDueToOvercurrent_) {
+      return call_immediately(STATE(produce_shorted));
+    } else {
+      // We do straggled turn-on of all channels if we had to wait too long for
+      // the DCC signal to come back.
+      // @TODO maybe we need to turn off all outputs first here.
+      return call_immediately(STATE(init_wait));
+    }
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(500),
+                          STATE(wait_for_dcc_to_turn_on));
+  }
+  
   Action eval_turnon() {
     if (!networkEnable_) {
       // Someone turned off the output in the meantime.
@@ -351,7 +379,7 @@ class DetectorPort : public StateFlowBase {
     if (killedOutputDueToOvercurrent_) {
       // TODO: check this part again.
       // Turnon failed. try again.
-      if (turnonTryCount_ < opts_.turnonRetryCount_) {
+      if (turnonTryCount_ < opts_.turnonRetryCount_ && !lostDccSignal_) {
         turnonTryCount_++;
         return call_immediately(STATE(try_turnon));
       }
@@ -516,6 +544,8 @@ class DetectorPort : public StateFlowBase {
   uint8_t channel_;
   /// set-once when overcurrent is detected.
   uint8_t killedOutputDueToOvercurrent_ : 1;
+  /// set when we detect no DCC signal.
+  uint8_t lostDccSignal_ : 1;
   uint8_t sensedOccupancy_ : 1;          //< Current (debounced) sensor read
   uint8_t networkOvercurrent_ : 1;       //< Current network state
   uint8_t networkOccupancy_ : 1;         //< Current network state
