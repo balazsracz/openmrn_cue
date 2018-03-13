@@ -27,8 +27,13 @@ GPIO_PIN(USB2, GpioUSBAPin, D, 5);
 
 GPIO_HWPIN(SERVO, GpioHwPin, C, 4, WT0CCP0, Timer);
 
+#define FAKEHW
+
+#ifndef FAKEHW
+
 GPIO_PIN(RLED_RAW, LedPin, B, 5);
 GPIO_PIN(RSET, GpioInputPU, B, 0);
+
 GPIO_PIN(RB1, GpioInputPU, E, 4);
 GPIO_PIN(RB2, GpioInputPU, B, 4);
 GPIO_PIN(RB3, GpioInputPU, A, 6);
@@ -36,6 +41,21 @@ GPIO_PIN(RB4, GpioInputPU, A, 7);
 GPIO_PIN(RB5, GpioInputPU, B, 1);
 GPIO_PIN(RB6, GpioInputPU, E, 5);
 GPIO_PIN(RB7, GpioInputPU, A, 5);
+#else
+
+typedef LED_RED_Pin RLED_RAW_Pin;
+//GPIO_PIN(RLED_RAW, LedPin, B, 5);
+GPIO_PIN(RSET, GpioInputPU, B, 0);
+
+GPIO_PIN(RB1, GpioInputPU, B, 1);
+GPIO_PIN(RB2, GpioInputPU, E, 4);
+GPIO_PIN(RB3, GpioInputPU, E, 5);
+GPIO_PIN(RB4, GpioInputPU, B, 4);
+GPIO_PIN(RB5, GpioInputPU, A, 5);
+GPIO_PIN(RB6, GpioInputPU, A, 6);
+GPIO_PIN(RB7, GpioInputPU, A, 7);
+
+#endif
 
 typedef RLED_RAW_Pin BLINKER_RAW_Pin;
 typedef BLINKER_Pin RLED_Pin;

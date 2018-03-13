@@ -109,7 +109,7 @@ constexpr unsigned EEPROM_BIT_COUNT = 84;
 constexpr unsigned EEPROM_BITS_PER_CELL = 28;
 extern TivaPWM servo_pwm;
 TivaPWM servo_pwm(WTIMER0_BASE, TIMER_A, 80000000 / 1000 * 20,
-                  80000000 / 1000 * 1);
+                  80000000 / 1000 * 2);
 
 extern "C" {
 void hw_set_to_safe(void);

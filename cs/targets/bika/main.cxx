@@ -151,8 +151,12 @@ openlcb::RefreshLoop loop(
 
 extern TivaPWM servo_pwm;
 
-constexpr unsigned servo_min = 80000000 / 1000 / 2;
-constexpr unsigned servo_max = 80000000 / 1000 * 3 / 2;
+constexpr unsigned servo_min = 80000000 / 1000 * 1.5;
+constexpr unsigned servo_max = 80000000 / 1000 * 2.5;
+
+constexpr unsigned servo_med1 = 80000000 / 1000 * 1.9;
+constexpr unsigned servo_med2 = 80000000 / 1000 * 2.3;
+
 
 void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
                 openlcb::EventReport *report, BarrierNotifiable *done) {
@@ -162,10 +166,10 @@ void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
       servo_pwm.set_duty(servo_min);
       break;
     case 2:
-      servo_pwm.set_duty(servo_min * 3 / 10 + servo_max * 7 / 10);
+      servo_pwm.set_duty(servo_med1);
       break;
     case 3:
-      servo_pwm.set_duty(servo_min * 6 / 10 + servo_max * 4 / 10);
+      servo_pwm.set_duty(servo_med2);
       break;
     case 4:
       servo_pwm.set_duty(servo_max);
