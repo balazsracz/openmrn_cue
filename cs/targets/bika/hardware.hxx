@@ -25,6 +25,8 @@ GPIO_PIN(USB2, GpioUSBAPin, D, 5);
 //GPIO_HWPIN(CAN0RX, GpioHwPin, E, 4, CAN0RX, CAN);
 //GPIO_HWPIN(CAN0TX, GpioHwPin, E, 5, CAN0TX, CAN);
 
+GPIO_HWPIN(SERVO, GpioHwPin, C, 4, WT0CCP0, Timer);
+
 GPIO_PIN(RLED_RAW, LedPin, B, 5);
 GPIO_PIN(RSET, GpioInputPU, B, 0);
 GPIO_PIN(RB1, GpioInputPU, E, 4);
@@ -46,7 +48,8 @@ typedef GpioInitializer<                       //
     RLED_RAW_Pin, RSET_Pin,                    //
     RB1_Pin, RB2_Pin, RB3_Pin, RB4_Pin,        //
     RB5_Pin, RB6_Pin, RB7_Pin,                 //
-    //    CAN0RX_Pin, CAN0TX_Pin,
+    SERVO_Pin,                                 //
+                //    CAN0RX_Pin, CAN0TX_Pin,
     DummyPin>
     GpioInit;
 

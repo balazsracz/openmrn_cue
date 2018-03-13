@@ -59,6 +59,7 @@
 #include "TivaGPIO.hxx"
 #include "DummyGPIO.hxx"
 #include "bootloader_hal.h"
+#include "TivaPWM.hxx"
 
 struct Debug {
   // High between start_cutout and end_cutout from the TivaRailcom driver.
@@ -106,6 +107,9 @@ extern StoredBitSet* g_gpio_stored_bit_set;
 StoredBitSet* g_gpio_stored_bit_set = nullptr;
 constexpr unsigned EEPROM_BIT_COUNT = 84;
 constexpr unsigned EEPROM_BITS_PER_CELL = 28;
+extern TivaPWM servo_pwm;
+TivaPWM servo_pwm(WTIMER0_BASE, TIMER_A, 80000000 / 1000 * 20,
+                  80000000 / 1000 * 1);
 
 extern "C" {
 void hw_set_to_safe(void);
@@ -227,6 +231,10 @@ void hw_preinit(void)
     /* Setup the system clock. */
     MAP_SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
                        SYSCTL_XTAL_16MHZ);
+
+    MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_WTIMER0);
+    MAP_TimerConfigure(
+        WTIMER0_BASE, TIMER_CFG_SPLIT_PAIR | TIMER_CFG_A_PWM | TIMER_CFG_B_PWM);
 
     /* Blinker timer initialization. */
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER5);

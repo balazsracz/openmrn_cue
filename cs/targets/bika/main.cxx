@@ -39,12 +39,14 @@
 #include "openlcb/ConfiguredConsumer.hxx"
 #include "openlcb/MultiConfiguredConsumer.hxx"
 #include "openlcb/ConfiguredProducer.hxx"
+#include "openlcb/CallbackEventHandler.hxx"
 
 #include "freertos_drivers/ti/TivaGPIO.hxx"
 #include "freertos_drivers/common/BlinkerGPIO.hxx"
 #include "freertos_drivers/common/PersistentGPIO.hxx"
 #include "config.hxx"
 #include "hardware.hxx"
+#include "TivaPWM.hxx"
 
 // These preprocessor symbols are used to select which physical connections
 // will be enabled in the main(). See @ref appl_main below.
@@ -146,6 +148,36 @@ openlcb::BitEventConsumer light_consumer(&rled_bit);
 openlcb::RefreshLoop loop(
     stack.node(), {producer_sw1.polling(), producer_sw2.polling(), &pset, &b1, &b2, &b3, &b4, &b5, &b6, &b7});
 
+
+extern TivaPWM servo_pwm;
+
+constexpr unsigned servo_min = 80000000 / 1000 / 2;
+constexpr unsigned servo_max = 80000000 / 1000 * 3 / 2;
+
+void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
+                openlcb::EventReport *report, BarrierNotifiable *done) {
+  resetblink(0);
+  switch (registry_entry.user_arg) {
+    case 1:
+      servo_pwm.set_duty(servo_min);
+      break;
+    case 2:
+      servo_pwm.set_duty(servo_min * 3 / 10 + servo_max * 7 / 10);
+      break;
+    case 3:
+      servo_pwm.set_duty(servo_min * 6 / 10 + servo_max * 4 / 10);
+      break;
+    case 4:
+      servo_pwm.set_duty(servo_max);
+      break;
+    default:
+      resetblink(0x80002);
+  }
+}
+
+openlcb::CallbackEventHandler eventhandler(stack.node(), &handler_cb, nullptr);
+
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -156,6 +188,14 @@ int appl_main(int argc, char *argv[])
     stack.check_version_and_factory_reset(
         cfg.seg().internal_config(), openlcb::CANONICAL_VERSION, false);
 
+    eventhandler.add_entry(EVBASE+5, 1);
+    eventhandler.add_entry(EVBASE+7, 2);
+    eventhandler.add_entry(EVBASE+9, 3);
+    eventhandler.add_entry(EVBASE+11, 4);
+    eventhandler.add_entry(EVBASE+13, 5);
+    eventhandler.add_entry(EVBASE+15, 6);
+    eventhandler.add_entry(EVBASE+17, 7);
+    
     // Restores pin states from EEPROM.
     PinRed.restore();
     PinGreen.restore();
