@@ -26,6 +26,8 @@ GPIO_PIN(USB2, GpioUSBAPin, D, 5);
 //GPIO_HWPIN(CAN0TX, GpioHwPin, E, 5, CAN0TX, CAN);
 
 GPIO_HWPIN(SERVO, GpioHwPin, C, 4, WT0CCP0, Timer);
+GPIO_PIN(MAGNET, GpioOutputSafeLow, B, 2);
+
 
 #define FAKEHW
 
@@ -41,6 +43,7 @@ GPIO_PIN(RB4, GpioInputPU, A, 7);
 GPIO_PIN(RB5, GpioInputPU, B, 1);
 GPIO_PIN(RB6, GpioInputPU, E, 5);
 GPIO_PIN(RB7, GpioInputPU, A, 5);
+
 #else
 
 typedef LED_RED_Pin RLED_RAW_Pin;
@@ -68,10 +71,12 @@ typedef GpioInitializer<                       //
     RLED_RAW_Pin, RSET_Pin,                    //
     RB1_Pin, RB2_Pin, RB3_Pin, RB4_Pin,        //
     RB5_Pin, RB6_Pin, RB7_Pin,                 //
-    SERVO_Pin,                                 //
-                //    CAN0RX_Pin, CAN0TX_Pin,
+    SERVO_Pin, MAGNET_Pin,                     //
     DummyPin>
     GpioInit;
+
+//    CAN0RX_Pin, CAN0TX_Pin,
+
 
 namespace TDebug {
 using Resync = DummyPin;

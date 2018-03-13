@@ -114,8 +114,8 @@ constexpr const Gpio *const kOutputGpio[] = {&PinRed,
 // configuration structure comes from the CDI definition object, segment 'seg',
 // in which there is a repeated group 'consumers'. The GPIO pins get assigned
 // to the repetitions in the group in order.
-openlcb::MultiConfiguredConsumer consumers(
-    stack.node(), kOutputGpio, ARRAYSIZE(kOutputGpio), cfg.seg().consumers());
+//openlcb::MultiConfiguredConsumer consumers(
+//    stack.node(), kOutputGpio, ARRAYSIZE(kOutputGpio), cfg.seg().consumers());
 
 // Similar syntax for the producers.
 openlcb::ConfiguredProducer producer_sw1(
@@ -142,13 +142,6 @@ openlcb::GPIOBit rled_bit(stack.node(), EVBASE, EVBASE + 1, RLED_Pin::instance()
 
 openlcb::BitEventConsumer light_consumer(&rled_bit);
 
-// The producers need to be polled repeatedly for changes and to execute the
-// debouncing algorithm. This class instantiates a refreshloop and adds the two
-// producers to it.
-openlcb::RefreshLoop loop(
-    stack.node(), {producer_sw1.polling(), producer_sw2.polling(), &pset, &b1, &b2, &b3, &b4, &b5, &b6, &b7});
-
-
 extern TivaPWM servo_pwm;
 
 constexpr unsigned servo_min = 80000000 / 1000 * 1.5;
@@ -156,6 +149,82 @@ constexpr unsigned servo_max = 80000000 / 1000 * 2.5;
 
 constexpr unsigned servo_med1 = 80000000 / 1000 * 1.9;
 constexpr unsigned servo_med2 = 80000000 / 1000 * 2.3;
+
+class PeriodicAction : public StateFlowBase {
+ public:
+  PeriodicAction() : StateFlowBase(stack.service()) {
+    is_sleeping_ = 0;
+    is_waiting_ = 1;
+  }
+
+  void set_periodic(unsigned time_on_msec, unsigned time_off_msec) {
+    if ((time_on_msec == time_on_msec_) && (time_off_msec == time_off_msec_)) {
+       // nothing to do.
+      return;
+    }
+    time_on_msec_ = time_on_msec;
+    time_off_msec_ = time_off_msec;
+    need_stop_ = 0;
+    if (is_sleeping_) {
+      timer_.trigger();
+      is_sleeping_ = 0;
+    } else if (is_waiting_) {
+      start_flow(STATE(state_on));
+      is_waiting_ = 0;
+    }
+  }
+
+  void set_constant(bool is_on) {
+    need_stop_ = 1;
+    set_state(is_on);
+  }
+  
+ private:
+  Action state_on() {
+    if (need_stop_) {
+      is_waiting_ = 1;
+      return wait();
+    }
+    set_state(true);
+    is_sleeping_ = 1;
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(time_on_msec_),
+                          STATE(state_off));
+  }
+
+  Action state_off() {
+    if (need_stop_) {
+      is_waiting_ = 1;
+      return wait();
+    }
+    set_state(false);
+    is_sleeping_ = 1;
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(time_off_msec_),
+                          STATE(state_on));
+  }
+
+  void set_state(bool is_on) {
+    if (is_on) {
+      servo_pwm.set_duty(servo_med1);
+    } else {
+      servo_pwm.set_duty(servo_med2);
+    }
+  }
+  
+  unsigned time_on_msec_;
+  unsigned time_off_msec_;
+  unsigned need_stop_ : 1;
+  unsigned is_waiting_ : 1;
+  unsigned is_sleeping_ : 1;
+  StateFlowTimer timer_{this};
+} g_periodic_action;
+
+
+// The producers need to be polled repeatedly for changes and to execute the
+// debouncing algorithm. This class instantiates a refreshloop and adds the two
+// producers to it.
+openlcb::RefreshLoop loop(
+    stack.node(), {producer_sw1.polling(), producer_sw2.polling(), &pset, &b1, &b2, &b3, &b4, &b5, &b6, &b7});
+
 
 
 void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
@@ -174,6 +243,17 @@ void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
     case 4:
       servo_pwm.set_duty(servo_max);
       break;
+
+    case 5:
+      g_periodic_action.set_constant(true);
+      break;
+    case 6:
+      g_periodic_action.set_periodic(1000, 1000);
+      break;
+    case 7:
+      g_periodic_action.set_constant(false);
+      break;
+      
     default:
       resetblink(0x80002);
   }
@@ -181,6 +261,19 @@ void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
 
 openlcb::CallbackEventHandler eventhandler(stack.node(), &handler_cb, nullptr);
 
+/// Waits three seconds and turns off the green LED. Useful for detecting
+/// restarts.
+class StartupTimer : public Timer {
+ public:
+  StartupTimer() : Timer(stack.executor()->active_timers()) {
+    start(SEC_TO_NSEC(3));
+  }
+
+  long long timeout() override {
+    LED_GREEN_Pin::set(false);
+    return DELETE;
+  }
+};
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -201,9 +294,17 @@ int appl_main(int argc, char *argv[])
     eventhandler.add_entry(EVBASE+17, 7);
     
     // Restores pin states from EEPROM.
-    PinRed.restore();
-    PinGreen.restore();
-    PinBlue.restore();
+    //PinRed.restore();
+    //PinGreen.restore();
+    //PinBlue.restore();
+    //PinRed.write(Gpio::LOW); 
+    //PinGreen.write(Gpio::LOW); 
+    //PinBlue.write(Gpio::LOW);
+    LED_RED_Pin::set(false);
+    LED_GREEN_Pin::set(true);
+    LED_BLUE_Pin::set(false);
+
+    new StartupTimer();
     
     // The necessary physical ports must be added to the stack.
     //
