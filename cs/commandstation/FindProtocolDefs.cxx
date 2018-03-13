@@ -138,6 +138,10 @@ openlcb::EventId FindProtocolDefs::address_to_query(unsigned address,
 // static
 uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
                                               TrainDbEntry* train) {
+  // empty search should match everything.
+  if (event == openlcb::TractionDefs::IS_TRAIN_EVENT) {
+    return MATCH_ANY | ADDRESS_ONLY | EXACT;
+  }
   unsigned legacy_address = train->get_legacy_address();
   DccMode mode;
   unsigned supplied_address = query_to_address(event, &mode);

@@ -103,6 +103,12 @@ TEST(MatchTest, testmatch) {
 
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("013", true, "FooBar777", 13, DCC_14_LONG_ADDRESS));
+
+  // Empty query should match all trains
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("", true, "FooBar", 13, DCC_14_LONG_ADDRESS));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("", true, "FooBar777", 13, DCC_128));
 }
 
 TEST(MatchTest, longtoshortmatch) {
