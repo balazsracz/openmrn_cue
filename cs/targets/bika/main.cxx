@@ -115,31 +115,24 @@ extern TivaPWM servo_pwm;
 constexpr unsigned servo_min = 80000000 / 1000 * 1.5;
 constexpr unsigned servo_max = 80000000 / 1000 * 2.5;
 
-constexpr unsigned servo_med1 = 80000000 / 1000 * 1.9;
-constexpr unsigned servo_med2 = 80000000 / 1000 * 2.3;
+// Configuration file access.
+int config_fd = -1;
 
 class PeriodicAction : public StateFlowBase {
  public:
   PeriodicAction() : StateFlowBase(stack.service()) {
-    is_sleeping_ = 0;
-    is_waiting_ = 1;
   }
 
   void set_periodic(unsigned time_on_msec, unsigned time_off_msec) {
-    if ((time_on_msec == time_on_msec_) && (time_off_msec == time_off_msec_)) {
-       // nothing to do.
-      return;
-    }
     time_on_msec_ = time_on_msec;
     time_off_msec_ = time_off_msec;
     need_stop_ = 0;
-    if (is_sleeping_) {
-      timer_.trigger();
-      is_sleeping_ = 0;
-    } else if (is_waiting_) {
+    if (is_terminated()) {
       start_flow(STATE(state_on));
-      is_waiting_ = 0;
+      return;
     }
+    timer_.ensure_triggered();
+    wait_and_call(STATE(state_on));
   }
 
   void set_constant(bool is_on) {
@@ -150,39 +143,42 @@ class PeriodicAction : public StateFlowBase {
  private:
   Action state_on() {
     if (need_stop_) {
-      is_waiting_ = 1;
-      return wait();
+      return exit();
     }
     set_state(true);
-    is_sleeping_ = 1;
     return sleep_and_call(&timer_, MSEC_TO_NSEC(time_on_msec_),
                           STATE(state_off));
   }
 
   Action state_off() {
     if (need_stop_) {
-      is_waiting_ = 1;
-      return wait();
+      return exit();
     }
     set_state(false);
-    is_sleeping_ = 1;
     return sleep_and_call(&timer_, MSEC_TO_NSEC(time_off_msec_),
                           STATE(state_on));
   }
 
-  void set_state(bool is_on) {
+  void __attribute__((noinline)) set_state(bool is_on) {
+    LED_BLUE_Pin::set(is_on);
+    MAGNET_Pin::set(is_on);
+    unsigned servo_tgt = (servo_min + servo_max) / 2;
     if (is_on) {
-      servo_pwm.set_duty(servo_med1);
+      if (config_fd >= 0) {
+        servo_tgt = cfg.seg().servo_max().read(config_fd);
+      }
     } else {
-      servo_pwm.set_duty(servo_med2);
+      if (config_fd >= 0) {
+        servo_tgt = cfg.seg().servo_min().read(config_fd);
+      }
     }
+    servo_pwm.set_duty(servo_tgt);
+    MAGNET_Pin::set(is_on);
   }
   
   unsigned time_on_msec_;
   unsigned time_off_msec_;
   unsigned need_stop_ : 1;
-  unsigned is_waiting_ : 1;
-  unsigned is_sleeping_ : 1;
   StateFlowTimer timer_{this};
 } g_periodic_action;
 
@@ -191,39 +187,139 @@ class PeriodicAction : public StateFlowBase {
 // debouncing algorithm. This class instantiates a refreshloop and adds the two
 // producers to it.
 openlcb::RefreshLoop loop(
-    stack.node(), {producer_sw1.polling(), producer_sw2.polling(), &pset, &b1, &b2, &b3, &b4, &b5, &b6, &b7});
+    stack.node(), {&pset, &b1, &b2, &b3, &b4, &b5, &b6, &b7});
 
+enum SetState {
+  NORMAL_OP = 0,
+  SET_DUTY = 1,
+  SET_SERVO_MIN = 2,
+  SET_SERVO_MAX = 3,
+  SET_MAX = 3
+};
+
+SetState set_state;
+// On the range of 0..100 the time ratio of on/off
+uint8_t duty_cycle = 50;
+unsigned period_msec = 2000;
+
+class ConfigApply : public DefaultConfigUpdateListener {
+ public:
+  UpdateAction apply_configuration(
+      int fd, bool initial_load, BarrierNotifiable *done) override {
+    config_fd = fd;
+    return UPDATED;
+  }
+
+  void factory_reset(int fd) override {
+    config_fd = fd;
+    CDI_FACTORY_RESET(cfg.seg().servo_min);
+    CDI_FACTORY_RESET(cfg.seg().servo_max);
+
+    cfg.userinfo().name().write(fd, "Bika vezerlo");
+    cfg.userinfo().description().write(fd, "");
+  }
+} g_config_apply;
 
 
 void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
                 openlcb::EventReport *report, BarrierNotifiable *done) {
   resetblink(0);
+  unsigned arg = registry_entry.user_arg;
+  if (arg == 16) {
+    // set button pressed.
+    // We turn off output.
+    g_periodic_action.set_constant(false);
+
+    // Increment set state.
+    int state = set_state;
+    ++state;
+    if (state > SET_MAX) {
+      state = NORMAL_OP;
+    }
+    set_state = (SetState)state;
+    switch(set_state) {
+      case NORMAL_OP:
+        resetblink(0);
+        break;
+      case SET_DUTY:
+        resetblink(0x800);
+        break;
+      case SET_SERVO_MIN:
+        resetblink(0x8002);
+        break;
+      case SET_SERVO_MAX:
+        resetblink(0x800A);
+        break;
+    }
+    return;
+  }
+
+  if (set_state != NORMAL_OP) {
+    // User is changing a setting. The set was pressed
+    switch(set_state) {
+      case SET_DUTY: {
+        // 0 = duty cycle of 0
+        // 8 = duty cycle of 100
+        duty_cycle = arg * 100 / 8;
+        break;
+      }
+      case SET_SERVO_MIN: {
+        // 1 = min
+        // 7 = max
+        unsigned value = (servo_min * (7 - arg) + servo_max * (arg - 1)) / 7;
+        cfg.seg().servo_min().write(config_fd, value);
+        break;
+      }
+      case SET_SERVO_MAX: {
+        // 1 = min
+        // 7 = max
+        unsigned value = (servo_min * (7 - arg) + servo_max * (arg - 1)) / 7;
+        cfg.seg().servo_max().write(config_fd, value);
+        break;
+      }
+      case NORMAL_OP:
+      default:
+        break;
+    }
+    set_state = NORMAL_OP;
+    g_periodic_action.set_constant(false);
+    resetblink(0);
+  }
+  
+  bool req_periodic = false;
   switch (registry_entry.user_arg) {
     case 1:
-      servo_pwm.set_duty(servo_min);
+      period_msec = 300;
+      req_periodic = true;
       break;
     case 2:
-      servo_pwm.set_duty(servo_med1);
+      period_msec = 700;
+      req_periodic = true;
       break;
     case 3:
-      servo_pwm.set_duty(servo_med2);
+      period_msec = 1500;
+      req_periodic = true;
       break;
     case 4:
-      servo_pwm.set_duty(servo_max);
+      period_msec = 3000;
+      req_periodic = true;
       break;
 
     case 5:
-      g_periodic_action.set_constant(true);
-      break;
-    case 6:
-      g_periodic_action.set_periodic(1000, 1000);
-      break;
-    case 7:
       g_periodic_action.set_constant(false);
       break;
-      
+    case 6:
+      req_periodic = true;
+      break;
+    case 7:
+      g_periodic_action.set_constant(true);
+      break;
     default:
-      resetblink(0x80002);
+      resetblink(0x8000CC);
+  }
+  if (req_periodic) {
+    g_periodic_action.set_periodic(period_msec * duty_cycle / 100,
+                                   period_msec * (100 - duty_cycle) / 100);
   }
 }
 
@@ -253,6 +349,8 @@ int appl_main(int argc, char *argv[])
     stack.check_version_and_factory_reset(
         cfg.seg().internal_config(), openlcb::CANONICAL_VERSION, false);
 
+    eventhandler.add_entry(EVBASE, 16);
+    
     eventhandler.add_entry(EVBASE+5, 1);
     eventhandler.add_entry(EVBASE+7, 2);
     eventhandler.add_entry(EVBASE+9, 3);
