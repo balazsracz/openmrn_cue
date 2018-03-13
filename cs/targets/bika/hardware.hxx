@@ -34,6 +34,8 @@ GPIO_PIN(MAGNET, GpioOutputSafeLow, B, 2);
 #ifndef FAKEHW
 
 GPIO_PIN(RLED_RAW, LedPin, B, 5);
+GPIO_PIN(RLED_RAW_R, LedPin, B, 5);
+typedef GpioInitializer<LED_RED_Pin, RLED_RAW_R_Pin> RLED_RAW_Pin;
 GPIO_PIN(RSET, GpioInputPU, B, 0);
 
 GPIO_PIN(RB1, GpioInputPU, E, 4);
