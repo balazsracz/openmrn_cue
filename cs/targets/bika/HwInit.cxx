@@ -100,8 +100,9 @@ static TivaCan can0("/dev/can0", CAN0_BASE, INT_RESOLVE(INT_CAN0_, 0));
 
 const unsigned TivaEEPROMEmulation::FAMILY = TM4C123;
 const size_t EEPROMEmulation::SECTOR_SIZE = (4*1024);
+const bool EEPROMEmulation::SHADOW_IN_RAM = true;
 
-static TivaEEPROMEmulation eeprom("/dev/eeprom", 1500);
+static TivaEEPROMEmulation eeprom("/dev/eeprom", 300);
 
 extern StoredBitSet* g_gpio_stored_bit_set;
 StoredBitSet* g_gpio_stored_bit_set = nullptr;
@@ -161,6 +162,11 @@ void resetblink(uint32_t pattern)
     } else if (pattern == 1) {
         BLINKER_RAW_Pin::set(true);
         rest_pattern = 1;
+    } else {
+      // All other patterns look like 0x80...XXX, so we'll play back the last
+      // some number of bits: a short break then the blink pattern comes.
+      BLINKER_RAW_Pin::set(false);
+      rest_pattern = 0b100;
     }
 }
 
@@ -240,6 +246,7 @@ void hw_preinit(void)
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER5);
     MAP_TimerConfigure(TIMER5_BASE, TIMER_CFG_PERIODIC);
     MAP_TimerLoadSet(TIMER5_BASE, TIMER_A, MAP_SysCtlClockGet() / 8);
+    MAP_TimerControlStall(TIMER5_BASE, TIMER_A, true);
     MAP_IntEnable(INT_TIMER5A);
 
     /* This interrupt should hit even during kernel operations. */
