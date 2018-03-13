@@ -284,6 +284,7 @@ void handler_cb(const openlcb::EventRegistryEntry &registry_entry,
     set_state = NORMAL_OP;
     g_periodic_action.set_constant(false);
     resetblink(0);
+    return;
   }
   
   bool req_periodic = false;
