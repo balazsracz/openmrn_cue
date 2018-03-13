@@ -29,7 +29,7 @@ GPIO_HWPIN(SERVO, GpioHwPin, C, 4, WT0CCP0, Timer);
 GPIO_PIN(MAGNET, GpioOutputSafeLow, B, 2);
 
 
-#define FAKEHW
+//#define FAKEHW
 
 #ifndef FAKEHW
 
