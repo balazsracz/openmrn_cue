@@ -90,39 +90,7 @@ static_assert(openlcb::CONFIG_FILE_SIZE <= 300, "Need to adjust eeprom size");
 // simpler to keep them together.
 extern const char *const openlcb::SNIP_DYNAMIC_FILENAME =
     openlcb::CONFIG_FILENAME;
-
-// Defines the GPIO ports used for the producers and the consumers.
-
-// These wrappers will save the output pin state to EEPROM.
-constexpr PersistentGpio PinRed(LED_RED_Pin::instance(), 0);
-constexpr PersistentGpio PinGreen(LED_GREEN_Pin::instance(), 1);
-constexpr PersistentGpio PinBlue(LED_BLUE_Pin::instance(), 2);
-
-// List of GPIO objects that will be used for the output pins. You should keep
-// the constexpr declaration, because it will produce a compile error in case
-// the list of pointers cannot be compiled into a compiler constant and thus
-// would be placed into RAM instead of ROM.
-constexpr const Gpio *const kOutputGpio[] = {&PinRed,
-                                             &PinGreen,
-                                             &PinBlue};
-
-// Instantiates the actual producer and consumer objects for the given GPIO
-// pins from above. The MultiConfiguredConsumer class takes care of most of the
-// complicated setup and operation requirements. We need to give it the virtual
-// node pointer, the hardware pin definition and the configuration from the CDI
-// definition. The virtual node pointer comes from the stack object. The
-// configuration structure comes from the CDI definition object, segment 'seg',
-// in which there is a repeated group 'consumers'. The GPIO pins get assigned
-// to the repetitions in the group in order.
-//openlcb::MultiConfiguredConsumer consumers(
-//    stack.node(), kOutputGpio, ARRAYSIZE(kOutputGpio), cfg.seg().consumers());
-
-// Similar syntax for the producers.
-openlcb::ConfiguredProducer producer_sw1(
-    stack.node(), cfg.seg().producers().entry<0>(), SW1_Pin());
-openlcb::ConfiguredProducer producer_sw2(
-    stack.node(), cfg.seg().producers().entry<1>(), SW2_Pin());
-
+ 
 constexpr openlcb::EventId EVBASE = 0x0501010114F90000;
 
 //openlcb::GPIOBit rset();
@@ -138,9 +106,9 @@ BtnProducer b5(opts, stack.node(), EVBASE+12, EVBASE + 13, RB5_Pin::instance());
 BtnProducer b6(opts, stack.node(), EVBASE+14, EVBASE + 15, RB6_Pin::instance());
 BtnProducer b7(opts, stack.node(), EVBASE+16, EVBASE + 17, RB7_Pin::instance());
 
-openlcb::GPIOBit rled_bit(stack.node(), EVBASE, EVBASE + 1, RLED_Pin::instance());
+//openlcb::GPIOBit rled_bit(stack.node(), EVBASE, EVBASE + 1, RLED_Pin::instance());
 
-openlcb::BitEventConsumer light_consumer(&rled_bit);
+//openlcb::BitEventConsumer light_consumer(&rled_bit);
 
 extern TivaPWM servo_pwm;
 
