@@ -13,6 +13,7 @@ sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \
 include $(OPENMRNPATH)/etc/tivaware.mk
 
 SUBDIRS =
+EXECUTABLE := bika
 export TARGET ?= freertos.armv7m
 ifndef BOARD
 export BOARD := BOARD_LAUNCHPAD_EK
