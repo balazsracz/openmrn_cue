@@ -70,6 +70,34 @@ class TivaGNDControl {
       GNDACTRL_NON_Pin::set(false);
     }
   }
+
+  static void rr_test(bool railcom) {
+    constexpr unsigned kDelayOne = 50*26;
+    constexpr unsigned kDelayTwo = 50*26;
+    Debug::GndControlSwitch1::set(railcom);
+    if (railcom) {
+          // switch to B
+      GNDACTRL_NON_Pin::set(true);
+      GNDBCTRL_NOFF_Pin::set(true);
+      SysCtlDelay(kDelayOne);
+      Debug::GndControlSwitch2::set(true);
+      GNDACTRL_NOFF_Pin::set(false);
+      SysCtlDelay(kDelayTwo);
+      Debug::GndControlSwitch2::set(false);
+      GNDBCTRL_NON_Pin::set(false);
+    } else {
+      // switch to A
+      GNDBCTRL_NON_Pin::set(true);
+      GNDACTRL_NOFF_Pin::set(true);
+      SysCtlDelay(kDelayOne);
+      Debug::GndControlSwitch2::set(true);
+      GNDBCTRL_NOFF_Pin::set(false);
+      SysCtlDelay(kDelayTwo);
+      Debug::GndControlSwitch2::set(false);
+      GNDACTRL_NON_Pin::set(false);
+    }
+  }
+
 };
 
 class TivaBypassControl {
