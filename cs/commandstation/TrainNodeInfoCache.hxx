@@ -601,10 +601,21 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// Formats a given iterator into the resultset of the 
   void add_node_to_resultset(const NodeCacheMap::iterator& it) {
     if (it->second->name_.empty()) {
-      // Format the node MAC address.
-      uint8_t idbuf[6];
-      openlcb::node_id_to_data(it->first, idbuf);  // convert to big-endian
-      it->second->name_ = mac_to_string(idbuf);
+      const auto node_id = it->first;
+      dcc::TrainAddressType decoded_type;
+      uint32_t decoded_address = 0xFFFF;
+      if (openlcb::TractionDefs::legacy_address_from_train_node_id(
+              node_id, &decoded_type, &decoded_address)) {
+        // We recognized this as a legacy address. Use the legacy node name to
+        // display.
+        it->second->name_ = openlcb::TractionDefs::train_node_name_from_legacy(
+            decoded_type, decoded_address);
+      } else {
+        // Format the node MAC address.
+        uint8_t idbuf[6];
+        openlcb::node_id_to_data(it->first, idbuf);  // convert to big-endian
+        it->second->name_ = mac_to_string(idbuf);
+      }
     }
     output_->entry_names.push_back(&it->second->name_);
   }
