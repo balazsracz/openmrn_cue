@@ -97,6 +97,29 @@ EventBasedVariable runaround_yard(&brd, "runaround_yard",
                                    BRACZ_LAYOUT | 0x0026, BRACZ_LAYOUT | 0x0027,
                                    7, 29, 1);
 
+constexpr auto SCENE_OFF_EVENT = BRACZ_LAYOUT | 0x0029;
+
+EventBasedVariable scene_red_349(&brd, "scene_red_349",
+                                   0x050101011808000A, SCENE_OFF_EVENT,
+                                   7, 29, 0);
+
+EventBasedVariable scene_green_349(&brd, "scene_green_349",
+                                   0x050101011808000B, SCENE_OFF_EVENT,
+                                   7, 28, 7);
+
+EventBasedVariable scene_red_441(&brd, "scene_red_441",
+                                   0x050101011808000D, SCENE_OFF_EVENT,
+                                   7, 28, 6);
+
+EventBasedVariable scene_green_441(&brd, "scene_green_441",
+                                   0x050101011808000C, SCENE_OFF_EVENT,
+                                   7, 28, 5);
+
+EventBasedVariable scene_dark(&brd, "scene_dark",
+                                   0x050101011808000E, SCENE_OFF_EVENT,
+                                   7, 28, 4);
+
+
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n9(0x29);
 AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e), b9(0x29);
@@ -1106,6 +1129,134 @@ DefAut(signalaut2, brd, {
 DefAut(signalaut3, brd, {
   ClearUsedVariables();
 });
+
+EventBasedVariable listen_B349_req_green(
+    &brd, "listen_B349_req_green", Block_B349.request_green()->event_on(),
+    BRACZ_LAYOUT | 0x002A, 7, 28, 3);
+
+EventBasedVariable listen_A441_req_green(
+    &brd, "listen_A441_req_green", Block_A441.request_green()->event_on(),
+    BRACZ_LAYOUT | 0x002B, 7, 28, 2);
+
+std::unique_ptr<GlobalVariable> b349_green_guess{
+    logic->Allocate("b349-green-guess")};
+
+DefAut(guessaut, brd, {
+  static const StateRef StGuessGreen(NewUserState());
+  static const StateRef StGuessRed(NewUserState());
+
+  auto* guess = ImportVariable(b349_green_guess.get());
+  Def().ActState(StGuessGreen);
+  Def().IfReg1(ImportVariable(is_paused)).ActState(StGuessRed);
+  Def().IfReg1(ImportVariable(reset_all_routes)).ActState(StGuessRed);
+  Def().IfReg1(ImportVariable(Block_B369.route_in())).ActState(StGuessRed);
+  Def()
+      .IfReg1(aut->ImportVariable(*Turnout_W360.b.any_route()))
+      .ActState(StGuessRed);
+  Def().IfReg1(aut->ImportVariable(Block_B369.detector())).ActState(StGuessRed);
+  Def().IfState(StGuessRed).ActReg0(guess);
+  Def().IfState(StGuessGreen).ActReg1(guess);
+});
+
+DefAut(lightaut, brd, {
+    static const StateRef StB349Green(NewUserState());
+    static const StateRef StB349Red(NewUserState());
+    static const StateRef StA441Green(NewUserState());
+    static const StateRef StA441Red(NewUserState());
+    static const StateRef StDark(NewUserState());
+    static std::unique_ptr<GlobalVariable> b339_det_shadow{logic->Allocate("b339-det-shadow")};
+
+    auto* scene_B349_red = aut->ImportVariable(&scene_red_349);
+    auto* scene_B349_green = aut->ImportVariable(&scene_green_349);
+    auto* B349_req_green = aut->ImportVariable(&listen_B349_req_green);
+    auto* scene_A441_red = aut->ImportVariable(&scene_red_441);
+    auto* scene_A441_green = aut->ImportVariable(&scene_green_441);
+    auto* A441_req_green = aut->ImportVariable(&listen_A441_req_green);
+
+    auto* sc_dark = aut->ImportVariable(&scene_dark);
+
+    Def()
+        .IfReg1(*B349_req_green)
+        .ActState(StB349Green)
+        .ActTimer(5)
+        .ActReg1(scene_B349_green)
+        .ActReg0(B349_req_green)
+        .ActReg0(scene_B349_green);
+    Def()
+        .IfState(StB349Green)
+        .IfTimerDone()
+        .IfReg0(aut->ImportVariable(Block_B349.route_out()))
+        .ActReg1(scene_B349_red)
+        .ActReg0(scene_B349_red)
+        .ActState(StB349Red)
+        .ActTimer(10);
+    Def()
+        .IfState(StB349Red)
+        .IfTimerDone()
+        .ActReg1(sc_dark)
+        .ActReg0(sc_dark)
+        .ActState(StDark);
+    Def()
+        .IfReg1(*A441_req_green)
+        .ActReg1(scene_A441_green)
+        .ActReg0(scene_A441_green)
+        .ActReg0(A441_req_green)
+        .ActState(StA441Green)
+        .ActTimer(5);
+
+    Def()
+        .IfState(StA441Green)
+        .IfTimerDone()
+        .IfReg0(aut->ImportVariable(Block_A441.route_out()))
+        .ActReg1(scene_A441_red)
+        .ActReg0(scene_A441_red)
+        .ActState(StA441Red)
+        .ActTimer(10);
+    Def()
+        .IfState(StA441Red)
+        .IfTimerDone()
+        .ActReg1(sc_dark)
+        .ActReg0(sc_dark)
+        .ActState(StDark);
+
+    auto prev_block_detector = aut->ImportVariable(Block_B339.detector());
+    auto* prev_block_det_shadow = aut->ImportVariable(b339_det_shadow.get());
+    auto guess_green = aut->ImportVariable(*b349_green_guess);
+    Def()
+        .IfState(StInit)
+        .IfReg0(prev_block_detector)
+        .ActReg0(prev_block_det_shadow);
+    Def()
+        .IfReg1(prev_block_detector)
+        .ActReg1(prev_block_det_shadow);
+
+    // If there is an incoming train to B349
+    Def().IfReg1(*prev_block_det_shadow)
+        .IfReg0(prev_block_detector)
+        .IfReg0(guess_green)
+        .ActReg0(prev_block_det_shadow)
+        .ActReg1(scene_B349_red)
+        .ActReg0(scene_B349_red)
+        .ActState(StB349Red)
+        .ActTimer(20);
+    Def().IfReg1(*prev_block_det_shadow)
+        .IfReg0(prev_block_detector)
+        .IfReg1(guess_green)
+        .ActReg0(prev_block_det_shadow)
+        .ActReg1(scene_B349_green)
+        .ActReg0(scene_B349_green)
+        .ActState(StB349Green)
+        .ActTimer(20);
+
+    Def()
+        .IfState(StInit)
+        .ActState(StDark)
+        .ActReg1(sc_dark)
+        .ActReg0(sc_dark);
+
+    ClearUsedVariables();
+});
+
 
 /*
 DefAut(estopaut, brd, {
