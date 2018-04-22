@@ -273,8 +273,8 @@ dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
 commandstation::TrackPowerBit on_off(stack.node(),
-                              openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                              openlcb::TractionDefs::EMERGENCY_STOP_EVENT);
+                              openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+                              openlcb::Defs::EMERGENCY_OFF_EVENT);
 openlcb::BitEventConsumer powerbit(&on_off);
 openlcb::TrainService traction_service(stack.iface());
 
