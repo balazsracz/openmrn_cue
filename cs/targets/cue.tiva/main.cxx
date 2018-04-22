@@ -155,8 +155,8 @@ QuiesceDebouncer::Options opts(3);
 TivaSwitchProducer sw1(opts, BRACZ_LAYOUT | 1, BRACZ_LAYOUT | 0,
                        USR_SW1_Pin::GPIO_BASE, USR_SW1_Pin::GPIO_PIN);
 
-TivaSwitchProducer sw2(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                       openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
+TivaSwitchProducer sw2(opts, openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+                       openlcb::Defs::EMERGENCY_OFF_EVENT,
                        USR_SW2_Pin::GPIO_BASE, USR_SW2_Pin::GPIO_PIN);
 
 TivaGPIOConsumer led_acc(BRACZ_LAYOUT | 4, BRACZ_LAYOUT | 5, io::AccPwrLed::GPIO_BASE, io::AccPwrLed::GPIO_PIN);
@@ -187,8 +187,8 @@ AccessoryOvercurrentMeasurement<AccHwDefs> g_acc_short_detector(stack.service(),
 #endif
 
 
-/*TivaSwitchProducer sw2(opts, openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                       openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
+/*TivaSwitchProducer sw2(opts, openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+                       openlcb::Defs::EMERGENCY_OFF_EVENT,
                        USR_SW1::GPIO_BASE, USR_SW1::GPIO_PIN);
 */
 

@@ -200,7 +200,7 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
         node_->iface()->global_message_write_flow());
     b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      openlcb::eventid_to_buffer(
-                         openlcb::TractionDefs::EMERGENCY_STOP_EVENT));
+                         openlcb::Defs::EMERGENCY_OFF_EVENT));
     node_->iface()->global_message_write_flow()->send(b);
 
     return this->allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_short_report2));

@@ -472,7 +472,7 @@ bool AutomataRunner::eval_condition(insn_t insn) {
         b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT,
                          openmrn_node_->node_id(),
                          openlcb::eventid_to_buffer(
-                             openlcb::TractionDefs::EMERGENCY_STOP_EVENT));
+                             openlcb::Defs::EMERGENCY_OFF_EVENT));
         openmrn_node_->iface()->global_message_write_flow()->send(b);
         return true;
       }
@@ -482,7 +482,7 @@ bool AutomataRunner::eval_condition(insn_t insn) {
         b->data()->reset(
             openlcb::Defs::MTI_EVENT_REPORT, openmrn_node_->node_id(),
             openlcb::eventid_to_buffer(
-                openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
+                openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT));
         openmrn_node_->iface()->global_message_write_flow()->send(b);
         return true;
       }
