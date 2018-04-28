@@ -72,6 +72,7 @@ class TivaGNDControl {
   }
 
   static void rr_test(bool railcom) {
+    portENTER_CRITICAL();
     constexpr unsigned kDelayOne = 50*26;
     constexpr unsigned kDelayTwo = 50*26;
     Debug::GndControlSwitch1::set(railcom);
@@ -96,6 +97,7 @@ class TivaGNDControl {
       Debug::GndControlSwitch2::set(false);
       GNDACTRL_NON_Pin::set(false);
     }
+    portEXIT_CRITICAL();
   }
 
 };
