@@ -215,8 +215,8 @@ dcc::FakeTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
 
-LoggingBit track_on_off(openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
-                        openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
+LoggingBit track_on_off(openlcb::Defs::EMERGENCY_OFF_EVENT,
+                        openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
                         "emergency_stop");
 openlcb::BitEventConsumer powerbit(&track_on_off);
 

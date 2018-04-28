@@ -71,29 +71,46 @@ class TivaGNDControl {
     }
   }
 
+  static constexpr unsigned kDelayAOff = 26;
+  static constexpr unsigned kDelayAOn = 1*26 + 22;
+
+  static constexpr unsigned kDelayBOff = 34;
+  static constexpr unsigned kDelayBOn = 2*26;
+
+  static constexpr unsigned kDeadBand = 26;
+
+  /// Computes the delay to do between the first and second phase. The
+  /// constraints are: at least kDeadBand, and second_delay + off > on.
+  static constexpr unsigned second_delay(unsigned off, unsigned on) {
+    return std::min(kDeadBand, on > off ? on - off : 1);
+  }
+
   static void rr_test(bool railcom) {
     portENTER_CRITICAL();
-    constexpr unsigned kDelayOne = 50*26;
-    constexpr unsigned kDelayTwo = 50*26;
+    //constexpr unsigned kDelayOne = 4*26;
+    //constexpr unsigned kDelayTwo = 0*26 + 1;
+
+    // tuned for A
+
     Debug::GndControlSwitch1::set(railcom);
     if (railcom) {
           // switch to B
       GNDACTRL_NON_Pin::set(true);
       GNDBCTRL_NOFF_Pin::set(true);
-      SysCtlDelay(kDelayOne);
+      SysCtlDelay(kDelayAOff);
       Debug::GndControlSwitch2::set(true);
       GNDACTRL_NOFF_Pin::set(false);
-      SysCtlDelay(kDelayTwo);
+      SysCtlDelay(second_delay(kDelayAOff, kDelayBOn));
       Debug::GndControlSwitch2::set(false);
       GNDBCTRL_NON_Pin::set(false);
     } else {
       // switch to A
       GNDBCTRL_NON_Pin::set(true);
       GNDACTRL_NOFF_Pin::set(true);
-      SysCtlDelay(kDelayOne);
+      SysCtlDelay(kDelayBOff);
       Debug::GndControlSwitch2::set(true);
       GNDBCTRL_NOFF_Pin::set(false);
-      SysCtlDelay(kDelayTwo);
+      SysCtlDelay(second_delay(kDelayBOff, kDelayAOn));
       Debug::GndControlSwitch2::set(false);
       GNDACTRL_NON_Pin::set(false);
     }

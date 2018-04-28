@@ -22,8 +22,8 @@ class TrackPowerTest : public UpdateProcessorTest {
  protected:
   StrictMock<MockDccControl> mockDcc_;
   TrackPowerBit powerBit_{node_,
-                          openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT,
-                          openlcb::TractionDefs::EMERGENCY_STOP_EVENT};
+                          openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+                          openlcb::Defs::EMERGENCY_OFF_EVENT};
   openlcb::BitEventConsumer powerC_{&powerBit_};
 };
 

@@ -57,24 +57,8 @@ class DccTrainDbEntry : public TrainDbEntry {
 
   /** Retrieves the name of the train. */
   string get_train_name() override {
-    string ret(14, 0);
-    char* s = &ret[0];
-    if (is_dcc_mode() && (mode_ & DCC_LONG_ADDRESS) && (address_ < 128)) {
-      s[0] = '0';
-      s++;
-    }
-    char* e = integer_to_buffer(get_legacy_address(), s);
-    ret.resize(e - &ret[0]);
-    if (!is_dcc_mode()) {
-      ret.push_back('M');
-    } else if (address_ < 128) {
-      if ((mode_ & DCC_LONG_ADDRESS) == 0) {
-        ret.push_back('S');
-      } else {
-        ret.push_back('L');
-      }
-    }
-    return ret;
+    return openlcb::TractionDefs::train_node_name_from_legacy(
+        dcc_mode_to_address_type(mode_, address_), address_);
   }
 
   /** Retrieves the legacy address of the train. */

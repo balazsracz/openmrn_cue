@@ -288,8 +288,8 @@ class TractionImpl : public IncomingFrameFlow {
 class TrackPowerOnOffBit : public openlcb::BitEventInterface {
  public:
   TrackPowerOnOffBit(MobileStationTraction* s)
-      : BitEventInterface(openlcb::TractionDefs::EMERGENCY_STOP_EVENT,
-                          openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT),
+      : BitEventInterface(openlcb::Defs::EMERGENCY_OFF_EVENT,
+                          openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT),
         service_(s) {}
 
   openlcb::EventState get_current_state() override {
@@ -351,8 +351,8 @@ void MobileStationTraction::set_estop_state(EstopSource source,
         openlcb::Defs::MTI_EVENT_REPORT, node()->node_id(),
         openlcb::eventid_to_buffer(
             is_stopped
-                ? openlcb::TractionDefs::EMERGENCY_STOP_EVENT
-                : openlcb::TractionDefs::CLEAR_EMERGENCY_STOP_EVENT));
+                ? openlcb::Defs::EMERGENCY_OFF_EVENT
+                : openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT));
     nmranet_if()->global_message_write_flow()->send(b);
 
     update_estop_bit(bit, is_stopped);
