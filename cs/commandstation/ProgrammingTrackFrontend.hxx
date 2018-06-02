@@ -19,7 +19,7 @@
  *
  * \file ProgrammingTrackFrontend.hxx
  *
- * Flow and CV space to access the programming track.
+ * Flow to access the programming track.
  *
  * @author Balazs Racz
  * @date 1 June 2018
@@ -29,7 +29,6 @@
 #define _COMMANDSTATON_PROGRAMMINGTRACKFRONTEND_HXX_
 
 #include "executor/CallableFlow.hxx"
-#include "openlcb/MemoryConfig.hxx"
 #include "dcc/ProgrammingTrackBackend.hxx"
 
 namespace commandstation {
@@ -89,6 +88,9 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
     /// Error code when the locomotive is not responding to programming track
     /// requests. Usually dirty track or so.
     ERROR_NO_LOCO = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 1,
+    /// Re-triable error generated when the loco respons with conflicting
+    /// information.
+    ERROR_FAILED_VERIFY = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 2,
     /// Error code when something was invoked that is not implemented.
     ERROR_UNIMPLEMENTED_CMD = openlcb::Defs::ERROR_UNIMPLEMENTED_CMD,
     /// cleared when done is called.
@@ -126,6 +128,9 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
         serviceModePacket_.set_dcc_svc_write_byte(request()->cvOffset_,
                                                   request()->value_);
         break;
+      case RequestType::DIRECT_READ_BYTE:
+        return call_immediately(STATE(direct_read_byte));
+        break;
       default:
         // Bail out as we have not written this code yet.
         request()->resultCode |= ERROR_UNIMPLEMENTED_CMD;
@@ -134,12 +139,12 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
             ProgrammingTrackRequest::EXIT_SERVICE_MODE);
     }
     return invoke_subflow_and_wait(
-        backend_, STATE(pkt_sent),
+        backend_, STATE(write_pkt_sent),
         ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
         3);
   }
 
-  Action pkt_sent() {
+  Action write_pkt_sent() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     if (b->data()->hasAck_) {
       // we're good
@@ -163,6 +168,65 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
         backend_, STATE(return_response),
         ProgrammingTrackRequest::EXIT_SERVICE_MODE);
   }
+
+  /// Root state of reading one byte using direct mode from the decoder.
+  Action direct_read_byte() {
+    nextBitToRead_ = 0;
+    confirmedOnes_ = 0;
+    confirmedZeros_ = 0;
+    return call_immediately(STATE(read_next_bit));
+  }
+  
+  Action read_next_bit() {
+    serviceModePacket_.set_dcc_svc_verify_bit(request()->cvOffset_,
+                                              nextBitToRead_,
+                                              true);
+    return invoke_subflow_and_wait(
+        backend_, STATE(check_next_bit_one),
+        ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
+        verifyRepeats_);
+  }
+
+  Action check_next_bit_one() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      confirmedOnes_ |= (1<<nextBitToRead_);
+    }
+    return invoke_subflow_and_wait(backend_, STATE(cooldown_next_bit_one),
+                                   ProgrammingTrackRequest::SEND_RESET, 7);
+  }
+
+  Action cooldown_next_bit_one() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      LOG(WARNING, "Service mode: spurious ack received (1).");
+    }
+    if (nextBitToRead_ == 7) {
+      // we're done reading. verify what we have.
+      serviceModePacket_.set_dcc_svc_verify_byte(request()->cvOffset_,
+                                                 confirmedOnes_);
+      request()->value_ = confirmedOnes_;
+      return invoke_subflow_and_wait(
+          backend_, STATE(check_final_byte),
+          ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
+          verifyRepeats_);
+    } else {
+      ++nextBitToRead_;
+      return call_immediately(STATE(check_next_bit_one));
+    }
+  }
+
+  Action check_final_byte() {
+    // we don't release it in this function
+    auto b = full_allocation_result(backend_); 
+    if (b->data()->hasAck_) {
+      request()->resultCode |= ERROR_CODE_OK;
+    } else {
+      request()->resultCode |= ERROR_FAILED_VERIFY;
+    }
+    // this will deallocate b.
+    return return_response();
+  }
   
   Action return_response() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
@@ -170,7 +234,22 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
   }
 
  private:
+  /// How many times by default we send out a programming track verify packet
+  /// to get exactly one ack.
+  static constexpr unsigned DEFAULT_VERIFY_REPEATS = 3;
+  
+  /// Which bits were confirmed to be ones by the decoder.
+  uint8_t confirmedOnes_;
+  /// Which bits were confirmed to be zeros by the decoder.
+  uint8_t confirmedZeros_;
+  /// The number of times we have to send out a verify packet to get one
+  /// acknowledgement.
+  uint8_t verifyRepeats_{DEFAULT_VERIFY_REPEATS};
+  /// When reading a byte, which bt we are testing next.
+  uint8_t nextBitToRead_ : 4;
+  /// Backend flow for executing low-level programming track requests.
   ProgrammingTrackBackend* backend_;
+  /// Holding buffer for the next programming track packet to send.
   dcc::Packet serviceModePacket_;
 };
 
