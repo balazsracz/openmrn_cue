@@ -16,13 +16,14 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
     { LIGHT, FN_NONEXISTANT, BEAMER, HORN, ABV,   },
     "RE 474 014-8", MFX }, // todo: check fnbits
   // 3
-  { 2, //{ 0, 2, 3, 4,  0xff, },
+  // This is a TCS WowElectric ACS-64 OEM decoder.
+  { 40, //{ 0, 2, 3, 4,  0xff, },
     { LIGHT, FN_NONEXISTANT, HORN, SPEECH, ABV,   },
-    "ICE 2", MARKLIN_NEW | PUSHPULL }, // todo: check fnbits
+    "ICE 2", DCC_128 | PUSHPULL }, // todo: check fnbits
   // 4
   { 22, //{ 0, 3, 4,   },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,   },
-    "RE 460 TSR", DCC_128 }, // todo: there is no beamer here // LD-32 decoder
+    "RE 460 TSR", DCC_128 }, // todo: there is no beamer here // LD-32 decoder + My own keepalive
   // 5
   { 32, //{ 0, FN_NONEXISTANT, FN_NONEXISTANT, FN_NONEXISTANT, 4,   },
     { LIGHT, ABV,   },
@@ -52,6 +53,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FN_NONEXISTANT, ABV,   },
     "BR 290 022-3", MFX }, // Marklin mfx
   // id 12
+  // TCS DP2X-UK decoder with railcom feedback support + TCS KA3
   { 43, //{ 0, 1, 3, 4,   },
     { LIGHT, TELEX, FN_NONEXISTANT, FNT11, ABV,   },
     "Am 843 093-6", DCC_28 },
@@ -66,7 +68,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // id 15
   { 26, //{ 0,   },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV, },
-    "Re 460 HAG", DCC_128 | PUSHPULL },  // LokPilot 4 (some bare cable form)
+    "Re 460 HAG", DCC_128 | PUSHPULL },  // LokPilot 4 (some bare cable form) + TCS KA3
   // id 16
   { 38, //{ 0, 3, 4,  },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,  },
