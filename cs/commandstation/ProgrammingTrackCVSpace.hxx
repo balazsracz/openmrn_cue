@@ -82,6 +82,13 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     switch(destination) {
       case cfg.value().offset():
         return eval_async_state(STATE(do_cv_write), again, error, len);
+      case cfg.advanced().repeat_verify().offset():
+        frontend_->set_repeat_verify(be32toh(store_.verify_repeats));
+        break;
+      case cfg.advanced().repeat_cooldown_reset().offset():
+        frontend_->set_repeat_verify_cooldown(
+            be32toh(store_.verify_cooldown_repeats));
+        break;
     }
     return len;
   }

@@ -39,6 +39,20 @@ static const char OPERATING_MODE_MAP_VALUES[] = R"(
 )";
 
 
+CDI_GROUP(ProgrammingTrackSpaceConfigAdvanced);
+CDI_GROUP_ENTRY(
+    repeat_verify, openlcb::Uint32ConfigEntry,
+    Name("Repeat count for verify packets"),
+    Description("How many times a direct mode bit verify packet needs to be "
+                "repeated for an acknowledgement to be generated."),
+    Default(3), Min(0), Max(255));
+CDI_GROUP_ENTRY(
+    repeat_cooldown_reset, openlcb::Uint32ConfigEntry,
+    Name("Repeat count for reset packets after verify"),
+    Description("How many reset packets to send after a verify."),
+    Default(6), Min(0), Max(255));
+CDI_GROUP_END();
+
 CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(0x15), Offset(0x7F100000),
           Name("Programming track operation"),
           Description("Use this component to read and write CVs on the "
@@ -53,6 +67,8 @@ enum OperatingMode {
 CDI_GROUP_ENTRY(mode, openlcb::Uint32ConfigEntry, Name("Operating mode"), MapValues(OPERATING_MODE_MAP_VALUES));
 CDI_GROUP_ENTRY(cv, openlcb::Uint32ConfigEntry, Name("CV number"), Description("Number of CV to read or write (1..1024)."), Default(0), Min(0), Max(1024));
 CDI_GROUP_ENTRY(value, openlcb::Uint32ConfigEntry, Name("CV value"), Description("Read or write this field to access the given CV."), Default(0), Min(0), Max(255));
+CDI_GROUP_ENTRY(advanced, ProgrammingTrackSpaceConfigAdvanced,
+                Name("Advanced settings"));
 struct Shadow;
 CDI_GROUP_END();
 
@@ -61,13 +77,23 @@ struct ProgrammingTrackSpaceConfig::Shadow {
   uint32_t mode;
   uint32_t cv;
   uint32_t value;
+  uint32_t verify_repeats;
+  uint32_t verify_cooldown_repeats;
 };
 
 #define SHADOW_OFFSETOF(entry)                                          \
   ((uintptr_t) & ((ProgrammingTrackSpaceConfig::Shadow*)nullptr)->entry)
 
-static_assert(SHADOW_OFFSETOF(cv) == ProgrammingTrackSpaceConfig::zero_offset_this().cv().offset(), "Offset of CV field does not match.");
+static_assert(SHADOW_OFFSETOF(cv) ==
+                  ProgrammingTrackSpaceConfig::zero_offset_this().cv().offset(),
+              "Offset of CV field does not match.");
 
+static_assert(SHADOW_OFFSETOF(verify_cooldown_repeats) ==
+                  ProgrammingTrackSpaceConfig::zero_offset_this()
+                      .advanced()
+                      .repeat_cooldown_reset()
+                      .offset(),
+              "Offset of repeat cooldown reset field does not match.");
 
 } // namespace commandstation
 

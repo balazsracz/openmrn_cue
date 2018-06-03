@@ -31,6 +31,11 @@
 #include "executor/CallableFlow.hxx"
 #include "dcc/ProgrammingTrackBackend.hxx"
 
+#ifdef LOGLEVEL
+#undef LOGLEVEL
+#endif
+#define LOGLEVEL INFO
+
 namespace commandstation {
 
 struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
@@ -98,6 +103,14 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
     OPERATION_PENDING = openlcb::DatagramClient::OPERATION_PENDING,
   };
 
+  void set_repeat_verify(unsigned cnt) {
+    verifyRepeats_ = cnt;
+  }
+
+  void set_repeat_verify_cooldown(unsigned cnt) {
+    verifyCooldownReset_ = cnt;
+  }
+  
   Action entry() override {
     request()->resultCode = OPERATION_PENDING;
     switch (request()->cmd_) {
@@ -179,6 +192,7 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
   }
   
   Action read_next_bit() {
+    LOG(INFO, "Testing bit %d", nextBitToRead_);
     serviceModePacket_.set_dcc_svc_verify_bit(request()->cvOffset_,
                                               nextBitToRead_,
                                               true);
@@ -190,20 +204,25 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
 
   Action check_next_bit_one() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    LOG(INFO, "bit %d verify ack %u", nextBitToRead_, b->data()->hasAck_);
     if (b->data()->hasAck_) {
       confirmedOnes_ |= (1<<nextBitToRead_);
     }
     return invoke_subflow_and_wait(backend_, STATE(cooldown_next_bit_one),
-                                   ProgrammingTrackRequest::SEND_RESET, 7);
+                                   ProgrammingTrackRequest::SEND_RESET,
+                                   verifyCooldownReset_);
   }
 
   Action cooldown_next_bit_one() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    LOG(INFO, "bit %d cooldown ack %u", nextBitToRead_, b->data()->hasAck_);
     if (b->data()->hasAck_) {
-      LOG(WARNING, "Service mode: spurious ack received (1).");
+      confirmedOnes_ |= (1<<nextBitToRead_);
     }
     if (nextBitToRead_ == 7) {
       // we're done reading. verify what we have.
+      LOG(INFO, "read verify 0x%02x", confirmedOnes_);
+      
       serviceModePacket_.set_dcc_svc_verify_byte(request()->cvOffset_,
                                                  confirmedOnes_);
       request()->value_ = confirmedOnes_;
@@ -213,12 +232,29 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
           verifyRepeats_);
     } else {
       ++nextBitToRead_;
-      return call_immediately(STATE(check_next_bit_one));
+      return call_immediately(STATE(read_next_bit));
     }
   }
 
   Action check_final_byte() {
     auto b = get_buffer_deleter(full_allocation_result(backend_)); 
+    LOG(INFO, "read verify ack %u", b->data()->hasAck_);
+    if (b->data()->hasAck_) {
+      request()->resultCode |= ERROR_CODE_OK;
+    } else {
+      // send some cooldown too
+      return invoke_subflow_and_wait(backend_, STATE(cooldown_final_verify),
+                                     ProgrammingTrackRequest::SEND_RESET,
+                                     verifyCooldownReset_);
+    }
+    return invoke_subflow_and_wait(
+        backend_, STATE(return_response),
+        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+  }
+
+  Action cooldown_final_verify() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_)); 
+    LOG(INFO, "read verify cooldown ack %u", b->data()->hasAck_);
     if (b->data()->hasAck_) {
       request()->resultCode |= ERROR_CODE_OK;
     } else {
