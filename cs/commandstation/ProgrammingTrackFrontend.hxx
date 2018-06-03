@@ -44,7 +44,7 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
   enum DirectReadByte { DIRECT_READ_BYTE };
   enum DirectReadBit { DIRECT_READ_BIT };
 
-  /// Request up to write a byte sized CV in direct mode.
+  /// Request to write a byte sized CV in direct mode.
   /// @param cv_number is the 1-based CV number (as the user sees it).
   /// @param value is the value to set the CV to.
   void reset(DirectWriteByte, unsigned cv_number, uint8_t value) {
@@ -54,13 +54,25 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     value_ = value;
   }
 
-  /// Request up to read a byte sized CV in direct mode.
+  /// Request to read a byte sized CV in direct mode.
   /// @param cv_number is the 1-based CV number (as the user sees it).
   void reset(DirectReadByte, unsigned cv_number) {
     reset_base();
     cmd_ = Type::DIRECT_READ_BYTE;
     cvOffset_ = cv_number - 1;
     value_ = 0;
+  }
+
+  /// Request to write a single bit in direct mode.
+  /// @param cv_number is the 1-based CV number (as the user sees it).
+  /// @param bit is 0..7 for the bit to set
+  /// @param value what to set the bit to
+  void reset(DirectWriteBit, unsigned cv_number, uint8_t bit, bool value) {
+    reset_base();
+    cmd_ = Type::DIRECT_WRITE_BIT;
+    cvOffset_ = cv_number - 1;
+    bitOffset_ = bit;
+    value_ = value ? 1 : 0;
   }
 
   /// Calues for the cmd_ argument.
@@ -78,6 +90,8 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
   /// input or output argument containing the byte or bit value read or
   /// written.
   uint8_t value_;
+  /// Which bit number to program (0..7).
+  uint8_t bitOffset_;
 };
 
 class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendRequest> {
@@ -103,14 +117,18 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
     OPERATION_PENDING = openlcb::DatagramClient::OPERATION_PENDING,
   };
 
+  /// @param cnt sets how many times we should repeat a verify packet when
+  /// reading bytes in direct mode using ACK method.
   void set_repeat_verify(unsigned cnt) {
     verifyRepeats_ = cnt;
   }
 
+  /// @param cnt sets how many reset packets we should append a bit or byte
+  /// verify packet when reading in direct mode.
   void set_repeat_verify_cooldown(unsigned cnt) {
     verifyCooldownReset_ = cnt;
   }
-  
+
   Action entry() override {
     request()->resultCode = OPERATION_PENDING;
     switch (request()->cmd_) {
@@ -142,42 +160,100 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
         serviceModePacket_.set_dcc_svc_write_byte(request()->cvOffset_,
                                                   request()->value_);
         break;
+      case RequestType::DIRECT_WRITE_BIT:
+        serviceModePacket_.set_dcc_svc_write_bit(request()->cvOffset_,
+                                                 request()->bitOffset_,
+                                                 request()->value_ != 0);
+        break;
       case RequestType::DIRECT_READ_BYTE:
         return call_immediately(STATE(direct_read_byte));
-        break;
       default:
-        // Bail out as we have not written this code yet.
-        request()->resultCode |= ERROR_UNIMPLEMENTED_CMD;
-        return invoke_subflow_and_wait(
-            backend_, STATE(return_response),
-            ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+        return exit_unimplemented();
     }
+    foundAck_ = 0;
+    hasWriteAck_ = 0;
     return invoke_subflow_and_wait(
         backend_, STATE(write_pkt_sent),
         ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
-        3);
+        DEFAULT_WRITE_REPEATS);
   }
 
+  /// Turns off service mode and returns an unimplemented error.
+  Action exit_unimplemented() {
+    // Bail out as we have not written this code yet.
+    request()->resultCode |= ERROR_UNIMPLEMENTED_CMD;
+    return invoke_subflow_and_wait(
+        backend_, STATE(return_response),
+        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+  }
+  
   Action write_pkt_sent() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     if (b->data()->hasAck_) {
-      // we're good
-      request()->resultCode |= ERROR_CODE_OK;
-    } else {
-      request()->resultCode |= ERROR_NO_LOCO;
+      foundAck_ = 1;
     }
     // Cooldown for the decoder.
-    // 
+    //
     // @todo: we need to instead create some form of timer for when to exit
     // service mode. Consecutive operations should not exit and enter service
     // mode separately.
-    return invoke_subflow_and_wait(backend_, STATE(cooldown_done),
+    return invoke_subflow_and_wait(backend_, STATE(write_cooldown_done),
                                    ProgrammingTrackRequest::SEND_RESET, 15);
-    
   }
 
-  Action cooldown_done() {
+  Action write_cooldown_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    hasWriteAck_ = foundAck_;
+    // Now we do write verify
+    switch (request()->cmd_) {
+      case RequestType::DIRECT_WRITE_BYTE:
+        serviceModePacket_.set_dcc_svc_verify_byte(request()->cvOffset_,
+                                                  request()->value_);
+        break;
+      case RequestType::DIRECT_WRITE_BIT:
+        serviceModePacket_.set_dcc_svc_verify_bit(request()->cvOffset_,
+                                                  request()->bitOffset_,
+                                                  request()->value_ != 0);
+        break;
+      default:
+        return exit_unimplemented();
+    }
+    foundAck_ = 0;
+    return invoke_subflow_and_wait(
+        backend_, STATE(write_verify_cooldown),
+        ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
+        verifyRepeats_);
+  }
+
+  Action write_verify_cooldown() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    return invoke_subflow_and_wait(backend_, STATE(write_verify_cooldown_done),
+                                   ProgrammingTrackRequest::SEND_RESET,
+                                   verifyCooldownReset_);
+  }
+
+  Action write_verify_cooldown_done() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    if (foundAck_) {
+      if (!hasWriteAck_) {
+        LOG(WARNING, "Direct write: write ack missing, but verify is okay.");
+      }
+      // we're good
+      request()->resultCode |= ERROR_CODE_OK;
+    } else if (hasWriteAck_) {
+      request()->resultCode |= ERROR_FAILED_VERIFY;
+    } else {
+      request()->resultCode |= ERROR_NO_LOCO;
+    }
     return invoke_subflow_and_wait(
         backend_, STATE(return_response),
         ProgrammingTrackRequest::EXIT_SERVICE_MODE);
@@ -277,7 +353,10 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
   /// How many times by default we send out a programming track verify packet
   /// to get exactly one ack.
   static constexpr unsigned DEFAULT_VERIFY_COOLDOWN = 15;
-  
+
+  /// How many times by default we send out a programming track write packet.
+  static constexpr unsigned DEFAULT_WRITE_REPEATS = 5;
+
   /// Which bits were confirmed to be ones by the decoder.
   uint8_t confirmedOnes_;
   /// Which bits were confirmed to be zeros by the decoder.
@@ -289,6 +368,11 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
   uint8_t verifyCooldownReset_{DEFAULT_VERIFY_COOLDOWN};
   /// When reading a byte, which bt we are testing next.
   uint8_t nextBitToRead_ : 4;
+  /// 1 if we have an ack (aggregated over an write/verify and the cooldown
+  /// reset packets.
+  uint8_t foundAck_ : 1;
+  /// 1 if the write request has seen an ack pulse.
+  uint8_t hasWriteAck_ : 1;
   /// Backend flow for executing low-level programming track requests.
   ProgrammingTrackBackend* backend_;
   /// Holding buffer for the next programming track packet to send.

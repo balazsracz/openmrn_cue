@@ -82,6 +82,8 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     switch(destination) {
       case cfg.value().offset():
         return eval_async_state(STATE(do_cv_write), again, error, len);
+      case cfg.bit_write_value().offset():
+        return eval_async_state(STATE(do_bit_write), again, error, len);
       case cfg.advanced().repeat_verify().offset():
         frontend_->set_repeat_verify(be32toh(store_.verify_repeats));
         break;
@@ -153,18 +155,90 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
   }
 
   Action do_cv_write() {
-    return finish_async_state(openlcb::Defs::ERROR_UNIMPLEMENTED);
+    update_bits_decomposition();
+    return invoke_subflow_and_wait(
+        frontend_, STATE(cv_write_done),
+        ProgrammingTrackFrontendRequest::DIRECT_WRITE_BYTE, be32toh(store_.cv),
+        be32toh(store_.value));
   }
-  
+
+  Action cv_write_done() {
+    auto b = get_buffer_deleter(full_allocation_result(frontend_));
+    return finish_async_state(b->data()->resultCode);
+  }
+
+  /// Binary logarithm command. Sets *bit to the bit number where 1<<*bit ==
+  /// exp. For example for exp==128 input, *bit will be set to 7.
+  /// @param exp is 1 to 128
+  /// @param bit is an output argument
+  /// @return true if there was only one bit set in exp and *bit was written,
+  /// false if there was no unique bit to be found.
+  bool find_unique_bit(unsigned exp, unsigned* bit) {
+    for (unsigned u = 0; u <= 7; ++u) {
+      if ((1u<<u) == exp) {
+        *bit = u;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Update the string in store_.bit_value_string after store_.value changed.
+  void update_bits_decomposition() {
+    char* endp = store_.bit_value_string;
+    uint8_t value = be32toh(store_.value);
+    bool empty = true;
+    for (unsigned bit = 0; bit <= 7; ++bit) {
+      if (value & (1<<bit)) {
+        if (!empty) {
+          *endp++ = '+';
+        }
+        endp = unsigned_integer_to_buffer(1<<bit, endp);
+        empty = false;
+      }
+    }
+  }
+
+  Action do_bit_write() {
+    unsigned value = be32toh(store_.bit_write_value);
+    unsigned bit = 8;
+    bool new_value = false;
+    if (value >= 100 && value <= 107) {
+      bit = value - 100;
+      new_value = true;
+    } else if (value >= 200 && value <= 207) {
+      bit = value - 200;
+      new_value = false;
+    } else if (value >= 1001 && value <= 1128) {
+      if (!find_unique_bit(value - 1000, &bit)) {
+        return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
+      }
+      new_value = true;
+    } else if (value >= 2001 && value <= 2128) {
+      if (!find_unique_bit(value - 2000, &bit)) {
+        return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
+      }
+      new_value = false;
+    } else {
+      // Ignore write.
+      return finish_async_state(0);
+    }
+    return invoke_subflow_and_wait(
+        frontend_, STATE(cv_write_done),
+        ProgrammingTrackFrontendRequest::DIRECT_WRITE_BIT, be32toh(store_.cv),
+        bit, new_value);
+  }
+
   Action do_cv_read() {
     return invoke_subflow_and_wait(
         frontend_, STATE(cv_read_done),
-        ProgrammingTrackFrontendRequest::DIRECT_READ_BYTE, ntohl(store_.cv));
+        ProgrammingTrackFrontendRequest::DIRECT_READ_BYTE, be32toh(store_.cv));
   }
 
   Action cv_read_done() {
     auto b = get_buffer_deleter(full_allocation_result(frontend_));
     store_.value = htobe32(b->data()->value_);
+    update_bits_decomposition();
     return finish_async_state(b->data()->resultCode);
   }
 
