@@ -78,7 +78,8 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
 class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendRequest> {
  public:
   ProgrammingTrackFrontend(ProgrammingTrackBackend* backend)
-      : CallableFlow<ProgrammingTrackFrontendRequest>(backend->service()) {}
+      : CallableFlow<ProgrammingTrackFrontendRequest>(backend->service())
+      , backend_(backend) {}
 
   typedef ProgrammingTrackFrontendRequest::Type RequestType;
 
@@ -217,15 +218,15 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
   }
 
   Action check_final_byte() {
-    // we don't release it in this function
-    auto b = full_allocation_result(backend_); 
+    auto b = get_buffer_deleter(full_allocation_result(backend_)); 
     if (b->data()->hasAck_) {
       request()->resultCode |= ERROR_CODE_OK;
     } else {
       request()->resultCode |= ERROR_FAILED_VERIFY;
     }
-    // this will deallocate b.
-    return return_response();
+    return invoke_subflow_and_wait(
+        backend_, STATE(return_response),
+        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
   }
   
   Action return_response() {
@@ -236,7 +237,10 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
  private:
   /// How many times by default we send out a programming track verify packet
   /// to get exactly one ack.
-  static constexpr unsigned DEFAULT_VERIFY_REPEATS = 3;
+  static constexpr unsigned DEFAULT_VERIFY_REPEATS = 5;
+  /// How many times by default we send out a programming track verify packet
+  /// to get exactly one ack.
+  static constexpr unsigned DEFAULT_VERIFY_COOLDOWN = 15;
   
   /// Which bits were confirmed to be ones by the decoder.
   uint8_t confirmedOnes_;
@@ -245,6 +249,8 @@ class ProgrammingTrackFrontend : public CallableFlow<ProgrammingTrackFrontendReq
   /// The number of times we have to send out a verify packet to get one
   /// acknowledgement.
   uint8_t verifyRepeats_{DEFAULT_VERIFY_REPEATS};
+  /// The number of reset commands to send between verify bit commands.
+  uint8_t verifyCooldownReset_{DEFAULT_VERIFY_COOLDOWN};
   /// When reading a byte, which bt we are testing next.
   uint8_t nextBitToRead_ : 4;
   /// Backend flow for executing low-level programming track requests.
