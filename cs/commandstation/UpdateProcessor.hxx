@@ -60,9 +60,10 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
   ~UpdateProcessor();
 
   /** Adds a new refresh source to the background refresh packets. */
-  void add_refresh_source(dcc::PacketSource* source,
+  bool add_refresh_source(dcc::PacketSource* source,
                           unsigned priority) OVERRIDE {
     AtomicHolder h(this);
+    bool ret = true;
     refreshSources_.push_back(source);
     hasRefreshSource_ = 1;
     auto& s = packetSourceStates_[source];
@@ -76,8 +77,15 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
       }
       if (priority > last_priority) {
         exclusiveIndex_ = refreshSources_.size() - 1;
+      } else {
+        ret = false;
+      }
+    } else {
+      if (exclusiveIndex_ != NO_EXCLUSIVE) {
+        ret = false;
       }
     }
+    return ret;
   }
   /** Deletes a packet refresh source. */
   void remove_refresh_source(dcc::PacketSource* source) OVERRIDE {
