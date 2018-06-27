@@ -187,6 +187,10 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
   void update_bits_decomposition() {
     char* endp = store_.bit_value_string;
     uint8_t value = be32toh(store_.value);
+    if (!value) {
+      strcpy(store_.bit_value_string, "none");
+      return;
+    }
     bool empty = true;
     for (unsigned bit = 0; bit <= 7; ++bit) {
       if (value & (1<<bit)) {
