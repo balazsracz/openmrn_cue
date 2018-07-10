@@ -816,10 +816,12 @@ PhysicalSignal ZZA1(&be.InOraRed, nullptr, nullptr, nullptr, nullptr, nullptr,
 StubBlock Stub_XXB1(&brd, &XXB1, nullptr, logic, "XX.B1");
 StubBlock Stub_XXB2(&brd, &XXB2, nullptr, logic, "XX.B2");
 StubBlock Stub_XXB3(&brd, &XXB3, nullptr, logic, "XX.B3");
-//StubBlock Stub_XXB4(&brd, &XXB4, nullptr, logic, "XX.B4");
-StandardMiddleLongTrack MdlXXB4(&brd, logic->Allocate("MdlXXB4", 24));
-StandardMiddleDetector Det_XXB4(&brd, &be.InBrownBrown,
-                               logic->Allocate("DetXXB4", 32, 8));
+
+StandardBlock Block_XXB4(&brd, &XXB4, logic, "XX.B4");
+DefAut(xxb4_nostop, brd, {
+    Def().ActReg1(aut->ImportVariable(Block_XXB4.signal_no_stop()));
+    Def().ActReg1(aut->ImportVariable(Block_XXB4.rsignal_no_stop()));
+  });
 
 StandardFixedTurnout Turnout_ZZW1(&brd, logic->Allocate("ZZ.W1", 40),
                                   FixedTurnout::TURNOUT_THROWN);
@@ -910,10 +912,11 @@ TurnoutWrap TYYW8(&Turnout_YYW8.b, kPointToClosed);
 StubBlock Stub_YYA1(&brd, &YYA1, nullptr, logic, "YY.A1");
 StubBlock Stub_YYA2(&brd, &YYA2, nullptr, logic, "YY.A2");
 StubBlock Stub_YYA3(&brd, &YYA3, nullptr, logic, "YY.A3");
-//StubBlock Stub_YYA4(&brd, &YYA4, nullptr, logic, "YY.A4");
-StandardMiddleLongTrack MdlYYA4(&brd, logic->Allocate("MdlYYA4", 24));
-StandardMiddleDetector DetYYA4(&brd, YYA4.sensor_raw,
-                               logic->Allocate("DetYYA4", 32, 8));
+StandardBlock Block_YYA4(&brd, &YYA4, logic, "YY.A4");
+DefAut(yya4_nostop, brd, {
+    Def().ActReg1(aut->ImportVariable(Block_YYA4.signal_no_stop()));
+    Def().ActReg1(aut->ImportVariable(Block_YYA4.rsignal_no_stop()));
+  });
 
 
 StubBlock Stub_YYA33(&brd, &YYA33, nullptr, logic, "YY.A33");
@@ -955,8 +958,8 @@ bool ignored4 = BindSequence(  //
     Turnout_W349.b.side_thrown());
 
 bool ignored3 = BindSequence(Turnout_W360.b.side_thrown(),
-                             {&Block_B369, &TXXW2, &TXXW3, &TXXW4, &MdlXXB4,
-                              &Det_XXB4, &TZZW1, &Block_ZZB2, &Block_ZZA1},
+                             {&Block_B369, &TXXW2, &TXXW3, &TXXW4, &Block_XXB4,
+                              &TZZW1, &Block_ZZB2, &Block_ZZA1},
                              Turnout_ZZW1.b.side_closed());
 
 bool ignored5 = BindSequence(  //
@@ -966,7 +969,7 @@ bool ignored5 = BindSequence(  //
 
 bool ignored6 = BindSequence( //
     Turnout_YYW6.b.side_thrown(), //
-    { &MdlYYA4, &DetYYA4, &TQQW1, &TQQW2, &Block_QQA2, &Block_QQB3 }, //
+    { &Block_YYA4, &TQQW1, &TQQW2, &Block_QQA2, &Block_QQB3 }, //
     Turnout_QQW1.b.side_thrown());
 
 
@@ -1112,7 +1115,7 @@ DefAut(signalaut1, brd, {
   BlockSignal(this, &Stub_XXB2.b_, global_dispatch);
   ClearUsedVariables();
   BlockSignal(this, &Stub_XXB3.b_, global_dispatch);
-  //BlockSignal(this, &Stub_XXB4.b_, global_dispatch);
+  BlockSignal(this, &Block_XXB4, global_dispatch);
 });
 
 DefAut(signalaut2, brd, {
@@ -1120,7 +1123,7 @@ DefAut(signalaut2, brd, {
   BlockSignal(this, &Stub_YYA2.b_, runaround_yard);
   ClearUsedVariables();
   BlockSignal(this, &Stub_YYA3.b_, runaround_yard);
-  //BlockSignal(this, &Stub_YYA4.b_, runaround_yard);
+  BlockSignal(this, &Block_YYA4, runaround_yard);
   ClearUsedVariables();
   BlockSignal(this, &Stub_YYA33.b_, runaround_rbl);
   BlockSignal(this, &Block_YYB42, runaround_rbl);

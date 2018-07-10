@@ -1,4 +1,4 @@
-#!/usr/bin/python3.4
+#!/usr/bin/python3
 
 import xml.etree.ElementTree as ET
 import sys
@@ -40,6 +40,14 @@ g_missing_signals = {
     "XX.B2",
     "XX.B3",
     "XX.B4",
+    "QQ.A1",
+}
+
+g_warning_signals = {
+    "QQ.A2",
+    "QQ.B3",
+    "ZZ.A1",
+    "ZZ.B2",
 }
 
 FLAGS_skip_missing_signals = True
@@ -947,6 +955,7 @@ def PrintLocationControls(layout, block, index):
   signal_xy = (far_xy[0] + signal_vect[0], far_xy[1] + signal_vect[1])
   signame = block
   if signame in g_missing_signals: signame = "NA"
+  if signame in g_warning_signals: signame = "MS!! " + signame
   if signame != "NA" or not FLAGS_skip_missing_signals:
     layout.append(CreateRGSignalIcon(int(signal_xy[0]), int(signal_xy[1]), "Sig." + block, rotation))
     siglabel_vect = g_signallabel_offset_by_rotation[rotation]
