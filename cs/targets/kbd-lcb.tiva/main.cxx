@@ -5,6 +5,9 @@
 #include <unistd.h>
 
 #include "executor/StateFlow.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "openlcb/PolledProducer.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "hardware.hxx"
 #include "os/os.h"
 #include "true_text.h"
@@ -12,8 +15,32 @@
 #include "utils/StringPrintf.hxx"
 #include "utils/blinker.h"
 
-Executor<1> g_executor("executor", 0, 2048);
-Service g_service(&g_executor);
+
+constexpr openlcb::NodeID NODE_ID = UINT64_C(0x0501010114E0);
+
+openlcb::SimpleCanStack stack(NODE_ID);
+
+openlcb::MockSNIPUserFile snip_user_file("Default user name",
+                                         "Default user description");
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = openlcb::MockSNIPUserFile::snip_user_file_path;
+
+uint64_t EVENTID_BASE = NODE_ID << 16;
+using openlcb::GPIOBit;
+
+openlcb::PolledProducer<QuiesceDebouncer, GPIOBit> producer_0(QuiesceDebouncer::Options(3), stack.node(), EVENTID_BASE + 1, EVENTID_BASE + 0, BUT0_Pin::instance());
+openlcb::PolledProducer<QuiesceDebouncer, GPIOBit> producer_1(QuiesceDebouncer::Options(3), stack.node(), EVENTID_BASE + 3, EVENTID_BASE + 2, BUT1_Pin::instance());
+openlcb::PolledProducer<QuiesceDebouncer, GPIOBit> producer_2(QuiesceDebouncer::Options(3), stack.node(), EVENTID_BASE + 5, EVENTID_BASE + 4, BUT2_Pin::instance());
+openlcb::PolledProducer<QuiesceDebouncer, GPIOBit> producer_3(QuiesceDebouncer::Options(3), stack.node(), EVENTID_BASE + 7, EVENTID_BASE + 6, BUT3_Pin::instance());
+
+openlcb::RefreshLoop loop(stack.node(),
+                          {&producer_0, &producer_1,
+                           &producer_2, &producer_3});
+
+constexpr unsigned NUM_BUTTONS = 4;
+
+uint32_t button_bits_store;
+openlcb::BitRangeEventPC button_bits(stack.node(), EVENTID_BASE, &button_bits_store, NUM_BUTTONS);
+
 
 string d(TEXT_TYPE);
 
@@ -23,7 +50,7 @@ bool g_done = false;
 
 class TestFlow : public StateFlowBase {
  public:
-  TestFlow() : StateFlowBase(&g_service) {}
+  TestFlow() : StateFlowBase(stack.service()) {}
 
   void init() {
     kbdFd_ = ::open("/dev/kbd", O_RDWR);
@@ -94,19 +121,11 @@ class TestFlow : public StateFlowBase {
 string g_countdown("3...2...1...");
 string g_go(TEXT_GO);
 
+
 class CommandFlow : public StateFlowBase {
  public:
-  CommandFlow() : StateFlowBase(&g_service) {
+  CommandFlow() : StateFlowBase(stack.service()) {
     start_flow(STATE(wait_for_test));
-    io_.push_back(BUT0_Pin::instance());
-    io_.push_back(BUT1_Pin::instance());
-    io_.push_back(BUT2_Pin::instance());
-    io_.push_back(BUT3_Pin::instance());
-    QuiesceDebouncer::Options opts(10);
-    while (debs_.size() < io_.size()) {
-      debs_.emplace_back(opts);
-      debs_.back().initialize(true);
-    }
   }
 
   void init() {
@@ -123,10 +142,10 @@ class CommandFlow : public StateFlowBase {
 
   Action test_phase() {
     lastTime_.clear();
-    lastTime_.resize(io_.size());
+    lastTime_.resize(NUM_BUTTONS);
     LED_GREEN_Pin::set(1);
     LED_RED_Pin::set(0);
-    buttonState_ = 0xFFFF;
+    buttonState_ = 0;
     return display_string("\n\nTest mode.\n", STATE(run_test_mode));
   }
 
@@ -134,17 +153,17 @@ class CommandFlow : public StateFlowBase {
     if (!SW2_Pin::get()) {
       return call_immediately(STATE(prod_mode));
     }
-    for (unsigned i = 0; i < io_.size(); ++i) {
-      bool st = io_[i]->is_set();
-      if (debs_[i].update_state(st)) {
+    for (unsigned i = 0; i < NUM_BUTTONS; ++i) {
+      bool st = button_bits_store & (1<<i);
+      bool previous_st = buttonState_ & (1 << i);
+      if (st != previous_st) {
         random_ ^= ((lastTime_[i] >> 3) & 1) << nextBit_++;
         if (nextBit_ >= 32) nextBit_ = 0;
         // we just saw a change.
         buttonState_ = buttonState_ & ~(1 << i);
         if (st) {
-          buttonState_ = buttonState_ | (1 << i);
-        } else {
           maxState_ |= (1 << i);
+          buttonState_ = buttonState_ | (1 << i);
         }
         return display_state(STATE(run_test_mode));
       } else {
@@ -156,15 +175,24 @@ class CommandFlow : public StateFlowBase {
 
   Action display_state(Callback c) {
     display_.clear();
-    display_.reserve(io_.size() + 1);
+    display_.reserve(NUM_BUTTONS * 2 + 10);
     display_.push_back('\r');
-    for (unsigned i = 0; i < io_.size(); ++i) {
+    for (unsigned i = 0; i < NUM_BUTTONS; ++i) {
       if (buttonState_ & (1 << i)) {
-        display_.push_back(' ');
-      } else {
         display_.push_back((i < 10) ? '0' + i : 'a' + i - 10);
+      } else {
+        display_.push_back(' ');
       }
     }
+    display_ += "  [";
+    for (unsigned i = 0; i < NUM_BUTTONS; ++i) {
+      if (maxState_ & (1 << i)) {
+        display_.push_back((i < 10) ? '0' + i : 'a' + i - 10);
+      } else {
+        display_.push_back(' ');
+      }
+    }
+    display_ += "]";
     return display_string(display_.c_str(), c);
   }
 
@@ -197,20 +225,14 @@ class CommandFlow : public StateFlowBase {
   }
 
   Action activate() {
-    QuiesceDebouncer::Options opts(10);
-    debs_.clear();
-    while (debs_.size() < io_.size()) {
-      debs_.emplace_back(opts);
-      debs_.back().initialize(true);
-    }
     LED_GREEN_Pin::set(1);
     LED_RED_Pin::set(1);
     random_ ^= random_ >> 16;
     random_ ^= random_ >> 8;
     random_ ^= random_ >> 4;
     random_ ^= random_ >> 2;
-    activeButton_ = random_ & 3;
-    buttonState_ = maxState_;
+    activeButton_ = random_ % NUM_BUTTONS;
+    buttonState_ = 0;
     return sleep_and_call(&timer_, MSEC_TO_NSEC(1), STATE(run_active_mode));
   }
 
@@ -218,18 +240,15 @@ class CommandFlow : public StateFlowBase {
     if (!SW1_Pin::get()) {
       return do_abort();
     }
-    for (unsigned i = 0; i < io_.size(); ++i) {
-      bool st = io_[i]->is_set();
-      if (debs_[i].update_state(st)) {
-        // we just saw a change.
-        if (!st) {
-          buttonState_ = buttonState_ & (~(1 << i));
-          if (i == activeButton_) {
-            trigger();
-          }
-          if (buttonState_ == 0) {
-            return display_state(STATE(triggered));
-          }
+    for (unsigned i = 0; i < NUM_BUTTONS; ++i) {
+      bool st = button_bits_store & (1<<i);
+      if (st && ((buttonState_ & (1<<i)) == 0)) {
+        buttonState_ = buttonState_ | (1 << i);
+        if (i == activeButton_) {
+          trigger();
+        }
+        if ((maxState_ & (~buttonState_)) == 0) {
+          return display_state(STATE(triggered));
         }
         return display_state(STATE(run_active_mode));
       }
@@ -292,8 +311,6 @@ class CommandFlow : public StateFlowBase {
   unsigned ctOffset_{0};
   unsigned activeButton_{1};
   string display_;
-  std::vector<const Gpio*> io_;
-  std::vector<QuiesceDebouncer> debs_;
   int fd_;  // for display
   StateFlowSelectHelper selectHelper_{this};
   StateFlowTimer timer_{this};
@@ -305,8 +322,10 @@ class CommandFlow : public StateFlowBase {
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
+  stack.add_can_port_select("/dev/can0");
   g_test_flow.init();
   g_type_flow.init();
+  stack.start_executor_thread("thread.main", 0, 2000);
   setblink(0);
   while (1) {
     usleep(3000000);
