@@ -47,6 +47,11 @@ string d(TEXT_TYPE);
 string e("\b\b\b765\n");
 int g_downcounter = 15;
 bool g_done = false;
+bool is_aborted = false;
+
+bool q_abort() {
+  return (!SW1_Pin::get()) || SW2_Pin::get();
+}
 
 class TestFlow : public StateFlowBase {
  public:
@@ -63,8 +68,9 @@ class TestFlow : public StateFlowBase {
   }
 
   Action countdown() {
-    if (!SW1_Pin::get()) {
+    if (q_abort()) {
       g_downcounter = 100;
+      is_aborted = true;
       return exit();
     }
     if (!--g_downcounter) {
@@ -122,6 +128,8 @@ string g_countdown("3...2...1...");
 string g_go(TEXT_GO);
 
 
+
+
 class CommandFlow : public StateFlowBase {
  public:
   CommandFlow() : StateFlowBase(stack.service()) {
@@ -151,7 +159,8 @@ class CommandFlow : public StateFlowBase {
 
   Action run_test_mode() {
     if (!SW2_Pin::get()) {
-      return call_immediately(STATE(prod_mode));
+      return sleep_and_call(&timer_, MSEC_TO_NSEC(300), STATE(prod_mode));
+      //return call_immediately(STATE(prod_mode));
     }
     for (unsigned i = 0; i < NUM_BUTTONS; ++i) {
       bool st = button_bits_store & (1<<i);
@@ -199,6 +208,7 @@ class CommandFlow : public StateFlowBase {
   Action prod_mode() {
     LED_GREEN_Pin::set(0);
     LED_RED_Pin::set(1);
+    is_aborted = false;
     ctOffset_ = 0;
     return display_string("Armed.\nWait for the countdown to zero...\n",
                           STATE(countdown));
@@ -218,7 +228,7 @@ class CommandFlow : public StateFlowBase {
   }
 
   Action countdown_wait() {
-    if (!SW1_Pin::get()) {
+    if (q_abort() || is_aborted) {
       return do_abort();
     }
     return sleep_and_call(&timer_, MSEC_TO_NSEC(300), STATE(countdown));
@@ -237,7 +247,7 @@ class CommandFlow : public StateFlowBase {
   }
 
   Action run_active_mode() {
-    if (!SW1_Pin::get()) {
+    if (q_abort()) {
       return do_abort();
     }
     for (unsigned i = 0; i < NUM_BUTTONS; ++i) {
@@ -263,7 +273,7 @@ class CommandFlow : public StateFlowBase {
   }
 
   Action countdown_trigger() {
-    if (!SW1_Pin::get()) {
+    if (is_aborted) {
       return do_abort();
     }
     if (g_done) {
@@ -284,7 +294,7 @@ class CommandFlow : public StateFlowBase {
   }
 
   Action wait_triggered() {
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(50), STATE(countdown_trigger));
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(100), STATE(countdown_trigger));
   }
 
   Action print_done() {
