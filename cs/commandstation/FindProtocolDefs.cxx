@@ -255,10 +255,10 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
   }
   if (input.back() == 'm') {
     flags |= MARKLIN_OLD;
-  }  
+  }
   event &= ~UINT64_C(0xff);
   event |= (flags & 0xff);
-  
+
   return event;
 }
 

@@ -135,7 +135,7 @@ struct FindProtocolDefs {
    * IS_TRAIN_EVENT.
    */
   static openlcb::EventId input_to_search(const string& input);
-  
+
   /** Translates a sequence of input digits punched in by a throttle to an
    * allocate request to issue on the OpenLCB bus.
    *
