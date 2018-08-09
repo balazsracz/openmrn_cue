@@ -84,6 +84,11 @@ struct RailcomDefs
         if (!CH1_Pin::get()) ret |= 1;
         return ret;
     }
+
+    static unsigned get_timer_tick()
+    {
+        return MAP_TimerValueGet(TIMER5_BASE, TIMER_A);
+    }
 };
 
 const uint32_t RailcomDefs::UART_BASE[] __attribute__((weak)) = {UART6_BASE};
