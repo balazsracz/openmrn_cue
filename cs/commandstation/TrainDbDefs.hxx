@@ -79,6 +79,9 @@ enum DccMode {
   DCC_28 = 5,
   DCC_128 = 6,
 
+  /// Bit mask for the protocol field only.
+  PROTOCOL_MASK = 7,
+
   DCC_ANY = 4,
   PUSHPULL = 8,
   MARKLIN_TWOADDR = 16,

@@ -110,6 +110,11 @@ TEST(MatchTest, testmatch) {
   EXPECT_EQ(0, // allocate will not match due to short vs long
             match("013", false, "FooBar777", 13, DCC_ANY));
 
+  EXPECT_EQ(0,  // allocate will not match due to marklin vs dcc
+            match("13M", false, "FooBar777", 13, DCC_ANY));
+  EXPECT_NE(0,  // this is marklin vs marklin
+            match("13M", false, "FooBar777", 13, MARKLIN_NEW));
+
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("013", true, "FooBar777", 13, DCC_14_LONG_ADDRESS));
 
@@ -127,6 +132,22 @@ TEST(MatchTest, longtoshortmatch) {
 
   // Another example in reverse: a short locomotive and a long address query.
   EXPECT_EQ(0, match("013", false, "13", 13, DCC_28));
+}
+
+TEST(MatchTest, marklinmatch) {
+  // In this test we have a dcc long address locomotive and then a marklin
+  // allocate arrives. The match should fail.
+  EXPECT_EQ(0, match("13M", false, "013L", 13, DCC_28_LONG_ADDRESS));
+  LOG(INFO, "2");
+  // Another example: a short locomotive and a marklin query.
+  EXPECT_EQ(0, match("13M", false, "13S", 13, DCC_28));
+
+  // In this test we have a marklin-old locomotive and then a marklin address
+  // allocate arrives.
+  EXPECT_NE(0, match("13M", false, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a marklin query.
+  EXPECT_NE(0, match("13M", false, "13M", 13, MARKLIN_NEW));
 }
 
 }  // namespace
