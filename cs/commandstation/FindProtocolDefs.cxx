@@ -238,7 +238,6 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
       if (!has_space) {
         qry <<= 4;
         qry |= 0xF;
-        event |= uint64_t(0xf) << shift;
         shift -= 4;
       }
       has_space = true;
@@ -246,6 +245,17 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
     pos++;
   }
   event |= uint64_t(qry & 0xFFFFFF) << TRAIN_FIND_MASK_LOW;
+  unsigned flags = 0;
+  if ((input[0] == '0') || (input.back() == 'L')) {
+    flags |= DCC_FORCE_LONG;
+  } else if (input.back() == 'M') {
+    flags |= MARKLIN_NEW;
+  } else if (input.back() == 'm') {
+    flags |= MARKLIN_OLD;
+  }
+  event &= ~UINT64_C(0xff);
+  event |= (flags & 0xff);
+
   return event;
 }
 
@@ -254,13 +264,6 @@ openlcb::EventId FindProtocolDefs::input_to_search(const string& input) {
     return openlcb::TractionDefs::IS_TRAIN_EVENT;
   }
   auto event = input_to_event(input);
-  // @todo: figure out what flags we should exactly be giving here.
-  unsigned flags = 0;
-  if (input[0] == '0') {
-    flags |= DCC_FORCE_LONG;
-  }
-  event &= ~UINT64_C(0xff);
-  event |= (flags & 0xff);
   return event;
 }
 
@@ -269,12 +272,7 @@ openlcb::EventId FindProtocolDefs::input_to_allocate(const string& input) {
     return 0;
   }
   auto event = input_to_event(input);
-  int mode = FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT;
-  if (input[0] == '0') {
-    mode |= FindProtocolDefs::DCC_FORCE_LONG;
-  }
-  event &= ~UINT64_C(0xff);
-  event |= (mode & 0xff);
+  event |= (FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT);
   return event;
 }
 
