@@ -867,6 +867,12 @@ class FakeStraightTrack : public StraightTrackInterface {
   CtrlTrackInterface* side_b_;
 };
 
+class ReverseTrackWrap : public FakeStraightTrack {
+ public:
+  ReverseTrackWrap(StraightTrackInterface* track)
+      : FakeStraightTrack(track->side_b(), track->side_a()) {}
+};
+
 // Allows a turnout be included in a BindSequence({tack, track, turnout, track,
 // track})
 class TurnoutWrap : public FakeStraightTrack {

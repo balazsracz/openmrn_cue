@@ -27,7 +27,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // 5
   { 32, //{ 0, FN_NONEXISTANT, FN_NONEXISTANT, FN_NONEXISTANT, 4,   },
     { LIGHT, ABV,   },
-    "RTS RAILTR", MARKLIN_NEW },  // Marklin Fx decoder
+    "RTS RAILTR", DCC_128 },  // TCS EU621
   // 6
   { 61, //{ 0, 1, 2, 3, 4,   },
     { LIGHT, ENGINE, LIGHT2, HORN, 7,   },
@@ -60,7 +60,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // id 13
   { 27, //{ 0, 4,   },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FN_NONEXISTANT, ABV,   },
-    "WLE ER20", MARKLIN_NEW }, // Marklin fx
+    "WLE ER20", DCC_128 }, // TCS EU621
   // id 14
   { 58, //{ 0, 3, 4,   },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,   },
