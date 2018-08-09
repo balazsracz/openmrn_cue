@@ -171,6 +171,17 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
       address_prefix /= 10;
     }
   }
+  if (((mode & PROTOCOL_MASK) != 0) && (event & EXACT) && (event & ALLOCATE)) {
+    // Request specified a drive mode and allocation. We check the drive mode
+    // to match.
+    auto m1 = mode;
+    auto m2 = train->get_legacy_drive_mode();
+    if (m1 == MARKLIN_OLD) m1 = MARKLIN_NEW;
+    if (m2 == MARKLIN_OLD) m2 = MARKLIN_NEW;
+    if (m1 != m2) {
+      return 0;
+    }
+  }
   if (event & ADDRESS_ONLY) {
     if (((event & EXACT) != 0) || (!has_address_prefix_match)) return 0;
     return MATCH_ANY | ADDRESS_ONLY;
