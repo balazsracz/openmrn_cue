@@ -110,11 +110,11 @@ TEST(MatchTest, testmatch) {
   EXPECT_EQ(0, // allocate will not match due to short vs long
             match("013", false, "FooBar777", 13, DCC_ANY));
 
-  EXPECT_EQ(0, // allocate will not match due to marklin vs dcc
+  EXPECT_EQ(0,  // allocate will not match due to marklin vs dcc
             match("13M", false, "FooBar777", 13, DCC_ANY));
-  EXPECT_NE(0, // this is marklin vs marklin
+  EXPECT_NE(0,  // this is marklin vs marklin
             match("13M", false, "FooBar777", 13, MARKLIN_NEW));
-  
+
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("013", true, "FooBar777", 13, DCC_14_LONG_ADDRESS));
 
