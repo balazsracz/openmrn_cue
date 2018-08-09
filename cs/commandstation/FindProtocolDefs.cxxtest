@@ -75,13 +75,22 @@ TEST(InputToQueryTest, simplexlate) {
   // some more exotic
   EXPECT_EQ("090099FF013F4110", I2Q("013 41"));
   EXPECT_EQ("090099FF013F4110", I2Q("013///41"));
+
+  // Marklin
+  EXPECT_EQ("090099FFFFF13F02", I2Q("13M"));
 }
 
 TEST(InputToAllocTest, simplexlate) {
   EXPECT_EQ("090099FFFFFF13C0", I2A("13"));
   // Forced long
   EXPECT_EQ("090099FFFFF013D0", I2A("013"));
+  EXPECT_EQ("090099FFFFF13FD0", I2A("13L"));
+  EXPECT_EQ("090099FFFF013FD0", I2A("013L"));
   EXPECT_EQ("090099FFFF1234C0", I2A("1234"));
+
+  // Marklin
+  EXPECT_EQ("090099FFFFF12FC2", I2A("12M"));
+  EXPECT_EQ("090099FFFFF12FC1", I2A("12m"));
 }
 
 typedef FindProtocolDefs F;

@@ -140,7 +140,9 @@ struct FindProtocolDefs {
    * allocate request to issue on the OpenLCB bus.
    *
    * @param input is the sequence of numbers that the user typed. This is
-   * expected to have form like '415' or '021' or '474014'
+   * expected to have form like '415' or '021' or '474014'. You can add a
+   * leading zero to force DCC long address, a trailing M to force a Marklin
+   * locomotive.
    * @return an event ID representing the search. This event ID will be zero if
    * the user input is invalid.
    */
