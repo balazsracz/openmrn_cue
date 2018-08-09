@@ -245,15 +245,12 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
     pos++;
   }
   event |= uint64_t(qry & 0xFFFFFF) << TRAIN_FIND_MASK_LOW;
-  // @todo: figure out what flags we should exactly be giving here.
   unsigned flags = 0;
   if ((input[0] == '0') || (input.back() == 'L')) {
     flags |= DCC_FORCE_LONG;
-  }
-  if (input.back() == 'M') {
+  } else if (input.back() == 'M') {
     flags |= MARKLIN_NEW;
-  }
-  if (input.back() == 'm') {
+  } else if (input.back() == 'm') {
     flags |= MARKLIN_OLD;
   }
   event &= ~UINT64_C(0xff);
