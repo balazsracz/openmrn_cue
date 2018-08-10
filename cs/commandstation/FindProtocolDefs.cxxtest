@@ -148,6 +148,33 @@ TEST(MatchTest, marklinmatch) {
 
   // Another example: a marklin-new loco and a marklin query.
   EXPECT_NE(0, match("13M", false, "13M", 13, MARKLIN_NEW));
+
+  // In this test we have a marklin-old locomotive and then a generic
+  // allocate arrives.
+  EXPECT_NE(0, match("13", false, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a generic query.
+  EXPECT_NE(0, match("13", false, "13M", 13, MARKLIN_NEW));
+
+  // In this test we have a marklin-old locomotive and then a DCC address
+  // allocate arrives.
+  EXPECT_EQ(0, match("013", false, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a DCC query.
+  EXPECT_EQ(0, match("013", false, "13M", 13, MARKLIN_NEW));
+
+  // Another example: a marklin-new loco and a DCC query.
+  EXPECT_EQ(0, match("13L", false, "13M", 13, MARKLIN_NEW));
+
+  // Another example: a marklin-new loco and a DCC query.
+  EXPECT_EQ(0, match("13L", false, "13m", 13, MARKLIN_OLD));
+
+  // In this test we have a marklin-old locomotive and then a DCC address
+  // allocate arrives.
+  EXPECT_EQ(0, match("13S", false, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a DCC query.
+  EXPECT_EQ(0, match("13S", false, "13M", 13, MARKLIN_NEW));
 }
 
 }  // namespace
