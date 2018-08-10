@@ -263,6 +263,8 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
     flags |= MARKLIN_NEW;
   } else if (input.back() == 'm') {
     flags |= MARKLIN_OLD;
+  } else if (input.back() == 'S') {
+    flags |= DCC_ANY;
   }
   event &= ~UINT64_C(0xff);
   event |= (flags & 0xff);
