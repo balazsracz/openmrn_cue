@@ -69,21 +69,22 @@ enum Symbols {
 };
 
 enum DccMode {
-  FAKE_DRIVE = 7,
+  FAKE_DRIVE = 1,
 
-  MARKLIN_OLD = 1,
-  MARKLIN_NEW = 2,
-  MFX = 3,
+  MARKLIN_ANY = 4,
+  MARKLIN_OLD = 5,
+  MARKLIN_NEW = 6,
+  MFX = 7,
 
-  DCC_14 = 4,
-  DCC_28 = 5,
-  DCC_128 = 6,
+  DCC_ANY = 8,
+  DCC_14 = 9,
+  DCC_28 = 10,
+  DCC_128 = 11,
 
   /// Bit mask for the protocol field only.
-  PROTOCOL_MASK = 7,
+  PROTOCOL_MASK = 15,
 
-  DCC_ANY = 4,
-  PUSHPULL = 8,
+  PUSHPULL = 0,
   MARKLIN_TWOADDR = 16,
   OLCBUSER = 32,
   DCC_LONG_ADDRESS = 64,

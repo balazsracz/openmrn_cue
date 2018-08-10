@@ -63,7 +63,7 @@ uint8_t match(const string& input, bool query, const string& name,
 TEST(AddressToQueryTest, simplexlate) {
   EXPECT_EQ("090099FFFFFF1300", A2Q(13, false, OLCBUSER));
   // Forced long
-  EXPECT_EQ("090099FFFFFF1314", A2Q(13, false, DCC_LONG_ADDRESS | DCC_ANY));
+  EXPECT_EQ("090099FFFFFF1318", A2Q(13, false, DCC_LONG_ADDRESS | DCC_ANY));
   EXPECT_EQ("090099FF13572100", A2Q(135721, false, 0));
 }
 
@@ -77,7 +77,7 @@ TEST(InputToQueryTest, simplexlate) {
   EXPECT_EQ("090099FF013F4110", I2Q("013///41"));
 
   // Marklin
-  EXPECT_EQ("090099FFFFF13F02", I2Q("13M"));
+  EXPECT_EQ("090099FFFFF13F06", I2Q("13M"));
 }
 
 TEST(InputToAllocTest, simplexlate) {
@@ -89,8 +89,8 @@ TEST(InputToAllocTest, simplexlate) {
   EXPECT_EQ("090099FFFF1234C0", I2A("1234"));
 
   // Marklin
-  EXPECT_EQ("090099FFFFF12FC2", I2A("12M"));
-  EXPECT_EQ("090099FFFFF12FC1", I2A("12m"));
+  EXPECT_EQ("090099FFFFF12FC6", I2A("12M"));
+  EXPECT_EQ("090099FFFFF12FC5", I2A("12m"));
 }
 
 typedef FindProtocolDefs F;
