@@ -99,7 +99,7 @@ unsigned FindProtocolDefs::query_to_address(openlcb::EventId event,
     // For the moment we just ignore every non-numeric character. Including
     // gluing together all digits entered by the user into one big number.
   }
-  uint8_t nmode = event & 7;
+  uint8_t nmode = event & PROTOCOL_MASK;
   // The default drive mode is known by AllTrainNodes. It is okay to leave it
   // as zero.
   if (has_prefix_zero || (event & FindProtocolDefs::DCC_FORCE_LONG)) {
@@ -127,7 +127,7 @@ openlcb::EventId FindProtocolDefs::address_to_query(unsigned address,
     event |= EXACT;
   }
   if ((mode & OLCBUSER) == 0) {
-    event |= mode & 7;
+    event |= mode & PROTOCOL_MASK;
   }
   if (mode & DCC_LONG_ADDRESS) {
     event |= DCC_FORCE_LONG;
