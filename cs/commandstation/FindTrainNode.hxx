@@ -382,7 +382,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
 
   Action try_find_on_openlcb() {
     return invoke_subflow_and_wait(&remoteLookupFlow_, STATE(olcb_find_done),
-                                   input()->address, false, OLCBUSER);
+                                   input()->address, false, DCCMODE_OLCBUSER);
   }
 
   Action olcb_find_done() {

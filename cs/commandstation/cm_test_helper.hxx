@@ -26,19 +26,19 @@ const struct const_traindb_entry_t const_lokdb[] = {
       LIGHT, TELEX, FNT11, ABV, 0xff,
      },
      "Am 843 093-6",
-     FAKE_DRIVE},
+     DCCMODE_FAKE_DRIVE},
     {22,
      {
       LIGHT, FNT11, ABV, 0xff,
      },
      "RE 460 TSR",
-     FAKE_DRIVE},  // todo: there is no beamer here // LD-32 decoder
+     DCCMODE_FAKE_DRIVE},  // todo: there is no beamer here // LD-32 decoder
     {465,
      {
       LIGHT, SPEECH, 0xff,
      },
      "Jim's steam",
-     FAKE_DRIVE | PUSHPULL},
+     DCCMODE_FAKE_DRIVE},
     {0,
      {
       0,

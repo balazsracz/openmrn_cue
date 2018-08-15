@@ -150,9 +150,9 @@ TEST_F(FindProtocolTest, WithAllocate) {
   }
   wait();
   clear_expect();
-  // Checks that the new train is indeed marklin with address 23.
+  // Checks that the new train is indeed DCC with address 23.
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
-  EXPECT_EQ(5, entry->get_legacy_drive_mode());
+  EXPECT_EQ(DCC_28, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
   EXPECT_EQ("23S", entry->get_train_name());
 }
@@ -162,8 +162,8 @@ TEST_F(FindProtocolTest, AllocateMarklin) {
   wait();
   clear_expect(true); // strict
   expect_train_start(0x443, 23, dcc::TrainAddressType::MM);
-  expect_packet(":X19544443N090099FFFFFF2382;");
-  send_packet(":X19914123N090099FFFFFF2382;");
+  expect_packet(":X19544443N090099FFFFFF2384;");
+  send_packet(":X19914123N090099FFFFFF2384;");
   wait();
   while (!trainNodes_->find_flow_is_idle()) {
     usleep(100);
@@ -172,7 +172,7 @@ TEST_F(FindProtocolTest, AllocateMarklin) {
   clear_expect();
   // Checks that the new train is indeed marklin with address 23.
   auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
-  EXPECT_EQ(2, entry->get_legacy_drive_mode());
+  EXPECT_EQ(MARKLIN_NEW, entry->get_legacy_drive_mode());
   EXPECT_EQ(23, entry->get_legacy_address());
   EXPECT_EQ("23M", entry->get_train_name());
 }
@@ -182,9 +182,9 @@ TEST_F(FindProtocolTest, AllocateLongAddressViaBit) {
   wait();
   clear_expect(true); // strict
   expect_train_start(0x443, 23, dcc::TrainAddressType::DCC_LONG_ADDRESS);
-  expect_packet(":X19544443N090099FFFFFF2390;");
+  expect_packet(":X19544443N090099FFFFFF238C;");
   auto seq = g_executor.sequence();
-  send_packet(":X19914123N090099FFFFFF2390;");
+  send_packet(":X19914123N090099FFFFFF238C;");
   EXPECT_TRUE((g_executor.sequence() > seq) || !g_executor.empty());
   wait();
   ASSERT_TRUE(g_executor.empty());
@@ -298,7 +298,7 @@ class SingleFindProtocolTest : public openlcb::AsyncNodeTest {
         StringPrintf(":X19914123N%016" PRIX64 ";", event));
   }
 
-  ExternalTrainDbEntry dbEntry_{"Am 853 093-6", 53, FAKE_DRIVE};
+  ExternalTrainDbEntry dbEntry_{"Am 853 093-6", 53, DCCMODE_FAKE_DRIVE};
   SingleNodeFindProtocolServer server_{node_, &dbEntry_};
 };
 
@@ -416,11 +416,11 @@ TEST_F(MatchNodeTest, with_protocol) {
       check_match(0xFF0123, FindProtocolDefs::EXACT | DCC_28, "Foo", 123));
   EXPECT_FALSE(check_match(
       0xFF0123,
-      FindProtocolDefs::EXACT | FindProtocolDefs::DCC_FORCE_LONG | DCC_28,
+      FindProtocolDefs::EXACT | DCC_28_LONG_ADDRESS,
       "Foo", 123));
   EXPECT_FALSE(check_match(
       0xFFF123,
-      FindProtocolDefs::EXACT | FindProtocolDefs::DCC_FORCE_LONG | DCC_28,
+      FindProtocolDefs::EXACT | DCC_28_LONG_ADDRESS,
       "Foo", 123));
 
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,

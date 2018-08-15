@@ -530,18 +530,23 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
                                                 int address) {
   Impl* impl = new Impl;
   impl->id = train_id;
-  trains_.push_back(impl);
-  switch (mode & 7) {
+  switch (mode) {
     case MARKLIN_OLD: {
       impl->train_ = new dcc::MMOldTrain(dcc::MMAddress(address));
       break;
     }
+    case MARKLIN_DEFAULT:
     case MARKLIN_NEW:
-    case MFX: {
+      /// @todo (balazs.racz) implement marklin twoaddr train drive mode.
+    case MARKLIN_TWOADDR: {
       impl->train_ = new dcc::MMNewTrain(dcc::MMAddress(address));
       break;
     }
-    case DCC_28: {
+      /// @todo (balazs.racz) implement dcc 14 train drive mode.
+    case DCC_14:      
+    case DCC_14_LONG_ADDRESS:      
+    case DCC_28:
+    case DCC_28_LONG_ADDRESS: {
       if ((mode & DCC_LONG_ADDRESS) || address >= 128) {
         impl->train_ = new dcc::Dcc28Train(dcc::DccLongAddress(address));
       } else {
@@ -549,7 +554,8 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
       }
       break;
     }
-    case DCC_128: {
+    case DCC_128:
+    case DCC_128_LONG_ADDRESS: {
       if ((mode & DCC_LONG_ADDRESS) || address >= 128) {
         impl->train_ = new dcc::Dcc128Train(dcc::DccLongAddress(address));
       } else {
@@ -558,30 +564,32 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
       break;
     }
 #ifndef __FreeRTOS__
-    case FAKE_DRIVE: {
+    case DCCMODE_FAKE_DRIVE: {
       impl->train_ = new openlcb::LoggingTrain(address);
       break;
     }
 #endif
     default:
-      DIE("Unhandled train drive mode.");
+      impl->train_ = nullptr;
+      LOG_ERROR("Unhandled train drive mode.");
   }
   if (impl->train_) {
+    trains_.push_back(impl);
     impl->node_ =
         new openlcb::TrainNodeForProxy(tractionService_, impl->train_);
     impl->eventHandler_ =
         new openlcb::FixedEventProducer<openlcb::TractionDefs::IS_TRAIN_EVENT>(
             impl->node_);
+    return impl;
+  } else {
+    delete impl;
+    return nullptr;
   }
-  return impl;
 }
 
 openlcb::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
-  // The default drive type is DCC_28.
-  if ((drive_type & 7) == 0) {
-    drive_type = static_cast<DccMode>(drive_type | DCC_28);
-  }
   Impl* impl = create_impl(-1, drive_type, address);
+  if (!impl) return 0; // failed.
   impl->id = db_->add_dynamic_entry(new DccTrainDbEntry(address, drive_type));
   return impl->node_->node_id();
 }

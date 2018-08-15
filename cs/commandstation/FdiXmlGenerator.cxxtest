@@ -41,7 +41,7 @@ namespace commandstation {
 const struct const_traindb_entry_t const_lokdb[] = {
   { 51, { LIGHT, TELEX, HORN, SHUNT, ABV, 0, 0x3e, },
     "BR 260417", DCC_28 },
-  { 50, { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_128 | PUSHPULL },
+  { 50, { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_128 },
   { 22, {  },
     "Fooo", DCC_128 },
   { 22, { LIGHT, 0xff, 0xff, LIGHT },

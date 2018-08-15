@@ -203,6 +203,11 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
         DccMode mode;
         unsigned address = FindProtocolDefs::query_to_address(eventId_, &mode);
         newNodeId_ = nodes()->allocate_node(mode, address);
+        if (!newNodeId_) {
+          LOG(WARNING, "Decided to allocate node but failed. type=%d addr=%d",
+              (int)mode, (int)address);
+          return exit();
+        }
         return call_immediately(STATE(wait_for_new_node));
       }
       return exit();

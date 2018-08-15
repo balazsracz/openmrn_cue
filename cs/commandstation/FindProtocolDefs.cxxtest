@@ -61,36 +61,37 @@ uint8_t match(const string& input, bool query, const string& name,
 }
 
 TEST(AddressToQueryTest, simplexlate) {
-  EXPECT_EQ("090099FFFFFF1300", A2Q(13, false, OLCBUSER));
+  EXPECT_EQ("090099FFFFFF1300", A2Q(13, false, DCCMODE_DEFAULT));
+  EXPECT_EQ("090099FFFFFF1301", A2Q(13, false, DCCMODE_OLCBUSER));
   // Forced long
-  EXPECT_EQ("090099FFFFFF1314", A2Q(13, false, DCC_LONG_ADDRESS | DCC_ANY));
+  EXPECT_EQ("090099FFFFFF130C", A2Q(13, false, DCC_LONG_ADDRESS | DCC_ANY));
   EXPECT_EQ("090099FF13572100", A2Q(135721, false, 0));
 }
 
 TEST(InputToQueryTest, simplexlate) {
   EXPECT_EQ("090099FFFFFF1300", I2Q("13"));
   // Forced long
-  EXPECT_EQ("090099FFFFF01310", I2Q("013"));
+  EXPECT_EQ("090099FFFFF0130C", I2Q("013"));
   EXPECT_EQ("090099FFFF123400", I2Q("1234"));
   // some more exotic
-  EXPECT_EQ("090099FF013F4110", I2Q("013 41"));
-  EXPECT_EQ("090099FF013F4110", I2Q("013///41"));
+  EXPECT_EQ("090099FF013F410C", I2Q("013 41"));
+  EXPECT_EQ("090099FF013F410C", I2Q("013///41"));
 
   // Marklin
-  EXPECT_EQ("090099FFFFF13F02", I2Q("13M"));
+  EXPECT_EQ("090099FFFFF13F06", I2Q("13M"));
 }
 
 TEST(InputToAllocTest, simplexlate) {
   EXPECT_EQ("090099FFFFFF13C0", I2A("13"));
   // Forced long
-  EXPECT_EQ("090099FFFFF013D0", I2A("013"));
-  EXPECT_EQ("090099FFFFF13FD0", I2A("13L"));
-  EXPECT_EQ("090099FFFF013FD0", I2A("013L"));
+  EXPECT_EQ("090099FFFFF013CC", I2A("013"));
+  EXPECT_EQ("090099FFFFF13FCC", I2A("13L"));
+  EXPECT_EQ("090099FFFF013FCC", I2A("013L"));
   EXPECT_EQ("090099FFFF1234C0", I2A("1234"));
 
   // Marklin
-  EXPECT_EQ("090099FFFFF12FC2", I2A("12M"));
-  EXPECT_EQ("090099FFFFF12FC1", I2A("12m"));
+  EXPECT_EQ("090099FFFFF12FC6", I2A("12M"));
+  EXPECT_EQ("090099FFFFF12FC5", I2A("12m"));
 }
 
 typedef FindProtocolDefs F;
@@ -150,12 +151,20 @@ TEST(MatchTest, marklinmatch) {
   EXPECT_NE(0, match("13M", false, "13M", 13, MARKLIN_NEW));
 
   // In this test we have a marklin-old locomotive and then a generic
-  // allocate arrives.
-  EXPECT_NE(0, match("13", false, "13m", 13, MARKLIN_OLD));
-
+  // allocate arrives. This won't match if the default drive mode is DCC.
+  EXPECT_EQ(0, match("13", false, "13m", 13, MARKLIN_OLD));
+  
   // Another example: a marklin-new loco and a generic query.
-  EXPECT_NE(0, match("13", false, "13M", 13, MARKLIN_NEW));
+  EXPECT_EQ(0, match("13", false, "13M", 13, MARKLIN_NEW));
 
+  {
+    ScopedOverride ov(&FindProtocolDefs::DEFAULT_DRIVE_MODE, MARKLIN_NEW);
+    // In this test we have a marklin-old locomotive and then a generic
+    // allocate arrives. This will match if the default drive mode is MM.
+    EXPECT_NE(0, match("13", false, "13m", 13, MARKLIN_OLD));
+    EXPECT_NE(0, match("13", false, "13M", 13, MARKLIN_NEW));
+  }
+  
   // In this test we have a marklin-old locomotive and then a DCC address
   // allocate arrives.
   EXPECT_EQ(0, match("013", false, "13m", 13, MARKLIN_OLD));
