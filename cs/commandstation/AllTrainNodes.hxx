@@ -67,7 +67,10 @@ class AllTrainNodes {
   /// Returns a node id or 0 if the id is not known to be a train.
   openlcb::NodeID get_train_node_id(int id);
 
-  // Creates a new train node based on the given address and drive mode.
+  /// Creates a new train node based on the given address and drive mode.
+  /// @param drive_type describes what kind of train node this should be
+  /// @param address is the hardware (legacy) address
+  /// @return 0 if the allocation fails (invalid arguments)
   openlcb::NodeID allocate_node(DccMode drive_type, int address);
 
   size_t size() { return trains_.size(); }

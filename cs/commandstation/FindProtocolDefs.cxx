@@ -39,6 +39,18 @@
 
 namespace commandstation {
 
+/// Specifies what kind of train to allocate when the drive mode is left as
+/// default / unspecified.
+uint8_t FindProtocolDefs::DEFAULT_DRIVE_MODE = DCC_28;
+
+/// Specifies what kind of train to allocate when the drive mode is set as
+/// MARKLIN_ANY.
+uint8_t FindProtocolDefs::DEFAULT_MARKLIN_DRIVE_MODE = MARKLIN_NEW;
+
+/// Specifies what kind of train to allocate when the drive mode is set as
+/// DCC_ANY.
+uint8_t FindProtocolDefs::DEFAULT_DCC_DRIVE_MODE = DCC_28;
+
 namespace {
 /// @returns true for a character that is a digit.
 bool is_number(char c) { return ('0' <= c) && (c <= '9'); }
@@ -99,13 +111,25 @@ unsigned FindProtocolDefs::query_to_address(openlcb::EventId event,
     // For the moment we just ignore every non-numeric character. Including
     // gluing together all digits entered by the user into one big number.
   }
-  uint8_t nmode = event & 7;
-  // The default drive mode is known by AllTrainNodes. It is okay to leave it
-  // as zero.
-  if (has_prefix_zero || (event & FindProtocolDefs::DCC_FORCE_LONG)) {
-    nmode |= commandstation::DCC_LONG_ADDRESS;
+  uint8_t drive_type = event & DCCMODE_PROTOCOL_MASK;
+  if (event & ALLOCATE) {
+    // If we are allocating, then we fill in defaults for drive modes.
+    if (drive_type == DCCMODE_DEFAULT) {
+      drive_type = DEFAULT_DRIVE_MODE;
+    } else if (drive_type == MARKLIN_DEFAULT) {
+      drive_type = DEFAULT_MARKLIN_DRIVE_MODE;
+    } else if (drive_type == DCC_DEFAULT) {
+      drive_type = DEFAULT_DCC_DRIVE_MODE;
+    } else if (drive_type == (DCC_DEFAULT | DCC_LONG_ADDRESS)) {
+      drive_type |= (DEFAULT_DCC_DRIVE_MODE & DCC_SS_MASK);
+    }
   }
-  *mode = static_cast<DccMode>(nmode);
+  
+  if (has_prefix_zero &&  //
+      (((drive_type & DCC_ANY_MASK) == DCC_ANY) || (drive_type == DCCMODE_DEFAULT))) {
+    drive_type |= commandstation::DCC_DEFAULT | commandstation::DCC_LONG_ADDRESS;
+  }
+  *mode = static_cast<DccMode>(drive_type);
   return supplied_address;
 }
 
@@ -126,12 +150,7 @@ openlcb::EventId FindProtocolDefs::address_to_query(unsigned address,
   if (exact) {
     event |= EXACT;
   }
-  if ((mode & OLCBUSER) == 0) {
-    event |= mode & 7;
-  }
-  if (mode & DCC_LONG_ADDRESS) {
-    event |= DCC_FORCE_LONG;
-  }
+  event |= mode & DCCMODE_PROTOCOL_MASK;
   return event;
 }
 
@@ -146,17 +165,19 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
   DccMode mode;
   unsigned supplied_address = query_to_address(event, &mode);
   bool has_address_prefix_match = false;
+  auto desired_address_type = dcc_mode_to_address_type(mode, supplied_address);
+  auto actual_address_type = dcc_mode_to_address_type(train->get_legacy_drive_mode(),
+                                              legacy_address);
   if (supplied_address == legacy_address) {
-    auto desired_mode = dcc_mode_to_address_type(mode, supplied_address);
-    auto actual_mode = dcc_mode_to_address_type(train->get_legacy_drive_mode(),
-                                                legacy_address);
-    if (/*(mode & 7) == 0 ||*/ desired_mode == actual_mode) {
+    if (actual_address_type == dcc::TrainAddressType::UNSUPPORTED ||
+        desired_address_type == dcc::TrainAddressType::UNSPECIFIED ||
+        desired_address_type == actual_address_type) {
       // If the caller did not specify the drive mode, or the drive mode
       // matches.
       return MATCH_ANY | ADDRESS_ONLY | EXACT;
     } else {
       LOG(INFO, "exact match failed due to mode: desired %d actual %d",
-          static_cast<int>(desired_mode), static_cast<int>(actual_mode));
+          static_cast<int>(desired_address_type), static_cast<int>(actual_address_type));
     }
     has_address_prefix_match = ((event & EXACT) == 0);
   }
@@ -171,14 +192,10 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
       address_prefix /= 10;
     }
   }
-  if (((mode & PROTOCOL_MASK) != 0) && (event & EXACT) && (event & ALLOCATE)) {
+  if ((mode != DCCMODE_DEFAULT) && (event & EXACT) && (event & ALLOCATE)) {
     // Request specified a drive mode and allocation. We check the drive mode
     // to match.
-    auto m1 = mode;
-    auto m2 = train->get_legacy_drive_mode();
-    if (m1 == MARKLIN_OLD) m1 = MARKLIN_NEW;
-    if (m2 == MARKLIN_OLD) m2 = MARKLIN_NEW;
-    if (m1 != m2) {
+    if (desired_address_type != actual_address_type) {
       return 0;
     }
   }
@@ -258,11 +275,13 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
   event |= uint64_t(qry & 0xFFFFFF) << TRAIN_FIND_MASK_LOW;
   unsigned flags = 0;
   if ((input[0] == '0') || (input.back() == 'L')) {
-    flags |= DCC_FORCE_LONG;
+    flags |= commandstation::DCC_ANY | commandstation::DCC_LONG_ADDRESS;
   } else if (input.back() == 'M') {
     flags |= MARKLIN_NEW;
   } else if (input.back() == 'm') {
     flags |= MARKLIN_OLD;
+  } else if (input.back() == 'S') {
+    flags |= DCC_ANY;
   }
   event &= ~UINT64_C(0xff);
   event |= (flags & 0xff);

@@ -6,7 +6,7 @@ namespace commandstation {
 __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = {
   // 0
   { 50, //{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19} ,
-    { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN }, "ICN", DCC_128 | PUSHPULL },  // ESU loksound V4.0 MM/DCC
+    { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN }, "ICN", DCC_128  },  // ESU loksound V4.0 MM/DCC
   // 1
   { 51, //{ 0, 1, 3, 4,  0xff, },
     { LIGHT, TELEX, FN_NONEXISTANT, SHUNT, ABV,   },
@@ -19,7 +19,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // This is a TCS WowElectric ACS-64 OEM decoder.
   { 40, //{ 0, 2, 3, 4,  0xff, },
     { LIGHT, FN_NONEXISTANT, HORN, SPEECH, ABV,   },
-    "ICE 2", DCC_128 | PUSHPULL }, // todo: check fnbits
+    "ICE 2", DCC_128 }, // todo: check fnbits
   // 4
   { 22, //{ 0, 3, 4,   },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,   },
@@ -35,7 +35,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // 7
   { 46, //{ 0, 1, 2, 3, 4, 5,  },
     { LIGHT, HORN, ENGINE, FNT11, ABV, BEAMER,   },
-    "RE 460 118-2", MFX | PUSHPULL },  // todo: there is F5 with beamer that can't be switched.
+    "RE 460 118-2", MFX },  // todo: there is F5 with beamer that can't be switched.
   // 8
   { 15, //{ 0, 1, 3, 4,   },
     { LIGHT, BEAMER, FN_NONEXISTANT, FNT11, ABV,   },
@@ -43,7 +43,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // 9
   { 47, //{ 0, 3, 4,  },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,   },
-    "RE 465", DCC_128 | PUSHPULL },  // ESU LokPilot standard (V4.0)
+    "RE 465", DCC_128 },  // ESU LokPilot standard (V4.0)
   // id 10
   { 72, //{ 0, 1, 4,  },
     { LIGHT, LIGHT1, FN_NONEXISTANT, FN_NONEXISTANT, ABV },
@@ -68,11 +68,11 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // id 15
   { 26, //{ 0,   },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV, },
-    "Re 460 HAG", DCC_128 | PUSHPULL },  // LokPilot 4 (some bare cable form) + TCS KA3
+    "Re 460 HAG", DCC_128 },  // LokPilot 4 (some bare cable form) + TCS KA3
   // id 16
   { 38, //{ 0, 3, 4,  },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV,  },
-    "BDe 4/4 1640", DCC_128 | PUSHPULL },  // Tams LD-G32, DC motor
+    "BDe 4/4 1640", DCC_128 },  // Tams LD-G32, DC motor
   // id 17
   { 48, //{ 0,   },
     { LIGHT,   },
@@ -92,7 +92,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   // id 21
   { 33, //{ 0, 3, 4,  },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV, },
-    "RBe 4/4 1423", DCC_28 | PUSHPULL }, // Burned LokPilot 3.0
+    "RBe 4/4 1423", DCC_28 }, // Burned LokPilot 3.0
   // id 22
   { 68, //{0, 1, 2, 3, 4 },
     { LIGHT, LIGHT1, ENGINE, WHISTLE, ABV   },

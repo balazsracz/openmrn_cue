@@ -14,7 +14,7 @@ class PtrTrainDbEntry : public TrainDbEntry {
    * particular train known to the database.
    */
   openlcb::NodeID get_traction_node() override {
-    if (entry()->mode & OLCBUSER) {
+    if (entry()->mode == DCCMODE_OLCBUSER) {
       return 0x050101010000ULL | static_cast<openlcb::NodeID>(legacy_address());
     } else {
       auto addr = legacy_address();
