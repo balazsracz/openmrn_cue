@@ -100,15 +100,15 @@ CDI_GROUP_END();
 
 static const char DCC_DRIVE_MODE_MAP[] =
     "<relation><property>0</property><value>Unused</value></relation>"
-    "<relation><property>5</property><value>DCC 28-step</value></relation>"
-    "<relation><property>6</property><value>DCC 128-step</value></relation>"
-    "<relation><property>1</property><value>Marklin-Motorola "
+    "<relation><property>10</property><value>DCC 28-step</value></relation>"
+    "<relation><property>11</property><value>DCC 128-step</value></relation>"
+    "<relation><property>5</property><value>Marklin-Motorola "
     "I</value></relation>"
-    "<relation><property>2</property><value>Marklin-Motorola "
+    "<relation><property>6</property><value>Marklin-Motorola "
     "II</value></relation>"
-    "<relation><property>69</property><value>DCC 28-step (forced long "
+    "<relation><property>14</property><value>DCC 28-step (forced long "
     "address)</value></relation>"
-    "<relation><property>70</property><value>DCC 128-step (forced long "
+    "<relation><property>15</property><value>DCC 128-step (forced long "
     "address)</value></relation>";
 
 CDI_GROUP(TrainDbCdiEntry, Description("Configures a single train"));
