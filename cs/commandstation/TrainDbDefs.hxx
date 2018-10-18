@@ -35,6 +35,7 @@
 #ifndef _COMMANDSTATION_TRAINDBDEFS_HXX_
 #define _COMMANDSTATION_TRAINDBDEFS_HXX_
 
+#include "utils/logging.h"
 #include "dcc/Defs.hxx"
 
 namespace commandstation {
@@ -68,37 +69,135 @@ enum Symbols {
   FN_UNINITIALIZED = 255,
 };
 
+// Use cases we need to support:
+//
+// - search, any protocol
+// - search, specific address mode (dcc-short, dcc-long, marklin, dead rail)
+// - allocate, any protocol
+// - allocate, specific address mode (dcc-short, dcc-long, marklin, dead rail)
+// - allocate, specific address mode and speed steps
+//
+// Dead rail is an address mode.
+// Marklin old, new, twoaddr is a speed step mode
+// DCC 14, 28, 128 is a speed step mode
+// MFX is an address mode but unclear what the address is actually
+//
+// DCC protocol options: 3 bits: short/long; default-14-28-128.
+// Marklin protocol options: old-new-twoaddr. Mfx?
+// base protocol: dcc, marklin, deadrail
+// dcc options: 3 bits
+// marklin options: 2 bits (f0, f4, f8, mfx)
+// additional protocols: selectrix, mth?,
+// what if we don't want to express a preference?
+//   most settings have to have a neutral choice.
+//   eg. dcc default; dcc force long
+//   dcc default-14-28-128
+//   marklin default could be marklin new
+// 
+// Search protocol reserves bits 0x80, 0x40, 0x20
+// This leaves 5 bits for protocol. Protocol base = 2 bits; protocol options = 3 bits.
+// protocol base: bits 0,1:
+//    . 0x0 : default / unspecified, olcbuser, all marklin fits here.
+//    . 0x1 : dcc
+//    . 0x2, 0x3 : reserved (expansion)
+//
+// marklin option bits: 2 bits should be default, force f0, force f8, force mfx
+// third option bit should be reserved, check as zero
+//
+// default protocol needs to have the expansion bits reserved, check as zero.
+//
+// can we fold default and marklin over each other?
+// two bits: 00
+// force long == 1 => marklin
+// 00 0 00: default
+// 00 0 01: olcb direct
+// 00 0 10: mfx ?
+//
+// 00 1 00: marklin default
+// 00 1 01: marklin old
+// 00 1 10: marklin new
+// 00 1 11: marklin 2-address
+//
+// 01 0 00: dcc (default)
+// 01 1 00: dcc long
+// 01 0 01: dcc 14
+// 01 1 01: dcc 14 long does not exist (all long address capable dcc decoders support 28)
+// 01 0 10: dcc 28
+// 01 1 10: dcc 28 long
+// 01 0 11: dcc 128
+// 01 1 11: dcc 128 long
+
+
+
 enum DccMode {
-  FAKE_DRIVE = 7,
+  DCCMODE_DEFAULT = 0,
+  DCCMODE_FAKE_DRIVE = 1,
+  DCCMODE_OLCBUSER = 1,
 
-  MARKLIN_OLD = 1,
-  MARKLIN_NEW = 2,
-  MFX = 3,
+  /// Value for testing whether the protocol is a Markin-Motorola protocol
+  /// variant.
+  MARKLIN_ANY = 0b00100,
+  /// Mask for testing whether the protocol is a Markin-Motorola protocol
+  /// variant.
+  MARKLIN_ANY_MASK = 0b11100,
+  /// Acquisition for a Marklin locomotive with default setting.
+  MARKLIN_DEFAULT = MARKLIN_ANY,
+  /// Force MM protocol version 1 (F0 only).
+  MARKLIN_OLD = MARKLIN_ANY | 1,
+  /// Force MM protocol version 2 (F0-F4).
+  MARKLIN_NEW = MARKLIN_ANY | 2,
+  /// Force MM protocol version 2 with subsequent address for more functions
+  /// (F0-F8).
+  MARKLIN_TWOADDR = MARKLIN_ANY | 3,
+  /// Alias for MFX locmotives (to be driven with Marklin v2 protocol for now).
+  MFX = MARKLIN_NEW,
 
-  DCC_14 = 4,
-  DCC_28 = 5,
-  DCC_128 = 6,
+  /// value for testing whether the protocol is a DCC variant
+  DCC_ANY = 0b01000,
+  /// mask for testing whether the protocol is a DCC variant
+  DCC_ANY_MASK = 0b11000,
 
-  DCC_ANY = 4,
-  PUSHPULL = 8,
-  MARKLIN_TWOADDR = 16,
-  OLCBUSER = 32,
-  DCC_LONG_ADDRESS = 64,
+  /// Acquisition for DCC locomotive with default settings.
+  DCC_DEFAULT = DCC_ANY,
+  /// Force long address for DCC. If clear, uses default address type by number.
+  DCC_LONG_ADDRESS = 0b00100,
+  /// Mask for the DCC speed step setting.
+  DCC_SS_MASK = 0b00011,
+  /// Unpecified / default speed step setting.
+  DCC_DEFAULT_SS = DCC_DEFAULT,
+  /// Force 14 SS mode
+  DCC_14 = DCC_ANY | 1,
+  /// Force 28 SS mode
+  DCC_28 = DCC_ANY | 2,
+  /// Force 128 SS mode
+  DCC_128 = DCC_ANY | 3,
+  /// Force 14 SS mode & long address (this is meaningless).
+  DCC_14_LONG_ADDRESS = DCC_14 | DCC_LONG_ADDRESS,
+  /// Force 28 SS mode & long address.
+  DCC_28_LONG_ADDRESS = DCC_28 | DCC_LONG_ADDRESS,
+  /// Force 128 SS mode & long address.
+  DCC_128_LONG_ADDRESS = DCC_128 | DCC_LONG_ADDRESS,
 
-  DCC_14_LONG_ADDRESS = 68,
-  DCC_28_LONG_ADDRESS = 69,
-  DCC_128_LONG_ADDRESS = 70,
+  /// Bit mask for the protocol field only.
+  DCCMODE_PROTOCOL_MASK = 0b11111,
 };
 
 inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
                                                       uint32_t address) {
-  if ((mode == MARKLIN_OLD || mode == MARKLIN_NEW)) {
+  if (mode == DCCMODE_DEFAULT) {
+    return dcc::TrainAddressType::UNSPECIFIED;
+  }
+  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY) {
     return dcc::TrainAddressType::MM;
   }
-  if ((mode & DCC_LONG_ADDRESS) || (address >= 128)) {
-    return dcc::TrainAddressType::DCC_LONG_ADDRESS;
+  if ((mode & DCC_ANY_MASK) == DCC_ANY) {
+    if ((mode & DCC_LONG_ADDRESS) || (address >= 128)) {
+      return dcc::TrainAddressType::DCC_LONG_ADDRESS;
+    }
+    return dcc::TrainAddressType::DCC_SHORT_ADDRESS;
   }
-  return dcc::TrainAddressType::DCC_SHORT_ADDRESS;
+  LOG(INFO, "Unsupported drive mode %d (0x%02x)", mode, mode);
+  return dcc::TrainAddressType::UNSUPPORTED;
 }
 
 } // namespace commandstation

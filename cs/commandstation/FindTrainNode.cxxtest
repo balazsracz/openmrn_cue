@@ -56,7 +56,7 @@ class FindTrainNodeTest : public TrainDbTest {
   FindTrainNode findFlow_{node_, &db_, &allTrainNodes_};
 
   openlcb::TrainNodeWithId olcbTrain_{&trainService_, &m1_, 0x0501010118DD};
-  ExternalTrainDbEntry dbEntry_{"Deadrail 415", 415, FAKE_DRIVE};
+  ExternalTrainDbEntry dbEntry_{"Deadrail 415", 415, DCCMODE_FAKE_DRIVE};
   SingleNodeFindProtocolServer findProtocolServer_{&olcbTrain_, &dbEntry_};  
 };
 
@@ -71,6 +71,10 @@ TEST_F(FindTrainNodeTest, FindLocalTrain) {
 }
 
 TEST_F(FindTrainNodeTest, FindLocalTrainLong) { 
+  /// @todo (balazs.racz) remove FindTrainNode class and it's tests. These
+  /// tests do no longer represent realistic usage of this class, but there are
+  /// no production usage dependencies on it anyway. RemoteFindTrainFlow
+  /// replaces this class.
   auto b = invoke_flow(&findFlow_, (DccMode) (DCC_28 | DCC_LONG_ADDRESS), 2);
 
   EXPECT_EQ(0, b->data()->resultCode);
@@ -85,14 +89,14 @@ TEST_F(FindTrainNodeTest, FindLocalTrainLong2) {
 }
 
 TEST_F(FindTrainNodeTest, AllocateTrainShort) { 
-  auto b = invoke_flow(&findFlow_, (DccMode) 0, 13);
+  auto b = invoke_flow(&findFlow_, DCC_28, 13);
 
   EXPECT_EQ(0, b->data()->resultCode);
   EXPECT_EQ(0x060100000000u | 13, b->data()->nodeId);
 }
 
 TEST_F(FindTrainNodeTest, AllocateTrainLong) { 
-  auto b = invoke_flow(&findFlow_, (DccMode) DCC_LONG_ADDRESS, 13);
+  auto b = invoke_flow(&findFlow_, DCC_28_LONG_ADDRESS, 13);
 
   EXPECT_EQ(0, b->data()->resultCode);
   EXPECT_EQ(0x06010000C000u | 13, b->data()->nodeId);
@@ -107,7 +111,7 @@ TEST_F(FindTrainNodeTest, FindOlcbtrainDefault) {
 }
 
 TEST_F(FindTrainNodeTest, FindOlcbtrain) { 
-  auto b = invoke_flow(&findFlow_, OLCBUSER, 415);
+  auto b = invoke_flow(&findFlow_, DCCMODE_OLCBUSER, 415);
 
   EXPECT_EQ(0, b->data()->resultCode);
   EXPECT_EQ(0x0501010118DDu, b->data()->nodeId);
@@ -161,19 +165,19 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
 TEST_F(RemoteFindTrainNodeTest, Create) {}
 
 TEST_F(RemoteFindTrainNodeTest, FindExistingTrain) {
-  auto b = invoke_flow(&remoteClient_, 415, true, DccMode::OLCBUSER);
+  auto b = invoke_flow(&remoteClient_, 415, true, DCCMODE_OLCBUSER);
   EXPECT_EQ(0, b->data()->resultCode);
   EXPECT_EQ(0x0501010118DDu, b->data()->nodeId);
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookupAddresNoReply) {
   wait();
-  expect_packet(":X19914922N090099FFFFF23440;")
+  expect_packet(":X19914922N090099FFFFF23441;")
       .WillOnce(InvokeWithoutArgs(
-          [this]() { send_packet(":X19544662N090099FFFFF23440;"); }));
+          [this]() { send_packet(":X19544662N090099FFFFF23441;"); }));
   expect_packet(":X19488922N0662;");
   {
-    auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
+    auto b = invoke_flow(&remoteClient_, 234, true, DCCMODE_OLCBUSER);
     EXPECT_EQ(openlcb::Defs::ERROR_DST_NOT_FOUND, b->data()->resultCode);
     EXPECT_EQ(0u, b->data()->nodeId);
   }
@@ -181,21 +185,21 @@ TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookupAddresNoReply) {
 
 TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookup) {
   wait();
-  expect_packet(":X19914922N090099FFFFF23440;")
+  expect_packet(":X19914922N090099FFFFF23441;")
       .WillOnce(InvokeWithoutArgs(
-          [this]() { send_packet(":X19544662N090099FFFFF23440;"); }));
+          [this]() { send_packet(":X19544662N090099FFFFF23441;"); }));
   expect_packet(":X19488922N0662;")
       .WillOnce(InvokeWithoutArgs(
           [this]() { send_packet(":X19170662N0501010114EE;"); }));
   {
-    auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
+    auto b = invoke_flow(&remoteClient_, 234, true, DCCMODE_OLCBUSER);
     EXPECT_EQ(0, b->data()->resultCode);
     EXPECT_EQ(0x0501010114EEu, b->data()->nodeId);
   }
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindNonMatchingTrain) {
-  auto b = invoke_flow(&remoteClient_, 234, true, DccMode::OLCBUSER);
+  auto b = invoke_flow(&remoteClient_, 234, true, DCCMODE_OLCBUSER);
   EXPECT_EQ(openlcb::Defs::ERROR_OPENMRN_NOT_FOUND, b->data()->resultCode);
   EXPECT_EQ(0u, b->data()->nodeId);
 }
@@ -211,7 +215,7 @@ TEST_F(RemoteFindTrainNodeTest, FindExistingTrainCallback) {
   RemoteFindTrainNodeRequest::ResultFn rf =
       std::bind(&FindResponse::response, &responseMock_, std::placeholders::_1,
                 std::placeholders::_2);
-  auto b = invoke_flow(&remoteClient_, 415, true, DccMode::OLCBUSER, rf);
+  auto b = invoke_flow(&remoteClient_, 415, true, DCCMODE_OLCBUSER, rf);
   // std::bind(responseMock_, MockFindResponse::response, std::placeholders::_1,
   // std::placeholders::_2)
   EXPECT_EQ(0, b->data()->resultCode);
@@ -224,7 +228,7 @@ TEST_F(RemoteFindTrainNodeTest, FindTwoTrainCallback) {
   RemoteFindTrainNodeRequest::ResultFn rf =
       std::bind(&FindResponse::response, &responseMock_, std::placeholders::_1,
                 std::placeholders::_2);
-  auto b = invoke_flow(&remoteClient_, 2, false, DccMode::OLCBUSER, rf);
+  auto b = invoke_flow(&remoteClient_, 2, false, DCCMODE_OLCBUSER, rf);
   EXPECT_EQ(0, b->data()->resultCode);
   EXPECT_EQ(0u, b->data()->nodeId);
 }

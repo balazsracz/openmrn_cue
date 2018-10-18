@@ -64,9 +64,7 @@ struct FindProtocolDefs {
     ADDRESS_ONLY = 0x20,
     // ADDRESS_NAME_CABNUMBER = 0x00
 
-    DCC_FORCE_LONG = 0x10,
-
-    // Bits 0-2 are a DccMode enum.
+    // Bits 0-4 are a DccMode enum.
     
     // Match response information. This bit is not used in the network
     // protocol. The bit will be set in the matched result, while cleared for a
@@ -135,16 +133,30 @@ struct FindProtocolDefs {
    * IS_TRAIN_EVENT.
    */
   static openlcb::EventId input_to_search(const string& input);
-  
+
   /** Translates a sequence of input digits punched in by a throttle to an
    * allocate request to issue on the OpenLCB bus.
    *
    * @param input is the sequence of numbers that the user typed. This is
-   * expected to have form like '415' or '021' or '474014'
+   * expected to have form like '415' or '021' or '474014'. You can add a
+   * leading zero to force DCC long address, a trailing M to force a Marklin
+   * locomotive.
    * @return an event ID representing the search. This event ID will be zero if
    * the user input is invalid.
    */
   static openlcb::EventId input_to_allocate(const string& input);
+
+  /// Specifies what kind of train to allocate when the drive mode is left as
+  /// default / unspecified.
+  static uint8_t DEFAULT_DRIVE_MODE;
+
+  /// Specifies what kind of train to allocate when the drive mode is set as
+  /// MARKLIN_ANY.
+  static uint8_t DEFAULT_MARKLIN_DRIVE_MODE;
+
+  /// Specifies what kind of train to allocate when the drive mode is set as
+  /// DCC_ANY.
+  static uint8_t DEFAULT_DCC_DRIVE_MODE;
 
  private:
   /// Helper function for the input_to_* calls.

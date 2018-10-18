@@ -261,7 +261,7 @@ TEST_F(UpdateProcessorTest, TwoExclusives) {
 
   // Adds the exclusive packet source.
   updateProcessor_.add_refresh_source(
-      &second_exclusive_source, dcc::UpdateLoopBase::PROGRAMMING_PRIORITY);
+      &second_exclusive_source, dcc::UpdateLoopBase::ESTOP_PRIORITY);
   EXPECT_CALL(trackSendQueue_,
               arrived(PacketIs(0x4, dcc_from(13, 0b01100000, -2))))
       .Times(4);
@@ -271,8 +271,8 @@ TEST_F(UpdateProcessorTest, TwoExclusives) {
   send_empty_packet();
   qwait();
 
-  updateProcessor_.add_refresh_source(&exclusive_source,
-                                      dcc::UpdateLoopBase::ESTOP_PRIORITY);
+  updateProcessor_.add_refresh_source(
+      &exclusive_source, dcc::UpdateLoopBase::PROGRAMMING_PRIORITY);
 
   EXPECT_CALL(trackSendQueue_,
               arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2))))
