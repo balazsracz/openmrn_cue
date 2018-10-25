@@ -1668,15 +1668,15 @@ IC2000Train train_ice("ICE", MMAddress(2), 16);
 */
 
 IC2000TrainB train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
-IC2000Train train_ice2("ICE2", MMAddress(2), 15);
+IC2000Train train_ice2("ICE2", DccShortAddress(40), 15);
 IC2000Train train_re465("Re465", DccShortAddress(47), 25);
 IC2000Train train_icn("ICN", DccShortAddress(50), 13);
 IC2000Train train_bde44("BDe-4/4", DccShortAddress(38), 35);
 FreightTrain train_re620("Re620", DccShortAddress(5), 45);
 FreightTrain train_re420("Re420", DccShortAddress(4), 45);
 FreightTrain train_rheingold("Rheingold", MMAddress(19), 35);
-FreightTrain train_rts("rts_railtraction", MMAddress(32), 10);
-FreightTrain train_wle("wle_er20", MMAddress(27), 10);
+FreightTrain train_rts("rts_railtraction", DccShortAddress(32), 20);
+FreightTrain train_wle("wle_er20", DccShortAddress(27), 20);
 FreightTrain train_re474("Re474", MMAddress(12), 30);
 FreightTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 
