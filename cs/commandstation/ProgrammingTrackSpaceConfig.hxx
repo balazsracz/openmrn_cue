@@ -29,6 +29,7 @@
 #define _COMMANDSTATION_PROGRAMMINGTRACKSPACECONFIG_HXX_
 
 #include "openlcb/ConfigRepresentation.hxx"
+#include "openlcb/MemoryConfig.hxx"
 
 namespace commandstation {
 
@@ -54,7 +55,7 @@ CDI_GROUP_ENTRY(
     Default(6), Min(0), Max(255));
 CDI_GROUP_END();
 
-CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(0x15), Offset(0x7F100000),
+CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(openlcb::MemoryConfigDefs::SPACE_DCC_CV), Offset(0x7F100000),
           Name("Programming track operation"),
           Description("Use this component to read and write CVs on the "
                       "programming track of the command station."));
