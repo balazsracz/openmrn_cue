@@ -39,6 +39,8 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
                                 private DefaultConfigUpdateListener,
                                 public StateFlowBase {
  public:
+  static constexpr unsigned MAX_CV = 1023;
+  
   ProgrammingTrackCVSpace(openlcb::MemoryConfigHandler* parent,
                           ProgrammingTrackFrontend* frontend,
                           openlcb::Node* node)
@@ -89,6 +91,21 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
 
   size_t write(address_t destination, const uint8_t *data, size_t len,
                errorcode_t *error, Notifiable *again) override {
+    if (destination <= MAX_CV) {
+      len = 1;
+      if (pomAddressType_ == dcc::TrainAddressType::UNSPECIFIED) {
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::DIRECT_MODE);
+      } else if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+                 pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
+      } else {
+        *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+        return 0;
+      }
+      store_.cv = htobe32(destination + 1);
+      store_.value = htobe32(data[0]);
+      return eval_async_state(STATE(do_cv_write), again, error, len);
+    }
     if (destination < MIN_ADDRESS || destination > MAX_ADDRESS) {
       *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
       return 0;
@@ -120,6 +137,23 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
   
   size_t read(address_t source, uint8_t *dst, size_t len, errorcode_t *error,
               Notifiable *again) override {
+    if (source <= MAX_CV) {
+      len = 1;
+      // saves the stored CV value to the caller buffer in case this is the
+      // second call after async done.
+      *dst = be32toh(store_.value);
+      if (pomAddressType_ == dcc::TrainAddressType::UNSPECIFIED) {
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::DIRECT_MODE);
+      } else if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+                 pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
+      } else {
+        *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+        return 0;
+      }
+      store_.cv = htobe32(source + 1);
+      return eval_async_state(STATE(do_cv_read), again, error, len);
+    }
     if (source < MIN_ADDRESS || source > MAX_ADDRESS) {
       *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
       return 0;
@@ -302,7 +336,8 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     done_->notify();
     return exit();
   }
-  
+
+ public:
   static constexpr unsigned SPACE_ID =
       ProgrammingTrackSpaceConfig::group_opts().segment();
   static constexpr unsigned MIN_ADDRESS =
@@ -310,6 +345,8 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
   static constexpr unsigned MAX_ADDRESS =
       ProgrammingTrackSpaceConfig::group_opts().get_segment_offset() +
       ProgrammingTrackSpaceConfig::size() - 1;
+ private:
+  
   static constexpr ProgrammingTrackSpaceConfig cfg{ProgrammingTrackSpaceConfig::group_opts().get_segment_offset()};
 
   enum AsyncState {
@@ -322,7 +359,10 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
   AsyncState asyncState_{IDLE};
   /// Error return value from async state.
   unsigned asyncError_;
+  /// Address type of last addressed node, or UNSPECIFIED if the commandstation
+  /// node was last addressed.
   dcc::TrainAddressType pomAddressType_;
+  /// DCC address of the last addressed node.
   uint32_t pomAddress_;
   /// Caller to notify when async state completes.
   Notifiable* done_;
