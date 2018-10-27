@@ -38,8 +38,8 @@
 #include "ConfigLocal.hxx"
 
 #include "openlcb/ConfigRepresentation.hxx"
-#include "openlcb/TractionCvCdi.hxx"
 #include "commandstation/TrainDbDefs.hxx"
+#include "commandstation/ProgrammingTrackSpaceConfig.hxx"
 
 namespace commandstation {
 
@@ -133,7 +133,7 @@ CDI_GROUP(TrainConfigDef, MainCdi());
 // information in here because both of these vary train by train.
 CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TrainSegment);
-CDI_GROUP_ENTRY(cv, openlcb::TractionShortCvSpace);
+CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
 CDI_GROUP_END();
 
 CDI_GROUP(TmpTrainSegment, Segment(openlcb::MemoryConfigDefs::SPACE_CONFIG),
@@ -149,7 +149,7 @@ CDI_GROUP_END();
 CDI_GROUP(TrainTmpConfigDef, MainCdi());
 CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TmpTrainSegment);
-CDI_GROUP_ENTRY(cv, openlcb::TractionShortCvSpace);
+CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
 CDI_GROUP_END();
 
 using TrainDbConfig =

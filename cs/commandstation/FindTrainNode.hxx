@@ -76,7 +76,8 @@ struct RemoteFindTrainNodeRequest {
   void reset(uint64_t event_id, ResultFn res = nullptr) {
     event = event_id;
     nodeId = 0;
-    if (event_id & FindProtocolDefs::ALLOCATE) {
+    if (FindProtocolDefs::is_find_event(event_id) &&
+        (event_id & FindProtocolDefs::ALLOCATE)) {
       resultCode = TIMEOUT_SPECIFIED | 800;
     }
     resultCallback = std::move(res);
@@ -130,6 +131,12 @@ class RemoteFindTrainNode
         node_(node),
         nodeIdLookup_(static_cast<openlcb::IfCan*>(node_->iface())) {}
 
+  /// Registers an extra event for listening for. This is needed when custom
+  /// event IDs are used in the listening protocol.
+  void prepare_additional_find_event(openlcb::EventId event) {
+    replyHandler_.prepare_additional_find_event(event);
+  }
+  
   Action entry() override {
     // If there was a persistent request, this will kill any more responses.
     requestId_++;
@@ -217,10 +224,11 @@ class RemoteFindTrainNode
       if (!persistentRequest_ && !nodeIdLookup_.is_waiting()) {
         return sleep_and_call(&timer_, MSEC_TO_NSEC(50), STATE(reply_timeout));
       }
+      LOG(INFO, "Persistent wait.");
       return return_with_error(0);
     }
     if (!remoteMatch_.id && !remoteMatch_.alias) {
-      LOG(VERBOSE, "Bus match not found, allocating...");
+      LOG(INFO, "Bus match not found.");
       // No match
       return return_with_error(openlcb::Defs::ERROR_OPENMRN_NOT_FOUND);
     }
@@ -253,6 +261,13 @@ class RemoteFindTrainNode
           EventRegistryEntry(this, openlcb::TractionDefs::IS_TRAIN_EVENT), 0);
     }
 
+    /// Registers an extra event for listening for. This is needed when custom
+    /// event IDs are used in the listening protocol.
+    void prepare_additional_find_event(openlcb::EventId event) {
+      openlcb::EventRegistry::instance()->register_handler(
+          EventRegistryEntry(this, event), 0);
+    }
+    
     ~ReplyHandler() {
       openlcb::EventRegistry::instance()->unregister_handler(this);
     }

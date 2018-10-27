@@ -29,12 +29,14 @@
 #define _COMMANDSTATION_PROGRAMMINGTRACKSPACECONFIG_HXX_
 
 #include "openlcb/ConfigRepresentation.hxx"
+#include "openlcb/MemoryConfig.hxx"
 
 namespace commandstation {
 
 static const char OPERATING_MODE_MAP_VALUES[] = R"(
 <relation><property>0</property><value>Disabled</value></relation>
 <relation><property>1</property><value>Direct mode</value></relation>
+<relation><property>2</property><value>POM mode</value></relation>
 <relation><property>10</property><value>Advanced mode</value></relation>
 )";
 
@@ -53,7 +55,7 @@ CDI_GROUP_ENTRY(
     Default(6), Min(0), Max(255));
 CDI_GROUP_END();
 
-CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(0x15), Offset(0x7F100000),
+CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(openlcb::MemoryConfigDefs::SPACE_DCC_CV), Offset(0x7F100000),
           Name("Programming track operation"),
           Description("Use this component to read and write CVs on the "
                       "programming track of the command station."));
@@ -61,6 +63,7 @@ CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(0x15), Offset(0x7F100000),
 enum OperatingMode {
   DISABLED = 0,
   DIRECT_MODE = 1,
+  POM_MODE = 2,
   ADVANCED = 10,
 };
 
