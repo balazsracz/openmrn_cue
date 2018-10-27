@@ -465,6 +465,7 @@ class ProgrammingTrackFrontend
     }
     b->data()->add_dcc_pom_read1(request()->cvOffset_);
     b->data()->feedback_key = reinterpret_cast<uintptr_t>(this);
+    b->data()->packet_header.rept_count = 3;
     railcomHub_->register_port(&railcomHandler_);
     seenRailcomBusy_ = 0;
     seenRailcomGarbage_ = 0;
@@ -479,6 +480,9 @@ class ProgrammingTrackFrontend
     if (errorCode_ == ERROR_OK) {
       request()->value_ = cvData_;
       return return_with_error(ERROR_CODE_OK);
+    }
+    if (errorCode_ == ERROR_PENDING) {
+      railcomHub_->unregister_port(&railcomHandler_);
     }
     if (++numTry_ < DEFAULT_POM_READ_RETRIES) {
       return call_immediately(STATE(pom_read_byte));
