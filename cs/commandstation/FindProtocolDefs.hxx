@@ -84,6 +84,12 @@ struct FindProtocolDefs {
     NIBBLE_HASH = 0xb,
   };
 
+  /// @param event is an openlcb event ID
+  /// @return true if that event ID belong to the find protocol event range.
+  static bool is_find_event(openlcb::EventId event) {
+    return (event >> TRAIN_FIND_MASK) == (TRAIN_FIND_BASE >> TRAIN_FIND_MASK);
+  }
+
   /** Compares an incoming search query to a given train node. Returns 0 for a
       no-match. Returns a bitfield of match types for a match. valid bits are
       MATCH_ANY (always set), ADDRESS_ONLY (set when the match occurred in the
