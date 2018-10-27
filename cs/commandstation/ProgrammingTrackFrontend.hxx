@@ -126,8 +126,8 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
   uint8_t bitOffset_;
   /// Train address type.
   dcc::TrainAddressType addrType_;
-  /// For POM commands holds the DCC address to talk to. @todo describe how the
-  /// special (short / long) addresses are distinguished.
+  /// For POM commands holds the DCC address to talk to. Long vs short address
+  /// is defined by addrType_.
   uint16_t dccAddress_;
 };
 
