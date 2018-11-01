@@ -277,7 +277,7 @@ class RemoteFindTrainNode
                                 BarrierNotifiable* done) override {
       AutoNotify an(done);
 
-      openlcb::event_write_helper1.WriteAsync(
+      event->event_write_helper<1>()->WriteAsync(
           event->dst_node, openlcb::Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
           openlcb::WriteHelper::global(),
           openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),

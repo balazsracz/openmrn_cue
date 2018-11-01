@@ -68,7 +68,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
                      1) == 1,
                     "The lowermost bit of the TRAIN_FIND_BASE must be 1 or "
                     "else the event produced range encoding must be updated.");
-      openlcb::event_write_helper1.WriteAsync(
+      event->event_write_helper<1>()->WriteAsync(
           event->dst_node, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
           openlcb::WriteHelper::global(),
           openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
@@ -298,7 +298,7 @@ class SingleNodeFindProtocolServer : public openlcb::SimpleEventHandler {
                    1) == 1,
                   "The lowermost bit of the TRAIN_FIND_BASE must be 1 or "
                   "else the event produced range encoding must be updated.");
-    openlcb::event_write_helper1.WriteAsync(
+    event->event_write_helper<1>()->WriteAsync(
         event->dst_node, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
         openlcb::WriteHelper::global(),
         openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
@@ -311,7 +311,7 @@ class SingleNodeFindProtocolServer : public openlcb::SimpleEventHandler {
     AutoNotify an(done);
 
     if (FindProtocolDefs::match_query_to_node(event->event, dbEntry_)) {
-      openlcb::event_write_helper1.WriteAsync(
+      event->event_write_helper<1>()->WriteAsync(
           node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
           openlcb::WriteHelper::global(),
           openlcb::eventid_to_buffer(event->event),
