@@ -41,7 +41,7 @@ namespace commandstation {
 
 /// Specifies what kind of train to allocate when the drive mode is left as
 /// default / unspecified.
-uint8_t FindProtocolDefs::DEFAULT_DRIVE_MODE = DCC_28;
+uint8_t FindProtocolDefs::DEFAULT_DRIVE_MODE = DCC_128;
 
 /// Specifies what kind of train to allocate when the drive mode is set as
 /// MARKLIN_ANY.
@@ -49,7 +49,7 @@ uint8_t FindProtocolDefs::DEFAULT_MARKLIN_DRIVE_MODE = MARKLIN_NEW;
 
 /// Specifies what kind of train to allocate when the drive mode is set as
 /// DCC_ANY.
-uint8_t FindProtocolDefs::DEFAULT_DCC_DRIVE_MODE = DCC_28;
+uint8_t FindProtocolDefs::DEFAULT_DCC_DRIVE_MODE = DCC_128;
 
 namespace {
 /// @returns true for a character that is a digit.
