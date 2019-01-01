@@ -100,7 +100,7 @@ EventBasedVariable scene_dark(&brd, "scene_dark",
 
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n9(0x29);
-AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e), b9(0x29);
+AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e), b9(0x29), b8(0x28);
 
 StateRef StUser1(10);
 StateRef StUser2(11);
@@ -409,6 +409,7 @@ DefAut(blinkaut, brd, {
       .ActState(StUser1)
       .ActReg1(rep);
 
+  DefCopy(*rep, ImportVariable(&b8.LedBlueSw));
   DefCopy(*rep, ImportVariable(&b9.LedBlueSw));
   DefCopy(*rep, ImportVariable(&ba.LedBlueSw));
   DefCopy(*rep, ImportVariable(&bb.LedBlueSw));
@@ -600,7 +601,8 @@ StandardMovableTurnout Turnout_HBW1(&brd,
                                     &Magnet_HBW1);
 TurnoutWrap THBW1(&Turnout_HBW1.b, kPointToClosed);
 
-CoupledMagnetDef Magnet_HBW2(&g_magnet_aut, "HB.W2", &Magnet_HBW1, true);
+MagnetDef Magnet_HBW2(&g_magnet_aut, "HB.W2", &b8.ActBlueGrey,
+                      &b8.ActBlueBrown, MovableTurnout::kClosed);
 StandardMovableDKW DKW_HBW2(&brd, logic->Allocate("HB.W2", 64),
                             &Magnet_HBW2);
 DKWWrap THBW2Main(&DKW_HBW2.b, kB1toA1);
@@ -628,9 +630,10 @@ StandardMovableTurnout Turnout_HBW5(&brd,
                                     &Magnet_HBW5);
 TurnoutWrap THBW5(&Turnout_HBW5.b, kPointToClosed);
 
-//MagnetDef Magnet_HBW6(&g_magnet_aut, "HB.W6", &be.ActGreenGreen,
-//                      &be.ActGreenRed, MovableTurnout::kClosed);
-StandardFixedTurnout Turnout_HBW6(&brd, logic->Allocate("HB.W6", 40), FixedTurnout::TURNOUT_CLOSED);
+MagnetDef Magnet_HBW6(&g_magnet_aut, "HB.W6", &b8.ActGreenGreen,
+                      &b8.ActGreenRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_HBW6(&brd, logic->Allocate("HB.W6", 40),
+                                    &Magnet_HBW6);
 TurnoutWrap THBW6(&Turnout_HBW6.b, kPointToClosed);
 
 PhysicalSignal A139(&bb.InOraGreen, nullptr, nullptr, nullptr, nullptr, nullptr,
