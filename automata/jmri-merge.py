@@ -440,7 +440,7 @@ class TrainLocLogixConditional:
     self.AddMemoryAction(e, 'loc.' + self.location_name, self.train_name)
     if self.location_name in all_location_coordinates:
       coord = all_location_coordinates[self.location_name]
-      self.AddJythonAction(e, "PositionLocoMarker(\"2B layout\", \""
+      self.AddJythonAction(e, "PositionLocoMarker(\"2A Layout\", \""
                            + self.train_name + "\", "
                            + str(int(coord.center[0]))+ ", "
                            + str(int(coord.center[1])) + ", HORIZONTAL)")
@@ -1022,7 +1022,7 @@ def PrintTrainLine(layout, train, x0, y):
   layout.append(CreateLocoIcon(x0, y, train))
 
 def ClearPanelLocationTable(output_tree_root, index):
-  layout = output_tree_root.find('./LayoutEditor[@name=\'2B layout\']')
+  layout = output_tree_root.find('./LayoutEditor[@name=\'2A Layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
   for entry in layout.findall('./sensoricon[@level=\'9\']'):
@@ -1040,7 +1040,7 @@ def ClearPanelLocationTable(output_tree_root, index):
 
 
 def RenderPanelLocationTable(output_tree_root, index):
-  layout = output_tree_root.find('./LayoutEditor[@name=\'2B layout\']')
+  layout = output_tree_root.find('./LayoutEditor[@name=\'2A Layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
   y = 190
@@ -1086,7 +1086,7 @@ def main():
   global all_trains, all_locations, all_location_coordinates
   all_trains = GetAllTrainList()
   all_locations = GetAllLocationList()
-  index = LayoutIndex(root, "2B layout")
+  index = LayoutIndex(root, "2A Layout")
   all_location_coordinates = GetLocationCoordinates(all_locations, root, index)
   print (len(all_trains), " trains, ", len(all_locations), " locations found (", len(all_location_coordinates), " with coord)")
   RenderSensors(root)
