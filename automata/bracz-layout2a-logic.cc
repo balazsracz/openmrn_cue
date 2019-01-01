@@ -588,7 +588,7 @@ FlipFlopClient ye_froma4("from_A4", &ye_flipflop);
 */
 AllocatorPtr train_tmp(logic->Allocate("train", 768));
 
-MagnetCommandAutomata g_magnet_aut(&brd, logic2);
+MagnetCommandAutomata g_magnet_aut(&brd, logic);
 MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 MagnetButtonAutomata g_btn_aut(&brd);
 
@@ -603,8 +603,8 @@ TurnoutWrap THBW1(&Turnout_HBW1.b, kPointToClosed);
 CoupledMagnetDef Magnet_HBW2(&g_magnet_aut, "HB.W2", &Magnet_HBW1, true);
 StandardMovableDKW DKW_HBW2(&brd, logic->Allocate("HB.W2", 64),
                             &Magnet_HBW2);
-DKWWrap THBW2Main(&Turnout_HBW2.b, kB1toA1);
-DKWWrap THBW2Cross(&Turnout_HBW2.b, kA2toB2);
+DKWWrap THBW2Main(&DKW_HBW2.b, kB1toA1);
+DKWWrap THBW2Cross(&DKW_HBW2.b, kA2toB2);
 
 MagnetDef Magnet_HBW3(&g_magnet_aut, "HB.W3", &bb.ActBrownGrey,
                       &bb.ActBrownBrown, MovableTurnout::kClosed);
@@ -618,8 +618,8 @@ MagnetDef Magnet_HBW4(&g_magnet_aut, "HB.W4", &bb.ActGreenGreen,
                       &bb.ActGreenRed, DKW::kDKWStateCross);
 StandardMovableDKW DKW_HBW4(&brd, logic->Allocate("HB.W4", 64),
                             &Magnet_HBW4);
-DKWWrap THBW4Main(&Turnout_HBW4.b, kB1toA1);
-DKWWrap THBW4Cross(&Turnout_HBW4.b, kA2toB2);
+DKWWrap THBW4Main(&DKW_HBW4.b, kB1toA1);
+DKWWrap THBW4Cross(&DKW_HBW4.b, kA2toB2);
 
 MagnetDef Magnet_HBW5(&g_magnet_aut, "HB.W4", &bb.ActOraGreen,
                       &bb.ActOraRed, MovableTurnout::kClosed);
@@ -654,10 +654,20 @@ PhysicalSignal B251(&bd.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 PhysicalSignal B241(&bb.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
+
+PhysicalSignal HBB1(&b9.In0, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal HBB2(&b9.In1, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal HBB3(&b9.In2, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal HBB4(&b9.In3, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+
 // Missing: B231
 // Missing: standard middle detector for A239
-StandardMiddleDetector Det_239(&brd, A239.detector(),
-                               logic2->Allocate("Det380", 24, 8));
+StandardMiddleDetector Det_239(&brd, A239.sensor_raw,
+                               logic->Allocate("Det239", 32, 8));
 
 /*
 PhysicalSignal QQA1(&b9.In6, nullptr, nullptr, nullptr, nullptr, nullptr,
@@ -865,27 +875,27 @@ StandardBlock Block_QQB3(&brd, &QQB3, logic, "QQ.B3");
 */
 
 bool ignored1 = BindSequence(
-    Turnout_HBW1.side_thrown(),
+    Turnout_HBW1.b.side_thrown(),
     {  &THBW2Cross, &THBW6 },
-    &Stub_HBB1.entry());
+    Stub_HBB1.entry());
 
 bool ignored1a = BindSequence(
-    Turnout_HBW3.side_thrown(),
+    Turnout_HBW3.b.side_thrown(),
     {  &THBW4Cross, &THBW5},
-    &Stub_HBB3.entry());
+    Stub_HBB3.entry());
 
 bool ignored2 = BindSequence(  //
-    Block_241.side_b(),
+    Block_B241.side_b(),
     {&THBW1, &THBW3, &Det_239,  // block,
      &Block_A139, &THBW4Main, &THBW2Main, &Block_A149, &Block_A159, &Block_A167,
      &Block_A179,  //
-     &Block_B271, &Block_B261},
-    Block_241.side_a());
+     &Block_B271, &Block_B261, &Block_B251},
+    Block_B241.side_a());
 
 bool ignored3 = BindPairs({
     //
-    {Stub_HBB4.entry(), Turnout_HBW5.side_thrown()},
-    {Stub_HBB2.entry(), Turnout_HBW6.side_thrown()}
+    {Stub_HBB4.entry(), Turnout_HBW5.b.side_thrown()},
+    {Stub_HBB2.entry(), Turnout_HBW6.b.side_thrown()}
 
     /*        
     {Stub_XXB1.entry(), Turnout_XXW6.b.side_thrown()},
