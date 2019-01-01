@@ -870,17 +870,19 @@ void DKW::DKWRoute(Automata* aut) {
         aut->ImportVariable(tmp_route_setting_in_progress_.get());
     const LocalVariable& state = aut->ImportVariable(*turnout_state_);
     // Passes if state == 0 (closed).
-    auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+    auto straight_condition =
+        NewCallback(&TurnoutDirectionCheck, state, (bool)kDKWStateCross);
     // Passes if state == 1 (thrown).
-    auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+    auto curved_condition =
+        NewCallback(&TurnoutDirectionCheck, state, (bool)kDKWStateCurved);
 
     OpCallback* cb = nullptr;
     switch (d.state) {
       case DKW_STRAIGHT:
-        cb = &thrown_condition;
+        cb = &straight_condition;
         break;
       case DKW_CURVED:
-        cb = &closed_condition;
+        cb = &curved_condition;
         break;
     }
     SimulateRoute(aut, cb, points_[d.from].interface.get(),

@@ -1108,8 +1108,8 @@ class DKW : private OccupancyLookupInterface,
  public:
   enum State { DKW_STRAIGHT, DKW_CURVED };
 
-  static const bool kDKWStateCross = true;
-  static const bool kDKWStateCurved = false;
+  static const bool kDKWStateCross = false;
+  static const bool kDKWStateCurved = true;
 
   // The connections are as follows: if DKW_STRAIGHT, POINT_A1--POINT_B1 and
   // POINT_A2--POINT_B2. If DKW_CURVED, then A1--B2 and A2--B1.
@@ -1124,7 +1124,7 @@ class DKW : private OccupancyLookupInterface,
 
   enum Route {
     ROUTE_MIN = 0,
-    ROUTE_MAX = 8,
+    ROUTE_MAX = 7,
   };
 
   DKW(AllocatorPtr allocator)
