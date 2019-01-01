@@ -1280,6 +1280,34 @@ protected:
   FRIEND_TEST(LogicTest, MovableDKW);
 };
 
+class DKWWrap : public FakeStraightTrack {
+ public:
+  struct WrapA1toB1 {};
+  struct WrapB1toA1 {};
+  struct WrapA2toB2 {};
+  struct WrapB2toA2 {};
+
+  // The connections are as follows: if DKW_STRAIGHT, POINT_A1--POINT_B1 and
+  // POINT_A2--POINT_B2. If DKW_CURVED, then A1--B2 and A2--B1.
+
+  DKWWrap(DKW* dkw, const WrapA1toB1&)
+      : FakeStraightTrack(dkw->point_a1(), dkw->point_b1()) {}
+
+  DKWWrap(DKW* dkw, const WrapB1toA1&)
+      : FakeStraightTrack(dkw->point_b1(), dkw->point_a1()) {}
+
+  DKWWrap(DKW* dkw, const WrapA2toB2&)
+      : FakeStraightTrack(dkw->point_a2(), dkw->point_b2()) {}
+
+  DKWWrap(DKW* dkw, const WrapB2toA2&)
+      : FakeStraightTrack(dkw->point_b2(), dkw->point_a2()) {}
+};
+
+constexpr DKWWrap::WrapA1toB1 kA1toB1;
+constexpr DKWWrap::WrapB1toA1 kB1toA1;
+constexpr DKWWrap::WrapA2toB2 kA2toB2;
+constexpr DKWWrap::WrapB2toA2 kB2toA2;
+
 class FixedDKW : public DKW {
 public:
   FixedDKW(State state, AllocatorPtr allocator)
