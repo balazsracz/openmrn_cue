@@ -621,7 +621,7 @@ StandardMovableDKW DKW_HBW4(&brd, logic->Allocate("HB.W4", 64),
 DKWWrap THBW4Main(&DKW_HBW4.b, kB1toA1);
 DKWWrap THBW4Cross(&DKW_HBW4.b, kA2toB2);
 
-MagnetDef Magnet_HBW5(&g_magnet_aut, "HB.W4", &bb.ActOraGreen,
+MagnetDef Magnet_HBW5(&g_magnet_aut, "HB.W5", &bb.ActOraGreen,
                       &bb.ActOraRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_HBW5(&brd,
                                     logic->Allocate("HB.W5", 40),
@@ -638,7 +638,7 @@ PhysicalSignal A139(&bb.InOraGreen, nullptr, nullptr, nullptr, nullptr, nullptr,
 // this one is not a real block, but a middle detector
 PhysicalSignal A239(&bb.InOraRed, nullptr, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr);
-PhysicalSignal A149(&bb.In6, nullptr, nullptr, nullptr, nullptr, nullptr,
+PhysicalSignal A149(&bd.In6, nullptr, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr);
 PhysicalSignal A159(&bc.InBrownGrey, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
@@ -650,22 +650,22 @@ PhysicalSignal B271(&ba.In7, nullptr, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr);
 PhysicalSignal B261(&bc.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
-PhysicalSignal B251(&bd.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
+PhysicalSignal B251(&bd.InBrownGrey, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 PhysicalSignal B241(&bb.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
-
-PhysicalSignal HBB1(&b9.In0, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal HBB2(&b9.In1, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal HBB3(&b9.In2, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-PhysicalSignal HBB4(&b9.In3, nullptr, nullptr, nullptr, nullptr,
+PhysicalSignal B231(&b9.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr);
 
-// Missing: B231
-// Missing: standard middle detector for A239
+PhysicalSignal HBB1(&b9.InOraRed, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal HBB2(&b9.InOraGreen, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal HBB3(&b9.In6, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+PhysicalSignal HBB4(&b9.In7, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+
 StandardMiddleDetector Det_239(&brd, A239.sensor_raw,
                                logic->Allocate("Det239", 32, 8));
 
@@ -772,7 +772,7 @@ StandardBlock Block_B271(&brd, &B271, logic, "B271");
 StandardBlock Block_B261(&brd, &B261, logic, "B261");
 StandardBlock Block_B251(&brd, &B251, logic, "B251");
 StandardBlock Block_B241(&brd, &B241, logic, "B241");
-//StandardBlock Block_B231(&brd, &B231, logic, "B231");
+StandardBlock Block_B231(&brd, &B231, logic, "B231");
 
 /*
 MagnetDef Magnet_W360(&g_magnet_aut, "W360", &bb.ActBlueGrey, &bb.ActBlueBrown,
@@ -886,9 +886,9 @@ bool ignored1a = BindSequence(
 
 bool ignored2 = BindSequence(  //
     Block_B241.side_b(),
-    {&THBW1, &THBW3, &Det_239,  // block,
-     &Block_A139, &THBW4Main, &THBW2Main, &Block_A149, &Block_A159, &Block_A167,
-     &Block_A179,  //
+    {&THBW1, &THBW3, &Det_239, &Block_B231, &Block_A139,   //
+     &THBW4Main, &THBW2Main,                              //
+     &Block_A149, &Block_A159, &Block_A167, &Block_A179,  //
      &Block_B271, &Block_B261, &Block_B251},
     Block_B241.side_a());
 
