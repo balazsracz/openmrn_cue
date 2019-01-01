@@ -567,14 +567,15 @@ FlipFlopClient xx_tob1("to_B1", &xx_flipflop);
 FlipFlopClient xx_tob2("to_B2", &xx_flipflop);
 FlipFlopClient xx_tob3("to_B3", &xx_flipflop);
 FlipFlopClient xx_tob4("to_B4", &xx_flipflop);
+*/
 
-FlipFlopAutomata xe_flipflop(&brd, "xe_flipflop", logic, 32);
-FlipFlopClient xe_fromb1("from_B1", &xe_flipflop);
-FlipFlopClient xe_fromb2("from_B2", &xe_flipflop);
-FlipFlopClient xe_fromb3("from_B3", &xe_flipflop);
-FlipFlopClient xe_fromb4("from_B4", &xe_flipflop);
+FlipFlopAutomata hb_outflipflop(&brd, "hb_outflipflop", logic, 32);
+FlipFlopClient hb_fromb1("from_B1", &hb_outflipflop);
+FlipFlopClient hb_fromb2("from_B2", &hb_outflipflop);
+FlipFlopClient hb_fromb3("from_B3", &hb_outflipflop);
+FlipFlopClient hb_fromb4("from_B4", &hb_outflipflop);
 
-
+/*
 FlipFlopAutomata yy_flipflop(&brd, "yy_flipflop", logic, 32);
 FlipFlopClient yy_toa1("to_A1", &yy_flipflop);
 FlipFlopClient yy_toa2("to_A2", &yy_flipflop);
@@ -617,7 +618,7 @@ TurnoutWrap THBW3(&Turnout_HBW3.b, kPointToClosed);
 
 // @todo: kDKWStateCross might be reversed.
 MagnetDef Magnet_HBW4(&g_magnet_aut, "HB.W4", &bb.ActGreenGreen,
-                      &bb.ActGreenRed, DKW::kDKWStateCross);
+                      &bb.ActGreenRed, MovableTurnout::kClosed);
 StandardMovableDKW DKW_HBW4(&brd, logic->Allocate("HB.W4", 64),
                             &Magnet_HBW4);
 DKWWrap THBW4Main(&DKW_HBW4.b, kB1toA1);
@@ -1410,6 +1411,24 @@ void If355Free(Automata::Op* op) {
 auto g_355_free = NewCallback(&If355Free);
 */
 
+void IfHBBothDKWFree(Automata::Op* op) {
+  IfNotPaused(op);
+  IfNotShutdown(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_HBW4.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*DKW_HBW2.b.any_route()));
+}
+auto g_hb_both_dkw_free = NewCallback(&IfHBBothDKWFree);
+
+
+void IfHBDKW2Free(Automata::Op* op) {
+  IfNotPaused(op);
+  IfNotShutdown(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_HBW2.b.any_route()));
+}
+auto g_hb_dkw2_free = NewCallback(&IfHBDKW2Free);
+
+
+
 class LayoutSchedule : public TrainSchedule {
  public:
   LayoutSchedule(const string& name, uint64_t train_id, uint8_t default_speed)
@@ -1421,6 +1440,33 @@ class LayoutSchedule : public TrainSchedule {
 
  protected:
 
+  // Does a small loop at HB.
+  void RunLoopHB(Automata* aut) {
+    AddEagerBlockTransition(Block_B231, Block_A139);
+  }
+
+  // goes down 149->179
+  void RunDown(Automata* aut) {
+    AddEagerBlockTransition(Block_A149, Block_A159);
+    AddEagerBlockTransition(Block_A159, Block_A167);
+    AddEagerBlockTransition(Block_A167, Block_A179);
+  }
+
+  // goes up 271->241
+  void RunUp(Automata* aut) {
+    AddEagerBlockTransition(Block_B271, Block_B261);
+    AddEagerBlockTransition(Block_B261, Block_B251);
+    AddEagerBlockTransition(Block_B251, Block_B241);
+  }
+
+  // Does a full loop of the large part of the layout (149->241)
+  void RunLoopLayout(Automata* aut) {
+    RunDown(aut);
+    AddDirectBlockTransition(Block_A179, Block_B271, &g_not_paused_condition);
+    RunUp(aut);
+  }
+
+  
 #if 0  
   void RunXtoY(Automata* aut) {
     AddDirectBlockTransition(Block_A461, Block_A441, &g_355_free);
@@ -1559,29 +1605,20 @@ class LayoutSchedule : public TrainSchedule {
 #endif
   
   void RunCycle(Automata* aut) {
-  /*
-    RunB108_to_A240(aut);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), false);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), true);
-
+    RunLoopLayout(aut);
     {
-      WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(Block_A217, Block_A406, &w217_from217, &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCurved);
-
-      AddBlockTransitionOnPermit(Block_A317, Block_A406, &w217_from317, &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCurved);
+      WithRouteLock l(this, &route_lock_HB);
+      AddDirectBlockTransition(Block_B241, Block_B231, &g_not_paused_condition);
+      SwitchTurnout(Turnout_HBW1.b.magnet(), MovableTurnout::kClosed);
+      SwitchTurnout(Turnout_HBW3.b.magnet(), MovableTurnout::kClosed);
     }
-
-    AddEagerBlockTransition(Block_A406, Block_XXB1);
-    AddDirectBlockTransition(Block_XXB1, Block_B108, &g_not_paused_condition);
-  */
+    RunLoopHB(aut);
+    {
+      WithRouteLock l(this, &route_lock_HB);
+      AddDirectBlockTransition(Block_A139, Block_A149, &g_hb_both_dkw_free);
+      SwitchTurnout(DKW_HBW4.b.magnet(), DKW::kDKWStateCross);
+      SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCross);
+    }
   }
 
 
@@ -1609,10 +1646,19 @@ class IC2000Train : public LayoutSchedule {
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
-    /*RunXtoY(aut);
-    RunStubYY(aut);
-    RunYtoX(aut);
-    RunStubXX(aut);*/
+    RunLoopLayout(aut);
+    {
+      WithRouteLock l(this, &route_lock_HB);
+      AddDirectBlockTransition(Block_B241, Stub_HBB1, &g_hb_dkw2_free);
+      SwitchTurnout(Turnout_HBW1.b.magnet(), MovableTurnout::kThrown);
+      SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCross);
+      SwitchTurnout(Turnout_HBW6.b.magnet(), MovableTurnout::kClosed);
+      StopAndReverseAtStub(Stub_HBB1);
+
+      AddBlockTransitionOnPermit(Stub_HBB1.b_.rev_signal, Block_A149, &hb_fromb1, &g_hb_dkw2_free, false);
+      SwitchTurnout(Turnout_HBW6.b.magnet(), MovableTurnout::kClosed);
+      SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCurved);
+    }
   }
 };
 
@@ -1636,10 +1682,7 @@ class FreightTrain : public LayoutSchedule {
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
-    /*RunXtoY(aut);
-    RunLoopYY(aut);
-    RunYtoX(aut);
-    RunLoopXX(aut);*/
+    RunCycle(aut);
   }
 };
 
@@ -1657,11 +1700,11 @@ IC2000Train train_icn("ICN", DccShortAddress(50), 17);
 IC2000Train train_ice("ICE", MMAddress(2), 16);
 */
 
-IC2000TrainB train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
-IC2000Train train_ice2("ICE2", DccShortAddress(40), 15);
-IC2000Train train_re465("Re465", DccShortAddress(47), 25);
-IC2000Train train_icn("ICN", DccShortAddress(50), 13);
-IC2000Train train_bde44("BDe-4/4", DccShortAddress(38), 35);
+IC2000Train train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
+IC2000TrainB train_ice2("ICE2", DccShortAddress(40), 15);
+FreightTrain train_re465("Re465", DccShortAddress(47), 25);
+IC2000TrainB train_icn("ICN", DccShortAddress(50), 13);
+IC2000TrainB train_bde44("BDe-4/4", DccShortAddress(38), 35);
 FreightTrain train_re620("Re620", DccShortAddress(5), 45);
 FreightTrain train_re420("Re420", DccShortAddress(4), 45);
 FreightTrain train_rheingold("Rheingold", MMAddress(19), 35);
