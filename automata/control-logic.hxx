@@ -1287,6 +1287,10 @@ class DKWWrap : public FakeStraightTrack {
   struct WrapA2toB2 {};
   struct WrapB2toA2 {};
 
+  //
+  //  B2--\                   /--A1
+  //  B1---\----A1      B2---/---A2
+  //        \---A2      B1--/
   // The connections are as follows: if DKW_STRAIGHT, POINT_A1--POINT_B1 and
   // POINT_A2--POINT_B2. If DKW_CURVED, then A1--B2 and A2--B1.
 
