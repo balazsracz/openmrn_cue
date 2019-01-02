@@ -67,6 +67,94 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
                     &side_a_release);
 }
 
+
+void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
+                       Automata::LocalVariable* tmp_seen_train_in_next,
+                       Automata::LocalVariable* tmp_shadow_train_in_far,
+                       const Automata::LocalVariable& route_set,
+                       CtrlTrackInterface* past_if, CtrlTrackInterface* next_if,
+                       OpCallback* release_cb) {
+  // tmp_seen_train_in_next is 1 if we have seen a train in the next (close)
+  // occupancy block.
+  HASSERT(past_if);
+  HASSERT(next_if);
+  const LocalVariable& previous_occ =
+      aut->ImportVariable(*past_if->binding()->LookupNextDetector());
+  auto* far_detector = next_if->binding()->LookupFarDetector();
+  auto* next_detector = next_if->binding()->LookupNextDetector();
+
+  if (far_detector) {
+    const LocalVariable& next_trainlength_occ =
+        aut->ImportVariable(*far_detector);
+    Def()
+        .IfReg1(route_set)
+        .IfReg1(previous_occ)
+        .IfReg0(*sim_occ)
+        .IfReg0(next_trainlength_occ)
+        .ActReg0(tmp_shadow_train_in_far);
+    Def()
+        .IfReg1(route_set)
+        .IfReg1(previous_occ)
+        .IfReg0(*sim_occ)
+        .IfReg1(next_trainlength_occ)
+        .ActReg1(tmp_shadow_train_in_far);
+  }
+
+  Def()
+      .IfReg1(route_set)
+      .IfReg1(previous_occ)
+      .IfReg0(*sim_occ)
+      .ActReg1(sim_occ)
+      .ActReg0(tmp_seen_train_in_next);
+
+  if (reset_routes) {
+    Def().IfReg1(aut->ImportVariable(*reset_routes))
+        .ActReg0(tmp_seen_train_in_next)
+        .ActReg0(tmp_shadow_train_in_far);
+  }
+
+  if (far_detector) {
+    // printf("Have far detector\n");
+    const LocalVariable& next_trainlength_occ =
+        aut->ImportVariable(*far_detector);
+    // If the train has shown up in a far-away block, it has surely passed
+    // through us.
+    //
+    // TODO(bracz): This is broken, because a Turnout will always report as
+    // having a far away detector, and the data that it returns is highly
+    // questionable.
+    // This is also preventing a signal to be manually set to green in case
+    // there is some down the road occupancy.
+    Def()
+        .IfReg1(route_set)
+        .IfReg1(next_trainlength_occ)
+        .IfReg0(*tmp_shadow_train_in_far)
+        .ActReg1(tmp_shadow_train_in_far)
+        .ActReg0(sim_occ)
+        .RunCallback(release_cb);
+  }
+
+  if (next_detector && (next_detector != far_detector)) {
+    // printf("Have close detector\n");
+    const LocalVariable& next_close_occ =
+        aut->ImportVariable(*next_detector);
+    // We save a bit when a train has shown up in the next block.
+    Def()
+        .IfReg1(route_set)
+        .IfReg1(*sim_occ)
+        .IfReg1(next_close_occ)
+        .ActReg1(tmp_seen_train_in_next);
+    // And when it is gone from there, we must be unoccupied too.
+    Def()
+        .IfReg1(route_set)
+        .IfReg1(*sim_occ)
+        .IfReg1(*tmp_seen_train_in_next)
+        .IfReg0(next_close_occ)
+        .ActReg0(sim_occ)
+        .RunCallback(release_cb);
+  }
+}
+
 void CopySignals(Automata* aut, CtrlTrackInterface *from, CtrlTrackInterface *to, OpCallback* condition = nullptr) {
   aut->DefCopy(aut->ImportVariable(*from->in_next_signal_1),
                aut->ImportVariable(to->in_next_signal_1.get()),
@@ -549,90 +637,6 @@ const CtrlTrackInterface* StraightTrack::FindOtherSide(
     HASSERT(false && could_not_find_opposide_side());
   }
   return NULL;
-}
-
-void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
-                       Automata::LocalVariable* tmp_seen_train_in_next,
-                       Automata::LocalVariable* tmp_shadow_train_in_far,
-                       const Automata::LocalVariable& route_set,
-                       CtrlTrackInterface* past_if, CtrlTrackInterface* next_if,
-                       OpCallback* release_cb) {
-  // tmp_seen_train_in_next is 1 if we have seen a train in the next (close)
-  // occupancy block.
-  HASSERT(past_if);
-  HASSERT(next_if);
-  const LocalVariable& previous_occ =
-      aut->ImportVariable(*past_if->binding()->LookupNextDetector());
-  auto* far_detector = next_if->binding()->LookupFarDetector();
-  auto* next_detector = next_if->binding()->LookupNextDetector();
-
-  if (far_detector) {
-    const LocalVariable& next_trainlength_occ =
-        aut->ImportVariable(*far_detector);
-    Def()
-        .IfReg1(route_set)
-        .IfReg1(previous_occ)
-        .IfReg0(*sim_occ)
-        .IfReg0(next_trainlength_occ)
-        .ActReg0(tmp_shadow_train_in_far);
-    Def()
-        .IfReg1(route_set)
-        .IfReg1(previous_occ)
-        .IfReg0(*sim_occ)
-        .IfReg1(next_trainlength_occ)
-        .ActReg1(tmp_shadow_train_in_far);
-  }
-
-  Def()
-      .IfReg1(route_set)
-      .IfReg1(previous_occ)
-      .IfReg0(*sim_occ)
-      .ActReg1(sim_occ)
-      .ActReg0(tmp_seen_train_in_next);
-
-  if (reset_routes) {
-    Def().IfReg1(aut->ImportVariable(*reset_routes))
-        .ActReg0(tmp_seen_train_in_next)
-        .ActReg0(tmp_shadow_train_in_far);
-  }
-
-  if (far_detector) {
-    // printf("Have far detector\n");
-    const LocalVariable& next_trainlength_occ =
-        aut->ImportVariable(*far_detector);
-    // If the train has shown up in a far-away block, it has surely passed
-    // through us.
-    //
-    // TODO(bracz): This is broken, because a Turnout will always report as
-    // having a far away detector, and the data that it returns is highly
-    // questionable.
-    // This is also preventing a signal to be manually set to green in case
-    // there is some down the road occupancy.
-    Def()
-        .IfReg1(route_set)
-        .IfReg1(next_trainlength_occ)
-        .IfReg0(*tmp_shadow_train_in_far)
-        .ActReg1(tmp_shadow_train_in_far)
-        .ActReg0(sim_occ)
-        .RunCallback(release_cb);
-  }
-
-  if (next_detector && (next_detector != far_detector)) {
-    // printf("Have close detector\n");
-    const LocalVariable& next_close_occ =
-        aut->ImportVariable(*next_detector);
-    // We save a bit when a train has shown up in the next block.
-    Def().IfReg1(route_set).IfReg1(*sim_occ).IfReg1(next_close_occ).ActReg1(
-        tmp_seen_train_in_next);
-    // And when it is gone from there, we must be unoccupied too.
-    Def()
-        .IfReg1(route_set)
-        .IfReg1(*sim_occ)
-        .IfReg1(*tmp_seen_train_in_next)
-        .IfReg0(next_close_occ)
-        .ActReg0(sim_occ)
-        .RunCallback(release_cb);
-  }
 }
 
 void FixedTurnout::FixTurnoutState(Automata* aut) {
