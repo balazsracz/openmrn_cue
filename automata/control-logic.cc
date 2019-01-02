@@ -832,16 +832,27 @@ void TurnoutBase::ProxySignals(Automata* aut) {
 
 void DKW::ProxyDetectors(Automata* aut) {
   const LocalVariable& state = aut->ImportVariable(*turnout_state_);
-  // Passes if state == 0 (closed).
-  auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
-  // Passes if state == 1 (thrown).
-  auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
+
   for (auto& r : routes_) {
-    ProxyDetector(
-        aut, r.state == DKW_STRAIGHT ? &thrown_condition : &closed_condition,
-        points_[r.from].detector_next.get(),
-        points_[r.from].detector_far.get(),
-        points_[r.to].interface->binding());
+    // Passes if state == 0 (closed).
+    auto straight_condition =
+        NewCallback(&TurnoutDirectionCheck, state, (bool)kDKWStateCross);
+    // Passes if state == 1 (thrown).
+    auto curved_condition =
+        NewCallback(&TurnoutDirectionCheck, state, (bool)kDKWStateCurved);
+
+    OpCallback* cb = nullptr;
+    switch (r.state) {
+      case DKW_STRAIGHT:
+        cb = &straight_condition;
+        break;
+      case DKW_CURVED:
+        cb = &curved_condition;
+        break;
+    }
+    ProxyDetector(aut, cb, points_[r.from].detector_next.get(),
+                  points_[r.from].detector_far.get(),
+                  points_[r.to].interface->binding());
   }
 }
 
@@ -850,13 +861,23 @@ void DKW::ProxySignals(Automata* aut) {
     ClearAutomataVariables(aut);
     const LocalVariable& state = aut->ImportVariable(*turnout_state_);
     // Passes if state == 0 (closed).
-    auto closed_condition = NewCallback(&TurnoutDirectionCheck, state, false);
+    auto straight_condition =
+        NewCallback(&TurnoutDirectionCheck, state, (bool)kDKWStateCross);
     // Passes if state == 1 (thrown).
-    auto thrown_condition = NewCallback(&TurnoutDirectionCheck, state, true);
-    CopySignals(
-        aut, points_[r.to].interface.get(),
-        points_[r.from].interface->binding(),
-        r.state == DKW_STRAIGHT ? &thrown_condition : &closed_condition);
+    auto curved_condition =
+        NewCallback(&TurnoutDirectionCheck, state, (bool)kDKWStateCurved);
+
+    OpCallback* cb = nullptr;
+    switch (r.state) {
+      case DKW_STRAIGHT:
+        cb = &straight_condition;
+        break;
+      case DKW_CURVED:
+        cb = &curved_condition;
+        break;
+    }
+    CopySignals(aut, points_[r.to].interface.get(),
+                points_[r.from].interface->binding(), cb);
   }
 }
 
