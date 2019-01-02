@@ -1407,6 +1407,11 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .ActReg0(&current_block_routingloc_)  // XXX
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
+    Def().IfState(StGreenFailed)
+        .IfReg1(current_block_routingloc_)
+        .RunCallback(route_lock_release())
+        .ActState(StWaiting);
+
   } else {
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_permaloc_)
@@ -1416,21 +1421,11 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .ActReg1(&next_block_permaloc_)
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
+    Def().IfState(StGreenFailed)
+        .IfReg1(current_block_permaloc_)
+        .RunCallback(route_lock_release())
+        .ActState(StWaiting);
   }
-
-  // TODO: this has two problems:
-  //
-  // - After requesting a green when the green fails, we do not reconstruct the
-  //   routingloc bits.
-  //
-  // - This command is compiled many times (once for each stage in the schedule)
-  //   but they do not have the same setting for route lock callback. Only the
-  //   first one in the transition funciton will be executed and will forget to
-  //   release the (correct) route lock. Instead, we need to take into account
-  //   who has the routingloc bit right now.
-  Def().IfState(StGreenFailed)
-      .RunCallback(route_lock_release())
-      .ActState(StWaiting);
 }
 
 void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
