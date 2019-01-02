@@ -2693,7 +2693,7 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlop) {
 }
 
 TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
-  //debug_variables = 2;
+  // ScopedOverride so(&debug_variables, 2);
   static FlipFlopAutomata flaut(&brd, "flipflop", alloc());
   static FlipFlopClient flc_loop("loop", &flaut);
   static FlipFlopClient flc_stub("stub", &flaut);
