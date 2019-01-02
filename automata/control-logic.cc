@@ -1319,6 +1319,8 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
                                              const SignalBlock& dest,
                                              OpCallback* condition,
                                              bool eager) {
+  Def().ActSetId(train_node_id_);
+
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(source.route_out(),
@@ -1340,11 +1342,28 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
     Def()
         .IfReg1(current_block_routingloc_)
         .ActImportVariable(source.route_in(), next_block_route_in_);
+    
     Def()
         .IfState(StWaiting)
         .IfReg1(current_block_routingloc_)
         .IfReg0(current_block_permaloc_)
         .IfReg0(next_block_route_in_) // remapped to current block route in!
+        .ActLoadSpeed(true, 22);
+
+    Def()
+        .IfState(StWaiting)
+        .IfReg1(current_block_routingloc_)
+        .IfReg0(current_block_permaloc_)
+        .IfReg0(next_block_route_in_) // remapped to current block route in!
+        .IfSetSpeed()
+        .ActLoadSpeed(true, 22);
+
+    Def()
+        .IfState(StWaiting)
+        .IfReg1(current_block_routingloc_)
+        .IfReg0(current_block_permaloc_)
+        .IfReg0(next_block_route_in_) // remapped to current block route in!
+        .ActSetId(train_node_id_)
         .ActReg0(&current_block_routingloc_);  //XXX
   }
 
@@ -1403,6 +1422,15 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
   if (eager) {
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_routingloc_)
+        .ActLoadSpeed(true, 21);
+
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_routingloc_)
+        .IfSetSpeed()
+        .ActLoadSpeed(true, 21);
+
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_routingloc_)
         .RunCallback(route_lock_release())
         .ActReg0(&current_block_routingloc_)  // XXX
         .ActReg1(&next_block_routingloc_)
@@ -1413,6 +1441,16 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .ActState(StWaiting);
 
   } else {
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_permaloc_)
+        .ActLoadSpeed(true, 24);
+        
+    Def().IfState(StRequestTransition)
+        .IfReg1(current_block_permaloc_)
+        .IfSetSpeed()
+        .ActLoadSpeed(true, 24);
+
+
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_permaloc_)
         .RunCallback(route_lock_release())
