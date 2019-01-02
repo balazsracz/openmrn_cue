@@ -186,8 +186,9 @@ class TrainControlServiceTrainTest : public TrainControlServiceTest {
  protected:
   TrainControlServiceTrainTest() {
     // Sets up the traction train node.
+    run_x([this](){
     ifCan_->local_aliases()->add(0x060100000056U, 0x490);
-    ifCan_->local_aliases()->add(0x060100000057U, 0x491);
+    ifCan_->local_aliases()->add(0x060100000057U, 0x491);});
     EXPECT_CALL(m1_, legacy_address()).Times(AtLeast(0)).WillRepeatedly(
         Return(0x00000057U));
     EXPECT_CALL(m1_, legacy_address_type()).Times(AtLeast(0)).WillRepeatedly(
