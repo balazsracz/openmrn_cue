@@ -1623,8 +1623,8 @@ TEST_F(LogicTest, MovableDKW) {
     Run(20);
   };
 
-  SetVar(*magnet.command, true);
-  SetVar(*magnet.current_state, true);
+  SetVar(*magnet.command, MovableDKW::kDKWStateCross);
+  SetVar(*magnet.current_state, MovableDKW::kDKWStateCross);
   l.in_a1.inverted_detector()->Set(false);
   Run(30);
 
@@ -1638,7 +1638,7 @@ TEST_F(LogicTest, MovableDKW) {
     move(&l.in_a1, &l.in_b1, &l.in_b2);
     fprintf(stderr, "round %d step 2b\n", i);
     move(&l.in_b2, &l.in_a2, &l.in_a1);
-    SetVar(*magnet.command, false);
+    SetVar(*magnet.command, MovableDKW::kDKWStateCurved);
     Run(20);
     // A1->B2; B1->A2
     fprintf(stderr, "round %d step 3\n", i);
@@ -1652,7 +1652,7 @@ TEST_F(LogicTest, MovableDKW) {
 
     fprintf(stderr, "round %d step 5\n", i);
     move(&l.in_a1, &l.in_b2, &l.in_b1);
-    SetVar(*magnet.command, true);
+    SetVar(*magnet.command, MovableDKW::kDKWStateCross);
     Run(20);
     // A2->B2; B1->A1;
     fprintf(stderr, "round %d step 6\n", i);
@@ -1666,7 +1666,7 @@ TEST_F(LogicTest, MovableDKW) {
 
     fprintf(stderr, "round %d step 8\n", i);
     move(&l.in_b1, &l.in_a1, &l.in_a2);
-    SetVar(*magnet.command, false);
+    SetVar(*magnet.command, MovableDKW::kDKWStateCurved);
     Run(20);
     // A2->B1; B2->A1
     fprintf(stderr, "round %d step 9\n", i);
@@ -1680,7 +1680,7 @@ TEST_F(LogicTest, MovableDKW) {
     // Let's get back to a1 for another round.
     fprintf(stderr, "round %d step b\n", i);
     move(&l.in_a2, &l.in_b1, &l.in_b2);
-    SetVar(*magnet.command, true);
+    SetVar(*magnet.command, MovableDKW::kDKWStateCross);
     Run(20);
     fprintf(stderr, "round %d step c\n", i);
     move(&l.in_b2, &l.in_a2, &l.in_a1);

@@ -1111,7 +1111,7 @@ class FixedTurnout : public TurnoutBase {
 class DKW : private OccupancyLookupInterface,
             public virtual AutomataPlugin {
  public:
-  enum State { DKW_STRAIGHT, DKW_CURVED };
+  enum State { DKW_STRAIGHT = false, DKW_CURVED = true };
 
   static const bool kDKWStateCross = false;
   static const bool kDKWStateCurved = true;
@@ -1327,9 +1327,9 @@ public:
   void FixDKWState(Automata *aut) {
     auto *turnoutstate = aut->ImportVariable(turnout_state_.get());
     if (fixed_state_ == DKW_STRAIGHT) {
-      Def().ActReg1(turnoutstate);
+      Def().ActReg(turnoutstate, kDKWStateCross);
     } else {
-      Def().ActReg0(turnoutstate);
+      Def().ActReg(turnoutstate, kDKWStateCurved);
     }
   }
 
