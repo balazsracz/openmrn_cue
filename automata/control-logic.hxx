@@ -342,6 +342,7 @@ class StraightTrack : public StraightTrackInterface,
   void SimulateAllOccupancy(Automata *aut);
   void SimulateAllRoutes(Automata *aut);
   void CopySignalState(Automata *aut);
+  void CopyOccupancy(Automata *aut);
 
   static const int kAllocSize = 24;
 
@@ -380,6 +381,10 @@ class StraightTrack : public StraightTrackInterface,
   friend class StandardMiddleSignal;
   friend class StubBlock;
 
+  // If not-null, our occupancy is coming from an external variable -- typically
+  // a neighboring sensor track.
+  const GlobalVariable* external_occupancy_{nullptr};
+  // true if we have (computed) that the current track is occupied
   std::unique_ptr<GlobalVariable> simulated_occupancy_;
   // route from A [in] to B [out]
   std::unique_ptr<GlobalVariable> route_set_ab_;

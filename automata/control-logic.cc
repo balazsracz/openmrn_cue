@@ -52,6 +52,10 @@ void ReleaseRouteCallback(CtrlTrackInterface* side_out,
 }
 
 void StraightTrack::SimulateAllOccupancy(Automata* aut) {
+  if (external_occupancy_) {
+    CopyOccupancy(aut);
+    return;
+  }
   auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
   auto* tmp = aut->ImportVariable(tmp_seen_train_in_next_.get());
   auto* tmpfar = aut->ImportVariable(tmp_shadow_train_in_far_.get());
@@ -67,6 +71,34 @@ void StraightTrack::SimulateAllOccupancy(Automata* aut) {
                     &side_a_release);
 }
 
+void StraightTrack::CopyOccupancy(Automata* aut) {
+  auto* sim_occ = aut->ImportVariable(simulated_occupancy_.get());
+  const auto& src = aut->ImportVariable(*external_occupancy_);
+  auto* route_set_ab = aut->ImportVariable(route_set_ab_.get());
+  auto* route_set_ba = aut->ImportVariable(route_set_ba_.get());
+  auto side_b_release =
+      NewCallback(&ReleaseRouteCallback, side_b(), route_set_ab);
+  auto side_a_release =
+      NewCallback(&ReleaseRouteCallback, side_a(), route_set_ba);
+  Def()
+      .IfReg1(src)
+      .IfReg0(*sim_occ)
+      .ActReg1(sim_occ);
+  Def()
+      .IfReg0(src)
+      .IfReg1(*sim_occ)
+      .IfReg1(*route_set_ab)
+      .RunCallback(&side_b_release);
+  Def()
+      .IfReg0(src)
+      .IfReg1(*sim_occ)
+      .IfReg1(*route_set_ba)
+      .RunCallback(&side_a_release);
+  Def()
+      .IfReg0(src)
+      .IfReg1(*sim_occ)
+      .ActReg0(sim_occ);
+}
 
 void SimulateOccupancy(Automata* aut, Automata::LocalVariable* sim_occ,
                        Automata::LocalVariable* tmp_seen_train_in_next,
