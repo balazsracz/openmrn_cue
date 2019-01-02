@@ -1084,6 +1084,26 @@ void TrainSchedule::HandleInit(Automata* aut) {
       .ActState(StWaiting);
 }
 
+// This function is run after the Transition function, which defines the
+// separate blocks where the train should go through.
+//
+// State transition sequence:
+//
+// StWaiting -> StReadyToGo (in the Add{Eager|Direct}BlockTransition).
+// StReadyToGo -> StTurnout (in here, at the end)
+// one cycle at StTurnout (or some waiting states)
+// StTurnout -> StRequestGreen (in here at the end)
+// one cycle
+// StRequestGreen -> StGreenRequested (in here at the beginning)
+// StGreenRequested -> one of
+//    -> StRequestTransition (if route OK and train is moving)
+//    -> StGreenWait -> 2 sec -> StRequestTransition
+//                           (if route OK but train is not moving)
+//    -> StGreenFailed (if route not OK and request green bit is gone)
+//                   -> StWaiting (in the block transition)
+// StRequestTransition: one cycle
+// StRequestTransition -> StTransitionDone (in the Add{Eager|Direct}BlockTransition), which moves the routingloc and permaloc bits.
+// StTransitionDone -> StWaiting (here), which starts the train.
 void TrainSchedule::HandleBaseStates(Automata* aut) {
   Def().IfState(StRequestGreen)
       .IfReg0(current_block_request_green_)
@@ -1308,13 +1328,15 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
   if (!eager) {
     aut->DefCopy(current_block_permaloc_, &current_block_routingloc_);
   } else {
-    // This will take care of permaloc bits that appear out of nowhere.
+    // If a permaloc bit appears out of nowhere, we add a routingloc to it. This
+    // is necessary so that the train will attempt to leave that position.
     Def().IfReg1(current_block_permaloc_)
         .IfReg0(current_block_routingloc_)
         .IfReg0(current_block_route_out_)
         .ActReg1(&current_block_routingloc_);
     // We also need to delete routingloc bits that are not corresponding to
-    // routes.
+    // routes. This is necessary when the user clicks reset routes button, then
+    // we need to roll back all the eager stuff that's gone out front.
     Def()
         .IfReg1(current_block_routingloc_)
         .ActImportVariable(source.route_in(), next_block_route_in_);
@@ -1322,8 +1344,8 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .IfState(StWaiting)
         .IfReg1(current_block_routingloc_)
         .IfReg0(current_block_permaloc_)
-        .IfReg0(next_block_route_in_) // current block route in!
-        .ActReg0(&current_block_routingloc_);
+        .IfReg0(next_block_route_in_) // remapped to current block route in!
+        .ActReg0(&current_block_routingloc_);  //XXX
   }
 
   Def().IfReg1(current_block_permaloc_)
