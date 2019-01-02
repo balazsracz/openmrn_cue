@@ -2791,12 +2791,14 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
 
   std::vector<std::vector<TestBlock*>> ll = {{&BotA, &BotB}, {&BotB, &RLeft}, {&RLeft, &TopA}};
   for (auto& pp : ll) {
+    LOG(INFO, "\nRotate: %s -> %s.\n",pp[0]->b()->name().c_str(), pp[1]->b()->name().c_str());
     EXPECT_TRUE(QueryVar(pp[0]->b()->route_out()));
     pp[0]->inverted_detector()->Set(true);
     Run(40);
     EXPECT_FALSE(QueryVar(pp[0]->b()->route_out()));
     pp[1]->inverted_detector()->Set(false);
     Run(40);
+    EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.RRight"));
   }
 
   EXPECT_TRUE(QueryVar("blk.t2.u.rtloc.TopA"));
@@ -2808,6 +2810,8 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithFlipFlopTwoTrain) {
   EXPECT_TRUE(QueryVar("blk.t2.pbits.loc.TopB"));
   // The front train has green all around.
   EXPECT_TRUE(QueryVar("blk.t1.u.rtloc.RLeft"));
+  EXPECT_FALSE(QueryVar("blk.t1.u.rtloc.TopA"));
+  EXPECT_FALSE(QueryVar("blk.t1.u.rtloc.BotB"));
   EXPECT_TRUE(QueryVar("blk.t1.pbits.loc.RRight"));
 
   EXPECT_TRUE(QueryVar("blk.magnets.RStubEntry.mgn.current_state"));
