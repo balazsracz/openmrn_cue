@@ -161,7 +161,7 @@ class MemorizingHandlerBlock : public EventHandler {
   void handle_consumer_identified(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE {
-    ReportSingle(event->event, done);
+    ReportSingle(event, done);
   }
   void handle_consumer_range_identified(const EventRegistryEntry& registry_entry,
                                      EventReport* event,
@@ -171,7 +171,7 @@ class MemorizingHandlerBlock : public EventHandler {
   void handle_producer_identified(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) OVERRIDE {
-    ReportSingle(event->event, done);
+    ReportSingle(event, done);
   }
   void handle_producer_range_identified(const EventRegistryEntry& registry_entry,
                                      EventReport* event,
@@ -181,12 +181,12 @@ class MemorizingHandlerBlock : public EventHandler {
   void handle_identify_producer(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) OVERRIDE {
-    ReportAndIdentify(event->event, Defs::MTI_PRODUCER_IDENTIFIED_VALID, done);
+    ReportAndIdentify(event, Defs::MTI_PRODUCER_IDENTIFIED_VALID, done);
   }
   void handle_identify_consumer(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) OVERRIDE {
-    ReportAndIdentify(event->event, Defs::MTI_CONSUMER_IDENTIFIED_VALID, done);
+    ReportAndIdentify(event, Defs::MTI_CONSUMER_IDENTIFIED_VALID, done);
   }
 
   void handle_identify_global(const EventRegistryEntry& registry_entry,
@@ -203,12 +203,12 @@ class MemorizingHandlerBlock : public EventHandler {
  private:
   /** Checks if a single eventid is ours, and sends out a PCER for the valid
    * event. Notifies done. */
-  void ReportSingle(uint64_t eventid, BarrierNotifiable* done);
+  void ReportSingle(EventReport* event, BarrierNotifiable* done);
 
   /** Checks if the eventid is ours. Sends an event report with the currently
    * valid eventid, and an Identified_{producer/consumer}_{valid/invalid} for
    * the given eventid. */
-  void ReportAndIdentify(uint64_t eventid, Defs::MTI mti,
+  void ReportAndIdentify(EventReport* event, Defs::MTI mti,
                          BarrierNotifiable* done);
 
   /** Checks if a range intersects with our range; if so, then produces the

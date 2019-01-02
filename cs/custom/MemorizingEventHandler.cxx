@@ -87,12 +87,12 @@ void MemorizingHandlerManager::handle_identify_global(
     BarrierNotifiable* done) {
   AutoNotify n(done);
   uint64_t range = EncodeRange(event_base_, num_total_events_);
-  event_write_helper1.WriteAsync(node_, Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-                                 WriteHelper::global(),
-                                 eventid_to_buffer(range), done->new_child());
-  event_write_helper2.WriteAsync(node_, Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
-                                 WriteHelper::global(),
-                                 eventid_to_buffer(range), done->new_child());
+  event->event_write_helper<1>()->WriteAsync(
+      node_, Defs::MTI_PRODUCER_IDENTIFIED_RANGE, WriteHelper::global(),
+      eventid_to_buffer(range), done->new_child());
+  event->event_write_helper<2>()->WriteAsync(
+      node_, Defs::MTI_CONSUMER_IDENTIFIED_RANGE, WriteHelper::global(),
+      eventid_to_buffer(range), done->new_child());
 }
 
 void MemorizingHandlerManager::UpdateValidEvent(uint64_t eventid) {
@@ -227,11 +227,12 @@ MemorizingHandlerBlock::~MemorizingHandlerBlock() {
 
 /** Checks if a single eventid is ours, and sends out a PCER for the valid
  * event. Notifies done. */
-void MemorizingHandlerBlock::ReportSingle(uint64_t eventid,
+void MemorizingHandlerBlock::ReportSingle(EventReport* event,
                                           BarrierNotifiable* done) {
   AutoNotify n(done);
+  auto eventid = event->event;
   if (!is_mine(eventid)) return;
-  event_write_helper1.WriteAsync(
+  event->event_write_helper<1>()->WriteAsync(
       parent_->node(), Defs::MTI_EVENT_REPORT, WriteHelper::global(),
       eventid_to_buffer(current_event_), done->new_child());
 }
@@ -239,15 +240,18 @@ void MemorizingHandlerBlock::ReportSingle(uint64_t eventid,
 /** Checks if the eventid is ours. Sends an event report with the currently
  * valid eventid, and an Identified_{producer/consumer}_{valid/invalid} for
  * the given eventid. */
-void MemorizingHandlerBlock::ReportAndIdentify(uint64_t eventid, Defs::MTI mti,
+void MemorizingHandlerBlock::ReportAndIdentify(EventReport* event,
+                                               Defs::MTI mti,
                                                BarrierNotifiable* done) {
   AutoNotify n(done);
+  auto eventid = event->event;
   if (!is_mine(eventid)) return;
   if (eventid != current_event_) {
     mti++;
   }
-  event_write_helper2.WriteAsync(parent_->node(), mti, WriteHelper::global(),
-                                 eventid_to_buffer(eventid), done->new_child());
+  event->event_write_helper<2>()->WriteAsync(
+      parent_->node(), mti, WriteHelper::global(), eventid_to_buffer(eventid),
+      done->new_child());
   // This will happen by us listening to our own identified call.
   /*event_write_helper1.WriteAsync(
       parent_->node(), Defs::MTI_EVENT_REPORT, WriteHelper::global(),
@@ -263,7 +267,7 @@ void MemorizingHandlerBlock::ReportRange(EventReport* event,
   // We don't respond to range queries from ourselves; this should prevent us
   // from generating event reports on the global identify message.
   if (event->src_node.id == parent_->node()->node_id()) return;
-  event_write_helper1.WriteAsync(
+  event->event_write_helper<1>()->WriteAsync(
       parent_->node(), Defs::MTI_EVENT_REPORT, WriteHelper::global(),
       eventid_to_buffer(current_event_), done->new_child());
 }
