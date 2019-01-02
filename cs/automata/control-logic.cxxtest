@@ -2059,9 +2059,9 @@ TEST_F(LogicTrainTest, ScheduleStraight) {
           .ActReg0(cv);
       Def()
           .ActImportVariable(*first.b()->request_green(),
-                             current_block_request_green_)
+                             routing_block_request_green_)
           .ActImportVariable(first.b()->route_out(),
-                             current_block_route_out_)
+                             routing_block_route_out_)
           .ActImportVariable(second.b()->detector(),
                              next_block_detector_);
       MapCurrentBlockPermaloc(*first.b());

@@ -1106,20 +1106,20 @@ void TrainSchedule::HandleInit(Automata* aut) {
 // StTransitionDone -> StWaiting (here), which starts the train.
 void TrainSchedule::HandleBaseStates(Automata* aut) {
   Def().IfState(StRequestGreen)
-      .IfReg0(current_block_request_green_)
-      .ActReg1(&current_block_request_green_)
+      .IfReg0(routing_block_request_green_)
+      .ActReg1(&routing_block_request_green_)
       .ActState(StGreenRequested);
   Def()
       .IfState(StGreenRequested)
-      .IfReg0(current_block_request_green_)
-      .IfReg0(current_block_route_out_)
+      .IfReg0(routing_block_request_green_)
+      .IfReg0(routing_block_route_out_)
       .ActState(StGreenFailed);
   Def().IfState(StGreenRequested)
-      .IfReg1(current_block_route_out_)
+      .IfReg1(routing_block_route_out_)
       .IfReg1(aut->ImportVariable(*is_moving_))
       .ActState(StRequestTransition);
   Def().IfState(StGreenRequested)
-      .IfReg1(current_block_route_out_)
+      .IfReg1(routing_block_route_out_)
       .ActTimer(2)
       .ActState(StGreenWait);
   Def()
@@ -1319,12 +1319,10 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
                                              const SignalBlock& dest,
                                              OpCallback* condition,
                                              bool eager) {
-  Def().ActSetId(train_node_id_);
-
   MapCurrentBlockPermaloc(source);
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(source.route_out(),
-                         current_block_route_out_)
+                         perma_block_route_out_)
       .ActImportVariable(source.src_detector(),
                          current_block_detector_);
   if (!eager) {
@@ -1334,7 +1332,7 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
     // is necessary so that the train will attempt to leave that position.
     Def().IfReg1(current_block_permaloc_)
         .IfReg0(current_block_routingloc_)
-        .IfReg0(current_block_route_out_)
+        .IfReg0(perma_block_route_out_)
         .ActReg1(&current_block_routingloc_);
     // We also need to delete routingloc bits that are not corresponding to
     // routes. This is necessary when the user clicks reset routes button, then
@@ -1342,29 +1340,13 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
     Def()
         .IfReg1(current_block_routingloc_)
         .ActImportVariable(source.route_in(), next_block_route_in_);
-    
-    Def()
-        .IfState(StWaiting)
-        .IfReg1(current_block_routingloc_)
-        .IfReg0(current_block_permaloc_)
-        .IfReg0(next_block_route_in_) // remapped to current block route in!
-        .ActLoadSpeed(true, 22);
 
     Def()
         .IfState(StWaiting)
         .IfReg1(current_block_routingloc_)
         .IfReg0(current_block_permaloc_)
         .IfReg0(next_block_route_in_) // remapped to current block route in!
-        .IfSetSpeed()
-        .ActLoadSpeed(true, 22);
-
-    Def()
-        .IfState(StWaiting)
-        .IfReg1(current_block_routingloc_)
-        .IfReg0(current_block_permaloc_)
-        .IfReg0(next_block_route_in_) // remapped to current block route in!
-        .ActSetId(train_node_id_)
-        .ActReg0(&current_block_routingloc_);  //XXX
+        .ActReg0(&current_block_routingloc_);
   }
 
   Def().IfReg1(current_block_permaloc_)
@@ -1377,8 +1359,8 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
         .IfReg1(aut->ImportVariable(*is_moving_))
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
-        .IfReg1(current_block_route_out_)
-        .IfReg0(current_block_routingloc_) 
+        .IfReg1(perma_block_route_out_)
+        .IfReg0(current_block_routingloc_)
         .ActReg0(&current_block_permaloc_)
         .ActReg1(&next_block_permaloc_)
         // This will make sure not to stop the train here.
@@ -1388,9 +1370,9 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
 
   Def().IfReg1(current_block_routingloc_)
       .ActImportVariable(*source.request_green(),
-                         current_block_request_green_)
+                         routing_block_request_green_)
       .ActImportVariable(source.route_out(),
-                         current_block_route_out_);
+                         routing_block_route_out_);
   Def()
       .IfReg1(current_block_routingloc_)
       .ActImportVariable(dest.dst_detector(), next_block_detector_)
@@ -1402,7 +1384,7 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
       .IfReg1(current_block_routingloc_)
       .MaybeIfReg(!eager, current_block_detector_, true)
       .IfReg0(next_block_detector_)
-      .IfReg0(current_block_route_out_)
+      .IfReg0(routing_block_route_out_)
       .IfReg0(next_block_route_in_)
       .IfReg0(aut->ImportVariable(*is_frozen_))
       .RunCallback(condition)
@@ -1422,17 +1404,8 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
   if (eager) {
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_routingloc_)
-        .ActLoadSpeed(true, 21);
-
-    Def().IfState(StRequestTransition)
-        .IfReg1(current_block_routingloc_)
-        .IfSetSpeed()
-        .ActLoadSpeed(true, 21);
-
-    Def().IfState(StRequestTransition)
-        .IfReg1(current_block_routingloc_)
         .RunCallback(route_lock_release())
-        .ActReg0(&current_block_routingloc_)  // XXX
+        .ActReg0(&current_block_routingloc_)
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
     Def().IfState(StGreenFailed)
@@ -1443,19 +1416,9 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
   } else {
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_permaloc_)
-        .ActLoadSpeed(true, 24);
-        
-    Def().IfState(StRequestTransition)
-        .IfReg1(current_block_permaloc_)
-        .IfSetSpeed()
-        .ActLoadSpeed(true, 24);
-
-
-    Def().IfState(StRequestTransition)
-        .IfReg1(current_block_permaloc_)
         .RunCallback(route_lock_release())
         .ActReg0(&current_block_permaloc_)
-        .ActReg0(&current_block_routingloc_)   // XXX
+        .ActReg0(&current_block_routingloc_)
         .ActReg1(&next_block_permaloc_)
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
@@ -1480,12 +1443,12 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
 
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(source.route_out(),
-                         current_block_route_out_)
+                         perma_block_route_out_)
       .ActImportVariable(source.src_detector(),
                          current_block_detector_);
   Def()
       .IfReg1(current_block_permaloc_)
-      .IfReg0(current_block_route_out_)
+      .IfReg0(perma_block_route_out_)
       .ActReg1(&current_block_routingloc_);
 
   // NOTE(balazs.racz) This ensures that the outgoing route setting does not
@@ -1497,7 +1460,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
     // This will take care of permaloc bits that appear out of nowhere.
     Def().IfReg1(current_block_permaloc_)
         .IfReg0(current_block_routingloc_)
-        .IfReg0(current_block_route_out_)
+        .IfReg0(perma_block_route_out_)
         .ActReg1(&current_block_routingloc_);
     // We also need to delete routingloc bits that are not corresponding to
     // routes.
@@ -1522,7 +1485,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .IfReg1(aut->ImportVariable(*is_moving_))
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
-        .IfReg1(current_block_route_out_)
+        .IfReg1(perma_block_route_out_)
         .IfReg1(current_direction_)
         .IfReg0(current_block_routingloc_) // makes sure permaloc <= rtloc
         .ActReg0(&current_block_permaloc_)
@@ -1536,9 +1499,9 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
 
   Def().IfReg1(current_block_routingloc_)
       .ActImportVariable(*source.request_green(),
-                         current_block_request_green_)
+                         routing_block_request_green_)
       .ActImportVariable(source.route_out(),
-                         current_block_route_out_);
+                         routing_block_route_out_);
   Def()
       .IfReg1(current_block_routingloc_)
       .ActImportVariable(dest.dst_detector(), next_block_detector_)
@@ -1559,7 +1522,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
       .IfReg1(current_block_routingloc_)
       .MaybeIfReg(!eager, current_block_detector_, true)
       .IfReg0(next_block_detector_)
-      .IfReg0(current_block_route_out_)
+      .IfReg0(routing_block_route_out_)
       .IfReg0(next_block_route_in_)
       .IfReg0(aut->ImportVariable(*is_frozen_))
       .RunCallback(condition)
@@ -1573,7 +1536,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
   // Removes the permit request in case another outgoing direction took place.
   // TODO(balazs.racz): Check if this is a good condition to use.
   Def().IfReg1(current_block_routingloc_)
-      .IfReg1(current_block_route_out_)
+      .IfReg1(routing_block_route_out_)
       .ActReg0(&permit_request_);
 
   Def().IfState(StWaiting)
@@ -1604,6 +1567,11 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .ActReg0(&current_block_routingloc_)
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
+    Def().IfState(StGreenFailed)
+        .IfReg1(current_block_routingloc_)
+        .IfReg1(current_direction_)
+        .RunCallback(route_lock_release())
+        .ActState(StWaiting);
   } else {
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_permaloc_)
@@ -1615,11 +1583,12 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .ActReg1(&next_block_routingloc_)
         .ActReg0(&current_direction_)
         .ActState(StTransitionDone);
+    Def().IfState(StGreenFailed)
+        .IfReg1(current_block_permaloc_)
+        .IfReg1(current_direction_)
+        .RunCallback(route_lock_release())
+        .ActState(StWaiting);
   }
-
-  Def().IfState(StGreenFailed)
-      .RunCallback(route_lock_release())
-      .ActState(StWaiting);
 }
 
 void TrainSchedule::StopTrainAt(const SignalBlock& dest) {

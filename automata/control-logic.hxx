@@ -1623,8 +1623,9 @@ class TrainSchedule : public virtual AutomataPlugin {
         last_set_reversed_(alloc_->Allocate("last_reversed")),
         is_frozen_(permanent_alloc_->Allocate("do_not_move")),
         current_block_detector_(aut_.ReserveVariable()),
-        current_block_request_green_(aut_.ReserveVariable()),
-        current_block_route_out_(aut_.ReserveVariable()),
+        routing_block_request_green_(aut_.ReserveVariable()),
+        perma_block_route_out_(aut_.ReserveVariable()),
+        routing_block_route_out_(aut_.ReserveVariable()),
         current_block_permaloc_(aut_.ReserveVariable()),
         current_block_routingloc_(aut_.ReserveVariable()),
         current_direction_(aut_.ReserveVariable()),
@@ -1836,8 +1837,9 @@ class TrainSchedule : public virtual AutomataPlugin {
   std::unique_ptr<GlobalVariable> is_frozen_;
 
   Automata::LocalVariable current_block_detector_;
-  Automata::LocalVariable current_block_request_green_;
-  Automata::LocalVariable current_block_route_out_;
+  Automata::LocalVariable routing_block_request_green_;
+  Automata::LocalVariable perma_block_route_out_;
+  Automata::LocalVariable routing_block_route_out_;
   // The location bit for the current block will be mapped here.
   Automata::LocalVariable current_block_permaloc_;
   // The routing location for the current state. This bit will be 1 if the head
