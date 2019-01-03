@@ -1427,21 +1427,33 @@ void If355Free(Automata::Op* op) {
 auto g_355_free = NewCallback(&If355Free);
 */
 
-void IfHBBothDKWFree(Automata::Op* op) {
+void IfHBBothDKWFreeIn(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_HBW4.b.any_route()));
+  op->IfReg0(op->parent()->ImportVariable(*DKW_HBW2.b.any_route()));
+}
+auto g_hb_both_dkw_free_in = NewCallback(&IfHBBothDKWFreeIn);
+
+void IfHBBothDKWFreeOut(Automata::Op* op) {
   IfNotPaused(op);
   IfNotShutdown(op);
   op->IfReg0(op->parent()->ImportVariable(*DKW_HBW4.b.any_route()));
   op->IfReg0(op->parent()->ImportVariable(*DKW_HBW2.b.any_route()));
 }
-auto g_hb_both_dkw_free = NewCallback(&IfHBBothDKWFree);
+auto g_hb_both_dkw_free_out = NewCallback(&IfHBBothDKWFreeOut);
 
+void IfHBDKW2FreeIn(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_HBW2.b.any_route()));
+}
+auto g_hb_dkw2_free_in = NewCallback(&IfHBDKW2FreeIn);
 
-void IfHBDKW2Free(Automata::Op* op) {
+void IfHBDKW2FreeOut(Automata::Op* op) {
   IfNotPaused(op);
   IfNotShutdown(op);
   op->IfReg0(op->parent()->ImportVariable(*DKW_HBW2.b.any_route()));
 }
-auto g_hb_dkw2_free = NewCallback(&IfHBDKW2Free);
+auto g_hb_dkw2_free_out = NewCallback(&IfHBDKW2FreeOut);
 
 
 
@@ -1631,7 +1643,7 @@ class LayoutSchedule : public TrainSchedule {
     RunLoopHB(aut);
     {
       WithRouteLock l(this, &route_lock_HB);
-      AddDirectBlockTransition(Block_A139, Block_A149, &g_hb_both_dkw_free);
+      AddDirectBlockTransition(Block_A139, Block_A149, &g_hb_both_dkw_free_out);
       SwitchTurnout(DKW_HBW4.b.magnet(), DKW::kDKWStateCross);
       SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCross);
     }
@@ -1665,13 +1677,13 @@ class IC2000Train : public LayoutSchedule {
     RunLoopLayout(aut);
     {
       WithRouteLock l(this, &route_lock_HB);
-      AddDirectBlockTransition(Block_B241, Stub_HBB1, &g_hb_dkw2_free);
+      AddDirectBlockTransition(Block_B241, Stub_HBB1, &g_hb_dkw2_free_in);
       SwitchTurnout(Turnout_HBW1.b.magnet(), MovableTurnout::kThrown);
       SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCross);
       SwitchTurnout(Turnout_HBW6.b.magnet(), MovableTurnout::kClosed);
       StopAndReverseAtStub(Stub_HBB1);
 
-      AddBlockTransitionOnPermit(Stub_HBB1.b_.rev_signal, Block_A149, &hb_fromb1, &g_hb_dkw2_free, false);
+      AddBlockTransitionOnPermit(Stub_HBB1.b_.rev_signal, Block_A149, &hb_fromb1, &g_hb_dkw2_free_out, false);
       SwitchTurnout(Turnout_HBW6.b.magnet(), MovableTurnout::kClosed);
       SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCurved);
     }
