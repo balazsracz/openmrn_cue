@@ -1740,6 +1740,7 @@ FreightTrain train_rts("rts_railtraction", DccShortAddress(32), 20);
 FreightTrain train_wle("wle_er20", DccShortAddress(27), 20);
 FreightTrain train_re474("Re474", MMAddress(12), 30);
 FreightTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
+FreightTrain train_br290("BR290", MMAddress(29), 30);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
