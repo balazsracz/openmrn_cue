@@ -100,7 +100,7 @@ EventBasedVariable scene_dark(&brd, "scene_dark",
 
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n9(0x29);
-AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e), b9(0x29), b8(0x28);
+AccBoard ba(0x2a), bb(0x2b), bc(0x2e), bd(0x2d), b9(0x29), b8(0x28);
 
 StateRef StUser1(10);
 StateRef StUser2(11);
@@ -150,28 +150,59 @@ I2CSignal signal_B251_main(&bd, 62, "B251.main");
 I2CSignal signal_B151_main(&bd, 63, "B151.main");
 
 
-/*
-
-
-I2CSignal signal_A461_main(&bb, 72, "A461.main");
-I2CSignal signal_A461_adv(&bb, 73, "A461.adv");
-
-I2CSignal signal_A361_main(&bb, 34, "A361.main");
-I2CSignal signal_A361_adv(&bb, 35, "A361.adv");
-
+// Single mast M+A, thick wires and M+F plug with some angle between them.
+I2CSignal signal_A279_main(&ba, 8, "A279.main");
+I2CSignal signal_A279_adv(&ba, 9, "A279.adv");
 
 // 2-way bridge. This has main signals on both sides. The first head is
 // the one with the wires connected, then goes left-to-right and then other
 // side left-to-right.
-I2CSignal signal_A441_main(&bc, 36, "A441.main");
-I2CSignal signal_A441_adv(&bc, 37, "A441.adv");
-I2CSignal signal_A341_main(&bc, 42, "A341.main");
-I2CSignal signal_A341_adv(&bc, 43, "A341.adv");
-I2CSignal signal_B339_main(&bc, 40, "B339.main");
-I2CSignal signal_B339_adv(&bc, 41, "B339.adv");
-I2CSignal signal_B439_main(&bc, 38, "B439.main");
-I2CSignal signal_B439_adv(&bc, 39, "B439.adv");
+I2CSignal signal_B271_main(&ba, 36, "B271.main");
+I2CSignal signal_B271_adv(&ba, 37, "B271.adv");
+I2CSignal signal_B171_main(&ba, 42, "B171.main");
+I2CSignal signal_B171_adv(&ba, 43, "B171.adv");
+I2CSignal signal_A167_main(&ba, 40, "A167.main");
+I2CSignal signal_A167_adv(&ba, 41, "A167.adv");
+I2CSignal signal_A271_main(&ba, 38, "A271.main");
+I2CSignal signal_A271_adv(&ba, 39, "A271.adv");
 // End bridge.
+
+// Single mast M+A about 10cm thick wires and single plug.
+I2CSignal signal_A179_main(&ba, 26, "A179.main");
+I2CSignal signal_A179_adv(&ba, 27, "A179.adv");
+
+// Single mast M+A about 7cm thin wires, M+F plug.
+I2CSignal signal_A259_main(&bc, 31, "A259.main");  // 159 (0x9F)
+I2CSignal signal_A259_adv(&bc, 32, "A259.adv");
+
+// Single mast M+A about 12 cm long thing ires with one taped with scotch
+// tape. M plug.
+I2CSignal signal_A159_main(&bc, 4, "A159.main");  // 141 (0x8D)
+I2CSignal signal_A159_adv(&bc, 5, "A159.adv");
+
+// Single mast M+A, M plug, 20cm long super thick wire.
+I2CSignal signal_B161_main(&bc, 10, "B161.main");  // 131 0x83
+I2CSignal signal_B161_adv(&bc, 11, "B161.adv");
+
+// Single mast M+A, M plug, about 10cm super thick wire.
+I2CSignal signal_B261_main(&bc, 34, "B261.main");
+I2CSignal signal_B261_adv(&bc, 35, "B261.adv");
+
+// Single mast M+A, M plug with blob of hot glue, about 7 cm thin wire.
+I2CSignal signal_B231_main(&b9, 72, "B231.main");
+I2CSignal signal_B231_adv(&b9, 73, "B231.adv");
+
+// Single mast M+A, M plug with about 7 cm thin wire.
+I2CSignal signal_B131_main(&b9, 44, "B131.main");  // 151 0x97
+I2CSignal signal_B131_adv(&b9, 45, "B131.adv");
+
+
+/*
+
+
+
+
+
 
 
 // 4-way bridge (other). this has about 10cm wire from the base. Heads from left to right.
@@ -185,10 +216,6 @@ I2CSignal signal_YYB1_main(&ba, 49, "YY.B1.main");
 I2CSignal signal_YYB1_adv(&ba, 50, "YY.B1.adv");
 // end bridge
 
-I2CSignal signal_B349_main(&bc, 26, "B349.main");
-I2CSignal signal_B349_adv(&bc, 27, "B349.adv");
-I2CSignal signal_B449_main(&bc, 8, "B449.main");
-I2CSignal signal_B449_adv(&bc, 9, "B449.adv");
 
 I2CSignal signal_YYA13_main(&ba, 22, "YY.A13.main");
 I2CSignal signal_YYA13_adv(&ba, 23, "YY.A13.adv");
@@ -202,8 +229,6 @@ PandaControlBoard panda_bridge;
 
 LPC11C lpc11_back;
 
-I2CSignal signal_XXB2_main(&ba, 31, "XX.B2.main");  // 159 (0x9F)
-I2CSignal signal_XXB2_adv(&ba, 32, "XX.B2.adv");
 
 I2CSignal signal_A301_main(&bc, 72, "A301.main");
 I2CSignal signal_A301_adv(&bc, 73, "A301.adv");
@@ -225,10 +250,6 @@ I2CSignal signal_A347_adv(&bd, 23, "A347.adv");
 I2CSignal signal_B347_main(&bd, 8, "B347.main");  // 143 (0x8F)
 I2CSignal signal_B347_adv(&bd, 9, "B347.adv");
 
-I2CSignal signal_B447_main(&bd, 10, "B447.main");  // 131 0x83
-I2CSignal signal_B447_adv(&bd, 11, "B447.adv");
-I2CSignal signal_A447_main(&bd, 44, "A447.main");  // 151 0x97
-I2CSignal signal_A447_adv(&bd, 45, "A447.adv");
 
 I2CSignal signal_A360_main(&bb, 12, "A360.main");  // 142 (0x8E)
 I2CSignal signal_A360_adv(&bb, 13, "A360.adv");
@@ -254,9 +275,6 @@ I2CSignal signal_XXB3_main(&be, 24, "XX.B3.main");  // 140 (0x8C)
 
 I2CSignal signal_YYC23_main(&ba, 26, "YY.C23.main");  //  158 (0x9E)
 I2CSignal signal_YYC23_adv(&ba, 27, "YY.C23.adv");
-
-I2CSignal signal_YYB2_main(&be, 4, "YY.B2.main");  // 141 (0x8D)
-I2CSignal signal_YYB2_adv(&be, 5, "YY.B2.adv");
 
 // I2CSignal signal_WWB14_main(&bc, 34, "WW.B14.main"); // NOT REFLASHED
 // I2CSignal signal_WWB14_adv(&bc, 35, "WW.B14.adv");
@@ -423,7 +441,7 @@ DefAut(blinkaut, brd, {
   DefCopy(*rep, ImportVariable(&bb.LedBlueSw));
   DefCopy(*rep, ImportVariable(&bc.LedBlueSw));
   DefCopy(*rep, ImportVariable(&bd.LedBlueSw));
-  DefCopy(*rep, ImportVariable(&be.LedBlueSw));
+  //DefCopy(*rep, ImportVariable(&be.LedBlueSw));
 });
 
 // Adds the necessary conditions that represent if there is a train at the
@@ -646,32 +664,38 @@ StandardMovableTurnout Turnout_HBW6(&brd, logic->Allocate("HB.W6", 40),
 TurnoutWrap THBW6(&Turnout_HBW6.b, kPointToClosed);
 
 PhysicalSignal A139(&bb.InOraGreen, nullptr, &signal_A139_main.signal,
-                    &signal_A139_adv.signal, nullptr, nullptr, nullptr,
-                    &signal_B139_adv.signal);
+                    &signal_A139_adv.signal, &signal_B131_main.signal,
+                    &signal_B131_adv.signal, nullptr, &signal_B139_adv.signal);
 // this one is not a real block, but a middle detector
 PhysicalSignal A239(&bb.InOraRed, nullptr, nullptr, nullptr, nullptr, nullptr,
                     nullptr, nullptr);
 PhysicalSignal A149(&bd.In6, nullptr, &signal_A149_main.signal,
                     &signal_A149_adv.signal, &signal_B141_main.signal, nullptr,
                     nullptr, &signal_B149_adv.signal);
-PhysicalSignal A159(&bc.InBrownGrey, nullptr, nullptr, nullptr,
-                    &signal_B151_main.signal, nullptr, nullptr, nullptr);
-PhysicalSignal A167(&bc.InOraGreen, nullptr, nullptr, nullptr, nullptr, nullptr,
+PhysicalSignal A159(&bc.InBrownGrey, nullptr, &signal_A159_main.signal,
+                    &signal_A159_adv.signal, &signal_B151_main.signal, nullptr,
                     nullptr, nullptr);
-PhysicalSignal A179(&ba.InOraGreen, nullptr, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
-PhysicalSignal B271(&ba.In7, nullptr, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr);
-PhysicalSignal B261(&bc.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
+PhysicalSignal A167(&bc.InOraGreen, nullptr, &signal_A167_main.signal,
+                    &signal_A167_adv.signal, &signal_B161_main.signal,
+                    &signal_B161_adv.signal, nullptr, nullptr);
+PhysicalSignal A179(&ba.InOraGreen, nullptr, &signal_A179_main.signal,
+                    &signal_A179_adv.signal, &signal_B171_main.signal,
+                    &signal_B171_adv.signal, nullptr, nullptr);
+PhysicalSignal B271(&ba.In7, nullptr, &signal_B271_main.signal,
+                    &signal_B271_adv.signal, &signal_A279_main.signal,
+                    &signal_A279_adv.signal, nullptr, nullptr);
+PhysicalSignal B261(&bc.InBrownBrown, nullptr, &signal_B261_main.signal,
+                    &signal_B261_adv.signal, &signal_A271_main.signal,
+                    &signal_A271_adv.signal, nullptr, nullptr);
 PhysicalSignal B251(&bd.InBrownGrey, nullptr, &signal_B251_main.signal, nullptr,
-                    nullptr, nullptr, nullptr, nullptr);
+                    &signal_A259_main.signal, &signal_A259_adv.signal, nullptr,
+                    nullptr);
 PhysicalSignal B241(&bb.InBrownBrown, nullptr, &signal_B241_main.signal,
                     nullptr, &signal_A249_main.signal, &signal_A249_adv.signal,
                     &signal_B249_adv.signal, nullptr);
-PhysicalSignal B231(&b9.InBrownBrown, nullptr, nullptr, nullptr,
-                    &signal_A239_main.signal, &signal_A239_adv.signal,
-                    &signal_B239_adv.signal, nullptr);
+PhysicalSignal B231(&b9.InBrownBrown, nullptr, &signal_B231_main.signal,
+                    &signal_B231_adv.signal, &signal_A239_main.signal,
+                    &signal_A239_adv.signal, &signal_B239_adv.signal, nullptr);
 
 PhysicalSignal HBB1(&b9.InOraRed, nullptr, nullptr, nullptr,
                     &signal_HBA1_main.signal, &signal_HBA1_adv.signal, nullptr,
@@ -1117,21 +1141,23 @@ DefAut(signalaut1, brd, {
   BlockSignal(this, &Block_A159, global_dispatch);
   BlockSignal(this, &Block_B251, global_dispatch);
   ClearUsedVariables();
+  BlockSignal(this, &Block_A179, global_dispatch);
+  BlockSignal(this, &Block_B271, global_dispatch);
   //BlockSignal(this, &Stub_XXB3.b_, global_dispatch);
   //BlockSignal(this, &Block_XXB4, global_dispatch);
 });
-/*
-DefAut(signalaut2, brd, {
-  BlockSignal(this, &Stub_YYA1.b_, runaround_yard);
-  BlockSignal(this, &Stub_YYA2.b_, runaround_yard);
-  ClearUsedVariables();
-  BlockSignal(this, &Stub_YYA3.b_, runaround_yard);
-  BlockSignal(this, &Block_YYA4, runaround_yard);
-  ClearUsedVariables();
-  BlockSignal(this, &Stub_YYA33.b_, runaround_rbl);
-  BlockSignal(this, &Block_YYB42, runaround_rbl);
-});
 
+DefAut(signalaut2, brd, {
+  BlockSignal(this, &Block_A167, global_dispatch);
+  BlockSignal(this, &Block_B261, global_dispatch);
+  ClearUsedVariables();
+  //BlockSignal(this, &Stub_YYA3.b_, runaround_yard);
+  //BlockSignal(this, &Block_YYA4, runaround_yard);
+  ClearUsedVariables();
+  //BlockSignal(this, &Stub_YYA33.b_, runaround_rbl);
+  //BlockSignal(this, &Block_YYB42, runaround_rbl);
+});
+/*
 DefAut(signalaut3, brd, {
   ClearUsedVariables();
 });
