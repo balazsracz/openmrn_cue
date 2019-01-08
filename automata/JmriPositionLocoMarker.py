@@ -9,10 +9,12 @@ def PositionLocoMarker(panel_name, loco_name, x, y, orientation = HORIZONTAL):
   # First we enumerate all panels known
   i = 0
   elist = []
+  cmgr = jmri.InstanceManager.getDefault(jmri.ConfigureManager)
   while True:
-    entry = jmri.InstanceManager.configureManagerInstance().findInstance(
-        java.lang.Class.forName("jmri.jmrit.display.layoutEditor.LayoutEditor"),
-        i)
+    entry = cmgr.findInstance(jmri.jmrit.display.layoutEditor.LayoutEditor, i)
+    #entry = jmri.InstanceManager.configureManagerInstance().findInstance(
+    #    java.lang.Class.forName("jmri.jmrit.display.layoutEditor.LayoutEditor"),
+    #    i)
     i += 1
     if entry:
       elist.append(entry)
