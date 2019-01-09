@@ -9,38 +9,27 @@ import os
 FLAGS_purge_all = True
 
 g_signal_reverse_names = {
-    "YY.A1": "YY.B1",
-    "YY.A2": "YY.B2",
-    "YY.A3": "YY.B3",
-    "YY.A4": "YY.B4",
-    "XX.B1": "XX.A1",
-    "XX.B2": "XX.A2",
-    "XX.B3": "XX.A3",
-    "XX.B4": "XX.A4",
-    "YY.A13": "YY.B12",
-    "YY.B22": "YY.A23",
-    "YY.A33": "YY.B32",
-    "A431": "B439",
-    "B339": "A331",
-    "A441": "B449",
-    "B349": "A341",
-    "A461": "B469",
-    "B369": "A361",
+  "B231" : "A239",
+  "A139" : "B131",
+  "B241" : "A249",
+  "A149" : "B141",
+  "B251" : "A259",
+  "A159" : "B151",
+  "B261" : "A169",
+  "A167" : "B161",
+  "A179" : "B171",
+  "B271" : "A279",
+  "HB.B1": "HB.A1",
+  "HB.B2": "HB.A2",
+  "HB.B3": "HB.A3",
+  "HB.B4": "HB.A4",
 }
 
 g_missing_signals = {
-#  "WW.A11",
-#  "YY.A3"
-    "YY.A1",
-    "YY.A2",
-    "YY.A3",
-    "YY.A4",
-    "YY.A33",
-    "XX.B1",
-    "XX.B2",
-    "XX.B3",
-    "XX.B4",
-    "QQ.A1",
+    "HB.B1",
+    "HB.B2",
+    "HB.B3",
+    "HB.B4",
 }
 
 g_warning_signals = {
@@ -1043,12 +1032,12 @@ def RenderPanelLocationTable(output_tree_root, index):
   layout = output_tree_root.find('./LayoutEditor[@name=\'2A Layout\']')
   if not layout:
     raise Exception("Cannot find layout editor node.")
-  y = 190
+  y = 190 + 40
   x0 = 250 + 160
   for block in all_locations:
     PrintBlockLine(layout, block, x0, y)
     y += 40
-  y = 190
+  y = 190 + 40
   x0 = 700 + 160
   for train in all_trains:
     PrintTrainLine(layout, train, x0, y);
