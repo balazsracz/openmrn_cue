@@ -66,7 +66,7 @@ TivaCpuLoad<TivaCpuLoadDefHw> load_monitor;
 extern "C" {
 void timer4a_interrupt_handler(void)
 {
-    load_monitor.interrupt_handler();
+    load_monitor.interrupt_handler(0);
 }
 }
 
