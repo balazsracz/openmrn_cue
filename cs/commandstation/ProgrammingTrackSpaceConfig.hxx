@@ -103,8 +103,13 @@ struct ProgrammingTrackSpaceConfig::Shadow {
   uint32_t verify_cooldown_repeats;
 };
 
+#if __GNUC__ > 6
+#define SHADOW_OFFSETOF(entry)                                  \
+    (offsetof(ProgrammingTrackSpaceConfig::Shadow, entry))
+#else
 #define SHADOW_OFFSETOF(entry)                                          \
-  ((uintptr_t) & ((ProgrammingTrackSpaceConfig::Shadow*)nullptr)->entry)
+    ((uintptr_t) & ((ProgrammingTrackSpaceConfig::Shadow*)nullptr)->entry)
+#endif
 
 static_assert(SHADOW_OFFSETOF(cv) ==
                   ProgrammingTrackSpaceConfig::zero_offset_this().cv().offset(),
