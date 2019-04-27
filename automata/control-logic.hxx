@@ -1292,6 +1292,8 @@ class DKWWrap : public FakeStraightTrack {
   struct WrapA2toB2 {};
   struct WrapB2toA2 {};
 
+  struct WrapA2toB1 {};
+  
   //
   //  B2--\                   /--A1
   //  B1---\----A1      B2---/---A2
@@ -1310,12 +1312,16 @@ class DKWWrap : public FakeStraightTrack {
 
   DKWWrap(DKW* dkw, const WrapB2toA2&)
       : FakeStraightTrack(dkw->point_b2(), dkw->point_a2()) {}
+
+  DKWWrap(DKW* dkw, const WrapA2toB1&)
+      : FakeStraightTrack(dkw->point_a2(), dkw->point_b1()) {}
 };
 
 constexpr DKWWrap::WrapA1toB1 kA1toB1;
 constexpr DKWWrap::WrapB1toA1 kB1toA1;
 constexpr DKWWrap::WrapA2toB2 kA2toB2;
 constexpr DKWWrap::WrapB2toA2 kB2toA2;
+constexpr DKWWrap::WrapA2toB1 kA2toB1;
 
 class FixedDKW : public DKW {
 public:
