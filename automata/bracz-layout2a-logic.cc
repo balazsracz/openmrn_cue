@@ -661,7 +661,18 @@ MagnetDef Magnet_HBW6(&g_magnet_aut, "HB.W6", &b8.ActGreenGreen,
                       &b8.ActGreenRed, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_HBW6(&brd, logic->Allocate("HB.W6", 40),
                                     &Magnet_HBW6);
-TurnoutWrap THBW6(&Turnout_HBW6.b, kPointToClosed);
+TurnoutWrap THBW6(&Turnout_HBW6.b, kClosedToPoint);
+
+MagnetDef Magnet_HBW7(&g_magnet_aut, "HB.W7", &b8.ActOraGreen,
+                      &b8.ActOraRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_HBW7(&brd, logic->Allocate("HB.W7", 40),
+                                    &Magnet_HBW7);
+TurnoutWrap THBW7(&Turnout_HBW7.b, kClosedToPoint);
+
+CoupledMagnetDef Magnet_HBW8(&g_magnet_aut, "HB.W8", &Magnet_HBW7, false);
+StandardMovableTurnout Turnout_HBW8(&brd, logic->Allocate("HB.W8", 40),
+                                    &Magnet_HBW8);
+TurnoutWrap THBW8(&Turnout_HBW8.b, kClosedToPoint);
 
 PhysicalSignal A139(&bb.InOraGreen, nullptr, &signal_A139_main.signal,
                     &signal_A139_adv.signal, &signal_B131_main.signal,
@@ -930,16 +941,17 @@ bool ignored1a = BindSequence(
 
 bool ignored2 = BindSequence(  //
     Block_B241.side_b(),
-    {&THBW1, &THBW3, &Det_239, &Block_B231, &Block_A139,   //
-     &THBW4Main, &THBW2Main,                              //
-     &Block_A149, &Block_A159, &Block_A167, &Block_A179,  //
+    {&THBW1, &THBW3, &THBW8, &Det_239, &THBW7, &Block_B231, &Block_A139,  //
+     &THBW7, &THBW4Main, &THBW2Main,                              //
+     &Block_A149, &Block_A159, &Block_A167, &Block_A179,          //
      &Block_B271, &Block_B261, &Block_B251},
     Block_B241.side_a());
 
 bool ignored3 = BindPairs({
     //
     {Stub_HBB4.entry(), Turnout_HBW5.b.side_thrown()},
-    {Stub_HBB2.entry(), Turnout_HBW6.b.side_thrown()}
+    {Stub_HBB2.entry(), Turnout_HBW6.b.side_thrown()},
+    {Turnout_HBW7.b.side_thrown(), Turnout_HBW8.b.side_thrown()}
 
     /*        
     {Stub_XXB1.entry(), Turnout_XXW6.b.side_thrown()},
