@@ -1481,6 +1481,12 @@ void IfHBDKW2FreeOut(Automata::Op* op) {
 }
 auto g_hb_dkw2_free_out = NewCallback(&IfHBDKW2FreeOut);
 
+void IfHBDKW4FreeIn(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*DKW_HBW4.b.any_route()));
+}
+auto g_hb_dkw4_free_in = NewCallback(&IfHBDKW4FreeIn);
+
 
 
 class LayoutSchedule : public TrainSchedule {
@@ -1716,6 +1722,54 @@ class IC2000Train : public LayoutSchedule {
   }
 };
 
+class PassengerTrainTrack2 : public LayoutSchedule {
+ public:
+  PassengerTrainTrack2(const string& name, uint64_t train_id,
+                       uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    RunLoopLayout(aut);
+    {
+      WithRouteLock l(this, &route_lock_HB);
+      AddDirectBlockTransition(Block_B241, Stub_HBB2, &g_hb_dkw2_free_in);
+      SwitchTurnout(Turnout_HBW1.b.magnet(), MovableTurnout::kThrown);
+      SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCross);
+      SwitchTurnout(Turnout_HBW6.b.magnet(), MovableTurnout::kThrown);
+      StopAndReverseAtStub(Stub_HBB2);
+
+      AddBlockTransitionOnPermit(Stub_HBB2.b_.rev_signal, Block_A149, &hb_fromb2, &g_hb_dkw2_free_out, false);
+      SwitchTurnout(Turnout_HBW6.b.magnet(), MovableTurnout::kThrown);
+      SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCurved);
+    }
+  }
+};
+
+class PassengerTrainTrack4 : public LayoutSchedule {
+ public:
+  PassengerTrainTrack4(const string& name, uint64_t train_id,
+                       uint8_t default_speed)
+      : LayoutSchedule(name, train_id, default_speed) {}
+
+  void RunTransition(Automata* aut) OVERRIDE {
+    RunLoopLayout(aut);
+    {
+      WithRouteLock l(this, &route_lock_HB);
+      AddDirectBlockTransition(Block_B241, Stub_HBB4, &g_hb_dkw4_free_in);
+      SwitchTurnout(Turnout_HBW1.b.magnet(), MovableTurnout::kClosed);
+      SwitchTurnout(Turnout_HBW3.b.magnet(), MovableTurnout::kThrown);
+      SwitchTurnout(DKW_HBW4.b.magnet(), DKW::kDKWStateCross);
+      SwitchTurnout(Turnout_HBW5.b.magnet(), MovableTurnout::kThrown);
+      StopAndReverseAtStub(Stub_HBB4);
+
+      AddBlockTransitionOnPermit(Stub_HBB4.b_.rev_signal, Block_A149, &hb_fromb4, &g_hb_both_dkw_free_out, false);
+      SwitchTurnout(Turnout_HBW5.b.magnet(), MovableTurnout::kThrown);
+      SwitchTurnout(DKW_HBW4.b.magnet(), DKW::kDKWStateCurved);
+      SwitchTurnout(DKW_HBW2.b.magnet(), DKW::kDKWStateCross);
+    }
+  }
+};
+
 
 class IC2000TrainB : public LayoutSchedule {
  public:
@@ -1755,8 +1809,10 @@ IC2000Train train_ice("ICE", MMAddress(2), 16);
 */
 
 IC2000Train train_re460tsr("Re460-TSR", DccShortAddress(22), 35);
-IC2000TrainB train_ice2("ICE2", DccShortAddress(40), 15);
-FreightTrain train_re465("Re465", DccShortAddress(47), 25);
+// TCS ACS64 with builtin keepalive
+PassengerTrainTrack2 train_ice2("ICE2", DccShortAddress(40), 15);
+// ESU LokPilot Standard with Keepalive TCS
+PassengerTrainTrack4 train_re465("Re465", DccShortAddress(47), 25);
 IC2000TrainB train_icn("ICN", DccShortAddress(50), 13);
 IC2000TrainB train_bde44("BDe-4/4", DccShortAddress(38), 35);
 FreightTrain train_re620("Re620", DccShortAddress(5), 45);
@@ -1767,6 +1823,7 @@ FreightTrain train_wle("wle_er20", DccShortAddress(27), 20);
 FreightTrain train_re474("Re474", MMAddress(12), 30);
 FreightTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 FreightTrain train_br290("BR290", MMAddress(29), 30);
+FreightTrain train_krokodil("Krokodil", MMAddress(68), 30);
 
 int main(int argc, char** argv) {
   automata::reset_routes = &reset_all_routes;
