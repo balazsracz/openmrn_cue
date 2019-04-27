@@ -857,6 +857,30 @@ StandardMovableDKW DKW_260(&brd, logic->Allocate("DKW260", 64),
 DKWWrap TDKW260Main(&DKW_260.b, kA2toB1);
 
 
+MagnetDef Magnet_W270(&g_magnet_aut, "W270", &ba.ActOraGreen, &ba.ActOraRed,
+                      MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_W270(&brd, logic->Allocate("W270", 40),
+                                    &Magnet_W270);
+TurnoutWrap TW270(&Turnout_W270.b, kPointToClosed);
+
+CoupledMagnetDef Magnet_W170(&g_magnet_aut, "W170", &Magnet_W270, false);
+StandardMovableTurnout Turnout_W170(&brd, logic->Allocate("W170", 40), &Magnet_W170);
+TurnoutWrap TW170(&Turnout_W170.b, kPointToClosed);
+
+
+MagnetDef Magnet_W180(&g_magnet_aut, "W180", &ba.ActBlueGrey, &ba.ActBlueBrown,
+                      MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_W180(&brd, logic->Allocate("W180", 40),
+                                    &Magnet_W180);
+TurnoutWrap TW180(&Turnout_W180.b, kPointToThrown);
+
+MagnetDef Magnet_W280(&g_magnet_aut, "W280", &ba.ActBrownGrey,
+                      &ba.ActBrownBrown, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_W280(&brd, logic->Allocate("W280", 40),
+                                    &Magnet_W280);
+TurnoutWrap TW280(&Turnout_W280.b, kThrownToPoint);
+
+
 /*
 MagnetDef Magnet_W360(&g_magnet_aut, "W360", &bb.ActBlueGrey, &bb.ActBlueBrown,
                       MovableTurnout::kThrown);
@@ -969,12 +993,12 @@ bool ignored1a = BindSequence(
 
 bool ignored2 = BindSequence(  //
     Block_B241.side_b(),
-    {&THBW1,      &THBW3,      &THBW8,       &Det_239,    &THBW7,  //
+    {&THBW1,      &THBW3,      &THBW8,      &Det_239,     &THBW7,  //
      &Block_B231, &Block_A139,                                     //
      &THBW7,      &THBW4Main,  &THBW2Main,                         //
-     &Block_A149, &TW150,      &Block_A159,  &TW159,      &TW161,  //
-     &Block_A167, &Block_A179,                                     //
-     &Block_B271, &Block_B261, &TDKW260Main, &Block_B251, &TW250},
+     &Block_A149, &TW150,      &Block_A159, &TW159,       &TW161,  //
+     &Block_A167, &TW170,      &Block_A179, &TW180,       &TW280,  //
+     &Block_B271, &TW270,      &Block_B261, &TDKW260Main, &Block_B251, &TW250},
     Block_B241.side_a());
 
 bool ignored3 = BindPairs({
@@ -984,6 +1008,8 @@ bool ignored3 = BindPairs({
     {Turnout_W250.b.side_thrown(), Turnout_W150.b.side_thrown()},
     {Turnout_W159.b.side_thrown(), DKW_260.b.point_b2()},
     {Turnout_W161.b.side_thrown(), DKW_260.b.point_a1()},
+    {Turnout_W270.b.side_thrown(), Turnout_W170.b.side_thrown()},
+    {Turnout_W280.b.side_closed(), Turnout_W180.b.side_closed()},
     {Turnout_HBW7.b.side_thrown(), Turnout_HBW8.b.side_thrown()}
 
     /*        
