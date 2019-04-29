@@ -657,6 +657,7 @@ class StandardBlock : public StraightTrackInterface {
         signal_no_stop_(alloc_->Allocate("signal_no_stop")),
         rrequest_green_(alloc_->Allocate("rev_request_green")),
         rsignal_no_stop_(alloc_->Allocate("rsignal_no_stop")),
+        auto_blocked_(alloc_->Allocate("auto_blocked")),
         body_(alloc_->Allocate("body", 24, 8)),
         body_det_(alloc_->Allocate("body_det", 32, 8), physical->sensor_raw),
         signal_(alloc_->Allocate("signal", 24, 8), request_green_.get(),
@@ -742,10 +743,20 @@ class StandardBlock : public StraightTrackInterface {
   const FwdSignal fwd_signal{this};
   const RevSignal rev_signal{this};
 
+  /// @return variable to initiate the route reservation algorithm going
+  /// outbounds of the forward signal.
   GlobalVariable *request_green() { return request_green_.get(); }
+  /// @return variable to initiate the route reservation algorithm going
+  /// outbounds of the reverse signal.
   GlobalVariable *rrequest_green() { return rrequest_green_.get(); }
+  /// @return variable causing automatically routed trains to skip stopping at
+  /// the forward signal (usually default false, i.e. trains stop).
   GlobalVariable *signal_no_stop() { return signal_no_stop_.get(); }
+  /// @return variable causing automatically routed trains to skip stopping at
+  /// the reverse signal (usually default true, i.e. trains do not stop).
   GlobalVariable *rsignal_no_stop() { return rsignal_no_stop_.get(); }
+  /// @return variable causing automatically routed trains to avoid this block.
+  GlobalVariable *auto_blocked() { return auto_blocked_.get(); }
   const GlobalVariable &route_in() const { return *body_det_.route_set_ab_; }
   const GlobalVariable &route_out() const { return *signal_.route_set_ab_; }
   const GlobalVariable &rev_route_out() const { return *rsignal_.route_set_ab_; }
@@ -768,6 +779,7 @@ class StandardBlock : public StraightTrackInterface {
   std::unique_ptr<GlobalVariable> signal_no_stop_;
   std::unique_ptr<GlobalVariable> rrequest_green_;
   std::unique_ptr<GlobalVariable> rsignal_no_stop_;
+  std::unique_ptr<GlobalVariable> auto_blocked_;
 
  public:
   StraightTrackLong body_;
