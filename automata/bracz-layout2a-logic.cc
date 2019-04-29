@@ -993,7 +993,7 @@ bool ignored1a = BindSequence(
 
 bool ignored2 = BindSequence(  //
     Block_B241.side_b(),
-    {&THBW1,      &THBW3,      &THBW8,      &Det_239,     &THBW7,  //
+    {&THBW1,      &THBW3,      &Det_239,    &THBW8,                //
      &Block_B231, &Block_A139,                                     //
      &THBW7,      &THBW4Main,  &THBW2Main,                         //
      &Block_A149, &TW150,      &Block_A159, &TW159,       &TW161,  //
@@ -1580,13 +1580,17 @@ class LayoutSchedule : public TrainSchedule {
   void RunDown(Automata* aut) {
     AddEagerBlockTransition(Block_A149, Block_A159);
     AddEagerBlockTransition(Block_A159, Block_A167);
+    SwitchTurnout(Turnout_W159.b.magnet(), false);
     AddEagerBlockTransition(Block_A167, Block_A179);
+    SwitchTurnout(Turnout_W170.b.magnet(), false);
   }
 
   // goes up 271->241
   void RunUp(Automata* aut) {
     AddEagerBlockTransition(Block_B271, Block_B261);
+    SwitchTurnout(Turnout_W170.b.magnet(), false);
     AddEagerBlockTransition(Block_B261, Block_B251);
+    SwitchTurnout(Turnout_W159.b.magnet(), false); // coupled
     AddEagerBlockTransition(Block_B251, Block_B241);
   }
 
@@ -1594,6 +1598,7 @@ class LayoutSchedule : public TrainSchedule {
   void RunLoopLayout(Automata* aut) {
     RunDown(aut);
     AddDirectBlockTransition(Block_A179, Block_B271, &g_not_paused_condition);
+    SwitchTurnout(Turnout_W180.b.magnet(), true);
     RunUp(aut);
   }
 
