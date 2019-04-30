@@ -1401,6 +1401,7 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
                          next_block_routingloc_)
       .ActImportVariable(dest.route_in(), next_block_route_in_);
 
+  //==== compared and match until here
   Def().IfState(StWaiting)
       .IfReg1(current_block_routingloc_)
       .MaybeIfReg(!eager, current_block_detector_, true)
@@ -1456,35 +1457,41 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
                                                OpCallback* condition,
                                                bool eager) {
   MapCurrentBlockPermaloc(source);
-  Def().ActImportVariable(
-      *GetHelperBit(client->request(),
-                    "transition_" + source.name() + "_" + dest.name()),
-      current_direction_);
-  current_location_->respect_direction_ = true;
+  if (client) {
+    Def().ActImportVariable(
+        *GetHelperBit(client->request(),
+                      "transition_" + source.name() + "_" + dest.name()),
+        current_direction_);
+    current_location_->respect_direction_ = true;
+  }
 
   Def().IfReg1(current_block_permaloc_)
       .ActImportVariable(source.route_out(),
                          perma_block_route_out_)
       .ActImportVariable(source.src_detector(),
                          current_block_detector_);
+  /*
   Def()
       .IfReg1(current_block_permaloc_)
       .IfReg0(perma_block_route_out_)
       .ActReg1(&current_block_routingloc_);
-
+  */
+  
   // NOTE(balazs.racz) This ensures that the outgoing route setting does not
   // become "eager". Namely, we ignore the advance arriving routingloc bit and
   // just use permaloc everywhere.
   if (!eager) {
     aut->DefCopy(current_block_permaloc_, &current_block_routingloc_);
   } else {
-    // This will take care of permaloc bits that appear out of nowhere.
+    // If a permaloc bit appears out of nowhere, we add a routingloc to it. This
+    // is necessary so that the train will attempt to leave that position.
     Def().IfReg1(current_block_permaloc_)
         .IfReg0(current_block_routingloc_)
         .IfReg0(perma_block_route_out_)
         .ActReg1(&current_block_routingloc_);
     // We also need to delete routingloc bits that are not corresponding to
-    // routes.
+    // routes. This is necessary when the user clicks reset routes button, then
+    // we need to roll back all the eager stuff that's gone out front.
     Def()
         .IfReg1(current_block_routingloc_)
         .ActImportVariable(source.route_in(), next_block_route_in_);
@@ -1492,7 +1499,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .IfState(StWaiting)
         .IfReg1(current_block_routingloc_)
         .IfReg0(current_block_permaloc_)
-        .IfReg0(next_block_route_in_)
+        .IfReg0(next_block_route_in_) // remapped to current block route in!
         .ActReg0(&current_block_routingloc_);
   }
 
@@ -1507,10 +1514,10 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
         .IfReg1(perma_block_route_out_)
-        .IfReg1(current_direction_)
+        .MaybeIfReg(client != nullptr, current_direction_, true)
         .IfReg0(current_block_routingloc_) // makes sure permaloc <= rtloc
         .ActReg0(&current_block_permaloc_)
-        .ActReg0(&current_direction_)
+        .MaybeActReg(client != nullptr, &current_direction_, false)
         .ActReg1(&next_block_permaloc_)
         // This will make sure not to stop the train here.
         .ActImportVariable(dest.dst_detector(),
@@ -1530,14 +1537,17 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
                          next_block_routingloc_)
       .ActImportVariable(dest.route_in(), next_block_route_in_);
 
+  //==== compared and match until here
   Def().IfState(StWaiting)
       .IfReg1(current_block_routingloc_)
       .ActState(StTestCondition);
 
-  Def()
-      .ActImportVariable(*client->request(), permit_request_)
-      .ActImportVariable(*client->granted(), permit_granted_)
-      .ActImportVariable(*client->taken(), permit_taken_);
+  if (client) {
+    Def()
+        .ActImportVariable(*client->request(), permit_request_)
+        .ActImportVariable(*client->granted(), permit_granted_)
+        .ActImportVariable(*client->taken(), permit_taken_);
+  }
 
   Def().IfState(StTestCondition)
       .IfReg1(current_block_routingloc_)
