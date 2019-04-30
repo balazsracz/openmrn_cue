@@ -8,6 +8,10 @@ include $(OPENMRNPATH)/etc/prog.mk
 
 #SYSLIBRARIES += -lautomata
 
+TESTEXTRADEPS += lib/libautomata.a $(APP_PATH)/../automata/libautomata.a build-automata
+
+lib/libautomata.a: build-automata
+
 $(EXECUTABLE)$(EXTENTION): lib/libautomata.a logic-demo.o
 #$(EXECUTABLE)$(EXTENTION): depmake
 
