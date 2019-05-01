@@ -1362,8 +1362,9 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
                                                RequestClientInterface* client,
                                                OpCallback* condition,
                                                bool eager) {
+  const bool has_permit = (client != nullptr);
   MapCurrentBlockPermaloc(source);
-  if (client) {
+  if (has_permit) {
     Def().ActImportVariable(
         *GetHelperBit(client->request(),
                       "transition_" + source.name() + "_" + dest.name()),
@@ -1420,10 +1421,10 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .IfReg1(current_block_permaloc_)
         .IfReg1(current_block_detector_)
         .IfReg1(perma_block_route_out_)
-        .MaybeIfReg(client != nullptr, current_direction_, true)
+        .MaybeIfReg(has_permit, current_direction_, true)
         .IfReg0(current_block_routingloc_) // makes sure permaloc <= rtloc
         .ActReg0(&current_block_permaloc_)
-        .MaybeActReg(client != nullptr, &current_direction_, false)
+        .MaybeActReg(has_permit, &current_direction_, false)
         .ActReg1(&next_block_permaloc_)
         // This will make sure not to stop the train here.
         .ActImportVariable(dest.dst_detector(),
@@ -1444,7 +1445,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
       .ActImportVariable(dest.route_in(), next_block_route_in_);
 
   //==== compared and match until here
-  if (client) {
+  if (has_permit) {
     Def()
         .ActImportVariable(*client->request(), permit_request_)
         .ActImportVariable(*client->granted(), permit_granted_)
@@ -1471,7 +1472,7 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
       .RunCallback(condition)
       .ActState(StTestCondition2);
 
-  if (client != nullptr) {
+  if (has_permit) {
     Def().IfState(StTestCondition2)
         .ActReg1(&permit_request_);
 
@@ -1489,19 +1490,19 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
       .ActState(StWaiting);
 
   Def().IfState(StTestCondition2)
-      .MaybeIfReg(client != nullptr, permit_request_, 1)
-      .MaybeIfReg(client != nullptr, permit_granted_, 1)
+      .MaybeIfReg(has_permit, permit_request_, 1)
+      .MaybeIfReg(has_permit, permit_granted_, 1)
       .RunCallback(route_lock_acquire())
-      .MaybeActReg(client != nullptr, &permit_request_, 0)
-      .MaybeActReg(client != nullptr, &permit_granted_, 0)
-      .MaybeActReg(client != nullptr, &permit_taken_, 1)
-      .MaybeActReg(client != nullptr, &current_direction_, 1)
+      .MaybeActReg(has_permit, &permit_request_, 0)
+      .MaybeActReg(has_permit, &permit_granted_, 0)
+      .MaybeActReg(has_permit, &permit_taken_, 1)
+      .MaybeActReg(has_permit, &current_direction_, 1)
       .ActState(StReadyToGo);
 
   Def().IfState(StTestCondition2) // lock acquire failed.
       .ActState(StWaiting);
 
-  if (client) {
+  if (has_permit) {
     // This should catch the case when we set an outgoing route that failed.
     // Then we need to remove the routing bit or we'll get into big trouble.
     Def()
@@ -1511,38 +1512,21 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .ActReg0(&current_direction_);
   }
 
-  // TODO(balazs.racz): this needs to be revised when we move from permaloc to
-  // routingloc.
-  if (eager) {
-    Def().IfState(StRequestTransition)
-        .IfReg1(current_block_routingloc_)
-        .MaybeIfReg(client != nullptr,current_direction_, 1)
-        .RunCallback(route_lock_release())
-        .ActReg0(&current_block_routingloc_)
-        .ActReg1(&next_block_routingloc_)
-        .ActState(StTransitionDone);
-    Def().IfState(StGreenFailed)
-        .IfReg1(current_block_routingloc_)
-        .MaybeIfReg(client != nullptr, current_direction_, 1)
-        .RunCallback(route_lock_release())
-        .ActState(StWaiting);
-  } else {
-    Def().IfState(StRequestTransition)
-        .IfReg1(current_block_permaloc_)
-        .MaybeIfReg(client != nullptr, current_direction_, 1)
-        .RunCallback(route_lock_release())
-        .ActReg0(&current_block_permaloc_)
-        .ActReg0(&current_block_routingloc_)
-        .ActReg1(&next_block_permaloc_)
-        .ActReg1(&next_block_routingloc_)
-        .MaybeActReg(client != nullptr, &current_direction_, 0)
-        .ActState(StTransitionDone);
-    Def().IfState(StGreenFailed)
-        .IfReg1(current_block_permaloc_)
-        .MaybeIfReg(client != nullptr, current_direction_, 1)
-        .RunCallback(route_lock_release())
-        .ActState(StWaiting);
-  }
+  Def().IfState(StRequestTransition)
+      .IfReg1(eager ? current_block_routingloc_ : current_block_permaloc_)
+      .MaybeIfReg(has_permit, current_direction_, 1)
+      .RunCallback(route_lock_release())
+      .MaybeActReg0(!eager, &current_block_permaloc_)
+      .ActReg0(&current_block_routingloc_)
+      .MaybeActReg1(!eager, &next_block_permaloc_)
+      .ActReg1(&next_block_routingloc_)
+      .MaybeActReg((!eager) && (has_permit), &current_direction_, 0)
+      .ActState(StTransitionDone);
+  Def().IfState(StGreenFailed)
+      .IfReg1(eager ? current_block_routingloc_ : current_block_permaloc_)
+      .MaybeIfReg(has_permit, current_direction_, 1)
+      .RunCallback(route_lock_release())
+      .ActState(StWaiting);
 }
 
 void TrainSchedule::StopTrainAt(const SignalBlock& dest) {
