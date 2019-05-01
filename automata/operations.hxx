@@ -163,6 +163,13 @@ public:
         return IfReg(var, value);
     }
 
+    Op& MaybeIfReg0(bool enabled, const Automata::LocalVariable& var) {
+      return MaybeIfReg(enabled, var, false);
+    }
+    Op& MaybeIfReg1(bool enabled, const Automata::LocalVariable& var) {
+      return MaybeIfReg(enabled, var, true);
+    }
+  
     Op& ActReg0(Automata::LocalVariable* var) {
         uint8_t v = _ACT_REG;
         if (output_) v |= var->GetId();
@@ -192,6 +199,13 @@ public:
         return ActReg(var, value);
     }
 
+    Op& MaybeActReg0(bool enabled, Automata::LocalVariable* var) {
+      return MaybeActReg(enabled, var, false);
+    }
+    Op& MaybeActReg1(bool enabled, Automata::LocalVariable* var) {
+      return MaybeActReg(enabled, var, true);
+    }
+  
     Op& ActState(const StateRef state) {
       HASSERT((state.state & GET_INVERSE_MASK(_IF_STATE_MASK)) == state.state);
       acts_.push_back(_ACT_STATE | state.state);
