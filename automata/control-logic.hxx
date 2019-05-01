@@ -1613,13 +1613,13 @@ static constexpr StateRef StGreenRequested(13);
 static constexpr StateRef StGreenWait(5);
 static constexpr StateRef StGreenFailed(6);
 
-// 8 are free (stmoving)
 static constexpr StateRef StRequestTransition(9);
 static constexpr StateRef StTransitionDone(10);
 
 static constexpr StateRef StTurnout(11);
 static constexpr StateRef StTurnoutFailed(7);
 static constexpr StateRef StTestCondition(12);
+static constexpr StateRef StTestCondition2(8);
 
 static constexpr StateRef StBeforeReverseWait(14);
 static constexpr StateRef StReverseSendCommand(15);

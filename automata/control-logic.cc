@@ -1177,6 +1177,14 @@ void TrainSchedule::HandleBaseStates(Automata* aut) {
   // reset the "todo" bit and go for another round of magnet setting.
   Def().IfState(StTurnoutFailed)
       .ActState(StTurnout);
+
+  // Handles the frozen request.
+  Def().IfState(StWaiting)
+      .IfReg1(aut->ImportVariable(*is_frozen_))
+      .ActState(StFrozen);
+  Def().IfState(StFrozen)
+      .IfReg0(aut->ImportVariable(*is_frozen_))
+      .ActState(StWaiting);
 }
 
 void TrainSchedule::SendTrainCommands(Automata *aut) {
@@ -1413,14 +1421,6 @@ void TrainSchedule::AddDirectBlockTransition(const SignalBlock& source,
       .RunCallback(route_lock_acquire())
       .ActState(StReadyToGo);
 
-  // Handles the frozen request.
-  Def().IfState(StWaiting)
-      .IfReg1(aut->ImportVariable(*is_frozen_))
-      .ActState(StFrozen);
-  Def().IfState(StFrozen)
-      .IfReg0(aut->ImportVariable(*is_frozen_))
-      .ActState(StWaiting);
-
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
   if (eager) {
@@ -1538,10 +1538,6 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
       .ActImportVariable(dest.route_in(), next_block_route_in_);
 
   //==== compared and match until here
-  Def().IfState(StWaiting)
-      .IfReg1(current_block_routingloc_)
-      .ActState(StTestCondition);
-
   if (client) {
     Def()
         .ActImportVariable(*client->request(), permit_request_)
@@ -1549,74 +1545,95 @@ void TrainSchedule::AddBlockTransitionOnPermit(const SignalBlock& source,
         .ActImportVariable(*client->taken(), permit_taken_);
   }
 
+  // Catches any bug that might have caused us to end the cycle on
+  // StTestCondition.
   Def().IfState(StTestCondition)
+      .ActState(StWaiting);
+  Def().IfState(StTestCondition2)
+      .ActState(StWaiting);
+      
+  Def().IfState(StWaiting)
       .IfReg1(current_block_routingloc_)
+      .ActState(StTestCondition);
+
+  Def().IfState(StTestCondition)
       .MaybeIfReg(!eager, current_block_detector_, true)
       .IfReg0(next_block_detector_)
       .IfReg0(routing_block_route_out_)
       .IfReg0(next_block_route_in_)
       .IfReg0(aut->ImportVariable(*is_frozen_))
       .RunCallback(condition)
-      .ActState(StWaiting)
-      .ActReg1(&permit_request_);
+      .ActState(StTestCondition2);
 
-  Def().IfState(StTestCondition)
-      .ActState(StWaiting)
-      .ActReg0(&permit_request_);
+  if (client != nullptr) {
+    Def().IfState(StTestCondition2)
+        .ActReg1(&permit_request_);
 
-  // Removes the permit request in case another outgoing direction took place.
-  // TODO(balazs.racz): Check if this is a good condition to use.
-  Def().IfReg1(current_block_routingloc_)
-      .IfReg1(routing_block_route_out_)
-      .ActReg0(&permit_request_);
+    Def().IfState(StTestCondition)
+        .ActReg0(&permit_request_);
 
-  Def().IfState(StWaiting)
-      .IfReg1(current_block_routingloc_)
-      .IfReg1(permit_request_)
-      .IfReg1(permit_granted_)
+    // Removes the permit request in case another outgoing direction took place.
+    // TODO(balazs.racz): Check if this is a good condition to use.
+    Def().IfReg1(current_block_routingloc_)
+        .IfReg1(routing_block_route_out_)
+        .ActReg0(&permit_request_);
+  }
+
+  Def().IfState(StTestCondition) // tests failed.
+      .ActState(StWaiting);
+
+  Def().IfState(StTestCondition2)
+      .MaybeIfReg(client != nullptr, permit_request_, 1)
+      .MaybeIfReg(client != nullptr, permit_granted_, 1)
       .RunCallback(route_lock_acquire())
-      .ActReg0(&permit_request_)
-      .ActReg0(&permit_granted_)
-      .ActReg1(&permit_taken_)
-      .ActReg1(&current_direction_)
+      .MaybeActReg(client != nullptr, &permit_request_, 0)
+      .MaybeActReg(client != nullptr, &permit_granted_, 0)
+      .MaybeActReg(client != nullptr, &permit_taken_, 1)
+      .MaybeActReg(client != nullptr, &current_direction_, 1)
       .ActState(StReadyToGo);
 
-  // This should catch the case when we set an outgoing route that failed. Then
-  // we need to remove the routing bit or we'll get into big trouble.
-  Def().IfState(StWaiting)
-      .IfReg1(current_block_routingloc_)
-      .IfReg1(current_direction_)
-      .ActReg0(&current_direction_);
+  Def().IfState(StTestCondition2) // lock acquire failed.
+      .ActState(StWaiting);
+
+  if (client) {
+    // This should catch the case when we set an outgoing route that failed.
+    // Then we need to remove the routing bit or we'll get into big trouble.
+    Def()
+        .IfState(StWaiting)
+        .IfReg1(current_block_routingloc_)
+        .IfReg1(current_direction_)
+        .ActReg0(&current_direction_);
+  }
 
   // TODO(balazs.racz): this needs to be revised when we move from permaloc to
   // routingloc.
   if (eager) {
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_routingloc_)
-        .IfReg1(current_direction_)
+        .MaybeIfReg(client != nullptr,current_direction_, 1)
         .RunCallback(route_lock_release())
         .ActReg0(&current_block_routingloc_)
         .ActReg1(&next_block_routingloc_)
         .ActState(StTransitionDone);
     Def().IfState(StGreenFailed)
         .IfReg1(current_block_routingloc_)
-        .IfReg1(current_direction_)
+        .MaybeIfReg(client != nullptr, current_direction_, 1)
         .RunCallback(route_lock_release())
         .ActState(StWaiting);
   } else {
     Def().IfState(StRequestTransition)
         .IfReg1(current_block_permaloc_)
-        .IfReg1(current_direction_)
+        .MaybeIfReg(client != nullptr, current_direction_, 1)
         .RunCallback(route_lock_release())
         .ActReg0(&current_block_permaloc_)
         .ActReg0(&current_block_routingloc_)
         .ActReg1(&next_block_permaloc_)
         .ActReg1(&next_block_routingloc_)
-        .ActReg0(&current_direction_)
+        .MaybeActReg(client != nullptr, &current_direction_, 0)
         .ActState(StTransitionDone);
     Def().IfState(StGreenFailed)
         .IfReg1(current_block_permaloc_)
-        .IfReg1(current_direction_)
+        .MaybeIfReg(client != nullptr, current_direction_, 1)
         .RunCallback(route_lock_release())
         .ActState(StWaiting);
   }
