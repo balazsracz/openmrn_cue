@@ -1337,7 +1337,13 @@ TrainSchedule::ScheduleLocation* TrainSchedule::AllocateOrGetLocation(
 
 GlobalVariable* TrainSchedule::GetHelperBit(
     const void* ptr, const string& name) {
-  auto& loc = helper_bits_[ptr];
+  string key;
+  if (ptr) {
+    key = StringPrintf("%p", ptr);
+  } else {
+    key = name;
+  }
+  auto& loc = helper_bits_[key];
   if (!loc.get()) {
     loc.reset(alloc_->Allocate(name));
   }

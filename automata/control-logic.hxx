@@ -1946,7 +1946,7 @@ class TrainSchedule : public virtual AutomataPlugin {
   std::map<string, ScheduleLocation> location_map_;
 
   // These helper bits are used by turnout setting commands.
-  std::map<const void*, std::unique_ptr<GlobalVariable> > helper_bits_;
+  std::map<string, std::unique_ptr<GlobalVariable> > helper_bits_;
 };
 
 }  // namespace automata
