@@ -196,13 +196,15 @@ class Automata {
 
     virtual bool Validate() { return true; }
 
- protected:
+    bool is_preamble() { return output_ == nullptr; }
+
+   protected:
     virtual void Body() = 0;
     LocalVariable timer_bit_;
 
 #define Def() Automata::Op(aut, aut->output(), __FILE__, __LINE__)
 
-    string* output_;
+    string* output_{nullptr};
 
     Automata* const aut;
 

@@ -413,4 +413,36 @@ TEST_F(SampleLayoutLogicTrainTest, RunCirclesWithTurnout) {
   }
 }
 
+
+TEST_F(SampleLayoutLogicTrainTest, RunCircleBlocked) {
+  class MyTrain : public TrainSchedule {
+   public:
+    MyTrain(SampleLayoutLogicTrainTest* t, Board* b,
+            const AllocatorPtr& alloc)
+        : TrainSchedule("mytrain", b,
+                        openlcb::TractionDefs::NODE_ID_DCC | 0x1384,
+                        alloc->Allocate("mytrain.pbits", 8),
+                        alloc->Allocate("mytrain", 16)),
+          t_(t) {}
+
+    void RunTransition(Automata* aut) OVERRIDE {
+      // Switches the turnout (permanently) to the outer loop.
+      Def().ActReg1(
+          aut->ImportVariable(t_->RStubEntry.b.magnet()->command.get()));
+      AddEagerBlockSequence({t_->TopA.b(), t_->TopB.b(), t_->RRight.b(),
+                             t_->BotA.b(), t_->BotB.b(), t_->RLeft.b(),
+                             t_->TopA.b()});
+    }
+   private:
+    SampleLayoutLogicTrainTest* t_;
+  } my_train(this, &brd, alloc());
+  SetupRunner(&brd);
+  Run(20);
+  TopA.inverted_detector()->Set(false);
+  SetVar(*my_train.TEST_GetPermalocBit(*TopA.b()), true);
+  SetVar(*BotB.b()->auto_blocked(), true);
+  Run(100);
+
+}
+
 }  // namespace automata

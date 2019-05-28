@@ -644,6 +644,8 @@ class SignalBlock {
   // Request to set the route_out to green.
   virtual GlobalVariable *request_green() const = 0;
 
+  // This variable blocks automatically routed trains from entering the block.
+  virtual const GlobalVariable& auto_blocked() const = 0;
 };
 
 class StandardBlock : public StraightTrackInterface {
@@ -704,6 +706,9 @@ class StandardBlock : public StraightTrackInterface {
     GlobalVariable *request_green() const override {
       return parent_->request_green();
     }
+    const GlobalVariable& auto_blocked() const override {
+      return *parent_->auto_blocked();
+    }
 
    private:
     StandardBlock* parent_;
@@ -730,6 +735,9 @@ class StandardBlock : public StraightTrackInterface {
     }
     GlobalVariable *request_green() const override {
       return parent_->rrequest_green();
+    }
+    const GlobalVariable& auto_blocked() const override {
+      return *parent_->auto_blocked();
     }
 
    protected:
@@ -1651,6 +1659,7 @@ class TrainSchedule : public virtual AutomataPlugin {
         next_block_routingloc_(aut_.ReserveVariable()),
         next_block_route_in_(aut_.ReserveVariable()),
         next_block_detector_(aut_.ReserveVariable()),
+        next_block_blocked_(aut_.ReserveVariable()),
         magnet_command_(aut_.ReserveVariable()),
         magnet_state_(aut_.ReserveVariable()),
         magnet_locked_(aut_.ReserveVariable()),
@@ -1717,6 +1726,10 @@ class TrainSchedule : public virtual AutomataPlugin {
     // Currently unused. Eventually this will be 1 if the automata is currently
     // setting the route from this block outwards.
     std::unique_ptr<GlobalVariable> routingloc_bit;
+
+    // Number of outgoing transitions from this location. Updated during the
+    // time of the first run.
+    int num_directions_{0};
 
     // Specifies whether the direction bit should be taken into account as
     // well. If this is true, there are multiple outgoing possibilities from
@@ -1873,6 +1886,8 @@ class TrainSchedule : public virtual AutomataPlugin {
   Automata::LocalVariable next_block_routingloc_;
   Automata::LocalVariable next_block_route_in_;
   Automata::LocalVariable next_block_detector_;
+  // Maps the destination location's auto_blocked() variable.
+  Automata::LocalVariable next_block_blocked_;
 
   // These variables are used by magnet settings.
   Automata::LocalVariable magnet_command_;
