@@ -1,0 +1,87 @@
+#include "logic/VM.hxx"
+
+#include "utils/test_main.hxx"
+
+#include "logic/Driver.hxx"
+#include "logic/Bytecode.hxx"
+
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::StrEq;
+using ::testing::StartsWith;
+
+TempDir g_dir;
+
+namespace logic {
+
+class VMTest : public ::testing::Test {
+ protected:
+  VMTest() {
+    vm_.set_output([this](string d) { output_.emplace_back(std::move(d)); });
+  }
+
+  ::testing::AssertionResult compile(const string& sourcecode) {
+    TempFile tf(g_dir, "simple");
+    tf.rewrite(sourcecode);
+    logic::Driver d;
+    if (d.parse_file(tf.name()) != 0) {
+      return ::testing::AssertionFailure() << "Failed to compile.";
+    }
+    d.serialize(&bytecode_);
+    return ::testing::AssertionSuccess();
+  }
+
+  ::testing::AssertionResult run() {
+    if (vm_.execute(bytecode_)) {
+      return ::testing::AssertionSuccess();
+    } else {
+      return ::testing::AssertionFailure() << "VM exception: " << vm_.error_;
+    }
+  }
+
+  std::vector<int> get_op_stack() {
+    return vm_.operand_stack_;
+  }
+
+  /// Stuff that the VM has printed to the output.
+  std::vector<std::string> output_;
+  /// The virtual machine instance.
+  VM vm_;
+  /// The compiled bytecode.
+  std::string bytecode_;
+};
+
+TEST_F(VMTest, push_constant) {
+  bytecode_ = {PUSH_CONSTANT_0, PUSH_CONSTANT_1, PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, -3271);
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, -3271));
+}
+
+TEST_F(VMTest, push_constant_exception) {
+  bytecode_ = {PUSH_CONSTANT, (char)0x83};
+  EXPECT_FALSE(run());
+  EXPECT_THAT(vm_.get_error(), StrEq("Unexpected EOF parsing varint"));
+}
+
+TEST_F(VMTest, plus) {
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, 13);
+  bytecode_.append({NUMERIC_PLUS});
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(14));
+}
+
+TEST_F(VMTest, plus_underflow) {
+  bytecode_ = {PUSH_CONSTANT_1, NUMERIC_PLUS};
+  EXPECT_FALSE(run());
+  EXPECT_THAT(vm_.get_error(), StartsWith("Stack underflow"));
+}
+
+TEST_F(VMTest, plus_e2e) {
+  ASSERT_TRUE(compile("a=1+3+8"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(12));
+}
+
+} // namespace logic

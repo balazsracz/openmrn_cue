@@ -1,0 +1,29 @@
+#include "utils/test_main.hxx"
+#include "os/TempFile.hxx"
+#include "logic/Driver.hxx"
+
+TempDir g_dir;
+
+TEST(ParserTest, ast_test) {
+  TempFile tf(g_dir, "simple");
+  tf.rewrite("a = 1 + 3 + 5\nb=22");
+  logic::Driver d;
+  EXPECT_EQ(0, d.parse_file(tf.name()));
+  EXPECT_EQ("assign(a,plus(plus(1,3),5));\nassign(b,22);\n", d.debug_print());
+}
+
+TEST(ParserTest, numeric_var_test) {
+  TempFile tf(g_dir, "simple");
+  tf.rewrite("a = 1\nb=a");
+  logic::Driver d;
+  EXPECT_EQ(0, d.parse_file(tf.name()));
+  EXPECT_EQ("assign(a,1);\nassign(b,fetch(a));\n", d.debug_print());
+}
+
+TEST(ParserTest, bool_constant_test) {
+  TempFile tf(g_dir, "simple");
+  tf.rewrite("a = Inactive");
+  logic::Driver d;
+  EXPECT_EQ(0, d.parse_file(tf.name()));
+  EXPECT_EQ("assign(a,0);\n", d.debug_print());
+}

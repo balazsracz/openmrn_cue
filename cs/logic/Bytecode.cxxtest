@@ -1,0 +1,71 @@
+#include "logic/Bytecode.hxx"
+
+#include "utils/test_main.hxx"
+#include "logic/VM.hxx"
+
+namespace logic {
+
+class VarintTest : public ::testing::Test {
+ protected:
+  VarintTest() {}
+
+  void parse_varint() {
+    vm_.ip_ = (uint8_t*)payload_.data();
+    vm_.eof_ = (uint8_t*)payload_.data() + payload_.size();
+
+    output_ = -232354235;
+    EXPECT_TRUE(vm_.parse_varint(&output_));
+    EXPECT_NE(-232354235, output_);
+  }
+
+  void do_test(int value) {
+    payload_.clear();
+    SCOPED_TRACE(value);
+    BytecodeStream::append_varint(&payload_, value);
+    parse_varint();
+    EXPECT_EQ(value, output_);
+  }
+
+  int get_size(int value) {
+    payload_.clear();
+    BytecodeStream::append_varint(&payload_, value);
+    return payload_.size();
+  }
+
+  VM vm_;
+  string payload_;
+  int output_;
+};
+
+TEST_F(VarintTest, save)
+{
+  for (int i : {0, 1, 2, 13, 21, 31, 32, 62, 63, 64, 65, 254, 255, 256, 257}) {
+    do_test(i);
+    do_test(-i);
+  }
+  do_test(INT_MAX);
+  do_test(-INT_MAX);
+  do_test(INT_MIN);
+  for (int i : {8190,8191,8192,8193}) {
+    do_test(i);
+    do_test(-i);
+  }
+}
+
+TEST_F(VarintTest, size)
+{
+  for (int i : {0, 1, 2, 13, 21, 31, 32, 62, 63}) {
+    EXPECT_EQ(1, get_size(i));
+    EXPECT_EQ(1, get_size(-i));
+  }
+  EXPECT_EQ(2, get_size(64));
+  EXPECT_EQ(1, get_size(-64));
+  for (int i : {65, 66, 128, 8190, 8191}) {
+    EXPECT_EQ(2, get_size(i));
+    EXPECT_EQ(2, get_size(-i));
+  }
+  EXPECT_EQ(3, get_size(8192));
+  EXPECT_EQ(2, get_size(-8192));
+}
+
+}  // namespace logic
