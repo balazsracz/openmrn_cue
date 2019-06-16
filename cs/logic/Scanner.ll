@@ -44,7 +44,11 @@ blank [ \t]
 "mod"      return logic::yy::Parser::make_PERCENT(loc);
 "("      return logic::yy::Parser::make_LPAREN(loc);
 ")"      return logic::yy::Parser::make_RPAREN(loc);
+"{"      return logic::yy::Parser::make_LBRACE(loc);
+"}"      return logic::yy::Parser::make_RBRACE(loc);
 "="     return logic::yy::Parser::make_ASSIGN(loc);
+"if"     return logic::yy::Parser::make_IF(loc);
+"else"     return logic::yy::Parser::make_ELSE(loc);
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
 "True"     return logic::yy::Parser::make_BOOL(true, loc);
 "TRUE"     return logic::yy::Parser::make_BOOL(true, loc);

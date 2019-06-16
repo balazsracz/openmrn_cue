@@ -41,6 +41,10 @@ class Driver;
   PERCENT "%"
   LPAREN  "("
   RPAREN  ")"
+  LBRACE  "{"
+  RBRACE  "}"
+  IF  "if"
+  ELSE  "else"
 ;
 %token <std::string> IDENTIFIER "identifier"
 %token <int> NUMBER "number"
@@ -48,20 +52,25 @@ class Driver;
 %type  <std::shared_ptr<logic::NumericExpression> > exp
 %type  <std::shared_ptr<logic::Command> > command
 %type  <std::shared_ptr<logic::Command> > assignment
+%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
 //%printer { yyoutput << $$; } <*>;
 %%
 %start unit;
-unit: commands { };
+unit: commands { driver.commands_.swap(*$1); };
 
 assignment:
   "identifier" "=" exp { $$.reset(new NumericAssignment($1, std::move($3))); };
 
 command:
-  assignment { $$ = std::move($1); };
+assignment { $$ = std::move($1); };
+| "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); };
 
 commands:
-  %empty {}
-| commands command { driver.commands_.push_back(std::move($2)); };
+%empty { $$ = std::make_shared<std::vector<std::shared_ptr<Command>>>(); }
+| commands command {
+  $1->push_back(std::move($2));
+  $$ = std::move($1);
+};
 
 %left "+" "-";
 %left "*" "/";

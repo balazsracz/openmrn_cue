@@ -18,6 +18,31 @@ class Command {
   virtual void debug_print(std::string* output) = 0;
 };
 
+/// Compound command (aka brace enclosed command sequence).
+class CommandSequence : public Command {
+ public:
+  CommandSequence(std::vector<std::shared_ptr<Command> > &&commands)
+      : commands_(std::move(commands)) {}
+
+  void serialize(std::string* output) override {
+    for (const auto& c : commands_) {
+      c->serialize(output);
+    }
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("{\n");
+    for (const auto& c : commands_) {
+      c->debug_print(output);
+      output->append("\n");
+    }
+    output->append("}\n");
+  }
+
+ private:
+  std::vector<std::shared_ptr<Command> > commands_;
+};
+
 class NumericExpression : public Command {};
 
 class NumericAssignment : public Command {
