@@ -45,6 +45,9 @@ class CommandSequence : public Command {
 
 class NumericExpression : public Command {};
 
+class BooleanExpression : public Command {};
+
+
 class NumericAssignment : public Command {
  public:
   NumericAssignment(std::string variable,
@@ -182,12 +185,13 @@ class NumericVariable : public NumericExpression {
   std::string variable_;
 };
 
-class BooleanConstant : public Command {
+class BooleanConstant : public BooleanExpression {
  public:
   BooleanConstant(bool value) : value_(value) {}
 
   void serialize(std::string* output) override {
-    BytecodeStream::append_opcode(output, value_ ? PUSH_CONSTANT_1 : PUSH_CONSTANT_0);
+    BytecodeStream::append_opcode(output,
+                                  value_ ? PUSH_CONSTANT_1 : PUSH_CONSTANT_0);
   }
 
   void debug_print(std::string* output) override {
@@ -200,6 +204,72 @@ class BooleanConstant : public Command {
 
  private:
   bool value_;
+};
+
+class BoolAnd : public BooleanExpression {
+ public:
+  BoolAnd(std::shared_ptr<BooleanExpression> left,
+          std::shared_ptr<BooleanExpression> right)
+      : left_(std::move(left)), right_(std::move(right)) {
+    HASSERT(left_);
+    HASSERT(right_);
+  }
+
+  void serialize(std::string* output) override {
+    left_->serialize(output);
+    std::string rhs;
+    BytecodeStream::append_opcode(&rhs, POP_OP);
+    right_->serialize(&rhs);
+    BytecodeStream::append_opcode(output, PUSH_TOP);
+    BytecodeStream::append_opcode(output, TEST_JUMP_IF_FALSE);
+    BytecodeStream::append_varint(output, rhs.size());
+    output->append(rhs);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("bool_and(");
+    left_->debug_print(output);
+    output->append(",");
+    right_->debug_print(output);
+    output->append(")");
+  }
+
+ private:
+  std::shared_ptr<BooleanExpression> left_;
+  std::shared_ptr<BooleanExpression> right_;
+};
+
+class BoolOr : public BooleanExpression {
+ public:
+  BoolOr(std::shared_ptr<BooleanExpression> left,
+          std::shared_ptr<BooleanExpression> right)
+      : left_(std::move(left)), right_(std::move(right)) {
+    HASSERT(left_);
+    HASSERT(right_);
+  }
+
+  void serialize(std::string* output) override {
+    left_->serialize(output);
+    std::string rhs;
+    BytecodeStream::append_opcode(&rhs, POP_OP);
+    right_->serialize(&rhs);
+    BytecodeStream::append_opcode(output, PUSH_TOP);
+    BytecodeStream::append_opcode(output, TEST_JUMP_IF_TRUE);
+    BytecodeStream::append_varint(output, rhs.size());
+    output->append(rhs);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("bool_or(");
+    left_->debug_print(output);
+    output->append(",");
+    right_->debug_print(output);
+    output->append(")");
+  }
+
+ private:
+  std::shared_ptr<BooleanExpression> left_;
+  std::shared_ptr<BooleanExpression> right_;
 };
 
 } // namespace logic

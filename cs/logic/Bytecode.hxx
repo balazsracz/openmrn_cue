@@ -11,6 +11,11 @@ enum OpCode : uint8_t {
   PUSH_CONSTANT,
   PUSH_CONSTANT_0,
   PUSH_CONSTANT_1,
+  // Duplicates the value on the top of the stack.
+  PUSH_TOP,
+  // Removes the top of the operand stack (throwaway)
+  POP_OP,
+  
   ASSIGN_VAR,
   ASSIGN_VAR_0,
   ASSIGN_VAR_1,
@@ -36,6 +41,8 @@ enum OpCode : uint8_t {
   // relative offset, and if the operand is zero, jumps to that relative
   // offset.
   TEST_JUMP_IF_FALSE,
+  // same inverted.
+  TEST_JUMP_IF_TRUE,
   
   // Takes the top of stack and prints it to the "output"
   PRINT_NUM,

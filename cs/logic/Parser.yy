@@ -50,6 +50,7 @@ class Driver;
 %token <int> NUMBER "number"
 %token <bool> BOOL "bool"
 %type  <std::shared_ptr<logic::NumericExpression> > exp
+%type  <std::shared_ptr<logic::BooleanExpression> > boolexp
 %type  <std::shared_ptr<logic::Command> > command
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
@@ -91,6 +92,17 @@ exp:
 | "number"      { $$.reset(new NumericConstant($1)); }
 | "identifier"  { $$ = std::make_shared<NumericVariable>(std::move($1)); }
 | "bool"      { $$ = std::make_shared<NumericConstant>($1 ? 1 : 0); };
+
+%left "==" "!=";
+%left "&&";
+%left "||";
+
+boolexp:
+  "bool"      { $$ = std::make_shared<BooleanConstant>($1); }
+| "(" boolexp ")"   { std::swap ($$, $2); }
+|  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }
+|  boolexp "||" boolexp   { $$ = std::make_shared<BoolOr>(std::move($1), std::move($3)); }
+;
 
 //| exp "-" exp   { $$.reset(new NumericMinus(std::move($1), std::move($3))); }
 //| exp "*" exp   { $$.reset(new NumericMul(std::move($1), std::move($3))); }
