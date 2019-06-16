@@ -65,12 +65,12 @@ assignment:
 command:
 assignment { $$ = std::move($1); };
 | "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
-| "if" "(" exp ")" "{" commands "}" "else" "{" commands "}" {
+| "if" "(" boolexp ")" "{" commands "}" "else" "{" commands "}" {
   $$ = std::make_shared<IfThenElse>(
       std::move($3),
       std::make_shared<CommandSequence>(std::move(*$6)),
       std::make_shared<CommandSequence>(std::move(*$10))); }
-| "if" "(" exp ")" "{" commands "}" {
+| "if" "(" boolexp ")" "{" commands "}" {
   $$ = std::make_shared<IfThenElse>(
       std::move($3),
       std::make_shared<CommandSequence>(std::move(*$6)));

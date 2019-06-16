@@ -75,7 +75,7 @@ class NumericAssignment : public Command {
 /// Compound command (aka brace enclosed command sequence).
 class IfThenElse : public Command {
  public:
-  IfThenElse(std::shared_ptr<NumericExpression> cond,
+  IfThenElse(std::shared_ptr<BooleanExpression> cond,
              std::shared_ptr<Command> then_case,
              std::shared_ptr<Command> else_case = nullptr)
       : condition_(std::move(cond)),
@@ -111,7 +111,7 @@ class IfThenElse : public Command {
 
  private:
   /// @todo this should rather be a boolean expression
-  std::shared_ptr<NumericExpression> condition_;
+  std::shared_ptr<BooleanExpression> condition_;
   std::shared_ptr<Command> then_case_;
   std::shared_ptr<Command> else_case_;
 };
