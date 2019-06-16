@@ -69,6 +69,50 @@ class NumericAssignment : public Command {
   std::shared_ptr<NumericExpression> value_;
 };
 
+/// Compound command (aka brace enclosed command sequence).
+class IfThenElse : public Command {
+ public:
+  IfThenElse(std::shared_ptr<NumericExpression> cond,
+             std::shared_ptr<Command> then_case,
+             std::shared_ptr<Command> else_case = nullptr)
+      : condition_(std::move(cond)),
+        then_case_(std::move(then_case)),
+        else_case_(std::move(else_case)) {}
+
+  void serialize(std::string* output) override {
+    condition_->serialize(output);
+    string then_block;
+    then_case_->serialize(&then_block);
+    string else_block;
+    if (else_case_) {
+      else_case_->serialize(&else_block);
+      BytecodeStream::append_opcode(&then_block, JUMP);
+      BytecodeStream::append_varint(&then_block, else_block.size());
+    }
+    BytecodeStream::append_opcode(output, TEST_JUMP_IF_FALSE);
+    BytecodeStream::append_varint(output, then_block.size());
+    output->append(then_block);
+    output->append(else_block);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("if (");
+    condition_->debug_print(output);
+    output->append(")");
+    then_case_->debug_print(output);
+    if (else_case_) {
+      output->append(" else ");
+      else_case_->debug_print(output);
+    }
+  }
+
+ private:
+  /// @todo this should rather be a boolean expression
+  std::shared_ptr<NumericExpression> condition_;
+  std::shared_ptr<Command> then_case_;
+  std::shared_ptr<Command> else_case_;
+};
+
 class NumericAdd : public NumericExpression {
  public:
   NumericAdd(std::shared_ptr<NumericExpression> left,

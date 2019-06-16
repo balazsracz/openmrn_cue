@@ -63,7 +63,11 @@ assignment:
 
 command:
 assignment { $$ = std::move($1); };
-| "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); };
+| "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
+| "if" "(" exp ")" command "else" command {
+  $$ = std::make_shared<IfThenElse>(std::move($3), std::move($5), std::move($7)); }
+| "if" "(" exp ")" command {
+  $$ = std::make_shared<IfThenElse>(std::move($3), std::move($5)); };
 
 commands:
 %empty { $$ = std::make_shared<std::vector<std::shared_ptr<Command>>>(); }

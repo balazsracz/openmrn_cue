@@ -26,6 +26,17 @@ enum OpCode : uint8_t {
   // Unary arithmetic operators. They act on the top of the stack.
   NUMERIC_INVERT,
 
+  // Branching
+  
+  // Unconditional jump. Reads an argument (a varint), then jumps that many
+  // bytes with the IP.
+  JUMP,
+  
+  // Takes the top of the opstack (removes it), takes a varint argument as a
+  // relative offset, and if the operand is zero, jumps to that relative
+  // offset.
+  TEST_JUMP_IF_FALSE,
+  
   // Takes the top of stack and prints it to the "output"
   PRINT_NUM,
 
