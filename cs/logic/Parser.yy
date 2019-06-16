@@ -43,6 +43,8 @@ class Driver;
   RPAREN  ")"
   LBRACE  "{"
   RBRACE  "}"
+  DOUBLEAND  "&&"
+  DOUBLEOR  "||"
   IF  "if"
   ELSE  "else"
 ;

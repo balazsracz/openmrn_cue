@@ -47,6 +47,10 @@ blank [ \t]
 "{"      return logic::yy::Parser::make_LBRACE(loc);
 "}"      return logic::yy::Parser::make_RBRACE(loc);
 "="     return logic::yy::Parser::make_ASSIGN(loc);
+"&&"     return logic::yy::Parser::make_DOUBLEAND(loc);
+"and"     return logic::yy::Parser::make_DOUBLEAND(loc);
+"||"     return logic::yy::Parser::make_DOUBLEOR(loc);
+"or"     return logic::yy::Parser::make_DOUBLEOR(loc);
 "if"     return logic::yy::Parser::make_IF(loc);
 "else"     return logic::yy::Parser::make_ELSE(loc);
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
