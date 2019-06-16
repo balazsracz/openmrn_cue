@@ -157,7 +157,7 @@ TEST_F(VMTest, bool_and) {
 
   clear();
 
-  ASSERT_TRUE(compile("x=9 if(true && true && true) {a=1+3} y=7"));
+  ASSERT_TRUE(compile("x=9 if(true and true and true) {a=1+3} y=7"));
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(9, 4, 7));
 
@@ -174,5 +174,46 @@ TEST_F(VMTest, bool_and) {
   EXPECT_THAT(get_op_stack(), ElementsAre(9, 7));
 }
 
+TEST_F(VMTest, bool_or) {
+  ASSERT_TRUE(compile("x=9 if(true || true) {a=1+3} y=7"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(9, 4, 7));
+
+  clear();
+
+  ASSERT_TRUE(compile("x=9 if(true || false) {a=1+3} y=7"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(9, 4, 7));
+
+  clear();
+
+  ASSERT_TRUE(compile("x=9 if(false || false) {a=1+3} y=7"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(9, 7));
+
+  clear();
+
+  ASSERT_TRUE(compile("x=9 if(false || true) {a=1+3} y=7"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(9, 4, 7));
+
+  clear();
+
+  ASSERT_TRUE(compile("x=9 if(false or false or false) {a=1+3} y=7"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(9, 7));
+
+  clear();
+
+  ASSERT_TRUE(compile("x=9 if(false || true || false) {a=1+3} y=7"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(9, 4, 7));
+
+  clear();
+
+  ASSERT_TRUE(compile("x=9 if(false || false || true) {a=1+3} y=7"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(9, 4, 7));
+}
 
 } // namespace logic
