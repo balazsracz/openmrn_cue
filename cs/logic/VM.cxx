@@ -98,6 +98,32 @@ bool VM::execute(const void* data, size_t len) {
         operand_stack_.push_back(lhs + rhs);
         break;
       }
+
+      case JUMP: {
+        ++ip_;
+        int r;
+        if (!parse_varint(&r)) return false;
+        ip_ += r;
+        --ip_;
+        break;
+      }
+
+      case TEST_JUMP_IF_FALSE: {
+        if (operand_stack_.size() < 1) {
+          error_ = StringPrintf("Stack underflow at TEST_JUMP_IF_FALSE");
+          return false;
+        }
+        ++ip_;
+        int r;
+        if (!parse_varint(&r)) return false;
+        int arg = operand_stack_.back();
+        operand_stack_.pop_back();
+        if (arg == 0) {
+          ip_ += r;
+        }
+        --ip_;
+        break;
+      }
       case PRINT_NUM: {
         if (operand_stack_.size() < 1) {
           error_ = StringPrintf("Stack underflow at PRINT_NUM");
