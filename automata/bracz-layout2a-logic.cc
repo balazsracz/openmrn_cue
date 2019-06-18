@@ -621,6 +621,26 @@ MagnetPause magnet_pause(&g_magnet_aut, &power_acc);
 MagnetButtonAutomata g_btn_aut(&brd);
 
 
+MagnetDef Magnet_W230(&g_magnet_aut, "W230", &b9.ActBlueGrey,
+                      &b9.ActBlueBrown, MovableTurnout::kThrown);
+StandardMovableTurnout Turnout_W230(&brd,
+                                    logic->Allocate("W230", 40),
+                                    &Magnet_W230);
+TurnoutWrap TW230(&Turnout_W230.b, kPointToThrown);
+
+MagnetDef Magnet_BBW1(&g_magnet_aut, "BB.W1", &b9.ActGreenGreen,
+                      &b9.ActGreenRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_BBW1(&brd,
+                                    logic->Allocate("BB.W1", 40),
+                                    &Magnet_BBW1);
+
+MagnetDef Magnet_BBW2(&g_magnet_aut, "BB.W2", &b9.ActOraGreen,
+                      &b9.ActOraRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_BBW2(&brd,
+                                    logic->Allocate("BB.W2", 40),
+                                    &Magnet_BBW2);
+
+
 MagnetDef Magnet_HBW1(&g_magnet_aut, "HB.W1", &bb.ActBlueGrey,
                       &bb.ActBlueBrown, MovableTurnout::kClosed);
 StandardMovableTurnout Turnout_HBW1(&brd,
@@ -721,6 +741,16 @@ PhysicalSignal HBB4(&b9.In7, nullptr, nullptr, nullptr,
                     &signal_HBA4_main.signal, &signal_HBA4_adv.signal, nullptr,
                     nullptr);
 
+PhysicalSignal BBB1(&b9.InOraRed, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal BBB2(&b9.InOraGreen, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr,
+                    nullptr);
+PhysicalSignal BBB3(&b9.In6, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr,
+                    nullptr);
+
 StandardMiddleDetector Det_239(&brd, A239.sensor_raw,
                                logic->Allocate("Det239", 32, 8));
 
@@ -803,6 +833,10 @@ StubBlock Stub_HBB1(&brd, &HBB1, nullptr, logic, "HB.B1");
 StubBlock Stub_HBB2(&brd, &HBB2, nullptr, logic, "HB.B2");
 StubBlock Stub_HBB3(&brd, &HBB3, nullptr, logic, "HB.B3");
 StubBlock Stub_HBB4(&brd, &HBB4, nullptr, logic, "HB.B4");
+
+StubBlock Stub_BBB1(&brd, &BBB1, nullptr, logic, "BB.B1");
+StubBlock Stub_BBB2(&brd, &BBB2, nullptr, logic, "BB.B2");
+StubBlock Stub_BBB3(&brd, &BBB3, nullptr, logic, "BB.B3");
 
 /*
 StandardBlock Block_XXB4(&brd, &XXB4, logic, "XX.B4");
@@ -993,12 +1027,12 @@ bool ignored1a = BindSequence(
 
 bool ignored2 = BindSequence(  //
     Block_B241.side_b(),
-    {&THBW1,      &THBW3,      &Det_239,    &THBW8,                //
-     &Block_B231, &Block_A139,                                     //
-     &THBW7,      &THBW4Main,  &THBW2Main,                         //
-     &Block_A149, &TW150,      &Block_A159, &TW159,       &TW161,  //
-     &Block_A167, &TW170,      &Block_A179, &TW180,       &TW280,  //
-     &Block_B271, &TW270,      &Block_B261, &TDKW260Main, &Block_B251, &TW250},
+    {&THBW1,      &THBW3,     &Det_239,    &THBW8,                //
+     &Block_B231, &TW230,     &Block_A139,                        //
+     &THBW7,      &THBW4Main, &THBW2Main,                         //
+     &Block_A149, &TW150,     &Block_A159, &TW159,       &TW161,  //
+     &Block_A167, &TW170,     &Block_A179, &TW180,       &TW280,  //
+     &Block_B271, &TW270,     &Block_B261, &TDKW260Main, &Block_B251, &TW250},
     Block_B241.side_a());
 
 bool ignored3 = BindPairs({
@@ -1010,6 +1044,11 @@ bool ignored3 = BindPairs({
     {Turnout_W161.b.side_thrown(), DKW_260.b.point_a1()},
     {Turnout_W270.b.side_thrown(), Turnout_W170.b.side_thrown()},
     {Turnout_W280.b.side_closed(), Turnout_W180.b.side_closed()},
+    {Turnout_W230.b.side_closed(), Turnout_BBW1.b.side_points()},
+    {Turnout_BBW1.b.side_closed(), Turnout_BBW2.b.side_points()},
+    {Turnout_BBW2.b.side_closed(), Stub_BBB1.entry()},
+    {Turnout_BBW2.b.side_thrown(), Stub_BBB2.entry()},
+    {Turnout_BBW1.b.side_thrown(), Stub_BBB3.entry()},
     {Turnout_HBW7.b.side_thrown(), Turnout_HBW8.b.side_thrown()}
 
     /*        
