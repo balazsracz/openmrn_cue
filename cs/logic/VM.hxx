@@ -36,10 +36,31 @@ class VM {
     print_cb_ = std::move(cb);
   }
 
+  /// Resets the internal state of the virtual machine.
+  void clear() {
+    operand_stack_.clear();
+    call_stack_.clear();
+    call_stack_.emplace_back();
+    call_stack_.back().fp = 0;
+  }
+
  private:
   friend class VarintTest;
   friend class VMTest;
 
+  struct ExecutionEnvironment {
+    /// Frame pointer. Indexes into the operand_stack_ to define the base for
+    /// all relative offset variables. When exiting a function, the operand
+    /// stack is truncated to this size.
+    unsigned fp;
+
+    /// Where to return out of this stack frame.
+    const uint8_t* return_address {nullptr};
+  };
+
+  /// Stack frames of the nested functions.
+  std::vector<ExecutionEnvironment> call_stack_;
+  
   /// Stack of values for operands.
   std::vector<int> operand_stack_;
 

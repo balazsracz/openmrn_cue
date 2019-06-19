@@ -66,6 +66,7 @@ bool VM::parse_varint(int* output) {
 }
 
 bool VM::execute(const void* data, size_t len) {
+  clear();
   ip_ = (const uint8_t*)data;
   eof_ = ip_ + len;
 
