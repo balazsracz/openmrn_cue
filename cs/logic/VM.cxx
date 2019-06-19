@@ -81,6 +81,14 @@ bool VM::execute(const void* data, size_t len) {
         --ip_;
         break;
       }
+      case ENTER: {
+        ++ip_;
+        int r;
+        if (!parse_varint(&r)) return false;
+        operand_stack_.resize(operand_stack_.size() + r);
+        --ip_;
+        break;
+      }
       case PUSH_TOP: {
         if (operand_stack_.size() < 1) {
           error_ = StringPrintf("Stack underflow at PUSH_TOP");

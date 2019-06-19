@@ -15,6 +15,8 @@ enum OpCode : uint8_t {
   PUSH_TOP,
   // Removes the top of the operand stack (throwaway)
   POP_OP,
+  // Pushes eros to the stack. Arg = how many zeros to push.
+  ENTER,
   
   ASSIGN_VAR,
   ASSIGN_VAR_0,

@@ -84,6 +84,13 @@ TEST_F(VMTest, plus_underflow) {
   EXPECT_THAT(vm_.get_error(), StartsWith("Stack underflow"));
 }
 
+TEST_F(VMTest, enter) {
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT_0, PUSH_CONSTANT_1, ENTER};
+  BytecodeStream::append_varint(&bytecode_, 4);
+  EXPECT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1,0,1,0,0,0,0));
+}
+
 TEST_F(VMTest, plus_e2e) {
   ASSERT_TRUE(compile("a=1+3+8"));
   ASSERT_TRUE(run());
