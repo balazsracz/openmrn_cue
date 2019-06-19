@@ -68,11 +68,13 @@ class NumericAssignment : public Command {
       : variable_(std::move(variable)),
         sym_(std::move(sym)),
         value_(std::move(value)) {
+    HASSERT(sym_.symbol_type_ == Symbol::LOCAL_VAR_INT);
   }
 
   void serialize(std::string* output) override {
     value_->serialize(output);
-    /// @todo create representation of variables.
+    BytecodeStream::append_opcode(output, MOVE_FP_REL);
+    BytecodeStream::append_varint(output, sym_.fp_offset_);
   }
 
   void debug_print(std::string* output) override {
@@ -87,6 +89,43 @@ class NumericAssignment : public Command {
   std::string variable_;
   Symbol sym_;
   std::shared_ptr<NumericExpression> value_;
+};
+
+class BooleanAssignment : public Command {
+ public:
+  /// Constructs a boolean assignment operation.
+  /// @param variable is the string name of the variable (identifier; only for
+  /// debugging)
+  /// @param sym is the symbol describing what type this variable is and how to
+  /// access it.
+  /// @param value is the expression that computes the value to be stored
+  /// (pushing exactly one entry to the operand stack).
+  BooleanAssignment(std::string variable, Symbol sym,
+                    std::shared_ptr<BooleanExpression> value)
+      : variable_(std::move(variable)),
+        sym_(std::move(sym)),
+        value_(std::move(value)) {
+    HASSERT(sym_.symbol_type_ == Symbol::LOCAL_VAR_BOOL);
+  }
+
+  void serialize(std::string* output) override {
+    value_->serialize(output);
+    BytecodeStream::append_opcode(output, MOVE_FP_REL);
+    BytecodeStream::append_varint(output, sym_.fp_offset_);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("boolassign(");
+    output->append(variable_);
+    output->append(",");
+    value_->debug_print(output);
+    output->append(")");
+  }
+
+ private:
+  std::string variable_;
+  Symbol sym_;
+  std::shared_ptr<BooleanExpression> value_;
 };
 
 /// Compound command (aka brace enclosed command sequence).

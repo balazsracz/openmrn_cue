@@ -74,10 +74,36 @@ assignment:
     err += "'";
     driver.error(@1, err);
     YYERROR;
+  } else if (s->symbol_type_ != Symbol::LOCAL_VAR_INT) {
+    string err = "'";
+    err += $1;
+    err += "' incorrect type; expected int";
+    driver.error(@1, err);
+    YYERROR;
   } else {
     $$.reset(new NumericAssignment($1, *s, std::move($3)));
   }
-};
+}
+| "identifier" "=" boolexp {
+  const Symbol* s = driver.find_symbol($1);
+  if (!s) {
+    string err = "Undeclared variable '";
+    err += $1;
+    err += "'";
+    driver.error(@1, err);
+    YYERROR;
+  } else if (s->symbol_type_ != Symbol::LOCAL_VAR_BOOL) {
+    string err = "'";
+    err += $1;
+    err += "' incorrect type; expected bool";
+    driver.error(@1, err);
+    YYERROR;
+  } else {
+    $$.reset(new BooleanAssignment($1, *s, std::move($3)));
+  }
+}
+
+;
 
 variable_decl:
 "int" "identifier" ";" {
@@ -94,15 +120,16 @@ variable_decl:
   // No code to output.
   $$ = std::make_shared<EmptyCommand>();
   }
-/*| "int" "identifier" "=" exp ";" {
-  if (!driver.allocate_variable($2, LOCAL_VAR_INT)) {
+| "int" "identifier" "=" exp ";" {
+  if (!driver.allocate_variable($2, Symbol::LOCAL_VAR_INT)) {
     YYERROR;
-    return;
+  } else {
+
   }
   // No code to output.
-  $$ = std::make_shared<EmptyCommand>();
+  $$ = std::make_shared<NumericAssignment>($2, *driver.find_symbol($2), std::move($4));
   }
-| "bool" IDENTIFIER ";" {
+/*| "bool" IDENTIFIER ";" {
   driver.allocate_variable($2, LOCAL_VAR_BOOL);
   // No code to output.
   $$ = std::make_shared<EmptyCommand>();
@@ -142,7 +169,7 @@ exp:
 | "(" exp ")"   { std::swap ($$, $2); }
 | "number"      { $$.reset(new NumericConstant($1)); }
 | "identifier"  { $$ = std::make_shared<NumericVariable>(std::move($1)); }
-| "constbool"      { $$ = std::make_shared<NumericConstant>($1 ? 1 : 0); };
+;
 
 %left "==" "!=";
 %left "&&";

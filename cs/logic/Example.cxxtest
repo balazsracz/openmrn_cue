@@ -25,5 +25,5 @@ TEST(ParserTest, bool_constant_test) {
   tf.rewrite("bool a; a = Inactive");
   logic::Driver d;
   EXPECT_EQ(0, d.parse_file(tf.name()));
-  EXPECT_EQ(";\nassign(a,0);\n", d.debug_print());
+  EXPECT_EQ(";\nboolassign(a,false);\n", d.debug_print());
 }

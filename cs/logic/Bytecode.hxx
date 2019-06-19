@@ -31,8 +31,11 @@ enum OpCode : uint8_t {
   PUSH_TOP,
   // Removes the top of the operand stack (throwaway)
   POP_OP,
-  // Pushes eros to the stack. Arg = how many zeros to push.
+  // Pushes zeros to the stack. Arg = how many zeros to push.
   ENTER,
+  // Moves the top of the stack to an fp-relative position. Pops the
+  // stack. Arg=fp-relative offset of where to write the value.
+  MOVE_FP_REL,
   
   ASSIGN_VAR,
   ASSIGN_VAR_0,

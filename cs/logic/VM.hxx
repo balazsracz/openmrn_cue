@@ -42,6 +42,7 @@ class VM {
     call_stack_.clear();
     call_stack_.emplace_back();
     call_stack_.back().fp = 0;
+    fp_ = 0;
   }
 
  private:
@@ -85,6 +86,7 @@ class VM {
   /// Points to eof, which is the first character after ip_ that is not valid,
   /// aka end pointer (right open range).
   const uint8_t* eof_;
+  unsigned fp_;
 };
 
 
