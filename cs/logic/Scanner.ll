@@ -46,6 +46,7 @@ blank [ \t]
 ")"      return logic::yy::Parser::make_RPAREN(loc);
 "{"      return logic::yy::Parser::make_LBRACE(loc);
 "}"      return logic::yy::Parser::make_RBRACE(loc);
+";"      return logic::yy::Parser::make_SEMICOLON(loc);
 "="     return logic::yy::Parser::make_ASSIGN(loc);
 "&&"     return logic::yy::Parser::make_DOUBLEAND(loc);
 "and"     return logic::yy::Parser::make_DOUBLEAND(loc);
@@ -53,6 +54,11 @@ blank [ \t]
 "or"     return logic::yy::Parser::make_DOUBLEOR(loc);
 "if"     return logic::yy::Parser::make_IF(loc);
 "else"     return logic::yy::Parser::make_ELSE(loc);
+
+"int"     return logic::yy::Parser::make_TYPEINT(loc);
+"bool"     return logic::yy::Parser::make_TYPEBOOL(loc);
+
+
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
 "True"     return logic::yy::Parser::make_BOOL(true, loc);
 "TRUE"     return logic::yy::Parser::make_BOOL(true, loc);

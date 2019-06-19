@@ -6,6 +6,22 @@
 
 namespace logic {
 
+/// An entry in the symbol table.
+struct Symbol {
+  enum Type {
+    /// Variable allocated on the operand stack of type 'int'.
+    LOCAL_VAR_INT,
+    /// Variable allocated on the operand stack of type 'bool'.
+    LOCAL_VAR_BOOL,
+  };
+
+  /// type of this symbol.
+  Type symbol_type_;
+  /// relative offset on the operand stack from the fp.
+  int fp_offset_;
+  /// @todo add declaration location.
+};
+
 enum OpCode : uint8_t {
   TERMINATE = 0,
   PUSH_CONSTANT,

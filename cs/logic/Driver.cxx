@@ -4,8 +4,6 @@
 namespace logic {
 
 Driver::Driver() {
-  variables["one"] = 1;
-  variables["two"] = 2;
 }
 
 int Driver::parse_file(const std::string& f) {

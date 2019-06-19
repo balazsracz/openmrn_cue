@@ -6,24 +6,24 @@ TempDir g_dir;
 
 TEST(ParserTest, ast_test) {
   TempFile tf(g_dir, "simple");
-  tf.rewrite("a = 1 + 3 + 5\nb=22");
+  tf.rewrite("int a; int b; a = 1 + 3 + 5\nb=22");
   logic::Driver d;
   EXPECT_EQ(0, d.parse_file(tf.name()));
-  EXPECT_EQ("assign(a,plus(plus(1,3),5));\nassign(b,22);\n", d.debug_print());
+  EXPECT_EQ(";\n;\nassign(a,plus(plus(1,3),5));\nassign(b,22);\n", d.debug_print());
 }
 
 TEST(ParserTest, numeric_var_test) {
   TempFile tf(g_dir, "simple");
-  tf.rewrite("a = 1\nb=a");
+  tf.rewrite("int a; int b; a = 1\nb=a");
   logic::Driver d;
   EXPECT_EQ(0, d.parse_file(tf.name()));
-  EXPECT_EQ("assign(a,1);\nassign(b,fetch(a));\n", d.debug_print());
+  EXPECT_EQ(";\n;\nassign(a,1);\nassign(b,fetch(a));\n", d.debug_print());
 }
 
 TEST(ParserTest, bool_constant_test) {
   TempFile tf(g_dir, "simple");
-  tf.rewrite("a = Inactive");
+  tf.rewrite("bool a; a = Inactive");
   logic::Driver d;
   EXPECT_EQ(0, d.parse_file(tf.name()));
-  EXPECT_EQ("assign(a,0);\n", d.debug_print());
+  EXPECT_EQ(";\nassign(a,0);\n", d.debug_print());
 }

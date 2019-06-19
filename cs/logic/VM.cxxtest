@@ -92,7 +92,7 @@ TEST_F(VMTest, enter) {
 }
 
 TEST_F(VMTest, plus_e2e) {
-  ASSERT_TRUE(compile("a=1+3+8"));
+  ASSERT_TRUE(compile("int a; a=1+3+8"));
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(12));
 }

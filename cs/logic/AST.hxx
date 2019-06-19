@@ -18,6 +18,12 @@ class Command {
   virtual void debug_print(std::string* output) = 0;
 };
 
+class EmptyCommand : public Command {
+ public:
+  void serialize(std::string* output) override {};
+  void debug_print(std::string* output) override {};
+};
+
 /// Compound command (aka brace enclosed command sequence).
 class CommandSequence : public Command {
  public:
@@ -50,9 +56,19 @@ class BooleanExpression : public Command {};
 
 class NumericAssignment : public Command {
  public:
-  NumericAssignment(std::string variable,
+  /// Constructs a numeric assignment operation.
+  /// @param variable is the string name of the variable (identifier; only for
+  /// debugging)
+  /// @param sym is the symbol describing what type this variable is and how to
+  /// access it.
+  /// @param value is the expression that computes the value to be stored
+  /// (pushing exactly one entry to the operand stack).
+  NumericAssignment(std::string variable, Symbol sym,
                     std::shared_ptr<NumericExpression> value)
-      : variable_(std::move(variable)), value_(std::move(value)) {}
+      : variable_(std::move(variable)),
+        sym_(std::move(sym)),
+        value_(std::move(value)) {
+  }
 
   void serialize(std::string* output) override {
     value_->serialize(output);
@@ -69,6 +85,7 @@ class NumericAssignment : public Command {
 
  private:
   std::string variable_;
+  Symbol sym_;
   std::shared_ptr<NumericExpression> value_;
 };
 
