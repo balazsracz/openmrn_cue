@@ -105,6 +105,7 @@ logic::Driver::scan_begin ()
       error ("cannot open " + filename_ + ": " + strerror(errno));
       exit (EXIT_FAILURE);
     }
+  loc.initialize(&filename_, 1, 1);
 }
 
 
