@@ -238,10 +238,6 @@ boolexp:
 }
 ;
 
-//| exp "-" exp   { $$.reset(new NumericMinus(std::move($1), std::move($3))); }
-//| exp "*" exp   { $$.reset(new NumericMul(std::move($1), std::move($3))); }
-//| exp "/" exp   { $$.reset(new NumericDiv(std::move($1), std::move($3))); }
-//| exp "%" exp   { $$.reset(new NumericMod(std::move($1), std::move($3))); }
 %%
 
 void logic::yy::Parser::error (const location_type& l, const std::string& m)
