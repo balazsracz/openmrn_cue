@@ -235,4 +235,12 @@ TEST_F(VMTest, bool_variable) {
   EXPECT_THAT(get_op_stack(), ElementsAre(0,0,1));
 }
 
+TEST_F(VMTest, int_variable) {
+  ASSERT_TRUE(compile("int a=0,b=4,c=2,d,e=-4;"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0,4,2,0,-4));
+
+}
+
+
 } // namespace logic
