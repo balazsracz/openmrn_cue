@@ -34,6 +34,7 @@ class Driver;
 %token
   END  0  "end of file"
   SEMICOLON  ";"
+  COMMA ","
   ASSIGN  "="
   MINUS   "-"
   PLUS    "+"
@@ -55,11 +56,14 @@ class Driver;
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
 %type  <std::shared_ptr<logic::NumericExpression> > exp
+%type  <std::shared_ptr<logic::NumericExpression> > decl_optional_int_exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
 %type  <std::shared_ptr<logic::Command> > command
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<logic::Command> > variable_decl
+%type  <std::shared_ptr<logic::Command> > int_decl_single
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
+%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > int_decl_list
 //%printer { yyoutput << $$; } <*>;
 %%
 %start unit;
@@ -102,17 +106,40 @@ assignment:
     $$.reset(new BooleanAssignment($1, *s, std::move($3)));
   }
 }
+;
 
+decl_optional_int_exp:
+%empty { $$ = std::make_shared<NumericConstant>(0); }
+| "=" exp { $$ = std::move($2); };
+
+int_decl_single:
+"identifier" decl_optional_int_exp {
+  if (!driver.allocate_variable($1, Symbol::LOCAL_VAR_INT)) {
+    YYERROR;
+  }
+  $$ = std::make_shared<NumericAssignment>($1, *driver.find_symbol($1),
+                                           std::move($2));
+}
+
+int_decl_list:
+int_decl_single {
+  $$ = std::make_shared<std::vector<std::shared_ptr<logic::Command> > >();
+  $$->emplace_back(std::move($1));
+} |
+int_decl_list "," int_decl_single {
+  $$.swap($1);
+  $$->emplace_back(std::move($3));
+}
 ;
 
 variable_decl:
-"int" "identifier" ";" {
-  if (!driver.allocate_variable($2, Symbol::LOCAL_VAR_INT)) {
-    YYERROR;
+"int" int_decl_list ";" {
+  if ($2->size() == 1) {
+    std::swap($$, (*$2)[0]);
+  } else {
+    $$ = std::make_shared<CommandSequence>(std::move(*$2));  
   }
-  // No code to output.
-  $$ = std::make_shared<EmptyCommand>();
-  }
+}
 | "bool" "identifier" ";" {
   if (!driver.allocate_variable($2, Symbol::LOCAL_VAR_BOOL)) {
     YYERROR;

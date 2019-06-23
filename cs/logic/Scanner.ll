@@ -47,6 +47,7 @@ blank [ \t]
 "{"      return logic::yy::Parser::make_LBRACE(loc);
 "}"      return logic::yy::Parser::make_RBRACE(loc);
 ";"      return logic::yy::Parser::make_SEMICOLON(loc);
+","      return logic::yy::Parser::make_COMMA(loc);
 "="     return logic::yy::Parser::make_ASSIGN(loc);
 "&&"     return logic::yy::Parser::make_DOUBLEAND(loc);
 "and"     return logic::yy::Parser::make_DOUBLEAND(loc);
