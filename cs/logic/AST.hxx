@@ -135,20 +135,27 @@ class NumericAssignment : public Command {
 
 class IntVariable : public IntExpression {
  public:
-  IntVariable(std::string variable) : variable_(std::move(variable)) {}
+  IntVariable(std::string variable, const Symbol& sym) {
+    if (sym.symbol_type_ == Symbol::LOCAL_VAR_INT) {
+      variable_.reset(
+          new LocalVariableReference(std::move(variable), sym.fp_offset_));
+    } else {
+      DIE("Unexpected symbol type");
+    }
+  }
 
   void serialize(std::string* output) override {
-    DIE("unimplemented");
+    variable_->serialize_fetch(output);
   }
 
   void debug_print(std::string* output) override {
     output->append("fetch(");
-    output->append(variable_);
+    variable_->debug_print(output);
     output->append(")");
   }
 
  private:
-  std::string variable_;
+  std::unique_ptr<VariableReference> variable_;
 };
 
 class BooleanAssignment : public Command {

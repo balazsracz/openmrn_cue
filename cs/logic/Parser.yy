@@ -74,36 +74,16 @@ unit: commands { driver.commands_.swap(*$1); };
 
 assignment:
 "identifier" "=" exp {
-  const Symbol* s = driver.find_symbol($1);
+  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_INT);
   if (!s) {
-    string err = "Undeclared variable '";
-    err += $1;
-    err += "'";
-    driver.error(@1, err);
-    YYERROR;
-  } else if (s->symbol_type_ != Symbol::LOCAL_VAR_INT) {
-    string err = "'";
-    err += $1;
-    err += "' incorrect type; expected int";
-    driver.error(@1, err);
     YYERROR;
   } else {
     $$.reset(new NumericAssignment($1, *s, std::move($3)));
   }
 }
 | "identifier" "=" boolexp {
-  const Symbol* s = driver.find_symbol($1);
+  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_BOOL);
   if (!s) {
-    string err = "Undeclared variable '";
-    err += $1;
-    err += "'";
-    driver.error(@1, err);
-    YYERROR;
-  } else if (s->symbol_type_ != Symbol::LOCAL_VAR_BOOL) {
-    string err = "'";
-    err += $1;
-    err += "' incorrect type; expected bool";
-    driver.error(@1, err);
     YYERROR;
   } else {
     $$.reset(new BooleanAssignment($1, *s, std::move($3)));
@@ -229,7 +209,14 @@ exp "%" exp   {
 | "(" exp ")"   { std::swap ($$, $2); }
 | "number"      { $$.reset(new IntConstant($1)); }
 | "-" "number"      { $$.reset(new IntConstant(-$2)); }
-| "identifier"  { $$ = std::make_shared<IntVariable>(std::move($1)); }
+| "identifier"  {
+  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_INT);
+  if (!s) {
+    YYERROR;
+  } else {
+    $$ = std::make_shared<IntVariable>(std::move($1), *s);
+  }
+}
 ;
 
 %left "==" "!=";

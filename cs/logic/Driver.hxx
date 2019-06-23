@@ -40,7 +40,7 @@ class Driver {
   ParsingContext* current_context() {
     return &current_context_;
   }
-  
+
   /// Create a new local variable.
   /// @param name is the identifier ofthe local variable.
   /// @param type is the type (shall be LOCAL_VAR_NN).
@@ -71,7 +71,41 @@ class Driver {
     }
     return &it->second;
   }
-  
+
+  /// Finds a variable type symbol in the symbol table. Reports an error and
+  /// returns nullptr if the symbol is not found or not of the expected type.
+  /// @param name is the symbol to look up.
+  /// @param los is the location where the symbol was found; used for error printouts.
+  /// @param expected_type describes what type of variable we are looking for.
+  /// @return null upon error, or the symbol table entry.
+  const Symbol* get_variable(const string& name, const yy::location& loc, Symbol::Type expected_type) {
+    const Symbol* s = find_symbol(name);
+    if (!s) {
+      string err = "Undeclared variable '";
+      err += name;
+      err += "'";
+      error(loc, err);
+      return nullptr;
+    } else if (s->symbol_type_ != expected_type) {
+      string err = "'";
+      err += name;
+      err += "' incorrect type; expected ";
+      switch (expected_type) {
+        case Symbol::LOCAL_VAR_BOOL:
+          err += "bool";
+          break;
+        case Symbol::LOCAL_VAR_INT:
+          err += "int";
+          break;
+        default:
+          err += "?\?\?";
+      }
+      error(loc, err);
+      return nullptr;
+    }
+    return s;
+  }
+
   /// The parsed AST of global statements.
   std::vector<std::shared_ptr<Command> > commands_;
 
