@@ -204,7 +204,7 @@ commands:
 };
 
 %left "+" "-";
-%left "*" "/";
+%left "*" "/" "%";
 exp:
 exp "+" exp   {
   $$ = std::make_shared<IntBinaryExpression>(NUMERIC_PLUS, std::move($1),
@@ -213,7 +213,19 @@ exp "+" exp   {
 exp "-" exp   {
   $$ = std::make_shared<IntBinaryExpression>(NUMERIC_MINUS, std::move($1),
                                              std::move($3));
-}
+} |
+exp "*" exp   {
+  $$ = std::make_shared<IntBinaryExpression>(NUMERIC_MUL, std::move($1),
+                                             std::move($3));
+} |
+exp "/" exp   {
+  $$ = std::make_shared<IntBinaryExpression>(NUMERIC_DIV, std::move($1),
+                                             std::move($3));
+} |
+exp "%" exp   {
+  $$ = std::make_shared<IntBinaryExpression>(NUMERIC_MOD, std::move($1),
+                                             std::move($3));
+} 
 | "(" exp ")"   { std::swap ($$, $2); }
 | "number"      { $$.reset(new IntConstant($1)); }
 | "-" "number"      { $$.reset(new IntConstant(-$2)); }

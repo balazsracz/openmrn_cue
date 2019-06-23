@@ -151,6 +151,44 @@ bool VM::execute(const void* data, size_t len) {
         operand_stack_.push_back(lhs - rhs);
         break;
       }
+      case NUMERIC_MUL: {
+        if (operand_stack_.size() < 2) {
+          error_ = StringPrintf("Stack underflow at MUL");
+          return false;
+        }
+        int rhs = operand_stack_.back(); operand_stack_.pop_back();
+        int lhs = operand_stack_.back(); operand_stack_.pop_back();
+        operand_stack_.push_back(lhs * rhs);
+        break;
+      }
+      case NUMERIC_DIV: {
+        if (operand_stack_.size() < 2) {
+          error_ = StringPrintf("Stack underflow at DIV");
+          return false;
+        }
+        int rhs = operand_stack_.back(); operand_stack_.pop_back();
+        int lhs = operand_stack_.back(); operand_stack_.pop_back();
+        if (rhs == 0) {
+          error_ = StringPrintf("Div by zero");
+          return false;
+        }
+        operand_stack_.push_back(lhs / rhs);
+        break;
+      }
+      case NUMERIC_MOD: {
+        if (operand_stack_.size() < 2) {
+          error_ = StringPrintf("Stack underflow at MOD");
+          return false;
+        }
+        int rhs = operand_stack_.back(); operand_stack_.pop_back();
+        int lhs = operand_stack_.back(); operand_stack_.pop_back();
+        if (rhs == 0) {
+          error_ = StringPrintf("Div by zero");
+          return false;
+        }
+        operand_stack_.push_back(lhs % rhs);
+        break;
+      }
 
       case JUMP: {
         ++ip_;
