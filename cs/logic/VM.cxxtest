@@ -48,7 +48,7 @@ class VMTest : public ::testing::Test {
     vm_.operand_stack_.clear();
     vm_.error_.clear();
   }
-  
+
   /// Stuff that the VM has printed to the output.
   std::vector<std::string> output_;
   /// The virtual machine instance.
@@ -229,10 +229,16 @@ TEST_F(VMTest, bool_variable) {
   EXPECT_THAT(get_op_stack(), ElementsAre(0,1,1,0,1));
 
   clear();
-  
+
   ASSERT_TRUE(compile("bool a=false,b=true,c=true; if(true) {b = false}"));
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(0,0,1));
+
+  clear();
+
+  ASSERT_TRUE(compile("bool a=false,b=a,c=true&&b,d; if(c) {a = true} else {d=true}"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0,0,0,1));
 }
 
 TEST_F(VMTest, int_variable) {
@@ -245,6 +251,12 @@ TEST_F(VMTest, int_variable) {
   ASSERT_TRUE(compile("int a=0,b=4,c=0-2,d,e=-4;"));
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(0,4,-2,0,-4));
+
+  clear();
+
+  ASSERT_TRUE(compile("int a=0,b=a+3,c=-2,d=b*c;"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0,3,-2,-6));
 }
 
 TEST_F(VMTest, minus) {
