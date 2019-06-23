@@ -19,6 +19,7 @@ static logic::yy::location loc;
 %option noyywrap nounput batch debug noinput
 id    [a-zA-Z][a-zA-Z_0-9]*
 int   [0-9]+
+string \"(\\.|[^"\\])*\"
 blank [ \t]
 
 %{
@@ -35,28 +36,28 @@ blank [ \t]
 
 {blank}+   loc.step ();
 [\n]+      loc.lines (yyleng); loc.step ();
-"-"      return logic::yy::Parser::make_MINUS(loc);
-"+"      return logic::yy::Parser::make_PLUS(loc);
-"*"      return logic::yy::Parser::make_STAR(loc);
-"/"      return logic::yy::Parser::make_SLASH(loc);
+"-"        return logic::yy::Parser::make_MINUS(loc);
+"+"        return logic::yy::Parser::make_PLUS(loc);
+"*"        return logic::yy::Parser::make_STAR(loc);
+"/"        return logic::yy::Parser::make_SLASH(loc);
 "div"      return logic::yy::Parser::make_SLASH(loc);
-"%"      return logic::yy::Parser::make_PERCENT(loc);
+"%"        return logic::yy::Parser::make_PERCENT(loc);
 "mod"      return logic::yy::Parser::make_PERCENT(loc);
-"("      return logic::yy::Parser::make_LPAREN(loc);
-")"      return logic::yy::Parser::make_RPAREN(loc);
-"{"      return logic::yy::Parser::make_LBRACE(loc);
-"}"      return logic::yy::Parser::make_RBRACE(loc);
-";"      return logic::yy::Parser::make_SEMICOLON(loc);
-","      return logic::yy::Parser::make_COMMA(loc);
-"="     return logic::yy::Parser::make_ASSIGN(loc);
-"&&"     return logic::yy::Parser::make_DOUBLEAND(loc);
-"and"     return logic::yy::Parser::make_DOUBLEAND(loc);
-"||"     return logic::yy::Parser::make_DOUBLEOR(loc);
-"or"     return logic::yy::Parser::make_DOUBLEOR(loc);
-"if"     return logic::yy::Parser::make_IF(loc);
+"("        return logic::yy::Parser::make_LPAREN(loc);
+")"        return logic::yy::Parser::make_RPAREN(loc);
+"{"        return logic::yy::Parser::make_LBRACE(loc);
+"}"        return logic::yy::Parser::make_RBRACE(loc);
+";"        return logic::yy::Parser::make_SEMICOLON(loc);
+","        return logic::yy::Parser::make_COMMA(loc);
+"="        return logic::yy::Parser::make_ASSIGN(loc);
+"&&"       return logic::yy::Parser::make_DOUBLEAND(loc);
+"and"      return logic::yy::Parser::make_DOUBLEAND(loc);
+"||"       return logic::yy::Parser::make_DOUBLEOR(loc);
+"or"       return logic::yy::Parser::make_DOUBLEOR(loc);
+"if"       return logic::yy::Parser::make_IF(loc);
 "else"     return logic::yy::Parser::make_ELSE(loc);
 
-"int"     return logic::yy::Parser::make_TYPEINT(loc);
+"int"      return logic::yy::Parser::make_TYPEINT(loc);
 "bool"     return logic::yy::Parser::make_TYPEBOOL(loc);
 
 
@@ -87,6 +88,27 @@ blank [ \t]
   if (! (INT_MIN <= n && n <= INT_MAX && errno != ERANGE))
     driver.error (loc, "integer is out of range");
   return logic::yy::Parser::make_NUMBER(n, loc);
+}
+
+{string} {
+  std::string output;
+  output.reserve(strlen(yytext));  
+  const char *c = yytext;
+  if ((*c) != '"') {
+    driver.error(loc, "string must start with quotes");
+    return logic::yy::Parser::make_STRING("", loc);
+  }
+  while (!(*c) && !(*c == '"')) {
+    if (*c == '\\') {
+      ++c;
+      if (!*c) {
+        driver.error(loc, "unexpected 0 inside string");
+        return logic::yy::Parser::make_STRING("", loc);
+      }
+    }
+    output.push_back(*c);
+  }  
+  return logic::yy::Parser::make_STRING(output, loc);
 }
 
 {id}       return logic::yy::Parser::make_IDENTIFIER(yytext, loc);

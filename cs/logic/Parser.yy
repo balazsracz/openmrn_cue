@@ -53,6 +53,7 @@ class Driver;
   TYPEBOOL  "bool"
 ;
 %token <std::string> IDENTIFIER "identifier"
+%token <std::string> STRING "string"
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
 %type  <std::shared_ptr<logic::IntExpression> > exp
