@@ -195,6 +195,31 @@ class BooleanAssignment : public Command {
   std::shared_ptr<BooleanExpression> value_;
 };
 
+class BoolVariable : public BooleanExpression {
+ public:
+  BoolVariable(std::string variable, const Symbol& sym) {
+    if (sym.symbol_type_ == Symbol::LOCAL_VAR_BOOL) {
+      variable_.reset(
+          new LocalVariableReference(std::move(variable), sym.fp_offset_));
+    } else {
+      DIE("Unexpected symbol type");
+    }
+  }
+
+  void serialize(std::string* output) override {
+    variable_->serialize_fetch(output);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("fetch(");
+    variable_->debug_print(output);
+    output->append(")");
+  }
+
+ private:
+  std::unique_ptr<VariableReference> variable_;
+};
+
 /// Compound command (aka brace enclosed command sequence).
 class IfThenElse : public Command {
  public:

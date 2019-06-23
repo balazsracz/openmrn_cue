@@ -228,6 +228,14 @@ boolexp:
 | "(" boolexp ")"   { std::swap ($$, $2); }
 |  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }
 |  boolexp "||" boolexp   { $$ = std::make_shared<BoolOr>(std::move($1), std::move($3)); }
+| "identifier"  {
+  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_BOOL);
+  if (!s) {
+    YYERROR;
+  } else {
+    $$ = std::make_shared<BoolVariable>(std::move($1), *s);
+  }
+}
 ;
 
 //| exp "-" exp   { $$.reset(new NumericMinus(std::move($1), std::move($3))); }
