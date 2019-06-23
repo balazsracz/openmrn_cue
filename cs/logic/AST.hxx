@@ -24,6 +24,47 @@ class EmptyCommand : public Command {
   void debug_print(std::string* output) override {};
 };
 
+class VariableReference {
+ public:
+  /// Create the VM commands to push the variable's value to the operand stack.
+  virtual void serialize_fetch(std::string* output) = 0;
+
+  /// Create the VM commands to take the value from the operand stack and store
+  /// it into the variable.
+  virtual void serialize_store(std::string* output) = 0;
+
+  /// Print the variable representation to the sebug string.
+  virtual void debug_print(std::string* output) = 0;
+};
+
+class LocalVariableReference : public VariableReference {
+ public:
+  LocalVariableReference(string name, int fp_offset)
+      : name_(std::move(name)), fp_offset_(fp_offset) {}
+
+  void serialize_fetch(std::string* output) override {
+    BytecodeStream::append_opcode(output, LOAD_FP_REL);
+    BytecodeStream::append_varint(output, fp_offset_);
+  }
+
+  /// Create the VM commands to take the value from the operand stack and store
+  /// it into the variable.
+  void serialize_store(std::string* output) override {
+    BytecodeStream::append_opcode(output, STORE_FP_REL);
+    BytecodeStream::append_varint(output, fp_offset_);
+  }
+
+  /// Print the variable representation to the sebug string.
+  void debug_print(std::string* output) {
+    output->append(name_);
+  }
+
+ private:
+  std::string name_;
+  /// FP-relative offset of the variable storage.
+  int fp_offset_;
+};
+
 /// Compound command (aka brace enclosed command sequence).
 class CommandSequence : public Command {
  public:
@@ -63,31 +104,32 @@ class NumericAssignment : public Command {
   /// access it.
   /// @param value is the expression that computes the value to be stored
   /// (pushing exactly one entry to the operand stack).
-  NumericAssignment(std::string variable, Symbol sym,
+  NumericAssignment(std::string variable, const Symbol& sym,
                     std::shared_ptr<IntExpression> value)
-      : variable_(std::move(variable)),
-        sym_(std::move(sym)),
-        value_(std::move(value)) {
-    HASSERT(sym_.symbol_type_ == Symbol::LOCAL_VAR_INT);
+      : value_(std::move(value)) {
+    if (sym.symbol_type_ == Symbol::LOCAL_VAR_INT) {
+      variable_.reset(
+          new LocalVariableReference(std::move(variable), sym.fp_offset_));
+    } else {
+      DIE("Unexpected symbol type");
+    }
   }
 
   void serialize(std::string* output) override {
     value_->serialize(output);
-    BytecodeStream::append_opcode(output, MOVE_FP_REL);
-    BytecodeStream::append_varint(output, sym_.fp_offset_);
+    variable_->serialize_store(output);
   }
 
   void debug_print(std::string* output) override {
     output->append("assign(");
-    output->append(variable_);
+    variable_->debug_print(output);
     output->append(",");
     value_->debug_print(output);
     output->append(")");
   }
 
  private:
-  std::string variable_;
-  Symbol sym_;
+  std::unique_ptr<VariableReference> variable_;
   std::shared_ptr<IntExpression> value_;
 };
 
@@ -128,7 +170,7 @@ class BooleanAssignment : public Command {
 
   void serialize(std::string* output) override {
     value_->serialize(output);
-    BytecodeStream::append_opcode(output, MOVE_FP_REL);
+    BytecodeStream::append_opcode(output, STORE_FP_REL);
     BytecodeStream::append_varint(output, sym_.fp_offset_);
   }
 

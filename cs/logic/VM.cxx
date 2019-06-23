@@ -90,7 +90,7 @@ bool VM::execute(const void* data, size_t len) {
         --ip_;
         break;
       }
-      case MOVE_FP_REL: {
+      case STORE_FP_REL: {
         if (operand_stack_.size() < 1) {
           error_ = StringPrintf("Stack underflow at MOVE_FP_REL");
           return false;
@@ -106,6 +106,20 @@ bool VM::execute(const void* data, size_t len) {
           return false;
         }
         operand_stack_[ofs] = val;
+        break;
+      }
+      case LOAD_FP_REL: {
+        int relofs;
+        ++ip_;
+        if (!parse_varint(&relofs)) return false;
+        --ip_;
+        unsigned ofs = fp_ + relofs;
+        if (ofs >= operand_stack_.size()) {
+          error_ = "Invalid relative offset for STORE_FP_REL";
+          return false;
+        }
+        int val = operand_stack_[ofs];
+        operand_stack_.push_back(val);
         break;
       }
       case PUSH_TOP: {

@@ -33,10 +33,14 @@ enum OpCode : uint8_t {
   POP_OP,
   // Pushes zeros to the stack. Arg = how many zeros to push.
   ENTER,
-  // Moves the top of the stack to an fp-relative position. Pops the
+  // Pops the stack and writes the value an fp-relative position on the operand
   // stack. Arg=fp-relative offset of where to write the value.
-  MOVE_FP_REL,
-  
+  STORE_FP_REL,
+  // Loads a value from the operand stack from an fp-relative position, and
+  // pushes it to the stack. Arg=fp-relative offset of where to read the value
+  // from.
+  LOAD_FP_REL,
+
   ASSIGN_VAR,
   ASSIGN_VAR_0,
   ASSIGN_VAR_1,
@@ -53,18 +57,18 @@ enum OpCode : uint8_t {
   NUMERIC_INVERT,
 
   // Branching
-  
+
   // Unconditional jump. Reads an argument (a varint), then jumps that many
   // bytes with the IP.
   JUMP,
-  
+
   // Takes the top of the opstack (removes it), takes a varint argument as a
   // relative offset, and if the operand is zero, jumps to that relative
   // offset.
   TEST_JUMP_IF_FALSE,
   // same inverted.
   TEST_JUMP_IF_TRUE,
-  
+
   // Takes the top of stack and prints it to the "output"
   PRINT_NUM,
 
