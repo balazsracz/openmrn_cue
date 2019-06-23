@@ -55,8 +55,8 @@ class Driver;
 %token <std::string> IDENTIFIER "identifier"
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
-%type  <std::shared_ptr<logic::NumericExpression> > exp
-%type  <std::shared_ptr<logic::NumericExpression> > decl_optional_int_exp
+%type  <std::shared_ptr<logic::IntExpression> > exp
+%type  <std::shared_ptr<logic::IntExpression> > decl_optional_int_exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
 %type  <std::shared_ptr<logic::BooleanExpression> > decl_optional_bool_exp
 %type  <std::shared_ptr<logic::Command> > command
@@ -112,7 +112,7 @@ assignment:
 ;
 
 decl_optional_int_exp:
-%empty { $$ = std::make_shared<NumericConstant>(0); }
+%empty { $$ = std::make_shared<IntConstant>(0); }
 | "=" exp { $$ = std::move($2); };
 
 int_decl_single:
@@ -208,8 +208,8 @@ commands:
 exp:
   exp "+" exp   { $$.reset(new NumericAdd(std::move($1), std::move($3))); }
 | "(" exp ")"   { std::swap ($$, $2); }
-| "number"      { $$.reset(new NumericConstant($1)); }
-| "identifier"  { $$ = std::make_shared<NumericVariable>(std::move($1)); }
+| "number"      { $$.reset(new IntConstant($1)); }
+| "identifier"  { $$ = std::make_shared<IntVariable>(std::move($1)); }
 ;
 
 %left "==" "!=";

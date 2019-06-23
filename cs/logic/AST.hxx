@@ -49,7 +49,7 @@ class CommandSequence : public Command {
   std::vector<std::shared_ptr<Command> > commands_;
 };
 
-class NumericExpression : public Command {};
+class IntExpression : public Command {};
 
 class BooleanExpression : public Command {};
 
@@ -64,7 +64,7 @@ class NumericAssignment : public Command {
   /// @param value is the expression that computes the value to be stored
   /// (pushing exactly one entry to the operand stack).
   NumericAssignment(std::string variable, Symbol sym,
-                    std::shared_ptr<NumericExpression> value)
+                    std::shared_ptr<IntExpression> value)
       : variable_(std::move(variable)),
         sym_(std::move(sym)),
         value_(std::move(value)) {
@@ -88,12 +88,12 @@ class NumericAssignment : public Command {
  private:
   std::string variable_;
   Symbol sym_;
-  std::shared_ptr<NumericExpression> value_;
+  std::shared_ptr<IntExpression> value_;
 };
 
-class NumericVariable : public NumericExpression {
+class IntVariable : public IntExpression {
  public:
-  NumericVariable(std::string variable) : variable_(std::move(variable)) {}
+  IntVariable(std::string variable) : variable_(std::move(variable)) {}
 
   void serialize(std::string* output) override {
     DIE("unimplemented");
@@ -190,10 +190,10 @@ class IfThenElse : public Command {
   std::shared_ptr<Command> else_case_;
 };
 
-class NumericAdd : public NumericExpression {
+class NumericAdd : public IntExpression {
  public:
-  NumericAdd(std::shared_ptr<NumericExpression> left,
-             std::shared_ptr<NumericExpression> right)
+  NumericAdd(std::shared_ptr<IntExpression> left,
+             std::shared_ptr<IntExpression> right)
       : left_(std::move(left)), right_(std::move(right)) {
     HASSERT(left_);
     HASSERT(right_);
@@ -214,13 +214,13 @@ class NumericAdd : public NumericExpression {
   }
 
  private:
-  std::shared_ptr<NumericExpression> left_;
-  std::shared_ptr<NumericExpression> right_;
+  std::shared_ptr<IntExpression> left_;
+  std::shared_ptr<IntExpression> right_;
 };
 
-class NumericConstant : public NumericExpression {
+class IntConstant : public IntExpression {
  public:
-  NumericConstant(int value) : value_(value) {}
+  IntConstant(int value) : value_(value) {}
 
   void serialize(std::string* output) override {
     if (value_ == 0) {
