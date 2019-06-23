@@ -91,6 +91,24 @@ class NumericAssignment : public Command {
   std::shared_ptr<NumericExpression> value_;
 };
 
+class NumericVariable : public NumericExpression {
+ public:
+  NumericVariable(std::string variable) : variable_(std::move(variable)) {}
+
+  void serialize(std::string* output) override {
+    DIE("unimplemented");
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("fetch(");
+    output->append(variable_);
+    output->append(")");
+  }
+
+ private:
+  std::string variable_;
+};
+
 class BooleanAssignment : public Command {
  public:
   /// Constructs a boolean assignment operation.
@@ -221,24 +239,6 @@ class NumericConstant : public NumericExpression {
 
  private:
   int value_;
-};
-
-class NumericVariable : public NumericExpression {
- public:
-  NumericVariable(std::string variable) : variable_(std::move(variable)) {}
-
-  void serialize(std::string* output) override {
-    DIE("unimplemented");
-  }
-
-  void debug_print(std::string* output) override {
-    output->append("fetch(");
-    output->append(variable_);
-    output->append(")");
-  }
-
- private:
-  std::string variable_;
 };
 
 class BooleanConstant : public BooleanExpression {
