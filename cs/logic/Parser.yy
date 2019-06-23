@@ -58,12 +58,15 @@ class Driver;
 %type  <std::shared_ptr<logic::NumericExpression> > exp
 %type  <std::shared_ptr<logic::NumericExpression> > decl_optional_int_exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
+%type  <std::shared_ptr<logic::BooleanExpression> > decl_optional_bool_exp
 %type  <std::shared_ptr<logic::Command> > command
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<logic::Command> > variable_decl
 %type  <std::shared_ptr<logic::Command> > int_decl_single
+%type  <std::shared_ptr<logic::Command> > bool_decl_single
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > int_decl_list
+%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > bool_decl_list
 //%printer { yyoutput << $$; } <*>;
 %%
 %start unit;
@@ -132,6 +135,32 @@ int_decl_list "," int_decl_single {
 }
 ;
 
+
+decl_optional_bool_exp:
+%empty { $$ = std::make_shared<BooleanConstant>(false); }
+| "=" boolexp { $$ = std::move($2); };
+
+bool_decl_single:
+"identifier" decl_optional_bool_exp {
+  if (!driver.allocate_variable($1, Symbol::LOCAL_VAR_BOOL)) {
+    YYERROR;
+  }
+  $$ = std::make_shared<BooleanAssignment>($1, *driver.find_symbol($1),
+                                           std::move($2));
+}
+
+bool_decl_list:
+bool_decl_single {
+  $$ = std::make_shared<std::vector<std::shared_ptr<logic::Command> > >();
+  $$->emplace_back(std::move($1));
+} |
+bool_decl_list "," bool_decl_single {
+  $$.swap($1);
+  $$->emplace_back(std::move($3));
+}
+;
+
+
 variable_decl:
 "int" int_decl_list ";" {
   if ($2->size() == 1) {
@@ -140,28 +169,13 @@ variable_decl:
     $$ = std::make_shared<CommandSequence>(std::move(*$2));  
   }
 }
-| "bool" "identifier" ";" {
-  if (!driver.allocate_variable($2, Symbol::LOCAL_VAR_BOOL)) {
-    YYERROR;
-  }
-  // No code to output.
-  $$ = std::make_shared<EmptyCommand>();
-  }
-| "int" "identifier" "=" exp ";" {
-  if (!driver.allocate_variable($2, Symbol::LOCAL_VAR_INT)) {
-    YYERROR;
+| "bool" bool_decl_list ";" {
+  if ($2->size() == 1) {
+    std::swap($$, (*$2)[0]);
   } else {
-
+    $$ = std::make_shared<CommandSequence>(std::move(*$2));  
   }
-  // No code to output.
-  $$ = std::make_shared<NumericAssignment>($2, *driver.find_symbol($2), std::move($4));
-  }
-/*| "bool" IDENTIFIER ";" {
-  driver.allocate_variable($2, LOCAL_VAR_BOOL);
-  // No code to output.
-  $$ = std::make_shared<EmptyCommand>();
-  }
-*/
+}
 ;
 
 command:

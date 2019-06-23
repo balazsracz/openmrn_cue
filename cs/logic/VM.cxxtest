@@ -223,4 +223,16 @@ TEST_F(VMTest, bool_or) {
   EXPECT_THAT(get_op_stack(), ElementsAre(4));
 }
 
+TEST_F(VMTest, bool_variable) {
+  ASSERT_TRUE(compile("bool a=false,b=true,c=true,d,e=true;"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0,1,1,0,1));
+
+  clear();
+  
+  ASSERT_TRUE(compile("bool a=false,b=true,c=true; if(true) {b = false}"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0,0,1));
+}
+
 } // namespace logic
