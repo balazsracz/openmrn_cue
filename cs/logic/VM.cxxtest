@@ -240,6 +240,12 @@ TEST_F(VMTest, int_variable) {
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(0,4,2,0,-4));
 
+  clear();
+
+  ASSERT_TRUE(compile("int a=0,b=4,c=0-2,d,e=-4;"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0,4,-2,0,-4));
+  
 }
 
 

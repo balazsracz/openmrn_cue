@@ -141,6 +141,16 @@ bool VM::execute(const void* data, size_t len) {
         operand_stack_.push_back(lhs + rhs);
         break;
       }
+      case NUMERIC_MINUS: {
+        if (operand_stack_.size() < 2) {
+          error_ = StringPrintf("Stack underflow at MINUS");
+          return false;
+        }
+        int rhs = operand_stack_.back(); operand_stack_.pop_back();
+        int lhs = operand_stack_.back(); operand_stack_.pop_back();
+        operand_stack_.push_back(lhs - rhs);
+        break;
+      }
 
       case JUMP: {
         ++ip_;

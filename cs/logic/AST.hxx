@@ -190,11 +190,11 @@ class IfThenElse : public Command {
   std::shared_ptr<Command> else_case_;
 };
 
-class NumericAdd : public IntExpression {
+class IntBinaryExpression : public IntExpression {
  public:
-  NumericAdd(std::shared_ptr<IntExpression> left,
-             std::shared_ptr<IntExpression> right)
-      : left_(std::move(left)), right_(std::move(right)) {
+  IntBinaryExpression(OpCode op, std::shared_ptr<IntExpression> left,
+                      std::shared_ptr<IntExpression> right)
+      : opcode_(op), left_(std::move(left)), right_(std::move(right)) {
     HASSERT(left_);
     HASSERT(right_);
   }
@@ -202,11 +202,17 @@ class NumericAdd : public IntExpression {
   void serialize(std::string* output) override {
     left_->serialize(output);
     right_->serialize(output);
-    BytecodeStream::append_opcode(output, NUMERIC_PLUS);
+    BytecodeStream::append_opcode(output, opcode_);
   }
 
   void debug_print(std::string* output) override {
-    output->append("plus(");
+    switch(opcode_) {
+      case NUMERIC_PLUS:
+        output->append("plus(");
+        break;
+      default:
+        output->append("?\?\?(");
+    }
     left_->debug_print(output);
     output->append(",");
     right_->debug_print(output);
@@ -214,6 +220,8 @@ class NumericAdd : public IntExpression {
   }
 
  private:
+  /// Opcode that performs the given expression on the top of the stack.
+  OpCode opcode_;
   std::shared_ptr<IntExpression> left_;
   std::shared_ptr<IntExpression> right_;
 };

@@ -206,9 +206,17 @@ commands:
 %left "+" "-";
 %left "*" "/";
 exp:
-  exp "+" exp   { $$.reset(new NumericAdd(std::move($1), std::move($3))); }
+exp "+" exp   {
+  $$ = std::make_shared<IntBinaryExpression>(NUMERIC_PLUS, std::move($1),
+                                             std::move($3));
+} |
+exp "-" exp   {
+  $$ = std::make_shared<IntBinaryExpression>(NUMERIC_MINUS, std::move($1),
+                                             std::move($3));
+}
 | "(" exp ")"   { std::swap ($$, $2); }
 | "number"      { $$.reset(new IntConstant($1)); }
+| "-" "number"      { $$.reset(new IntConstant(-$2)); }
 | "identifier"  { $$ = std::make_shared<IntVariable>(std::move($1)); }
 ;
 
