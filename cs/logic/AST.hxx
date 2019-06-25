@@ -200,10 +200,7 @@ class IndirectVarCreate : public Command {
 class NumericAssignment : public Command {
  public:
   /// Constructs a numeric assignment operation.
-  /// @param variable is the string name of the variable (identifier; only for
-  /// debugging)
-  /// @param sym is the symbol describing what type this variable is and how to
-  /// access it.
+  /// @param variable is the abstract reference for the variable.
   /// @param value is the expression that computes the value to be stored
   /// (pushing exactly one entry to the operand stack).
   NumericAssignment(std::unique_ptr<VariableReference> variable,
@@ -256,37 +253,30 @@ class IntVariable : public IntExpression {
 class BooleanAssignment : public Command {
  public:
   /// Constructs a boolean assignment operation.
-  /// @param variable is the string name of the variable (identifier; only for
-  /// debugging)
-  /// @param sym is the symbol describing what type this variable is and how to
-  /// access it.
+  /// @param variable is the abstract reference for the variable.
   /// @param value is the expression that computes the value to be stored
   /// (pushing exactly one entry to the operand stack).
-  BooleanAssignment(std::string variable, Symbol sym,
+  BooleanAssignment(std::unique_ptr<VariableReference> variable,
                     std::shared_ptr<BooleanExpression> value)
       : variable_(std::move(variable)),
-        sym_(std::move(sym)),
         value_(std::move(value)) {
-    HASSERT(sym_.symbol_type_ == Symbol::LOCAL_VAR_BOOL);
   }
 
   void serialize(std::string* output) override {
     value_->serialize(output);
-    BytecodeStream::append_opcode(output, STORE_FP_REL);
-    BytecodeStream::append_varint(output, sym_.fp_offset_);
+    variable_->serialize_store(output);
   }
 
   void debug_print(std::string* output) override {
     output->append("boolassign(");
-    output->append(variable_);
+    variable_->debug_print(output);
     output->append(",");
     value_->debug_print(output);
     output->append(")");
   }
 
  private:
-  std::string variable_;
-  Symbol sym_;
+  std::unique_ptr<VariableReference> variable_;
   std::shared_ptr<BooleanExpression> value_;
 };
 

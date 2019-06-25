@@ -121,12 +121,12 @@ assignment:
   $$ = std::make_shared<NumericAssignment>(std::move(vp), std::move($3));
 }
 | "identifier" "=" boolexp {
-  const Symbol* s = driver.get_variable($1, @1, Symbol::DATATYPE_BOOL);
-  if (!s) {
+  auto vp =
+      driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_BOOL);
+  if (!vp) {
     YYERROR;
-  } else {
-    $$.reset(new BooleanAssignment($1, *s, std::move($3)));
   }
+  $$ = std::make_shared<BooleanAssignment>(std::move(vp), std::move($3));
 }
 ;
 
@@ -173,16 +173,34 @@ int_decl_list "," int_decl_single {
 
 
 decl_optional_bool_exp:
-%empty { $$ = std::make_shared<BooleanConstant>(false); }
+%empty { $$.reset(); }
 | "=" boolexp { $$ = std::move($2); };
 
 bool_decl_single:
 "identifier" decl_optional_bool_exp {
-  if (!driver.allocate_variable($1, Symbol::LOCAL_VAR_BOOL)) {
+  Symbol::Type t = Symbol::LOCAL_VAR_BOOL;
+  if (driver.decl_storage_ == INDIRECT_VAR) {
+    t = Symbol::INDIRECT_VAR_BOOL;
+  }
+  if (!driver.allocate_variable($1, t)) {
     YYERROR;
   }
-  $$ = std::make_shared<BooleanAssignment>($1, *driver.find_symbol($1),
-                                           std::move($2));
+  if (driver.decl_storage_ == INDIRECT_VAR) {
+    if ($2) {
+      driver.error(
+          @2, "Exported variable declaration cannot have an initializer.");
+      YYERROR;
+    }
+    $$ = std::make_shared<IndirectVarCreate>($1, driver.find_symbol($1)->fp_offset_, driver.allocate_guid());
+  } else {
+    // Local var.
+    auto vp =
+        driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_BOOL);
+    if (!vp) YYERROR;
+    $$ = std::make_shared<BooleanAssignment>(
+        std::move(vp),
+        $2 ? std::move($2) : std::make_shared<BooleanConstant>(false));
+  }
 }
 
 bool_decl_list:
