@@ -78,6 +78,17 @@ class VMTest : public ::testing::Test {
     }
   }
 
+  ::testing::AssertionResult run_preamble() {
+    vm_.set_preamble(true);
+    if (vm_.execute(bytecode_)) {
+      vm_.set_preamble(false);
+      return ::testing::AssertionSuccess();
+    } else {
+      vm_.set_preamble(false);
+      return ::testing::AssertionFailure() << "VM exception: " << vm_.error_;
+    }
+  }
+  
   std::vector<int> get_op_stack() {
     return vm_.operand_stack_;
   }
@@ -421,7 +432,26 @@ TEST_F(VMTest, indirect_store) {
   EXPECT_THAT(get_op_stack(), ElementsAre());
 }
 
-TEST_F(VMTest, indirect_e2e) {
+TEST_F(VMTest, indirect_create_e2e) {
+  ASSERT_TRUE(compile("exported int a; exported int b; int c=4; c=c+1"));
+  auto* vara = mock_factory_.expect_variable("a");
+  auto* varb = mock_factory_.expect_variable("b");
+  ASSERT_TRUE(run_preamble());
+  EXPECT_THAT(get_op_stack(), ElementsAre());
+
+  // Check guid and variable pointer.
+  const auto& m = get_external_vars();
+  auto it = m.find(1);
+  ASSERT_TRUE(it != m.end());
+  EXPECT_EQ(1u, it->first);
+  EXPECT_EQ(vara, it->second.get());
+  it = m.find(2);
+  ASSERT_TRUE(it != m.end());
+  EXPECT_EQ(2u, it->first);
+  EXPECT_EQ(varb, it->second.get());
+  
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 5));
 
 }
 

@@ -118,6 +118,10 @@ enum OpCode : uint8_t {
 
   // Branching
 
+  // Pushes 0 to the stack if the VM is running the preamble right now, else
+  // pushes 1.
+  IF_PREAMBLE,
+
   // Unconditional jump. Reads an argument (a varint), then jumps that many
   // bytes with the IP.
   JUMP,

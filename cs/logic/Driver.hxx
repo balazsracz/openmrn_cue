@@ -161,15 +161,7 @@ class Driver {
 
   /// Serializes all commands into bytecode after the parsing.
   /// @param output it the container where the compiled bytecode will go.
-  void serialize(std::string* output) {
-    // Allocated global variables
-    BytecodeStream::append_opcode(output, ENTER);
-    BytecodeStream::append_varint(output, current_context()->frame_size_);
-    // Renders instructions.
-    for (const auto& c : commands_) {
-      c->serialize(output);
-    }
-  }
+  void serialize(std::string* output);
 
   /// lexical context variable that describes what storage option the current
   /// variable declaration has.

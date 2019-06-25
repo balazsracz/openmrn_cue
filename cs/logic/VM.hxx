@@ -65,6 +65,12 @@ class VM {
     return execute(ops.data(), ops.size());
   }
 
+  /// Sets whether the VM should be running in preamble mode or regular mode.
+  /// @param is_preamble true if this is the preamble.
+  void set_preamble(bool is_preamble) {
+    is_preamble_ = is_preamble;
+  }
+
   /// @return exception description if the execution failed.
   const std::string& get_error() {
     return error_;
@@ -169,6 +175,8 @@ class VM {
   /// Frame pointer for variable stack (index in the variable stack where the
   /// current function's stack frame is).
   unsigned vp_;
+  /// True if we are running preamble mode.
+  bool is_preamble_{false};
 };
 
 

@@ -222,7 +222,9 @@ bool VM::execute(const void* data, size_t len) {
       case PUSH_CONSTANT_1:
         operand_stack_.push_back(1);
         break;
-
+      case IF_PREAMBLE:
+        operand_stack_.push_back(is_preamble_ ? 1 : 0);
+        break;
       case LOAD_STRING:
         ip_++;
         if (!parse_string()) {

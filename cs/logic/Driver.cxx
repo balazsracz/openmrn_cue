@@ -50,6 +50,30 @@ int Driver::parse_file(const std::string& f) {
   return res;
 }
 
+void Driver::serialize(std::string* output) {
+  string preamble;
+  // Renders preamble.
+  for (const auto& c : commands_) {
+    c->serialize_preamble(&preamble);
+    /// @todo we need to somehow syntactically prevent users from declaring
+    /// exported variables in a context that is not okay for that.
+  }
+  BytecodeStream::append_opcode(&preamble, TERMINATE);
+  BytecodeStream::append_opcode(output, IF_PREAMBLE);
+  BytecodeStream::append_opcode(output, TEST_JUMP_IF_FALSE);
+  BytecodeStream::append_varint(output, preamble.size());
+  output->append(preamble);
+  
+  // Allocated global variables
+  BytecodeStream::append_opcode(output, ENTER);
+  BytecodeStream::append_varint(output, current_context()->frame_size_);
+  // Renders instructions.
+  for (const auto& c : commands_) {
+    c->serialize(output);
+  }
+}
+
+
 void Driver::error(const yy::location& l, const std::string& m) {
   std::cerr << l << ": " << m << std::endl;
 }
