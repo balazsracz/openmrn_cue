@@ -38,6 +38,8 @@
 #include <stdint.h>
 #include <string>
 
+#include "utils/macros.h"
+
 namespace logic {
 
 /// An entry in the symbol table.
@@ -53,6 +55,51 @@ struct Symbol {
     INDIRECT_VAR_BOOL,
   };
 
+  enum DataType {
+    DATATYPE_INT,
+    DATATYPE_BOOL,
+  };
+
+  enum Access {
+    LOCAL_VAR,
+    INDIRECT_VAR
+  };
+
+  DataType get_data_type() const {
+    switch (symbol_type_) {
+      case LOCAL_VAR_INT:
+      case INDIRECT_VAR_INT:
+        return DATATYPE_INT;
+      case LOCAL_VAR_BOOL:
+      case INDIRECT_VAR_BOOL:
+        return DATATYPE_BOOL;
+      default:
+        DIE("Unexpected symbol type.");
+    }
+  }
+
+  Access get_access() const {
+    switch (symbol_type_) {
+      case LOCAL_VAR_INT:
+      case LOCAL_VAR_BOOL:
+        return LOCAL_VAR;
+      case INDIRECT_VAR_INT:
+      case INDIRECT_VAR_BOOL:
+        return INDIRECT_VAR;
+      default:
+        DIE("Unexpected symbol type.");
+    }
+  }
+
+  static const char* datatype_to_string(DataType d) {
+    switch(d) {
+      case DATATYPE_INT: return "int";
+      case DATATYPE_BOOL: return "bool";
+      default:
+        return "?\?\?";
+    }
+  }
+  
   /// type of this symbol.
   Type symbol_type_;
   /// relative offset on the operand stack from the fp.

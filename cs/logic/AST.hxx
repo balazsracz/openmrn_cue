@@ -206,16 +206,9 @@ class NumericAssignment : public Command {
   /// access it.
   /// @param value is the expression that computes the value to be stored
   /// (pushing exactly one entry to the operand stack).
-  NumericAssignment(std::string variable, const Symbol& sym,
+  NumericAssignment(std::unique_ptr<VariableReference> variable,
                     std::shared_ptr<IntExpression> value)
-      : value_(std::move(value)) {
-    if (sym.symbol_type_ == Symbol::LOCAL_VAR_INT) {
-      variable_.reset(
-          new LocalVariableReference(std::move(variable), sym.fp_offset_));
-    } else {
-      DIE("Unexpected symbol type");
-    }
-  }
+      : variable_(std::move(variable)), value_(std::move(value)) {}
 
   void serialize(std::string* output) override {
     value_->serialize(output);

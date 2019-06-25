@@ -118,7 +118,7 @@ class Driver {
   /// @param los is the location where the symbol was found; used for error printouts.
   /// @param expected_type describes what type of variable we are looking for.
   /// @return null upon error, or the symbol table entry.
-  const Symbol* get_variable(const string& name, const yy::location& loc, Symbol::Type expected_type) {
+  const Symbol* get_variable(const string& name, const yy::location& loc, Symbol::DataType expected_type) {
     const Symbol* s = find_symbol(name);
     if (!s) {
       string err = "Undeclared variable '";
@@ -126,26 +126,36 @@ class Driver {
       err += "'";
       error(loc, err);
       return nullptr;
-    } else if (s->symbol_type_ != expected_type) {
+    } else if (s->get_data_type() != expected_type) {
       string err = "'";
       err += name;
       err += "' incorrect type; expected ";
-      switch (expected_type) {
-        case Symbol::LOCAL_VAR_BOOL:
-          err += "bool";
-          break;
-        case Symbol::LOCAL_VAR_INT:
-          err += "int";
-          break;
-        default:
-          err += "?\?\?";
-      }
+      err += Symbol::datatype_to_string(expected_type);
+      err += ", actual type ";
+      err += Symbol::datatype_to_string(s->get_data_type());
       error(loc, err);
       return nullptr;
     }
     return s;
   }
 
+  std::unique_ptr<VariableReference> get_variable_reference(string name, const yy::location& loc, Symbol::DataType type) {
+    const Symbol* s = get_variable(name, loc, type);
+    if (!s) return nullptr;
+    std::unique_ptr<VariableReference> r;
+    switch(s->get_access()) {
+      case Symbol::LOCAL_VAR:
+        r.reset(new LocalVariableReference(std::move(name), s->fp_offset_));
+        return r;
+      case Symbol::INDIRECT_VAR:
+        r.reset(new GlobalVariableReference(std::move(name), s->fp_offset_));
+        return r;
+      default:
+        error(loc, "Unexpected storage modifier for variable.");
+        return nullptr;
+    }
+  }
+  
   /// The parsed AST of global statements.
   std::vector<std::shared_ptr<Command> > commands_;
 

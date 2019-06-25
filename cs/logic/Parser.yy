@@ -113,15 +113,15 @@ unit: commands { driver.commands_.swap(*$1); };
 
 assignment:
 "identifier" "=" exp {
-  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_INT);
-  if (!s) {
+  auto vp =
+      driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);
+  if (!vp) {
     YYERROR;
-  } else {
-    $$.reset(new NumericAssignment($1, *s, std::move($3)));
   }
+  $$ = std::make_shared<NumericAssignment>(std::move(vp), std::move($3));
 }
 | "identifier" "=" boolexp {
-  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_BOOL);
+  const Symbol* s = driver.get_variable($1, @1, Symbol::DATATYPE_BOOL);
   if (!s) {
     YYERROR;
   } else {
@@ -152,9 +152,11 @@ int_decl_single:
     $$ = std::make_shared<IndirectVarCreate>($1, driver.find_symbol($1)->fp_offset_, driver.allocate_guid());
   } else {
     // Local var.
+    auto vp =
+        driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);
+    if (!vp) YYERROR;
     $$ = std::make_shared<NumericAssignment>(
-        $1, *driver.find_symbol($1),
-        $2 ? std::move($2) : std::make_shared<IntConstant>(0));
+        std::move(vp), $2 ? std::move($2) : std::make_shared<IntConstant>(0));
   }
 }
 
@@ -273,7 +275,7 @@ exp "%" exp   {
 | "number"      { $$.reset(new IntConstant($1)); }
 | "-" "number"      { $$.reset(new IntConstant(-$2)); }
 | "identifier"  {
-  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_INT);
+  const Symbol* s = driver.get_variable($1, @1, Symbol::DATATYPE_INT);
   if (!s) {
     YYERROR;
   } else {
@@ -292,7 +294,7 @@ boolexp:
 |  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }
 |  boolexp "||" boolexp   { $$ = std::make_shared<BoolOr>(std::move($1), std::move($3)); }
 | "identifier"  {
-  const Symbol* s = driver.get_variable($1, @1, Symbol::LOCAL_VAR_BOOL);
+  const Symbol* s = driver.get_variable($1, @1, Symbol::DATATYPE_BOOL);
   if (!s) {
     YYERROR;
   } else {
