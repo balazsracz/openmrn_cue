@@ -61,3 +61,17 @@ TEST(ParserTest, bool_constant_test) {
   EXPECT_EQ(0, d.parse_file(tf.name()));
   EXPECT_EQ("boolassign(a,false);\nboolassign(a,false);\n", d.debug_print());
 }
+
+TEST(ParserTest, indirect_var_error) {
+  TempFile tf(g_dir, "simple");
+  tf.rewrite("exported int a = 4");
+  logic::Driver d;
+  EXPECT_NE(0, d.parse_file(tf.name()));
+}
+
+TEST(ParserTest, indirect_var) {
+  TempFile tf(g_dir, "simple");
+  tf.rewrite("exported int a;");
+  logic::Driver d;
+  EXPECT_EQ(0, d.parse_file(tf.name()));
+}

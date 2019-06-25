@@ -131,16 +131,31 @@ assignment:
 ;
 
 decl_optional_int_exp:
-%empty { $$ = std::make_shared<IntConstant>(0); }
+%empty { $$.reset(); }
 | "=" exp { $$ = std::move($2); };
 
 int_decl_single:
 "identifier" decl_optional_int_exp {
-  if (!driver.allocate_variable($1, Symbol::LOCAL_VAR_INT)) {
+  Symbol::Type t = Symbol::LOCAL_VAR_INT;
+  if (driver.decl_storage_ == INDIRECT_VAR) {
+    t = Symbol::INDIRECT_VAR_INT;
+  }
+  if (!driver.allocate_variable($1, t)) {
     YYERROR;
   }
-  $$ = std::make_shared<NumericAssignment>($1, *driver.find_symbol($1),
-                                           std::move($2));
+  if (driver.decl_storage_ == INDIRECT_VAR) {
+    if ($2) {
+      driver.error(
+          @2, "Exported variable declaration cannot have an initializer.");
+      YYERROR;
+    }
+    
+  } else {
+    // Local var.
+    $$ = std::make_shared<NumericAssignment>(
+        $1, *driver.find_symbol($1),
+        $2 ? std::move($2) : std::make_shared<IntConstant>(0));
+  }
 }
 
 int_decl_list:

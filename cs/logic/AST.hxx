@@ -54,6 +54,7 @@ class Command {
  public:
   virtual ~Command() {}
   virtual void serialize(std::string* output) = 0;
+  virtual void serialize_preamble(std::string* output) {};
   virtual void debug_print(std::string* output) = 0;
 };
 
@@ -98,10 +99,38 @@ class LocalVariableReference : public VariableReference {
     output->append(name_);
   }
 
- private:
+ protected:
   std::string name_;
   /// FP-relative offset of the variable storage.
   int fp_offset_;
+};
+
+class GlobalVariableReference : public LocalVariableReference {
+ public:
+  GlobalVariableReference(string name, int fp_offset)
+      : LocalVariableReference(std::move(name), fp_offset) {}
+  
+  void serialize_fetch(std::string* output) override {
+    LocalVariableReference::serialize_fetch(output);
+    BytecodeStream::append_opcode(output, INDIRECT_LOAD);
+  }
+
+  void serialize_store(std::string* output) override {
+    LocalVariableReference::serialize_fetch(output);
+    BytecodeStream::append_opcode(output, INDIRECT_STORE);
+  }
+
+  /// Run once when the variable is defined for import. When called, the
+  /// variable import result (the offset) is on the top of the
+  /// stack. Initializes the internal storage value by pushing it to the right
+  /// place in the operand stack.
+  void serialize_init(std::string* output) {
+    LocalVariableReference::serialize_store(output);
+  }
+  
+  const string& get_name() {
+    return name_;
+  }
 };
 
 /// Compound command (aka brace enclosed command sequence).
@@ -133,6 +162,35 @@ class IntExpression : public Command {};
 
 class BooleanExpression : public Command {};
 
+class IndirectVarCreate : public Command {
+ public:
+  IndirectVarCreate(std::string name, int fp_offset, int guid, int arg = 0)
+      : guid_(guid), variable_(name, fp_offset) {}
+
+  void serialize_preamble(std::string* output) override {
+    BytecodeStream::append_opcode(output, LOAD_STRING);
+    BytecodeStream::append_string(output, variable_.get_name());
+    BytecodeStream::append_opcode(output, CREATE_VAR);
+    BytecodeStream::append_varint(output, guid_);
+  }
+
+  void serialize(std::string* output) override {
+    BytecodeStream::append_opcode(output, PUSH_CONSTANT);
+    BytecodeStream::append_varint(output, guid_);
+    BytecodeStream::append_opcode(output, PUSH_CONSTANT);
+    BytecodeStream::append_varint(output, arg_);
+    BytecodeStream::append_opcode(output, IMPORT_VAR);
+    variable_.serialize_init(output);
+  }
+  
+ private:
+  /// Guild of the variable to create and import.
+  int guid_;
+  /// Argument to supply to the variable access.
+  int arg_;
+  /// Holds the metadata of the variable.
+  GlobalVariableReference variable_;
+};
 
 class NumericAssignment : public Command {
  public:

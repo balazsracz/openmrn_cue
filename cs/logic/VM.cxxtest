@@ -88,7 +88,7 @@ class VMTest : public ::testing::Test {
   const std::vector<VM::VariableReference>& get_var_stack() {
     return vm_.variable_stack_;
   }
-  
+
   void clear() {
     bytecode_.clear();
     vm_.operand_stack_.clear();
@@ -142,7 +142,7 @@ TEST_F(VMTest, import_variable) {
   BytecodeStream::append_varint(&bytecode_, 12345);
   BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_0);
   BytecodeStream::append_opcode(&bytecode_, IMPORT_VAR);
-  
+  // Imports a second variable.
   BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
   BytecodeStream::append_varint(&bytecode_, 12345);
   BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);

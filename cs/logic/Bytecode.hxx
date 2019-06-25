@@ -47,6 +47,10 @@ struct Symbol {
     LOCAL_VAR_INT,
     /// Variable allocated on the operand stack of type 'bool'.
     LOCAL_VAR_BOOL,
+    /// External or indirect variable of type 'int'.
+    INDIRECT_VAR_INT,
+    /// External or indirect variable of type 'bool'.
+    INDIRECT_VAR_BOOL,
   };
 
   /// type of this symbol.
@@ -74,6 +78,15 @@ enum OpCode : uint8_t {
   // pushes it to the stack. Arg=fp-relative offset of where to read the value
   // from.
   LOAD_FP_REL,
+
+  /// Takes a value from the top of the stack, interprets it as a variable
+  /// offset in the variable stack, then uses that variable to load a value,
+  /// which is pushed to the stack.
+  INDIRECT_LOAD,
+
+  /// Takes two values off the stack (lhs, rhs). Interprets rhs as a variable
+  /// offset in the variable stack. Writes lhs to this variable.
+  INDIRECT_STORE,
 
   ASSIGN_VAR,
   ASSIGN_VAR_0,
