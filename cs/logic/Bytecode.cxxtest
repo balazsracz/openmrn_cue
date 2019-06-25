@@ -40,9 +40,9 @@
 
 namespace logic {
 
-class VarintTest : public ::testing::Test {
+class BytecodeTest : public ::testing::Test {
  protected:
-  VarintTest() {}
+  BytecodeTest() {}
 
   void parse_varint() {
     vm_.ip_ = (uint8_t*)payload_.data();
@@ -53,6 +53,15 @@ class VarintTest : public ::testing::Test {
     EXPECT_NE(-232354235, output_);
   }
 
+  const string& parse_string(bool result = true) {
+    vm_.ip_ = (uint8_t*)payload_.data();
+    vm_.eof_ = (uint8_t*)payload_.data() + payload_.size();
+
+    vm_.string_acc_ = "adslknaix";
+    EXPECT_EQ(result, vm_.parse_string());
+    return vm_.string_acc_;
+  }
+  
   void do_test(int value) {
     payload_.clear();
     SCOPED_TRACE(value);
@@ -74,7 +83,7 @@ class VarintTest : public ::testing::Test {
   int output_;
 };
 
-TEST_F(VarintTest, save)
+TEST_F(BytecodeTest, varint_save)
 {
   for (int i : {0, 1, 2, 13, 21, 31, 32, 62, 63, 64, 65, 254, 255, 256, 257}) {
     do_test(i);
@@ -89,7 +98,7 @@ TEST_F(VarintTest, save)
   }
 }
 
-TEST_F(VarintTest, size)
+TEST_F(BytecodeTest, varint_size)
 {
   for (int i : {0, 1, 2, 13, 21, 31, 32, 62, 63}) {
     EXPECT_EQ(1, get_size(i));
@@ -103,6 +112,39 @@ TEST_F(VarintTest, size)
   }
   EXPECT_EQ(3, get_size(8192));
   EXPECT_EQ(2, get_size(-8192));
+}
+
+TEST_F(BytecodeTest, string) {
+  payload_.clear();
+  string expected = "abcdef";
+  BytecodeStream::append_string(&payload_, expected);
+  EXPECT_EQ(expected, parse_string());
+
+  payload_.clear();
+  expected = "abcdef";
+  expected.push_back(0);
+  expected.push_back(1);
+  expected.push_back(0);
+  expected.push_back(2);
+  BytecodeStream::append_string(&payload_, expected);
+  EXPECT_EQ(expected, parse_string());
+}
+
+TEST_F(BytecodeTest, string_failed) {
+  payload_.clear();
+  string expected = "abcdef";
+  
+  EXPECT_EQ("", parse_string(false));
+
+  payload_.clear();
+  expected = "abcdef";
+  expected.push_back(0);
+  expected.push_back(1);
+  expected.push_back(0);
+  expected.push_back(2);
+  BytecodeStream::append_string(&payload_, expected);
+  payload_.pop_back();
+  EXPECT_EQ("", parse_string(false));
 }
 
 }  // namespace logic

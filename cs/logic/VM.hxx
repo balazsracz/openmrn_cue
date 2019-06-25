@@ -86,7 +86,7 @@ class VM {
   }
 
  private:
-  friend class VarintTest;
+  friend class BytecodeTest;
   friend class VMTest;
 
   struct ExecutionEnvironment {
@@ -105,6 +105,9 @@ class VM {
   /// Stack of values for operands.
   std::vector<int> operand_stack_;
 
+  /// Accumulator of string arguments;
+  std::string string_acc_;
+
   /// This object is used to create variables. Externally owned.
   const VariableFactory* variable_factory_;
   
@@ -118,6 +121,11 @@ class VM {
   /// @return true if a varint was successfully read; false if eof was hit.
   bool parse_varint(int* output);
 
+  /// Reads a string from the instruction stream and stores it in the stirng
+  /// accumulator.
+  /// @return true if a string was successfully read; false if eof was hit.
+  bool parse_string();
+  
   /// Adds an unexpected EOF error.
   /// @param where will be appended to the error string.
   /// @return false

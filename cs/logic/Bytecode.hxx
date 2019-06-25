@@ -79,6 +79,10 @@ enum OpCode : uint8_t {
   ASSIGN_VAR_0,
   ASSIGN_VAR_1,
 
+  // Takes a string argument from the bytecode and loads the string accumulator
+  // with it. Format=one varint describing the length, then the raw bytes.
+  LOAD_STRING,
+
   // Binary arithmetic operators. Take two values from the top of the stack, and
   // push one. The RHS is the top of the stack, the LHS is the second top.
   NUMERIC_PLUS,
@@ -115,6 +119,10 @@ struct BytecodeStream {
   /// Appends an opcode to a string.
   static void append_opcode(std::string* output, OpCode opcode) {
     output->push_back(opcode);
+  }
+  static void append_string(std::string* output, const std::string& value) {
+    append_varint(output, value.size());
+    output->append(value);
   }
 };
 

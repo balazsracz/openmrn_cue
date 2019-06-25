@@ -99,6 +99,19 @@ bool VM::parse_varint(int* output) {
   return true;
 }
 
+bool VM::parse_string() {
+  int len;
+  string_acc_.clear();
+  if (!parse_varint(&len)) {
+    return false;
+  }
+  if (ip_ + len > eof_) {
+    return unexpected_eof("parsing string");
+  }
+  string_acc_.assign((const char*)ip_, len);
+  return true;
+}
+
 bool VM::execute(const void* data, size_t len) {
   clear();
   ip_ = (const uint8_t*)data;
@@ -179,6 +192,12 @@ bool VM::execute(const void* data, size_t len) {
         operand_stack_.push_back(1);
         break;
 
+      case LOAD_STRING:
+        if (!parse_string()) {
+          return false;
+        }
+        break;
+        
       case NUMERIC_PLUS: {
         if (operand_stack_.size() < 2) {
           error_ = StringPrintf("Stack underflow at PLUS");
