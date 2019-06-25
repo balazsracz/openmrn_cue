@@ -36,5 +36,50 @@
 #define _LOGIC_VARIABLE_HXX_
 
 
+/// This structure is used to parametrize the variable creation interface.
+struct VariableCreationRequest {
+  VariableCreationRequest() {
+    clear();
+  }
+  void clear() {
+    name.clear();
+    defaultEvent = 0;
+    defaultOnEvent = 0;
+  }
+  /// User visible name of the variable (may be syntactical name or a string
+  /// provided by the code author).
+  string name;
+  /// If a variable is newly created, and this value is not zero, then it will
+  /// be initialized to this event ID. This is the base event ID (for
+  /// multiplicity) or the OFF state for binary.
+  uint64_t defaultEvent;
+  /// If a boolean variable is newly created, and this value is not zero, then
+  /// the new variable will be initialized to this as being active / on event
+  /// ID.
+  uint64_t defaultOnEvent;
+};
+
+class Variable {
+ public:
+  virtual ~Variable() {}
+};
+
+/// Abstract interface to the component that is responsible for creating the
+/// external variables.
+class VariableFactory {
+ protected:
+  /// Destructor. Protected as clients will use 
+  virtual ~VariableFactory() {}
+
+ public:
+  /// Creates a new variable.
+  /// @param request parametrizes what kind of variable to create. The
+  /// ownership is NOT transferred, but the implementation may destroy/move
+  /// away the values in the structure.
+  /// @return newly created variable.
+  virtual std::unique_ptr<Variable> create_variable(
+      VariableCreationRequest* request) = 0;
+};
+
 
 #endif // _LOGIC_VARIABLE_HXX_
