@@ -182,6 +182,11 @@ class IndirectVarCreate : public Command {
     BytecodeStream::append_opcode(output, IMPORT_VAR);
     variable_.serialize_init(output);
   }
+
+  void debug_print(std::string* output) override {
+    output->append(StringPrintf("import_var(%s/guid %d,arg %d)",
+                                variable_.get_name(), guid_, arg_));
+  }
   
  private:
   /// Guild of the variable to create and import.

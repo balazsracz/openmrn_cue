@@ -149,7 +149,7 @@ int_decl_single:
           @2, "Exported variable declaration cannot have an initializer.");
       YYERROR;
     }
-    
+    $$ = std::make_shared<IndirectVarCreate>($1, driver.find_symbol($1)->fp_offset_, driver.allocate_guid());
   } else {
     // Local var.
     $$ = std::make_shared<NumericAssignment>(
@@ -200,7 +200,12 @@ storage_specifier:
 ;
 
 variable_decl:
-storage_specifier "int" { driver.decl_storage_ = $1; } int_decl_list ";" {
+storage_specifier "int" {
+  driver.decl_storage_ = $1;
+  if ($1 == INDIRECT_VAR && !driver.is_global_context()) {
+    driver.error(@1, "Exported variables must appear in the global context.");
+  }
+} int_decl_list ";" {
   if ($4->size() == 1) {
     std::swap($$, (*$4)[0]);
   } else {

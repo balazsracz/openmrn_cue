@@ -75,6 +75,12 @@ class Driver {
     return &current_context_;
   }
 
+  /// @return true if the currently parsing context is the global variable
+  /// context.
+  bool is_global_context() {
+    return true; /// @todo implement other contexts.
+  }
+  
   /// Create a new local variable.
   /// @param name is the identifier ofthe local variable.
   /// @param type is the type (shall be LOCAL_VAR_NN).
@@ -186,6 +192,9 @@ class Driver {
     return &filename_;
   }
 
+  /// Alocates a new GUID for an exported variable.
+  int allocate_guid() { return next_guid_++; }
+
  private:
   /// The name of the file being parsed.
   /// Used later to pass the file name to the location tracker.
@@ -201,6 +210,9 @@ class Driver {
     TRACE_LEX = 2,
     TRACE_LEX_AND_PARSE = 3,
   } debug_level_{NO_TRACE};
+
+  /// Next GUID to assign to a variable.
+  int next_guid_{1};
 };
 
 } // namespace logic
