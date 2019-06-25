@@ -293,12 +293,12 @@ exp "%" exp   {
 | "number"      { $$.reset(new IntConstant($1)); }
 | "-" "number"      { $$.reset(new IntConstant(-$2)); }
 | "identifier"  {
-  const Symbol* s = driver.get_variable($1, @1, Symbol::DATATYPE_INT);
-  if (!s) {
+  auto vp =
+      driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);
+  if (!vp) {
     YYERROR;
-  } else {
-    $$ = std::make_shared<IntVariable>(std::move($1), *s);
   }
+  $$ = std::make_shared<IntVariable>(std::move(vp));
 }
 ;
 
@@ -312,12 +312,12 @@ boolexp:
 |  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }
 |  boolexp "||" boolexp   { $$ = std::make_shared<BoolOr>(std::move($1), std::move($3)); }
 | "identifier"  {
-  const Symbol* s = driver.get_variable($1, @1, Symbol::DATATYPE_BOOL);
-  if (!s) {
+  auto vp =
+      driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_BOOL);
+  if (!vp) {
     YYERROR;
-  } else {
-    $$ = std::make_shared<BoolVariable>(std::move($1), *s);
   }
+  $$ = std::make_shared<BoolVariable>(std::move(vp));
 }
 ;
 

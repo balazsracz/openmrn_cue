@@ -227,14 +227,8 @@ class NumericAssignment : public Command {
 
 class IntVariable : public IntExpression {
  public:
-  IntVariable(std::string variable, const Symbol& sym) {
-    if (sym.symbol_type_ == Symbol::LOCAL_VAR_INT) {
-      variable_.reset(
-          new LocalVariableReference(std::move(variable), sym.fp_offset_));
-    } else {
-      DIE("Unexpected symbol type");
-    }
-  }
+  IntVariable(std::unique_ptr<VariableReference> variable)
+      : variable_(std::move(variable)) {}
 
   void serialize(std::string* output) override {
     variable_->serialize_fetch(output);
@@ -282,14 +276,8 @@ class BooleanAssignment : public Command {
 
 class BoolVariable : public BooleanExpression {
  public:
-  BoolVariable(std::string variable, const Symbol& sym) {
-    if (sym.symbol_type_ == Symbol::LOCAL_VAR_BOOL) {
-      variable_.reset(
-          new LocalVariableReference(std::move(variable), sym.fp_offset_));
-    } else {
-      DIE("Unexpected symbol type");
-    }
-  }
+  BoolVariable(std::unique_ptr<VariableReference> variable)
+      : variable_(std::move(variable)) {}
 
   void serialize(std::string* output) override {
     variable_->serialize_fetch(output);
