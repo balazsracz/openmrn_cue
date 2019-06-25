@@ -112,6 +112,34 @@ class Driver;
 unit: commands { driver.commands_.swap(*$1); };
 
 assignment:
+"identifier" "=" "identifier" {
+  // Polymorphic assignment.
+  const Symbol* ls = driver.find_symbol($1);
+  Symbol::DataType dt = Symbol::DATATYPE_INT;
+  if (ls) {
+    dt = ls->get_data_type();
+  }
+  auto vp =
+      driver.get_variable_reference(std::move($1), @1, dt);
+  auto rp =
+      driver.get_variable_reference(std::move($3), @3, dt);
+  if (!vp || !rp) {
+    YYERROR;
+  }
+  switch(dt) {
+    case Symbol::DATATYPE_INT:
+      $$ = std::make_shared<NumericAssignment>(
+          std::move(vp), std::make_shared<IntVariable>(std::move(rp)));
+      break;
+    case Symbol::DATATYPE_BOOL:
+      $$ = std::make_shared<BooleanAssignment>(
+          std::move(vp), std::make_shared<BoolVariable>(std::move(rp)));
+      break;
+    default:
+      driver.error(@1, "Unexpected data type");
+      YYERROR;
+  }
+} |
 "identifier" "=" exp {
   auto vp =
       driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);

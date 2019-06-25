@@ -506,6 +506,22 @@ TEST_F(VMTest, indirect_e2e_bool) {
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 0));
 }
+
+TEST_F(VMTest, poly_assignment) {
+  ASSERT_FALSE(compile("int a; bool b; a=b"));
+  ASSERT_FALSE(compile("int a; bool b; b=a"));
+}
+
+TEST_F(VMTest, poly_assignment_ok) {
+  ASSERT_TRUE(compile("int a=5; int b=3; a=b"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(3, 3));
+
+  clear();
+
+  ASSERT_TRUE(compile("bool a=True; bool b; b=a"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 1));
 }
 
 
