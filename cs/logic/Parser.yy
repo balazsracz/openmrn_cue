@@ -185,18 +185,18 @@ storage_specifier:
 ;
 
 variable_decl:
-storage_specifier "int" int_decl_list ";" {
-  if ($3->size() == 1) {
-    std::swap($$, (*$3)[0]);
+storage_specifier "int" { driver.decl_storage_ = $1; } int_decl_list ";" {
+  if ($4->size() == 1) {
+    std::swap($$, (*$4)[0]);
   } else {
-    $$ = std::make_shared<CommandSequence>(std::move(*$3));  
+    $$ = std::make_shared<CommandSequence>(std::move(*$4));  
   }
-}
-| "bool" bool_decl_list ";" {
-  if ($2->size() == 1) {
-    std::swap($$, (*$2)[0]);
+} |
+storage_specifier "bool" { driver.decl_storage_ = $1; } bool_decl_list ";" {
+  if ($4->size() == 1) {
+    std::swap($$, (*$4)[0]);
   } else {
-    $$ = std::make_shared<CommandSequence>(std::move(*$2));  
+    $$ = std::make_shared<CommandSequence>(std::move(*$4));  
   }
 }
 ;

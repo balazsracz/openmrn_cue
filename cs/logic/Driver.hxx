@@ -170,7 +170,8 @@ class Driver {
   VariableStorageSpecifier decl_storage_;
 
   /// True if we are in the global scope.
-  bool is_global_scope_;
+  // not currently used yet.
+  //bool is_global_scope_;
   
   int result;
   // Run the parser on file F.
