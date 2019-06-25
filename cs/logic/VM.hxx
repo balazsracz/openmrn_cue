@@ -85,6 +85,8 @@ class VM {
     fp_ = 0;
   }
 
+  typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
+
  private:
   friend class BytecodeTest;
   friend class VMTest;
@@ -147,8 +149,6 @@ class VM {
   /// This object is used to create variables. Externally owned.
   const VariableFactory* variable_factory_;
   
-  typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
-
   /// Holds (and owns) all external variables that are defined.
   ExternalVariableMap external_variables_;
 

@@ -81,6 +81,14 @@ class VMTest : public ::testing::Test {
     return vm_.operand_stack_;
   }
 
+  const VM::ExternalVariableMap& get_external_vars() {
+    return vm_.external_variables_;
+  }
+
+  const std::vector<VM::VariableReference>& get_var_stack() {
+    return vm_.variable_stack_;
+  }
+  
   void clear() {
     bytecode_.clear();
     vm_.operand_stack_.clear();
@@ -114,8 +122,40 @@ TEST_F(VMTest, create_variable) {
   BytecodeStream::append_string(&bytecode_, "varname");
   BytecodeStream::append_opcode(&bytecode_, CREATE_VAR);
   BytecodeStream::append_varint(&bytecode_, 12345);
-  mock_factory_.expect_variable(_);
+  auto* var = mock_factory_.expect_variable("varname");
   ASSERT_TRUE(run());
+  // Check guid and variable pointer.
+  const auto& m = get_external_vars();
+  auto it = m.find(12345);
+  ASSERT_TRUE(it != m.end());
+  EXPECT_EQ(12345u, it->first);
+  EXPECT_EQ(var, it->second.get());
+}
+
+TEST_F(VMTest, import_variable) {
+  BytecodeStream::append_opcode(&bytecode_, LOAD_STRING);
+  BytecodeStream::append_string(&bytecode_, "varname");
+  BytecodeStream::append_opcode(&bytecode_, CREATE_VAR);
+  BytecodeStream::append_varint(&bytecode_, 12345);
+  auto* var = mock_factory_.expect_variable("varname");
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 12345);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_0);
+  BytecodeStream::append_opcode(&bytecode_, IMPORT_VAR);
+  
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 12345);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 42);
+  BytecodeStream::append_opcode(&bytecode_, IMPORT_VAR);
+  ASSERT_TRUE(run());
+  auto& varstack = get_var_stack();
+  ASSERT_EQ(2u, varstack.size());
+  EXPECT_EQ(var, varstack[0].var);
+  EXPECT_EQ(0u, varstack[0].arg);
+  EXPECT_EQ(var, varstack[1].var);
+  EXPECT_EQ(42u, varstack[1].arg);
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1));
 }
 
 TEST_F(VMTest, plus) {
