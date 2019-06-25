@@ -41,6 +41,9 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include <map>
+
+#include "logic/Variable.hxx"
 
 namespace logic {
 
@@ -99,6 +102,11 @@ class VM {
   /// Stack of values for operands.
   std::vector<int> operand_stack_;
 
+  typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
+
+  /// Holds (and owns) all external variables that are defined.
+  ExternalVariableMap external_variables_;
+
   /// Reads a varint from the instruction stream.
   /// @param output the data goes here.
   /// @return true if a varint was successfully read; false if eof was hit.
@@ -120,6 +128,8 @@ class VM {
   /// Points to eof, which is the first character after ip_ that is not valid,
   /// aka end pointer (right open range).
   const uint8_t* eof_;
+  /// Frame pointer (index in the operand stack where the current function's
+  /// stack frame is).
   unsigned fp_;
 };
 

@@ -35,33 +35,55 @@
 #ifndef _LOGIC_VARIABLE_HXX_
 #define _LOGIC_VARIABLE_HXX_
 
+#include <string>
+#include <memory>
+
+namespace logic {
 
 /// This structure is used to parametrize the variable creation interface.
 struct VariableCreationRequest {
   VariableCreationRequest() {
     clear();
   }
+  /// Resets the request to default state.
   void clear() {
     name.clear();
-    defaultEvent = 0;
-    defaultOnEvent = 0;
+    default_event = 0;
+    default_on_event = 0;
   }
   /// User visible name of the variable (may be syntactical name or a string
   /// provided by the code author).
-  string name;
+  std::string name;
   /// If a variable is newly created, and this value is not zero, then it will
   /// be initialized to this event ID. This is the base event ID (for
   /// multiplicity) or the OFF state for binary.
-  uint64_t defaultEvent;
+  uint64_t default_event;
   /// If a boolean variable is newly created, and this value is not zero, then
   /// the new variable will be initialized to this as being active / on event
   /// ID.
-  uint64_t defaultOnEvent;
+  uint64_t default_on_event;
 };
+
+class VariableFactory;
 
 class Variable {
  public:
   virtual ~Variable() {}
+
+  /// @return the largest valid state value to write or return from this
+  /// variable.
+  virtual int max_state() = 0;
+
+  /// @param parent is the variable factory that created this variable.
+  /// @param arg is the index for vector variables, zero if not used.
+  /// @return the current value of this variable.
+  virtual int read(VariableFactory* parent, uint16_t arg) = 0;
+
+  /// Write a value to the variable.
+  /// @param parent is the variable factory that created this variable.
+  /// @param arg is the index for vector variables, zero if not used.
+  /// @param value is the new (desired) state of the variable.
+  virtual void write(VariableFactory* parent, uint16_t arg, int value) = 0;
 };
 
 /// Abstract interface to the component that is responsible for creating the
@@ -81,5 +103,6 @@ class VariableFactory {
       VariableCreationRequest* request) = 0;
 };
 
+} // namespace logic
 
 #endif // _LOGIC_VARIABLE_HXX_
