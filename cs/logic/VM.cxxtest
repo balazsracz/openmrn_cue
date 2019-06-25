@@ -35,12 +35,11 @@
 
 #include "logic/VM.hxx"
 
-#include <queue>
-
 #include "utils/test_main.hxx"
 
 #include "logic/Driver.hxx"
 #include "logic/Bytecode.hxx"
+#include "logic/MockVariable.hxx"
 
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -51,40 +50,6 @@ using ::testing::StrictMock;
 TempDir g_dir;
 
 namespace logic {
-
-/// Mock implementation of a variable that can have expectations.
-class MockVariable : public Variable {
- public:
-  MOCK_METHOD0(max_state, int ());
-  MOCK_METHOD2(read, int(VariableFactory* parent, uint16_t arg));
-  MOCK_METHOD3(write, void(VariableFactory* parent, uint16_t arg, int value));
-};
-
-/// Variable factory that creates StrictMock variables.
-class MockVariableFactory : public VariableFactory {
- public:
-  std::unique_ptr<Variable> create_variable(
-      VariableCreationRequest* request) override {
-    next_variable(request->name);
-    auto p = std::move(expected_variables_.front());
-    expected_variables_.pop();
-    return p;
-  }
-
-  template<class Matcher>
-  StrictMock<MockVariable>* expect_variable(const Matcher& m) {
-    StrictMock<MockVariable>* r = new StrictMock<MockVariable>();
-    EXPCT_CALL(next_variable(m));
-    expected_variables_.emplace(r);
-    return r;
-  }
-
-  MOCK_METHOD1(next_variable, void(const string&));
-  
-  /// The variable we expect to be created by the system.
-  std::queue<std::unique_ptr<Variable> > expected_variables_;
-};
-
 
 class VMTest : public ::testing::Test {
  protected:
@@ -123,8 +88,9 @@ class VMTest : public ::testing::Test {
 
   /// Stuff that the VM has printed to the output.
   std::vector<std::string> output_;
+  StrictMock<MockVariableFactory> mock_factory_;
   /// The virtual machine instance.
-  VM vm_;
+  VM vm_{&mock_factory_};
   /// The compiled bytecode.
   std::string bytecode_;
 };

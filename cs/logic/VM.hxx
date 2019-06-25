@@ -50,7 +50,10 @@ namespace logic {
 /// Virtual machine for executing compiled bytecode.
 class VM {
  public:
-  VM() {}
+  /// Constructor.
+  /// @param factory is used to instantiate variables duing the execution of
+  /// the VM. Ownership is not transferred.
+  VM(const VariableFactory* factory) : variable_factory_(factory) {}
 
   /// Executes a given set of instructions. Return true if execution succeeded
   /// (hit the last byte or a TERMINATE command), false if an exception was
@@ -102,6 +105,9 @@ class VM {
   /// Stack of values for operands.
   std::vector<int> operand_stack_;
 
+  /// This object is used to create variables. Externally owned.
+  const VariableFactory* variable_factory_;
+  
   typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
 
   /// Holds (and owns) all external variables that are defined.

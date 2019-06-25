@@ -77,13 +77,14 @@ class Variable {
   /// @param parent is the variable factory that created this variable.
   /// @param arg is the index for vector variables, zero if not used.
   /// @return the current value of this variable.
-  virtual int read(VariableFactory* parent, uint16_t arg) = 0;
+  virtual int read(const VariableFactory* parent, uint16_t arg) = 0;
 
   /// Write a value to the variable.
   /// @param parent is the variable factory that created this variable.
   /// @param arg is the index for vector variables, zero if not used.
   /// @param value is the new (desired) state of the variable.
-  virtual void write(VariableFactory* parent, uint16_t arg, int value) = 0;
+  virtual void write(const VariableFactory* parent, uint16_t arg,
+                     int value) = 0;
 };
 
 /// Abstract interface to the component that is responsible for creating the
@@ -100,7 +101,7 @@ class VariableFactory {
   /// away the values in the structure.
   /// @return newly created variable.
   virtual std::unique_ptr<Variable> create_variable(
-      VariableCreationRequest* request) = 0;
+      VariableCreationRequest* request) const = 0;
 };
 
 } // namespace logic

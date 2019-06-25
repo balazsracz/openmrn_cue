@@ -36,6 +36,7 @@
 
 #include "utils/test_main.hxx"
 #include "logic/VM.hxx"
+#include "logic/MockVariable.hxx"
 
 namespace logic {
 
@@ -66,7 +67,9 @@ class VarintTest : public ::testing::Test {
     return payload_.size();
   }
 
-  VM vm_;
+  StrictMock<MockVariableFactory> mock_factory_;
+  /// The virtual machine instance.
+  VM vm_{&mock_factory_};
   string payload_;
   int output_;
 };
