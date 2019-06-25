@@ -170,6 +170,36 @@ bool VM::execute(const void* data, size_t len) {
         operand_stack_.push_back(val);
         break;
       }
+      case INDIRECT_LOAD: {
+        if (operand_stack_.size() < 1) {
+          error_ = StringPrintf("Stack underflow at INDIRECT_LOAD");
+          return false;
+        }
+        int varidx = operand_stack_.back(); operand_stack_.pop_back();
+        if (varidx < 0 || (unsigned)varidx >= variable_stack_.size()) {
+          error_ = "Invalid indirect variable reference.";
+          return false;
+        }
+        const VariableReference& ref = variable_stack_[varidx];
+        int val = ref.var->read(variable_factory_, ref.arg);
+        operand_stack_.push_back(val);
+        break;
+      }
+      case INDIRECT_STORE: {
+        if (operand_stack_.size() < 2) {
+          error_ = StringPrintf("Stack underflow at INDIRECT_LOAD");
+          return false;
+        }
+        int varidx = operand_stack_.back(); operand_stack_.pop_back();
+        int value = operand_stack_.back(); operand_stack_.pop_back();
+        if (varidx < 0 || (unsigned)varidx >= variable_stack_.size()) {
+          error_ = "Invalid indirect variable reference.";
+          return false;
+        }
+        const VariableReference& ref = variable_stack_[varidx];
+        ref.var->write(variable_factory_, ref.arg, value);
+        break;
+      }
       case PUSH_TOP: {
         if (operand_stack_.size() < 1) {
           error_ = StringPrintf("Stack underflow at PUSH_TOP");

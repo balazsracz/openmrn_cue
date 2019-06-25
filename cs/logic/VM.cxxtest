@@ -46,6 +46,7 @@ using ::testing::Eq;
 using ::testing::StrEq;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
+using ::testing::Return;
 using ::testing::_;
 
 TempDir g_dir;
@@ -87,6 +88,19 @@ class VMTest : public ::testing::Test {
 
   const std::vector<VM::VariableReference>& get_var_stack() {
     return vm_.variable_stack_;
+  }
+
+  /// Directly inserts a variable into the VM's variable stack.
+  /// @param arg will be used by the system to do fetches and stores in the
+  /// variable.
+  /// @return the mock. Ownership is not transferred.
+  StrictMock<MockVariable>* inject_variable(unsigned arg = 0) {
+    StrictMock<MockVariable>* r = new StrictMock<MockVariable>();
+    vm_.variable_stack_.emplace_back();
+    vm_.variable_stack_.back().var = r;
+    vm_.variable_stack_.back().owned_var.reset(r);
+    vm_.variable_stack_.back().arg = arg;
+    return r;
   }
 
   void clear() {
@@ -363,6 +377,52 @@ TEST_F(VMTest, int_ops) {
   ASSERT_TRUE(compile("int a=3*2,b=5-1,c=6+2,d=5/2,e=8%3;"));
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(6, 4, 8, 2, 2));
+}
+
+TEST_F(VMTest, indirect_load) {
+  auto* m1 = inject_variable(13);
+  auto* m2 = inject_variable(42);
+  
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_0);
+  BytecodeStream::append_opcode(&bytecode_, INDIRECT_LOAD);
+  EXPECT_CALL(*m1, read(&mock_factory_, 13)).WillOnce(Return(442));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(442));
+
+  bytecode_.clear();
+  
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_1);
+  BytecodeStream::append_opcode(&bytecode_, INDIRECT_LOAD);
+  EXPECT_CALL(*m2, read(&mock_factory_, 42)).WillOnce(Return(561));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(561));
+}
+
+TEST_F(VMTest, indirect_store) {
+  auto* m1 = inject_variable(13);
+  auto* m2 = inject_variable(42);
+  
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 456);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_0);
+  BytecodeStream::append_opcode(&bytecode_, INDIRECT_STORE);
+  EXPECT_CALL(*m1, write(&mock_factory_, 13, 456));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre());
+
+  bytecode_.clear();
+  
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 118);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_1);
+  BytecodeStream::append_opcode(&bytecode_, INDIRECT_STORE);
+  EXPECT_CALL(*m2, write(&mock_factory_, 42, 118));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre());
+}
+
+TEST_F(VMTest, indirect_e2e) {
+
 }
 
 
