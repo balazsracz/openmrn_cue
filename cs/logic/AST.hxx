@@ -165,7 +165,7 @@ class BooleanExpression : public Command {};
 class IndirectVarCreate : public Command {
  public:
   IndirectVarCreate(std::string name, int fp_offset, int guid, int arg = 0)
-      : guid_(guid), variable_(name, fp_offset) {}
+      : guid_(guid), arg_(arg), variable_(name, fp_offset) {}
 
   void serialize_preamble(std::string* output) override {
     BytecodeStream::append_opcode(output, LOAD_STRING);
