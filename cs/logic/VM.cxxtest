@@ -452,7 +452,60 @@ TEST_F(VMTest, indirect_create_e2e) {
   
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 5));
+}
 
+TEST_F(VMTest, indirect_e2e) {
+  ASSERT_TRUE(compile("exported int a; exported int b; int c=b; a=b"));
+  auto* vara = mock_factory_.expect_variable("a");
+  auto* varb = mock_factory_.expect_variable("b");
+  ASSERT_TRUE(run_preamble());
+
+  ::testing::InSequence s;
+  EXPECT_CALL(*varb, read(&mock_factory_, 0)).WillOnce(Return(561));
+  EXPECT_CALL(*varb, read(&mock_factory_, 0)).WillOnce(Return(112));
+  EXPECT_CALL(*vara, write(&mock_factory_, 0, 112));
+  
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 561));
+}
+
+TEST_F(VMTest, indirect_create_e2e_bool) {
+  ASSERT_TRUE(compile("exported bool a; exported bool b; bool c=True;"));
+  auto* vara = mock_factory_.expect_variable("a");
+  auto* varb = mock_factory_.expect_variable("b");
+  ASSERT_TRUE(run_preamble());
+  EXPECT_THAT(get_op_stack(), ElementsAre());
+
+  // Check guid and variable pointer.
+  const auto& m = get_external_vars();
+  auto it = m.find(1);
+  ASSERT_TRUE(it != m.end());
+  EXPECT_EQ(1u, it->first);
+  EXPECT_EQ(vara, it->second.get());
+  it = m.find(2);
+  ASSERT_TRUE(it != m.end());
+  EXPECT_EQ(2u, it->first);
+  EXPECT_EQ(varb, it->second.get());
+  
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 1));
+}
+
+TEST_F(VMTest, indirect_e2e_bool) {
+  ASSERT_TRUE(compile("exported bool a;\n exported bool b;\n bool c=b&&a;\n a=b"));
+  auto* vara = mock_factory_.expect_variable("a");
+  auto* varb = mock_factory_.expect_variable("b");
+  ASSERT_TRUE(run_preamble());
+
+  ::testing::InSequence s;
+  EXPECT_CALL(*varb, read(&mock_factory_, 0)).WillOnce(Return(1));
+  EXPECT_CALL(*vara, read(&mock_factory_, 0)).WillOnce(Return(0));
+  EXPECT_CALL(*varb, read(&mock_factory_, 0)).WillOnce(Return(1));
+  EXPECT_CALL(*vara, write(&mock_factory_, 0, 1));
+  
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 0));
+}
 }
 
 
