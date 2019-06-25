@@ -45,6 +45,11 @@
 
 namespace logic {
 
+enum VariableStorageSpecifier {
+  LOCAL_VAR,
+  INDIRECT_VAR
+};
+
 class Command {
  public:
   virtual ~Command() {}

@@ -89,36 +89,6 @@ class VM {
   friend class BytecodeTest;
   friend class VMTest;
 
-  struct ExecutionEnvironment {
-    /// Frame pointer. Indexes into the operand_stack_ to define the base for
-    /// all relative offset variables. When exiting a function, the operand
-    /// stack is truncated to this size.
-    unsigned fp;
-
-    /// Where to return out of this stack frame.
-    const uint8_t* return_address {nullptr};
-  };
-
-  /// Stack frames of the nested functions.
-  std::vector<ExecutionEnvironment> call_stack_;
-  
-  /// Stack of values for operands.
-  std::vector<int> operand_stack_;
-
-  /// Accumulator of string arguments;
-  std::string string_acc_;
-
-  /// Arguments to the variable creation.
-  VariableCreationRequest variable_request_;
-
-  /// This object is used to create variables. Externally owned.
-  const VariableFactory* variable_factory_;
-  
-  typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
-
-  /// Holds (and owns) all external variables that are defined.
-  ExternalVariableMap external_variables_;
-
   /// Reads a varint from the instruction stream.
   /// @param output the data goes here.
   /// @return true if a varint was successfully read; false if eof was hit.
@@ -134,6 +104,54 @@ class VM {
   /// @return false
   bool unexpected_eof(const char* where);
 
+  struct ExecutionEnvironment {
+    /// Frame pointer. Indexes into the operand_stack_ to define the base for
+    /// all relative offset variables. When exiting a function, the operand
+    /// stack is truncated to this size.
+    unsigned fp;
+
+    /// Frame pointer for variable stack. Contains the size ofthe variable
+    /// stack before entering the current execution frame. When returning from
+    /// the execution frame, the variables above this index are destructed.
+    unsigned vp;
+    
+    /// Where to return out of this stack frame.
+    const uint8_t* return_address {nullptr};
+  };
+
+  /// Instances of this struct will be pushed to the variable stack.
+  struct VariableReference {
+    /// Holds ownership of a variable if it was created locally.
+    std::unique_ptr<Variable> owned_var;
+    /// Non-owned variable. owned_var is always copied here.
+    Variable* var;
+    /// Argument to supply to the variable calls.
+    unsigned arg;
+  };
+  
+  /// Stack frames of the nested functions.
+  std::vector<ExecutionEnvironment> call_stack_;
+  
+  /// Stack of values for operands.
+  std::vector<int> operand_stack_;
+
+  /// Stack of variable references.
+  std::vector<VariableReference> variable_stack_;
+
+  /// Accumulator of string arguments;
+  std::string string_acc_;
+
+  /// Arguments to the variable creation.
+  VariableCreationRequest variable_request_;
+
+  /// This object is used to create variables. Externally owned.
+  const VariableFactory* variable_factory_;
+  
+  typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
+
+  /// Holds (and owns) all external variables that are defined.
+  ExternalVariableMap external_variables_;
+
   /// Stores the last VM exception.
   std::string error_;
 
@@ -145,9 +163,12 @@ class VM {
   /// Points to eof, which is the first character after ip_ that is not valid,
   /// aka end pointer (right open range).
   const uint8_t* eof_;
-  /// Frame pointer (index in the operand stack where the current function's
-  /// stack frame is).
+  /// Frame pointer for operand stack (index in the operand stack where the
+  /// current function's stack frame is).
   unsigned fp_;
+  /// Frame pointer for variable stack (index in the variable stack where the
+  /// current function's stack frame is).
+  unsigned vp_;
 };
 
 

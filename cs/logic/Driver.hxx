@@ -165,6 +165,13 @@ class Driver {
     }
   }
 
+  /// lexical context variable that describes what storage option the current
+  /// variable declaration has.
+  VariableStorageSpecifier decl_storage_;
+
+  /// True if we are in the global scope.
+  bool is_global_scope_;
+  
   int result;
   // Run the parser on file F.
   // Return 0 on success.

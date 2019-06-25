@@ -211,6 +211,25 @@ bool VM::execute(const void* data, size_t len) {
         external_variables_[guid] = std::move(var);
         break;
       }
+      case IMPORT_VAR: {
+        if (operand_stack_.size() < 2) {
+          error_ = StringPrintf("Stack underflow at IMPORT_VAR");
+          return false;
+        }
+        int arg = operand_stack_.back(); operand_stack_.pop_back();
+        int guid = operand_stack_.back(); operand_stack_.pop_back();
+        auto it = external_variables_.find(guid);
+        if (it == external_variables_.end()) {
+          error_ = StringPrintf("Unknown variable GUID %d at IMPORT_VAR", guid);
+          return false;
+        }
+        VariableReference ref;
+        ref.var = it->second.get();
+        ref.arg = arg;
+        variable_stack_.emplace_back(std::move(ref));
+        operand_stack_.push_back(variable_stack_.size() - 1);
+        break;
+      }
       case NUMERIC_PLUS: {
         if (operand_stack_.size() < 2) {
           error_ = StringPrintf("Stack underflow at PLUS");

@@ -95,6 +95,9 @@ blank [ \t]
 "int"      return logic::yy::Parser::make_TYPEINT(loc);
 "bool"     return logic::yy::Parser::make_TYPEBOOL(loc);
 
+"exported" return logic::yy::Parser::make_EXPORTED(loc);  
+"auto" return logic::yy::Parser::make_AUTO(loc);  
+
 
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
 "True"     return logic::yy::Parser::make_BOOL(true, loc);

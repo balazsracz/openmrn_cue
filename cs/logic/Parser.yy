@@ -86,11 +86,14 @@ class Driver;
   ELSE  "else"
   TYPEINT  "int"
   TYPEBOOL  "bool"
+  EXPORTED  "exported"
+  AUTO  "auto"
 ;
 %token <std::string> IDENTIFIER "identifier"
 %token <std::string> STRING "string"
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
+%type  <logic::VariableStorageSpecifier> storage_specifier
 %type  <std::shared_ptr<logic::IntExpression> > exp
 %type  <std::shared_ptr<logic::IntExpression> > decl_optional_int_exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
@@ -176,13 +179,17 @@ bool_decl_list "," bool_decl_single {
 }
 ;
 
+storage_specifier:
+%empty { $$ = LOCAL_VAR; }
+| "exported" { $$ = INDIRECT_VAR; }
+;
 
 variable_decl:
-"int" int_decl_list ";" {
-  if ($2->size() == 1) {
-    std::swap($$, (*$2)[0]);
+storage_specifier "int" int_decl_list ";" {
+  if ($3->size() == 1) {
+    std::swap($$, (*$3)[0]);
   } else {
-    $$ = std::make_shared<CommandSequence>(std::move(*$2));  
+    $$ = std::make_shared<CommandSequence>(std::move(*$3));  
   }
 }
 | "bool" bool_decl_list ";" {
