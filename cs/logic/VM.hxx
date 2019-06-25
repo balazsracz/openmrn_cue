@@ -108,6 +108,9 @@ class VM {
   /// Accumulator of string arguments;
   std::string string_acc_;
 
+  /// Arguments to the variable creation.
+  VariableCreationRequest variable_request_;
+
   /// This object is used to create variables. Externally owned.
   const VariableFactory* variable_factory_;
   

@@ -57,6 +57,10 @@ class MockVariableFactory : public VariableFactory {
   std::unique_ptr<Variable> create_variable(
       VariableCreationRequest* request) const override {
     next_variable(request->name);
+    if (expected_variables_.empty()) {
+      EXPECT_TRUE(false) << "Ran out of expected variables.";
+      return nullptr;
+    }
     auto p = std::move(expected_variables_.front());
     expected_variables_.pop();
     return p;
@@ -65,7 +69,7 @@ class MockVariableFactory : public VariableFactory {
   template<class Matcher>
   StrictMock<MockVariable>* expect_variable(const Matcher& m) const {
     StrictMock<MockVariable>* r = new StrictMock<MockVariable>();
-    EXPCT_CALL(next_variable(m));
+    EXPECT_CALL(*this, next_variable(m));
     expected_variables_.emplace(r);
     return r;
   }

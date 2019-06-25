@@ -83,6 +83,11 @@ enum OpCode : uint8_t {
   // with it. Format=one varint describing the length, then the raw bytes.
   LOAD_STRING,
 
+  /// Invokes the variable factory to create a variable. Uses the string
+  /// accumulator for the variable name. arg = GUID of the variable (under
+  /// which it will be stored).
+  CREATE_VAR,
+  
   // Binary arithmetic operators. Take two values from the top of the stack, and
   // push one. The RHS is the top of the stack, the LHS is the second top.
   NUMERIC_PLUS,

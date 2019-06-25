@@ -46,6 +46,7 @@ using ::testing::Eq;
 using ::testing::StrEq;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
+using ::testing::_;
 
 TempDir g_dir;
 
@@ -106,6 +107,15 @@ TEST_F(VMTest, push_constant_exception) {
   bytecode_ = {PUSH_CONSTANT, (char)0x83};
   EXPECT_FALSE(run());
   EXPECT_THAT(vm_.get_error(), StrEq("Unexpected EOF parsing varint"));
+}
+
+TEST_F(VMTest, create_variable) {
+  BytecodeStream::append_opcode(&bytecode_, LOAD_STRING);
+  BytecodeStream::append_string(&bytecode_, "varname");
+  BytecodeStream::append_opcode(&bytecode_, CREATE_VAR);
+  BytecodeStream::append_varint(&bytecode_, 12345);
+  mock_factory_.expect_variable(_);
+  ASSERT_TRUE(run());
 }
 
 TEST_F(VMTest, plus) {

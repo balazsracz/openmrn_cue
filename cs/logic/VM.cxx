@@ -109,6 +109,7 @@ bool VM::parse_string() {
     return unexpected_eof("parsing string");
   }
   string_acc_.assign((const char*)ip_, len);
+  ip_ += len;
   return true;
 }
 
@@ -193,11 +194,23 @@ bool VM::execute(const void* data, size_t len) {
         break;
 
       case LOAD_STRING:
+        ip_++;
         if (!parse_string()) {
           return false;
         }
+        ip_--;
         break;
-        
+      case CREATE_VAR: {
+        int guid;
+        ++ip_;
+        if (!parse_varint(&guid)) return false;
+        --ip_;
+        variable_request_.name = std::move(string_acc_);
+        auto var = variable_factory_->create_variable(&variable_request_);
+        variable_request_.clear();
+        external_variables_[guid] = std::move(var);
+        break;
+      }
       case NUMERIC_PLUS: {
         if (operand_stack_.size() < 2) {
           error_ = StringPrintf("Stack underflow at PLUS");

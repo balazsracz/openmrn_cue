@@ -76,6 +76,10 @@ class BytecodeTest : public ::testing::Test {
     return payload_.size();
   }
 
+  unsigned get_ip() {
+    return vm_.ip_ - (uint8_t*)payload_.data();
+  }
+  
   StrictMock<MockVariableFactory> mock_factory_;
   /// The virtual machine instance.
   VM vm_{&mock_factory_};
@@ -128,6 +132,8 @@ TEST_F(BytecodeTest, string) {
   expected.push_back(2);
   BytecodeStream::append_string(&payload_, expected);
   EXPECT_EQ(expected, parse_string());
+  
+  EXPECT_EQ(payload_.size(), get_ip());
 }
 
 TEST_F(BytecodeTest, string_failed) {
