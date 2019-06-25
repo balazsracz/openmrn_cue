@@ -24,32 +24,25 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file Endtoend.cxxtest
+ * \file OlcbBindings.cxx
  *
- * Integration tests for the logic node.
+ * Implementation of external variables for OpenLCB bindings purposes.
  *
  * @author Balazs Racz
  * @date 25 June 2019
  */
 
-#include "logic/VM.hxx"
-#include "logic/OlcbBindingsConfig.hxx"
 #include "logic/OlcbBindings.hxx"
-#include "logic/OlcbBindingsImpl.hxx"
-
-#include "utils/async_datagram_test_helper.hxx"
 
 namespace logic {
 
-class EndToEndTest : public openlcb::TwoNodeDatagramTest {
+OlcbVariableFactory::~OlcbVariableFactory() {}
 
 
-  OlcbVariableFactory factory_{node_};
-  VM vm_{&factory_};
-
-};
-
-TEST_F(EndToEndTest, create) {}
+UpdateAction OlcbVariableFactory::apply_configuration(int fd, bool initial_load,
+                                                      BarrierNotifiable* done) {
+  config_fd_ = fd;
+}
 
 
 } // namespace logic

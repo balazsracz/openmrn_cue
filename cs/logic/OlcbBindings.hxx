@@ -36,23 +36,38 @@
 #define _LOGIC_OLCBBINDINGS_HXX_
 
 #include "logic/Variable.hxx"
+#include "utils/ConfigUpdateListener.hxx"
 
 namespace logic {
 
-class OlcbVariableFactory : public VariableFactory {
+class OlcbVariableFactory : public VariableFactory,
+                            public DefaultConfigUpdateListener {
  public:
-  openlcb::Node* get_node() const {
-    return node_;
-  }
+  OlcbVariableFactory(openlcb::Node* node) : node_(node) {}
+  ~OlcbVariableFactory();
+  
+  openlcb::Node* get_node() const { return node_; }
 
   std::unique_ptr<Variable> create_variable(
       VariableCreationRequest* request) const override;
-  
+
+  UpdateAction apply_configuration(int fd, bool initial_load,
+                                   BarrierNotifiable* done) override;
+
+  /// Clears configuration file and resets the configuration settings to
+  /// factory value.
+  ///
+  /// @param fd is the file descriptor for the EEPROM file. The current
+  /// offset in this file is unspecified, callees must do lseek.
+  void factory_reset(int fd) override;
+
  private:
   /// Node object that will be used to communicate with the OpenLCB bus.
   openlcb::Node* node_;
+
+  /// File descriptor of the CDI config file where our data resides.
+  int config_fd_{-1};
 };
+}  // namespace logic
 
-}
-
-#endif // _LOGIC_OLCBBINDINGS_HXX_
+#endif  // _LOGIC_OLCBBINDINGS_HXX_
