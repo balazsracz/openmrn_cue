@@ -53,7 +53,8 @@ class VM {
   /// Constructor.
   /// @param factory is used to instantiate variables duing the execution of
   /// the VM. Ownership is not transferred.
-  VM(const VariableFactory* factory) : variable_factory_(factory) {}
+  VM(const VariableFactory* factory)
+      : variable_factory_(factory), block_num_(0) {}
 
   /// Executes a given set of instructions. Return true if execution succeeded
   /// (hit the last byte or a TERMINATE command), false if an exception was
@@ -80,6 +81,12 @@ class VM {
   /// @param cb will be called when the program outputs text.
   void set_output(std::function<void(std::string)> cb) {
     print_cb_ = std::move(cb);
+  }
+
+  /// Defines the value in the "block_num" parameter of variable creation
+  /// requests.
+  void set_block_num(unsigned block_num) {
+    
   }
 
   /// Resets the internal state of the virtual machine.
@@ -121,7 +128,8 @@ class VM {
     /// Frame pointer for variable stack. Contains the size ofthe variable
     /// stack before entering the current execution frame. When returning from
     /// the execution frame, the variables above this index are destructed.
-    unsigned vp;
+    /// @todo unused?
+    //unsigned vp;
     
     /// Where to return out of this stack frame.
     const uint8_t* return_address {nullptr};
@@ -173,10 +181,12 @@ class VM {
   /// current function's stack frame is).
   unsigned fp_;
   /// Frame pointer for variable stack (index in the variable stack where the
-  /// current function's stack frame is).
-  unsigned vp_;
+  /// current function's stack frame is).  @todo this is probably unused.
+  //unsigned vp_;
   /// True if we are running preamble mode.
   bool is_preamble_{false};
+  /// Number of the logic block. Used in variable creation requests.
+  unsigned block_num_ : 8;
 };
 
 

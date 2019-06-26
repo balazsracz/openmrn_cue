@@ -238,6 +238,7 @@ bool VM::execute(const void* data, size_t len) {
         if (!parse_varint(&guid)) return false;
         --ip_;
         variable_request_.name = std::move(string_acc_);
+        variable_request_.block_num = block_num_;
         auto var = variable_factory_->create_variable(&variable_request_);
         variable_request_.clear();
         external_variables_[guid] = std::move(var);

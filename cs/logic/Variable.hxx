@@ -50,7 +50,11 @@ struct VariableCreationRequest {
     name.clear();
     default_event = 0;
     default_on_event = 0;
+    block_num = 0;
   }
+  /// Number of logic block in which this variable shall be created.
+  unsigned block_num : 8;
+  
   /// User visible name of the variable (may be syntactical name or a string
   /// provided by the code author).
   std::string name;
