@@ -86,7 +86,7 @@ class VM {
   /// Defines the value in the "block_num" parameter of variable creation
   /// requests.
   void set_block_num(unsigned block_num) {
-    
+    block_num_ = block_num;
   }
 
   /// Resets the internal state of the virtual machine.

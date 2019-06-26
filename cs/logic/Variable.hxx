@@ -53,7 +53,7 @@ struct VariableCreationRequest {
     block_num = 0;
   }
   /// Number of logic block in which this variable shall be created.
-  unsigned block_num : 8;
+  uint8_t block_num;
   
   /// User visible name of the variable (may be syntactical name or a string
   /// provided by the code author).
