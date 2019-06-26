@@ -147,7 +147,7 @@ TEST_F(VMTest, create_variable) {
   BytecodeStream::append_string(&bytecode_, "varname");
   BytecodeStream::append_opcode(&bytecode_, CREATE_VAR);
   BytecodeStream::append_varint(&bytecode_, 12345);
-  auto* var = mock_factory_.expect_variable("varname");
+  auto* var = mock_factory_.expect_variable("varname", _);
   ASSERT_TRUE(run());
   // Check guid and variable pointer.
   const auto& m = get_external_vars();
@@ -162,7 +162,7 @@ TEST_F(VMTest, import_variable) {
   BytecodeStream::append_string(&bytecode_, "varname");
   BytecodeStream::append_opcode(&bytecode_, CREATE_VAR);
   BytecodeStream::append_varint(&bytecode_, 12345);
-  auto* var = mock_factory_.expect_variable("varname");
+  auto* var = mock_factory_.expect_variable("varname", _);
   BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
   BytecodeStream::append_varint(&bytecode_, 12345);
   BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_0);
@@ -434,8 +434,8 @@ TEST_F(VMTest, indirect_store) {
 
 TEST_F(VMTest, indirect_create_e2e) {
   ASSERT_TRUE(compile("exported int a; exported int b; int c=4; c=c+1"));
-  auto* vara = mock_factory_.expect_variable("a");
-  auto* varb = mock_factory_.expect_variable("b");
+  auto* vara = mock_factory_.expect_variable("a", _);
+  auto* varb = mock_factory_.expect_variable("b", _);
   ASSERT_TRUE(run_preamble());
   EXPECT_THAT(get_op_stack(), ElementsAre());
 
@@ -456,8 +456,8 @@ TEST_F(VMTest, indirect_create_e2e) {
 
 TEST_F(VMTest, indirect_e2e) {
   ASSERT_TRUE(compile("exported int a; exported int b; int c=b; a=b"));
-  auto* vara = mock_factory_.expect_variable("a");
-  auto* varb = mock_factory_.expect_variable("b");
+  auto* vara = mock_factory_.expect_variable("a", _);
+  auto* varb = mock_factory_.expect_variable("b", _);
   ASSERT_TRUE(run_preamble());
 
   ::testing::InSequence s;
@@ -471,8 +471,8 @@ TEST_F(VMTest, indirect_e2e) {
 
 TEST_F(VMTest, indirect_create_e2e_bool) {
   ASSERT_TRUE(compile("exported bool a; exported bool b; bool c=True;"));
-  auto* vara = mock_factory_.expect_variable("a");
-  auto* varb = mock_factory_.expect_variable("b");
+  auto* vara = mock_factory_.expect_variable("a", _);
+  auto* varb = mock_factory_.expect_variable("b", _);
   ASSERT_TRUE(run_preamble());
   EXPECT_THAT(get_op_stack(), ElementsAre());
 
@@ -493,8 +493,8 @@ TEST_F(VMTest, indirect_create_e2e_bool) {
 
 TEST_F(VMTest, indirect_e2e_bool) {
   ASSERT_TRUE(compile("exported bool a;\n exported bool b;\n bool c=b&&a;\n a=b"));
-  auto* vara = mock_factory_.expect_variable("a");
-  auto* varb = mock_factory_.expect_variable("b");
+  auto* vara = mock_factory_.expect_variable("a", _);
+  auto* varb = mock_factory_.expect_variable("b", _);
   ASSERT_TRUE(run_preamble());
 
   ::testing::InSequence s;

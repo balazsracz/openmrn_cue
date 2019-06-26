@@ -56,7 +56,7 @@ class MockVariableFactory : public VariableFactory {
  public:
   std::unique_ptr<Variable> create_variable(
       VariableCreationRequest* request) const override {
-    next_variable(request->name);
+    next_variable(request->name, *request);
     if (expected_variables_.empty()) {
       EXPECT_TRUE(false) << "Ran out of expected variables.";
       return nullptr;
@@ -66,16 +66,18 @@ class MockVariableFactory : public VariableFactory {
     return p;
   }
 
-  template<class Matcher>
-  StrictMock<MockVariable>* expect_variable(const Matcher& m) const {
+  template <class Matcher, class M2>
+  StrictMock<MockVariable>* expect_variable(const Matcher& m,
+                                            const M2& m2) const {
     StrictMock<MockVariable>* r = new StrictMock<MockVariable>();
-    EXPECT_CALL(*this, next_variable(m));
+    EXPECT_CALL(*this, next_variable(m, m2));
     expected_variables_.emplace(r);
     return r;
   }
 
-  MOCK_CONST_METHOD1(next_variable, void(const string&));
-  
+  MOCK_CONST_METHOD2(next_variable,
+                     void(const string&, const VariableCreationRequest&));
+
   /// The variable we expect to be created by the system.
   mutable std::queue<std::unique_ptr<Variable> > expected_variables_;
 };
