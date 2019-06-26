@@ -36,14 +36,16 @@
 #define _LOGIC_OLCBBINDINGS_HXX_
 
 #include "logic/Variable.hxx"
+#include "logic/OlcbBindingsConfig.hxx"
 #include "utils/ConfigUpdateListener.hxx"
+#include "openlcb/Node.hxx"
 
 namespace logic {
 
 class OlcbVariableFactory : public VariableFactory,
                             public DefaultConfigUpdateListener {
  public:
-  OlcbVariableFactory(openlcb::Node* node) : node_(node) {}
+  OlcbVariableFactory(openlcb::Node* node, const logic::LogicConfig& cfg) : node_(node), cfg_(cfg) {}
   ~OlcbVariableFactory();
   
   openlcb::Node* get_node() const { return node_; }
@@ -65,6 +67,9 @@ class OlcbVariableFactory : public VariableFactory,
   /// Node object that will be used to communicate with the OpenLCB bus.
   openlcb::Node* node_;
 
+  /// Pointer to the configuration data.
+  logic::LogicConfig cfg_;
+  
   /// File descriptor of the CDI config file where our data resides.
   int config_fd_{-1};
 };

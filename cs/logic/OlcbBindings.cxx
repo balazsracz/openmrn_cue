@@ -38,11 +38,34 @@ namespace logic {
 
 OlcbVariableFactory::~OlcbVariableFactory() {}
 
-
-UpdateAction OlcbVariableFactory::apply_configuration(int fd, bool initial_load,
-                                                      BarrierNotifiable* done) {
+OlcbVariableFactory::UpdateAction OlcbVariableFactory::apply_configuration(
+    int fd, bool initial_load, BarrierNotifiable* done) {
   config_fd_ = fd;
+  return UPDATED;
 }
+
+void OlcbVariableFactory::factory_reset(int fd) {
+  for (unsigned bl = 0; bl < cfg_.blocks().num_repeats(); ++bl) {
+    const auto& block = cfg_.blocks().entry(bl);
+    block.filename().write(fd, "");
+    CDI_FACTORY_RESET(block.enabled);
+    block.body().text().write(fd, "");
+    block.body().status().write(fd, "Disabled");
+    for (unsigned imp = 0; imp < block.body().imports().num_repeats(); ++imp) {
+      const auto& e = block.body().imports().entry(imp);
+      e.name().write(fd, "");
+      // event on and off will be automatically reset.
+    }
+  }
+}
+
+
+std::unique_ptr<Variable> OlcbVariableFactory::create_variable(
+    VariableCreationRequest* request) const {
+  /// @todo
+  return nullptr;
+}
+
 
 
 } // namespace logic

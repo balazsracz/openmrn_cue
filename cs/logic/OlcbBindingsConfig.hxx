@@ -68,13 +68,19 @@ CDI_GROUP_ENTRY(status, openlcb::StringConfigEntry<256>,
                 Name("Status of program."));
 CDI_GROUP_END();
 
-CDI_GROUP(LogicBlockHeader);
+CDI_GROUP(LogicBlock);
 CDI_GROUP_ENTRY(filename, openlcb::StringConfigEntry<32>,
                 Name("Filename of this logic block."));
-CDI_GROUP_ENTRY(enabled, openlcb::Uint8ConfigEntry, Default(1),
+CDI_GROUP_ENTRY(enabled, openlcb::Uint8ConfigEntry, Default(0),
                 MapValues(ENABLED_MAP_VALUES), Name("Enabled"),
-                Description("Allows disabling the blockin case of problems."));
+                Description("Allows disabling the block in case of problems."));
 CDI_GROUP_ENTRY(body, LogicBlockBody);
+CDI_GROUP_END();
+
+using ReptBlock = openlcb::RepeatedGroup<LogicBlock, 4>;
+
+CDI_GROUP(LogicConfig);
+CDI_GROUP_ENTRY(blocks, ReptBlock);
 CDI_GROUP_END();
 
 } // namespace logic

@@ -39,14 +39,19 @@
 
 #include "utils/async_datagram_test_helper.hxx"
 
+CDI_GROUP(TestCdi, MainCdi());
+/// @todo what is the right segment number here?
+CDI_GROUP_ENTRY(logic, logic::LogicConfig, Segment(13), Offset(0));
+CDI_GROUP_END();
+
+TestCdi cdi(0);
+
 namespace logic {
 
 class EndToEndTest : public openlcb::TwoNodeDatagramTest {
 
-
-  OlcbVariableFactory factory_{node_};
+  OlcbVariableFactory factory_{node_, cdi.logic()};
   VM vm_{&factory_};
-
 };
 
 TEST_F(EndToEndTest, create) {}
