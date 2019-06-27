@@ -40,6 +40,7 @@ OlcbVariableFactory::~OlcbVariableFactory() {}
 
 OlcbVariableFactory::UpdateAction OlcbVariableFactory::apply_configuration(
     int fd, bool initial_load, BarrierNotifiable* done) {
+  AutoNotify an(done);
   config_fd_ = fd;
   return UPDATED;
 }

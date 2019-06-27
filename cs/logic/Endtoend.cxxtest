@@ -38,6 +38,7 @@
 #include "logic/OlcbBindingsImpl.hxx"
 
 #include "utils/async_datagram_test_helper.hxx"
+#include "openlcb/ConfigUpdateFlow.hxx"
 
 CDI_GROUP(TestCdi, MainCdi());
 /// @todo what is the right segment number here?
@@ -46,9 +47,31 @@ CDI_GROUP_END();
 
 TestCdi cdi(0);
 
+TempDir g_dir;
+
 namespace logic {
 
-class EndToEndTest : public openlcb::TwoNodeDatagramTest {
+class EndToEndTestBase : public openlcb::TwoNodeDatagramTest {
+ protected:
+  EndToEndTestBase() {
+    unsigned filesize = cdi.logic().size();
+    string payload(filesize, (char)0xff);
+    config_file_.rewrite(payload);
+    update_flow_.TEST_set_fd(config_file_.fd());
+  }
+  ~EndToEndTestBase() {
+    wait();
+  }
+
+  TempFile config_file_{g_dir, "config"};
+  openlcb::ConfigUpdateFlow update_flow_{ifCan_.get()};
+};
+
+class EndToEndTest : public EndToEndTestBase {
+ protected:
+  ~EndToEndTest() {
+    wait();
+  }
 
   OlcbVariableFactory factory_{node_, cdi.logic()};
   VM vm_{&factory_};
