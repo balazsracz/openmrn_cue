@@ -105,7 +105,7 @@ class VariableFactory {
   /// away the values in the structure.
   /// @return newly created variable.
   virtual std::unique_ptr<Variable> create_variable(
-      VariableCreationRequest* request) const = 0;
+      VariableCreationRequest* request) = 0;
 };
 
 } // namespace logic

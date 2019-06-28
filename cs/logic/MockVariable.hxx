@@ -55,7 +55,7 @@ class MockVariable : public Variable {
 class MockVariableFactory : public VariableFactory {
  public:
   std::unique_ptr<Variable> create_variable(
-      VariableCreationRequest* request) const override {
+      VariableCreationRequest* request) override {
     next_variable(request->name, *request);
     if (expected_variables_.empty()) {
       EXPECT_TRUE(false) << "Ran out of expected variables.";

@@ -38,11 +38,70 @@
 
 #include "logic/OlcbBindings.hxx"
 
+#include "openlcb/EventHandlerTemplates.hxx"
+
 namespace logic {
 
-class OlcbVariable : public Variable {
+struct BindingsHelper {
+};
+
+class OlcbBoolVariable : public Variable, private openlcb::BitEventInterface {
  public:
+  OlcbBoolVariable(uint64_t event_on, uint64_t event_off,
+                   OlcbVariableFactory *parent)
+      : BitEventInterface(event_on, event_off),
+        state_(false),
+        state_known_(false),
+        parent_(parent) {}
+
+  int max_state() override {
+    // boolean: can be 0 or 1.
+    return 1;
+  }
+
+  int read(const VariableFactory* parent, uint16_t arg) override {
+    return state_ ? 1 : 0;
+  }
   
+  void write(const VariableFactory *parent, uint16_t arg, int value) override {
+    bool need_update = !state_known_;
+    state_known_ = true;
+    if (state_ && !value) need_update = true;
+    if (!state_ && value) need_update = true;
+    state_ = value ? true : false;
+    if (need_update) {
+      pc_.SendEventReport(&parent_->helper_, parent_->bn_.reset(&parent_->sn_));
+      parent_->sn_.wait_for_notification();
+    }
+  }
+
+ private:
+  openlcb::Node *node() override
+  {
+    return parent_->node_;
+  }
+  openlcb::EventState get_current_state() override
+  {
+    if (!state_known_) return openlcb::EventState::UNKNOWN;
+    return state_ ? openlcb::EventState::VALID : openlcb::EventState::INVALID;
+  }
+  void set_state(bool new_value) override
+  {
+    state_known_ = true;
+    state_ = new_value;
+  }
+
+  /// The current state of the variable as seen by the internal
+  /// processing. (0=false, 1=true). This state is exported to the network iff
+  /// state_known_ == 1.
+  uint8_t state_ : 1;
+  /// if 0, network queries will return UNKNOWN. If 1, network queries will
+  /// return the state as defined by the state_ variable.
+  uint8_t state_known_ : 1;
+  /// Pointer to the Olcb variable factory that owns this. externally owned.
+  OlcbVariableFactory* parent_;
+  /// Implementation of the producer-consumer event handler.
+  openlcb::BitEventPC pc_{this};
 };
 
 } // namespace logic

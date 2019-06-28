@@ -53,7 +53,7 @@ class VM {
   /// Constructor.
   /// @param factory is used to instantiate variables duing the execution of
   /// the VM. Ownership is not transferred.
-  VM(const VariableFactory* factory)
+  VM(VariableFactory* factory)
       : variable_factory_(factory), block_num_(0) {}
 
   /// Executes a given set of instructions. Return true if execution succeeded
@@ -161,7 +161,7 @@ class VM {
   VariableCreationRequest variable_request_;
 
   /// This object is used to create variables. Externally owned.
-  const VariableFactory* variable_factory_;
+  VariableFactory* variable_factory_;
   
   /// Holds (and owns) all external variables that are defined.
   ExternalVariableMap external_variables_;

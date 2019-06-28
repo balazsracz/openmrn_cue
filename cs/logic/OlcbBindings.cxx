@@ -33,6 +33,7 @@
  */
 
 #include "logic/OlcbBindings.hxx"
+#include "logic/OlcbBindingsImpl.hxx"
 
 namespace logic {
 
@@ -42,7 +43,8 @@ OlcbVariableFactory::UpdateAction OlcbVariableFactory::apply_configuration(
     int fd, bool initial_load, BarrierNotifiable* done) {
   AutoNotify an(done);
   config_fd_ = fd;
-  return UPDATED;
+  /// @todo needs implementation -- create variables etc.
+  return REINIT_NEEDED;
 }
 
 void OlcbVariableFactory::factory_reset(int fd) {
@@ -62,7 +64,19 @@ void OlcbVariableFactory::factory_reset(int fd) {
 
 
 std::unique_ptr<Variable> OlcbVariableFactory::create_variable(
-    VariableCreationRequest* request) const {
+    VariableCreationRequest* request) {
+  HASSERT(request->block_num < cfg_.blocks().num_repeats());
+  const auto& body = cfg_.blocks().entry(request->block_num).body();
+  for (unsigned varidx = 0; varidx < body.imports().num_repeats(); ++varidx) {
+    const auto& e = body.imports().entry(varidx);
+    if (e.name().read(config_fd_) == request->name) {
+      // Found variable.
+      /// @todo define non-boolean variables as well.
+      auto event_on = e.event_on().read(config_fd_);
+      auto event_off = e.event_off().read(config_fd_);
+      return std::unique_ptr<Variable>(new OlcbBoolVariable(event_on, event_off, this));
+    }
+  }
   /// @todo
   return nullptr;
 }

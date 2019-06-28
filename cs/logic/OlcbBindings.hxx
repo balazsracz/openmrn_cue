@@ -39,6 +39,7 @@
 #include "logic/OlcbBindingsConfig.hxx"
 #include "utils/ConfigUpdateListener.hxx"
 #include "openlcb/Node.hxx"
+#include "openlcb/WriteHelper.hxx"
 
 namespace logic {
 
@@ -51,7 +52,7 @@ class OlcbVariableFactory : public VariableFactory,
   openlcb::Node* get_node() const { return node_; }
 
   std::unique_ptr<Variable> create_variable(
-      VariableCreationRequest* request) const override;
+      VariableCreationRequest* request) override;
 
   UpdateAction apply_configuration(int fd, bool initial_load,
                                    BarrierNotifiable* done) override;
@@ -64,9 +65,19 @@ class OlcbVariableFactory : public VariableFactory,
   void factory_reset(int fd) override;
 
  private:
+  friend class OlcbBoolVariable;
+  
   /// Node object that will be used to communicate with the OpenLCB bus.
   openlcb::Node* node_;
 
+  /// Buffer for sending OpenLCB messages.
+  openlcb::WriteHelper helper_;
+
+  /// Notifiable to give to the helper.
+  SyncNotifiable sn_;
+  /// Notifiable to give to the helper.
+  BarrierNotifiable bn_;
+  
   /// Pointer to the configuration data.
   logic::LogicConfig cfg_;
   
