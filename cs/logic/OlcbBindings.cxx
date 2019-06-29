@@ -43,7 +43,8 @@ OlcbVariableFactory::UpdateAction OlcbVariableFactory::apply_configuration(
     int fd, bool initial_load, BarrierNotifiable* done) {
   AutoNotify an(done);
   config_fd_ = fd;
-  /// @todo needs implementation -- create variables etc.
+  /// @todo needs implementation -- create variables etc. Note it has to be
+  /// asynchronous -- defer to a separate thread.
   return REINIT_NEEDED;
 }
 
@@ -67,18 +68,31 @@ std::unique_ptr<Variable> OlcbVariableFactory::create_variable(
     VariableCreationRequest* request) {
   HASSERT(request->block_num < cfg_.blocks().num_repeats());
   const auto& body = cfg_.blocks().entry(request->block_num).body();
+  int freeidx = -1;
   for (unsigned varidx = 0; varidx < body.imports().num_repeats(); ++varidx) {
     const auto& e = body.imports().entry(varidx);
-    if (e.name().read(config_fd_) == request->name) {
+    auto name = e.name().read(config_fd_);
+    if (name == request->name) {
       // Found variable.
       /// @todo define non-boolean variables as well.
       auto event_on = e.event_on().read(config_fd_);
       auto event_off = e.event_off().read(config_fd_);
       return std::unique_ptr<Variable>(new OlcbBoolVariable(event_on, event_off, this));
+    } else if (name.empty() && freeidx < 0) {
+      freeidx = varidx;
     }
   }
-  /// @todo
-  return nullptr;
+  if (freeidx < 0) {
+    // No space left for variable creation.
+    return nullptr;
+  }
+  /// @todo instead of taking a free index we should really use the original
+  /// indexes defined by the program.
+  const auto& e = body.imports().entry(freeidx);
+  e.name().write(config_fd_, request->name);
+  auto event_on = e.event_on().read(config_fd_);
+  auto event_off = e.event_off().read(config_fd_);
+  return std::unique_ptr<Variable>(new OlcbBoolVariable(event_on, event_off, this));
 }
 
 
