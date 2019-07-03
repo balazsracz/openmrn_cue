@@ -32,17 +32,23 @@
  * @date 25 June 2019
  */
 
-#include "logic/VM.hxx"
-#include "logic/OlcbBindingsConfig.hxx"
 #include "logic/OlcbBindings.hxx"
+#include "logic/OlcbBindingsConfig.hxx"
 #include "logic/OlcbBindingsImpl.hxx"
-
-#include "utils/async_datagram_test_helper.hxx"
+#include "logic/VM.hxx"
 #include "openlcb/ConfigUpdateFlow.hxx"
+#include "openlcb/SimpleStack.hxx"
+#include "utils/async_datagram_test_helper.hxx"
+
+const char *const openlcb::SNIP_DYNAMIC_FILENAME = "/dev/null";
+
+extern const openlcb::SimpleNodeStaticValues openlcb::SNIP_STATIC_DATA = {
+    4, "Manuf", "XXmodel", "NHWversion", "1.42"};
 
 CDI_GROUP(TestCdi, MainCdi());
+CDI_GROUP_ENTRY(idata, openlcb::InternalConfigData, Segment(13), Offset(0));
 /// @todo what is the right segment number here?
-CDI_GROUP_ENTRY(logic, logic::LogicConfig, Segment(13), Offset(0));
+CDI_GROUP_ENTRY(logic, logic::LogicConfig, Segment(13), Offset(128));
 CDI_GROUP_END();
 
 TestCdi cdi(0);
@@ -54,45 +60,37 @@ namespace logic {
 class EndToEndTestBase : public openlcb::TwoNodeDatagramTest {
  protected:
   EndToEndTestBase() {
-    unsigned filesize = cdi.logic().size();
+    unsigned filesize = cdi.logic().size() + cdi.logic().offset();
     string payload(filesize, (char)0xff);
     config_file_.rewrite(payload);
     update_flow_.TEST_set_fd(config_file_.fd());
   }
-  ~EndToEndTestBase() {
-    wait();
-  }
+  ~EndToEndTestBase() { wait(); }
+
+  int fd() { return config_file_.fd(); }
 
   TempFile config_file_{g_dir, "config"};
   openlcb::ConfigUpdateFlow update_flow_{ifCan_.get()};
 };
 
-std::initializer_list<uint16_t> get_event_list() {
-  return {0,1 };
-}
+std::initializer_list<uint16_t> get_event_list() { return {0, 1}; }
 
-namespace openlcb {
-uint16_t CDI_EVENT_OFFSETS[400] = {0};
-}
+std::vector<uint16_t> event_offsets;
 
 class EndToEndTest : public EndToEndTestBase {
  protected:
   EndToEndTest() {
-    std::vector<uint16_t> event_offsets;
-    cdi.handle_events([&event_offsets](unsigned o)
-        {
-            event_offsets.push_back(o);
-        });
+    event_offsets.clear();
+    cdi.handle_events([](unsigned o) { event_offsets.push_back(o); });
     event_offsets.push_back(0);
-    HASSERT(ARRAYSIZE(openlcb::CDI_EVENT_OFFSETS) >= event_offsets.size());
-    memcpy((void*)openlcb::CDI_EVENT_OFFSETS, &event_offsets[0],
-           event_offsets.size() * sizeof(event_offsets[0]));
+    openlcb::SimpleStackBase::set_event_offsets(&event_offsets);
+    cdi.idata().next_event().write(fd(), 0);
+    openlcb::SimpleStackBase::factory_reset_all_events(cdi.idata(),
+                                                       node_->node_id(), fd());
 
-    update_flow_.factory_reset();
+    run_x([this]() { update_flow_.factory_reset(); });
   }
-  ~EndToEndTest() {
-    wait();
-  }
+  ~EndToEndTest() { wait(); }
 
   OlcbVariableFactory factory_{node_, cdi.logic()};
   VM vm_{&factory_};
@@ -100,5 +98,16 @@ class EndToEndTest : public EndToEndTestBase {
 
 TEST_F(EndToEndTest, create) {}
 
+TEST_F(EndToEndTest, events_are_reset) {
+  EXPECT_EQ(0x02010D000003U, node_->node_id());
+  auto evid =
+      cdi.logic().blocks().entry(0).body().imports().entry(0).event_on().read(
+          fd());
+  EXPECT_EQ(0x02010D0000030000U, evid);
+  evid =
+      cdi.logic().blocks().entry(0).body().imports().entry(0).event_off().read(
+          fd());
+  EXPECT_EQ(0x02010D0000030001U, evid);
+}
 
-} // namespace logic
+}  // namespace logic
