@@ -39,9 +39,32 @@
 
 namespace logic {
 
+/// Logic should run 10 times a second.
+constexpr long AUTOMATA_TICK_MSEC = 100;
+
+
+class RunnerTimer : public ::Timer {
+ public:
+  RunnerTimer(ExecutorBase* e, Runner* parent) : ::Timer(e->active_timers()), parent_(parent) {}
+
+  long long timeout() override {
+    auto* p = parent_;
+    if (!p) return DELETE;
+    p->single_step();
+    return RESTART;
+  }
+    
+  Runner* parent_;
+};
 
 struct Runner::RunnerImpl {
-  RunnerImpl(VariableFactory* vars) : vm_(vars) {}
+  RunnerImpl(VariableFactory* vars, Runner* parent)
+      : parent_(parent), vm_(vars) {
+  }
+
+  ~RunnerImpl();
+  
+  Runner* parent_;
 
   /// Execution engine.
   VM vm_;
@@ -51,17 +74,36 @@ struct Runner::RunnerImpl {
 
   /// Thread context in which all the operations take place.
   Executor<1> automata_thread_{"logic", 0, 3000};
+
+  /// Responsible for repeated execution of the automata tick.
+  RunnerTimer* timer_{nullptr};
 };
 
-
-Runner::Runner(OlcbVariableFactory* parent)
-    : impl_(new RunnerImpl(parent)) {}
+Runner::Runner(OlcbVariableFactory* vars)
+    : impl_(new RunnerImpl(vars, this)) {}
 
 Runner::~Runner() {
+  stop_running();
+  while (!impl()->automata_thread_.active_timers()->empty()) {
+    usleep(20000);
+  }
   delete impl_;
 }
 
+Runner::RunnerImpl::~RunnerImpl() {
+}
 
+void Runner::start_running() {
+  HASSERT(!impl()->timer_);
+  impl()->timer_ = new RunnerTimer(&impl()->automata_thread_, this);
+  impl()->timer_->start(MSEC_TO_NSEC(AUTOMATA_TICK_MSEC));
+}
+
+void Runner::stop_running() {
+  // Signals the timer to stop running. Will prevent all further callbacks.
+  impl()->timer_->parent_ = nullptr;
+  impl()->timer_ = nullptr;
+}
 
 
 }  // namespace logic

@@ -41,6 +41,9 @@
 namespace logic {
 
 class Runner {
+  /// Owner of all variables. Factored out to reduce dependencies.
+  struct RunnerImpl;
+
  public:
   Runner(OlcbVariableFactory* parent);
 
@@ -54,14 +57,17 @@ class Runner {
   void stop_running();
   /// Starts the periodic execution of virtual machines.
   void start_running();
-  /// Synchronously runs one execution of the virtual machines.
+  /// Synchronously runs one execution of the virtual machines. This is called
+  /// by the automata timer but can also be used by unit tests.
   void single_step();
 
+  RunnerImpl* impl() {
+    return impl_;
+  }
+  
  private:
-  /// Owner of all variables. Factored out to reduce dependencies.
-  struct RunnerImpl;
-
-  /// pimpl pointer.
+  /// pimpl pointer. Public so that Impl can access, but since Impl object is
+  /// defined in the .cxx this is not really public.
   RunnerImpl* impl_;
   
   /// Binding for OpenLCB to variables. Externally owned.
