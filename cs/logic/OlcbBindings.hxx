@@ -64,6 +64,16 @@ class OlcbVariableFactory : public VariableFactory,
   /// offset in this file is unspecified, callees must do lseek.
   void factory_reset(int fd) override;
 
+  /// @return the configuration structure from the CDI.
+  const logic::LogicConfig& cfg() {
+    return cfg_;
+  }
+
+  /// @return the fd where the config file is.
+  int fd() {
+    return config_fd_;
+  }
+  
  private:
   friend class OlcbBoolVariable;
   

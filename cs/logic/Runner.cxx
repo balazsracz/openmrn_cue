@@ -36,12 +36,27 @@
 
 #include "logic/Driver.hxx"
 #include "logic/VM.hxx"
+#include "utils/FileUtils.hxx"
+
+#ifdef __linux__
+#include "os/TempFile.hxx"
+
+TempFile compile_tmp(*TempDir::instance(), "compile");
+
+#elif defined(__FreeRTOS__)
+#include "freertos_drivers/common/RamDisk.hxx"
+RamDisk* rdisk = nullptr;
+
+#else
+#error dont know how to make temp files
+
+#endif
 
 namespace logic {
 
 /// Logic should run 10 times a second.
 constexpr long AUTOMATA_TICK_MSEC = 100;
-
+constexpr unsigned MAX_SOURCE_SIZE = 4096;
 
 class RunnerTimer : public ::Timer {
  public:
@@ -57,6 +72,13 @@ class RunnerTimer : public ::Timer {
   Runner* parent_;
 };
 
+struct BlockInfo {
+  /// true if the block is operational
+  bool enabled;
+  /// Compiled bytecode.
+  std::string bytecode;
+};
+
 struct Runner::RunnerImpl {
   RunnerImpl(VariableFactory* vars, Runner* parent)
       : parent_(parent), vm_(vars) {
@@ -69,14 +91,14 @@ struct Runner::RunnerImpl {
   /// Execution engine.
   VM vm_;
 
-  /// Engine that compiles the source code into binary instructions.
-  Driver compile_driver_;
-
   /// Thread context in which all the operations take place.
   Executor<1> automata_thread_{"logic", 0, 3000};
 
   /// Responsible for repeated execution of the automata tick.
   RunnerTimer* timer_{nullptr};
+
+  /// Stores information on a per-block basis: compiled bytecode for example.
+  BlockInfo logic_blocks_[LogicConfig(0).blocks().num_repeats()];
 };
 
 Runner::Runner(OlcbVariableFactory* vars)
@@ -103,6 +125,87 @@ void Runner::stop_running() {
   // Signals the timer to stop running. Will prevent all further callbacks.
   impl()->timer_->parent_ = nullptr;
   impl()->timer_ = nullptr;
+}
+
+void Runner::single_step() {
+  for (unsigned i = 0; i < variable_factory_->cfg().blocks().num_repeats();
+       ++i) {
+    auto* bi = impl()->logic_blocks_ + i;
+    if (!bi->enabled) continue;
+    impl()->vm_.clear();
+    impl()->vm_.set_preamble(false);
+    impl()->vm_.set_block_num(i);
+    if (!impl()->vm_.execute(bi->bytecode)) {
+      std::string status = "Error in running: " + impl()->vm_.get_error();
+      int fd = variable_factory_->fd();
+      const auto& bl = variable_factory_->cfg().blocks().entry(i);
+      bi->enabled = false;
+      if (status != bl.body().status().read(fd)) {
+        bl.body().status().write(fd, status);
+      }
+    }
+  }
+}
+
+
+void Runner::compile(Notifiable* done) {
+  impl()->automata_thread_.add(
+      new CallbackExecutable(std::bind(&Runner::compile_impl, this, done)));
+}
+
+
+void Runner::compile_impl(Notifiable* done) {
+  AutoNotify an(done);
+  string tempfilename;
+#ifdef __FreeRTOS__
+  tempfilename = "/tmp/compile";
+  if (!rdisk) {
+    rdisk = new RamDisk(tempfilename.c_str(), MAX_SOURCE_SIZE);
+  }
+#else
+  tempfilename = compile_tmp.name();
+#endif
+
+  int fd = variable_factory_->fd();
+  for (unsigned i = 0; i < variable_factory_->cfg().blocks().num_repeats();
+       ++i) {
+    auto* bi = impl()->logic_blocks_ + i;
+    const auto& bl = variable_factory_->cfg().blocks().entry(i);
+    
+    std::string source = bl.body().text().read(fd);
+    write_string_to_file(tempfilename, source);
+    std::string status;
+    /// Engine that compiles the source code into binary instructions.
+    std::unique_ptr<Driver> compile_driver(new Driver);
+    
+    if (!compile_driver->parse_file(tempfilename)) {
+      status = "Compile failed. ";
+      /// @todo get error message from compile driver.
+      bi->enabled = false;
+    } else {
+      status = "Compile OK.";
+      bi->enabled = CDI_READ_TRIMMED(bl.enabled, fd);
+    }
+    if (bi->enabled) {
+      std::string bc;
+      compile_driver->serialize(&bc);
+      // purposefully not move to get the storage reallocated to match size.
+      bi->bytecode = bc;
+      impl()->vm_.clear();
+      impl()->vm_.set_preamble(true);
+      impl()->vm_.set_block_num(i);
+      if (!impl()->vm_.execute(bi->bytecode)) {
+        status = "Error in preamble: " + impl()->vm_.get_error();
+        bi->enabled = false;
+      }
+    } else {
+      std::string s;
+      s.swap(bi->bytecode);
+    }
+    if (status != bl.body().status().read(fd)) {
+      bl.body().status().write(fd, status);
+    }
+  }
 }
 
 

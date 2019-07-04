@@ -66,6 +66,9 @@ class Runner {
   }
   
  private:
+  /// Implementation of the compilation method.
+  void compile_impl(Notifiable* done);
+  
   /// pimpl pointer. Public so that Impl can access, but since Impl object is
   /// defined in the .cxx this is not really public.
   RunnerImpl* impl_;
