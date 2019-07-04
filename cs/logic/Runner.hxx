@@ -70,12 +70,13 @@ class Runner {
   /// Implementation of the compilation method.
   void compile_impl(Notifiable* done);
   
+  /// Binding for OpenLCB to variables. Externally owned.
+  OlcbVariableFactory* variable_factory_;
+
   /// pimpl pointer. Public so that Impl can access, but since Impl object is
   /// defined in the .cxx this is not really public.
   RunnerImpl* impl_;
   
-  /// Binding for OpenLCB to variables. Externally owned.
-  OlcbVariableFactory* variable_factory_;
 };
 
 

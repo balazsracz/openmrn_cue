@@ -74,6 +74,11 @@ class OlcbVariableFactory : public VariableFactory,
   int fd() {
     return config_fd_;
   }
+
+  /// @return the automata control interface.
+  Runner* runner() {
+    return &runner_;
+  }
   
  private:
   friend class OlcbBoolVariable;

@@ -92,6 +92,11 @@ class EndToEndTest : public EndToEndTestBase {
   }
   ~EndToEndTest() { wait(); }
 
+  void step() {
+    factory_.runner()->single_step();
+    wait();
+  }
+  
   OlcbVariableFactory factory_{node_, cdi.logic()};
   VM vm_{&factory_};
 };
@@ -109,5 +114,85 @@ TEST_F(EndToEndTest, events_are_reset) {
           fd());
   EXPECT_EQ(0x02010D0000030001U, evid);
 }
+
+TEST_F(EndToEndTest, compile_default) {
+  wait();
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. Disabled.", status);
+}
+
+TEST_F(EndToEndTest, compile_something) {
+  wait();
+  string pgm = "int a = 5+3+7;";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. Disabled.", status);
+}
+
+TEST_F(EndToEndTest, compile_enabled) {
+  wait();
+  string pgm = "int a = 5+3+7;";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+}
+
+TEST_F(EndToEndTest, compile_export) {
+  wait();
+  string pgm = "exported bool foo; int a = 5+3+7;";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+
+  EXPECT_EQ("foo", cdi.logic().blocks().entry(0).body().imports().entry(0).name().read(fd()));
+}
+
+TEST_F(EndToEndTest, run) {
+  wait();
+  string pgm = "exported bool foo; exported bool bar; bar = foo";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+
+  /*
+  clear_expect(true);
+  LOG(INFO, "1 no generate");
+  step();*/
+  clear_expect(true);
+  LOG(INFO, "2 reply active");
+  send_packet(":X195B4111N02010D0000030000;"); wait();
+  expect_packet(":X195B422AN02010D0000030002;");
+  step();
+  LOG(INFO, "2.5 verify");
+  clear_expect(true);
+  LOG(INFO, "3 not again");
+  step();
+  LOG(INFO, "4 reply inactive");
+  send_packet(":X195B4111N02010D0000030001;"); wait();
+  expect_packet(":X195B422AN02010D0000030003;");
+  step();
+  LOG(INFO, "4.5 verify");
+  clear_expect(true);
+  LOG(INFO, "5 not again");
+  step();
+}
+
 
 }  // namespace logic

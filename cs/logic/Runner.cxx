@@ -105,7 +105,7 @@ struct Runner::RunnerImpl {
 };
 
 Runner::Runner(OlcbVariableFactory* vars)
-    : impl_(new RunnerImpl(vars, this)) {}
+    : variable_factory_(vars), impl_(new RunnerImpl(vars, this)) {}
 
 Runner::~Runner() {
   stop_running();
@@ -125,6 +125,7 @@ void Runner::start_running() {
 }
 
 void Runner::stop_running() {
+  if (!impl()->timer_) return; // nothing to stop
   // Signals the timer to stop running. Will prevent all further callbacks.
   impl()->timer_->parent_ = nullptr;
   impl()->timer_ = nullptr;
@@ -179,13 +180,14 @@ void Runner::compile_impl(Notifiable* done) {
     /// Engine that compiles the source code into binary instructions.
     std::unique_ptr<Driver> compile_driver(new Driver);
     
-    if (!compile_driver->parse_file(tempfilename)) {
+    if (compile_driver->parse_file(tempfilename) != 0) {
       status = "Compile failed. ";
       /// @todo get error message from compile driver.
       bi->enabled = false;
     } else {
-      status = "Compile OK.";
+      status = "Compile OK. ";
       bi->enabled = CDI_READ_TRIMMED(bl.enabled, fd);
+      if (!bi->enabled) status += "Disabled.";
     }
     if (bi->enabled) {
       std::string bc;
