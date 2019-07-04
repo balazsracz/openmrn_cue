@@ -37,6 +37,7 @@
 
 #include "logic/Variable.hxx"
 #include "logic/OlcbBindingsConfig.hxx"
+#include "logic/Runner.hxx"
 #include "utils/ConfigUpdateListener.hxx"
 #include "openlcb/Node.hxx"
 #include "openlcb/WriteHelper.hxx"
@@ -93,6 +94,8 @@ class OlcbVariableFactory : public VariableFactory,
   
   /// File descriptor of the CDI config file where our data resides.
   int config_fd_{-1};
+
+  Runner runner_{this};
 };
 }  // namespace logic
 

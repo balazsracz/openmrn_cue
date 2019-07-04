@@ -37,6 +37,9 @@
 #include "logic/Driver.hxx"
 #include "logic/VM.hxx"
 #include "utils/FileUtils.hxx"
+#include "executor/Executor.hxx"
+#include "logic/OlcbBindingsConfig.hxx"
+#include "logic/OlcbBindings.hxx"
 
 #ifdef __linux__
 #include "os/TempFile.hxx"
@@ -147,12 +150,10 @@ void Runner::single_step() {
   }
 }
 
-
 void Runner::compile(Notifiable* done) {
   impl()->automata_thread_.add(
       new CallbackExecutable(std::bind(&Runner::compile_impl, this, done)));
 }
-
 
 void Runner::compile_impl(Notifiable* done) {
   AutoNotify an(done);

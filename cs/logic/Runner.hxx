@@ -35,10 +35,11 @@
 #ifndef _LOGIC_RUNNER_HXX_
 #define _LOGIC_RUNNER_HXX_
 
-#include "logic/OlcbBindings.hxx"
-#include "logic/VM.hxx"
+#include "executor/Notifiable.hxx"
 
 namespace logic {
+
+class OlcbVariableFactory;
 
 class Runner {
   /// Owner of all variables. Factored out to reduce dependencies.
