@@ -171,10 +171,6 @@ TEST_F(EndToEndTest, run) {
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
   EXPECT_EQ("Compile OK. ", status);
 
-  /*
-  clear_expect(true);
-  LOG(INFO, "1 no generate");
-  step();*/
   clear_expect(true);
   LOG(INFO, "2 reply active");
   send_packet(":X195B4111N02010D0000030000;"); wait();
