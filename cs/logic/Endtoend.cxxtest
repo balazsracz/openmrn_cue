@@ -38,6 +38,7 @@
 #include "logic/VM.hxx"
 #include "openlcb/ConfigUpdateFlow.hxx"
 #include "openlcb/SimpleStack.hxx"
+#include "openlcb/MemoryConfigClient.hxx"
 #include "utils/async_datagram_test_helper.hxx"
 
 const char *const openlcb::SNIP_DYNAMIC_FILENAME = "/dev/null";
@@ -60,10 +61,12 @@ namespace logic {
 class EndToEndTestBase : public openlcb::TwoNodeDatagramTest {
  protected:
   EndToEndTestBase() {
+    print_all_packets();
     unsigned filesize = cdi.logic().size() + cdi.logic().offset();
     string payload(filesize, (char)0xff);
     config_file_.rewrite(payload);
     update_flow_.TEST_set_fd(config_file_.fd());
+    setup_other_node(false);
     wait();
   }
   ~EndToEndTestBase() { wait(); }
@@ -72,6 +75,7 @@ class EndToEndTestBase : public openlcb::TwoNodeDatagramTest {
 
   TempFile config_file_{g_dir, "config"};
   openlcb::ConfigUpdateFlow update_flow_{ifCan_.get()};
+
 };
 
 std::initializer_list<uint16_t> get_event_list() { return {0, 1}; }
@@ -91,10 +95,7 @@ class EndToEndTest : public EndToEndTestBase {
 
     update_flow_.factory_reset();
     block_.release_block();
-    while(!update_flow_.TEST_is_terminated()) {
-      usleep(20000);
-    }
-    wait();
+    wait_for_updater();
   }
   ~EndToEndTest() { wait(); }
 
@@ -103,12 +104,46 @@ class EndToEndTest : public EndToEndTestBase {
     wait();
   }
 
+  void wait_for_updater() {
+    wait();
+    while(!update_flow_.TEST_is_terminated()) {
+      usleep(20000);
+    }
+    wait();
+  }
+
+  void test_flipflop() {
+    clear_expect(true);
+    LOG(INFO, "2 reply active");
+    send_packet(":X195B4111N02010D0000030000;");
+    wait();
+    expect_packet(":X195B422AN02010D0000030002;");
+    step();
+    LOG(INFO, "2.5 verify");
+    clear_expect(true);
+    LOG(INFO, "3 not again");
+    step();
+    LOG(INFO, "4 reply inactive");
+    send_packet(":X195B4111N02010D0000030001;");
+    wait();
+    expect_packet(":X195B422AN02010D0000030003;");
+    step();
+    LOG(INFO, "4.5 verify");
+    clear_expect(true);
+    LOG(INFO, "5 not again");
+    step();
+  }
+
+  openlcb::MemoryConfigHandler mem_cfg_{&datagram_support_, node_, 5};
+  openlcb::MemoryConfigHandler mem_cfg2_{otherNodeDatagram_, otherNode_.get(), 5};
+  openlcb::MemoryConfigClient mem_cli_{otherNode_.get(), &mem_cfg2_};
   BlockExecutor block_{nullptr};
   OlcbVariableFactory factory_{node_, cdi.logic()};
   VM vm_{&factory_};
 };
 
-TEST_F(EndToEndTest, create) {}
+TEST_F(EndToEndTest, create) {
+}
 
 TEST_F(EndToEndTest, events_are_reset) {
   EXPECT_EQ(0x02010D000003U, node_->node_id());
@@ -178,23 +213,51 @@ TEST_F(EndToEndTest, run) {
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
   EXPECT_EQ("Compile OK. ", status);
 
-  clear_expect(true);
-  LOG(INFO, "2 reply active");
-  send_packet(":X195B4111N02010D0000030000;"); wait();
-  expect_packet(":X195B422AN02010D0000030002;");
-  step();
-  LOG(INFO, "2.5 verify");
-  clear_expect(true);
-  LOG(INFO, "3 not again");
-  step();
-  LOG(INFO, "4 reply inactive");
-  send_packet(":X195B4111N02010D0000030001;"); wait();
-  expect_packet(":X195B422AN02010D0000030003;");
-  step();
-  LOG(INFO, "4.5 verify");
-  clear_expect(true);
-  LOG(INFO, "5 not again");
-  step();
+  test_flipflop();
+
+
+
+  expect_any_packet();
+  invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
+              openlcb::NodeHandle(node_->node_id()));
+  wait();
+  wait_for_updater();
+
+  test_flipflop();
+
+  expect_any_packet();
+  invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
+              openlcb::NodeHandle(node_->node_id()));
+  wait_for_updater();
+
+  test_flipflop();
+}
+
+TEST_F(EndToEndTest, create2) {}
+
+
+TEST_F(EndToEndTest, fail) {
+  return;
+  wait();
+  string pgm = "blahblah = 2";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  LOG(INFO, "compiling code");
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile failed. ", status);
+
+  pgm = "int blahblah = 2;";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+
+  LOG(INFO, "sending update notify");
+  invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
+              openlcb::NodeHandle(node_->node_id()));
+  wait_for_updater();
+  
+  status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
 }
 
 
