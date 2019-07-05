@@ -62,7 +62,9 @@ class VMTest : public ::testing::Test {
   ::testing::AssertionResult compile(const string& sourcecode) {
     TempFile tf(g_dir, "simple");
     tf.rewrite(sourcecode);
-    logic::Driver d;
+    logic::Driver& d = driver_;
+    d.clear();
+    
     if (d.parse_file(tf.name()) != 0) {
       return ::testing::AssertionFailure() << "Failed to compile.";
     }
@@ -119,6 +121,7 @@ class VMTest : public ::testing::Test {
     vm_.clear();
   }
 
+  logic::Driver driver_;
   /// Stuff that the VM has printed to the output.
   std::vector<std::string> output_;
   StrictMock<MockVariableFactory> mock_factory_;

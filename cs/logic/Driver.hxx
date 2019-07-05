@@ -59,6 +59,11 @@ class Driver {
   /// Constructor.
   Driver() {}
 
+  void clear() {
+    current_context_.clear();
+    next_guid_ = 1;
+  }
+  
   struct ParsingContext {
     /// Symbol table available in the current context.
     std::map<std::string, Symbol> symbol_table_;
@@ -66,6 +71,11 @@ class Driver {
     /// How many variables to allocate on the operand stack when entering this
     /// context.
     unsigned frame_size_{0};
+
+    void clear() {
+      frame_size_ = 0;
+      symbol_table_.clear();
+    }
   };
 
   ParsingContext current_context_;
