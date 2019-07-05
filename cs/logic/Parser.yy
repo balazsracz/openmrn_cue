@@ -248,20 +248,26 @@ storage_specifier:
 | "exported" { $$ = INDIRECT_VAR; }
 ;
 
+
+optional_semicolon:
+%empty {}
+| ";"
+;
+
 variable_decl:
 storage_specifier "int" {
   driver.decl_storage_ = $1;
   if ($1 == INDIRECT_VAR && !driver.is_global_context()) {
     driver.error(@1, "Exported variables must appear in the global context.");
   }
-} int_decl_list ";" {
+} int_decl_list {
   if ($4->size() == 1) {
     std::swap($$, (*$4)[0]);
   } else {
     $$ = std::make_shared<CommandSequence>(std::move(*$4));  
   }
 } |
-storage_specifier "bool" { driver.decl_storage_ = $1; } bool_decl_list ";" {
+storage_specifier "bool" { driver.decl_storage_ = $1; } bool_decl_list {
   if ($4->size() == 1) {
     std::swap($$, (*$4)[0]);
   } else {
@@ -271,7 +277,7 @@ storage_specifier "bool" { driver.decl_storage_ = $1; } bool_decl_list ";" {
 ;
 
 command:
-assignment { $$ = std::move($1); };
+assignment optional_semicolon { $$ = std::move($1); };
 | "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
 | "if" "(" boolexp ")" "{" commands "}" "else" "{" commands "}" {
   $$ = std::make_shared<IfThenElse>(
@@ -283,7 +289,7 @@ assignment { $$ = std::move($1); };
       std::move($3),
       std::make_shared<CommandSequence>(std::move(*$6)));
   }
-| variable_decl { $$ = std::move($1); }
+| variable_decl optional_semicolon { $$ = std::move($1); }
 ;
 
 

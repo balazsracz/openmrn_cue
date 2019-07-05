@@ -564,6 +564,10 @@ TEST_F(VMTest, comments) {
               StartsWith("2.5: syntax error"));
 }
 
-
+TEST_F(VMTest, semicolons) {
+  ASSERT_TRUE(compile("int a=2; int b=3 a=-1; b=5 a=a-1"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(-2, 5));
+}
 
 } // namespace logic
