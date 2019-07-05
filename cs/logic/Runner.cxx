@@ -180,7 +180,7 @@ void Runner::compile_impl(Notifiable* done) {
     std::string source = bl.body().text().read(fd);
     write_string_to_file(tempfilename, source);
     std::string status;
-    
+    impl()->compile_driver_.clear();
     if (impl()->compile_driver_.parse_file(tempfilename) != 0) {
       status = "Compile failed. ";
       /// @todo get error message from compile driver.
