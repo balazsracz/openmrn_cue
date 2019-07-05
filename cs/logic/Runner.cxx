@@ -182,7 +182,8 @@ void Runner::compile_impl(Notifiable* done) {
     std::string status;
     impl()->compile_driver_.clear();
     if (impl()->compile_driver_.parse_file(tempfilename) != 0) {
-      status = "Compile failed. ";
+      status = "Compile failed.\n";
+      status += impl()->compile_driver_.error_output_;
       /// @todo get error message from compile driver.
       bi->enabled = false;
     } else {

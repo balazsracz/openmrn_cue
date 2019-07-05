@@ -62,6 +62,7 @@ class Driver {
   void clear() {
     current_context_.clear();
     commands_.clear();
+    error_output_.clear();
     //next_guid_ = 1;
   }
   
@@ -191,6 +192,9 @@ class Driver {
   /// True if we are in the global scope.
   // not currently used yet.
   //bool is_global_scope_;
+
+  /// Accumulates error messages from the compiler.
+  string error_output_;
   
   int result;
   // Run the parser on file F.

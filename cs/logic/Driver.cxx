@@ -69,13 +69,27 @@ void Driver::serialize(std::string* output) {
   }
 }
 
-
 void Driver::error(const yy::location& l, const std::string& m) {
-  //std::cerr << l << ": " << m << std::endl;
+  string txt;
+  //if (l.begin.filename) {
+  //  txt.append(*l.begin.filename);
+  //  txt.push_back(':');
+  //}
+  txt.append(StringPrintf("%d.%d", l.begin.line, l.begin.column));
+  if (l.end.line > l.begin.line) {
+    txt.append(StringPrintf("-%d.%d", l.end.line, l.end.column));
+  } else if (l.end.column > l.begin.column) {
+    txt.append(StringPrintf("-%d", l.end.column));
+  }
+  txt.append(": ");
+  error_output_.append(txt);
+  error_output_.append(m);
+  error_output_.push_back('\n');
 }
 
 void Driver::error(const std::string& m) {
-  //std::cerr << m << std::endl;
+  error_output_.append(m);
+  error_output_.push_back('\n');
 }
 
 } // namespace logic
