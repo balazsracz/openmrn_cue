@@ -37,14 +37,11 @@
 
 namespace logic {
 
-Driver::Driver() {
-}
-
 int Driver::parse_file(const std::string& f) {
   filename_ = f;
   scan_begin();
   yy::Parser parser(*this);
-  parser.set_debug_level(debug_level_ & TRACE_PARSE ? 1 : 0);
+  //parser.set_debug_level(debug_level_ & TRACE_PARSE ? 1 : 0);
   int res = parser.parse();
   scan_end();
   return res;
@@ -75,9 +72,11 @@ void Driver::serialize(std::string* output) {
 
 
 void Driver::error(const yy::location& l, const std::string& m) {
-  std::cerr << l << ": " << m << std::endl;
+  //std::cerr << l << ": " << m << std::endl;
 }
 
-void Driver::error(const std::string& m) { std::cerr << m << std::endl; }
+void Driver::error(const std::string& m) {
+  //std::cerr << m << std::endl;
+}
 
 } // namespace logic

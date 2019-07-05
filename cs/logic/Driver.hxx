@@ -57,7 +57,7 @@ namespace logic {
 class Driver {
  public:
   /// Constructor.
-  Driver();
+  Driver() {}
 
   struct ParsingContext {
     /// Symbol table available in the current context.
