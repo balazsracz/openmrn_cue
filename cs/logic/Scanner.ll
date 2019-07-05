@@ -90,6 +90,8 @@ blank [ \t]
 "and"      return logic::yy::Parser::make_DOUBLEAND(loc);
 "||"       return logic::yy::Parser::make_DOUBLEOR(loc);
 "or"       return logic::yy::Parser::make_DOUBLEOR(loc);
+"!"        return logic::yy::Parser::make_BANG(loc);
+"not"      return logic::yy::Parser::make_BANG(loc);
 "if"       return logic::yy::Parser::make_IF(loc);
 "else"     return logic::yy::Parser::make_ELSE(loc);
 

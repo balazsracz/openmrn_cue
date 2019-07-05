@@ -261,6 +261,18 @@ TEST_F(VMTest, ifthen_false) {
   EXPECT_THAT(get_op_stack(), ElementsAre(9, 0, 7));
 }
 
+TEST_F(VMTest, bool_not) {
+  ASSERT_TRUE(compile("bool a=false; bool b = false; b = !a"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1));
+
+  clear();
+
+  ASSERT_TRUE(compile("bool a=true; bool b = false; b = !a"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 0));
+}
+  
 TEST_F(VMTest, bool_and) {
   ASSERT_TRUE(compile("int a=1; if(true && true) {a=1+3}"));
   ASSERT_TRUE(run());

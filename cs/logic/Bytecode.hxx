@@ -162,7 +162,8 @@ enum OpCode : uint8_t {
 
   // Unary arithmetic operators. They act on the top of the stack.
   NUMERIC_INVERT,
-
+  BOOL_NOT,
+  
   // Branching
 
   // Pushes 0 to the stack if the VM is running the preamble right now, else

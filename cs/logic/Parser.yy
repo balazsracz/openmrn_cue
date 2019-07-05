@@ -76,6 +76,7 @@ class Driver;
   STAR    "*"
   SLASH   "/"
   PERCENT "%"
+  BANG    "!"
   LPAREN  "("
   RPAREN  ")"
   LBRACE  "{"
@@ -337,6 +338,7 @@ exp "%" exp   {
 boolexp:
   "constbool"      { $$ = std::make_shared<BooleanConstant>($1); }
 | "(" boolexp ")"   { std::swap ($$, $2); }
+| "!" boolexp       { $$ = std::make_shared<BoolNot>(std::move($2)); }
 |  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }
 |  boolexp "||" boolexp   { $$ = std::make_shared<BoolOr>(std::move($1), std::move($3)); }
 | "identifier"  {

@@ -417,6 +417,28 @@ class BooleanConstant : public BooleanExpression {
   bool value_;
 };
 
+class BoolNot : public BooleanExpression {
+ public:
+  BoolNot(std::shared_ptr<BooleanExpression> left)
+      : left_(std::move(left)) {
+    HASSERT(left_);
+  }
+
+  void serialize(std::string* output) override {
+    left_->serialize(output);
+    BytecodeStream::append_opcode(output, BOOL_NOT);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("bool_not(");
+    left_->debug_print(output);
+    output->append(")");
+  }
+
+ private:
+  std::shared_ptr<BooleanExpression> left_;
+};
+
 class BoolAnd : public BooleanExpression {
  public:
   BoolAnd(std::shared_ptr<BooleanExpression> left,
