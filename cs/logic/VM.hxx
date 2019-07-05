@@ -92,6 +92,7 @@ class VM {
   /// Resets the internal state of the virtual machine.
   void clear() {
     operand_stack_.clear();
+    variable_stack_.clear();
     call_stack_.clear();
     call_stack_.emplace_back();
     call_stack_.back().fp = 0;
