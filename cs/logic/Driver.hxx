@@ -225,6 +225,9 @@ class Driver {
 
   /// Next GUID to assign to a variable.
   int next_guid_{1};
+
+  /// The actual parser structures.
+  yy::Parser parser{*this};
 };
 
 } // namespace logic

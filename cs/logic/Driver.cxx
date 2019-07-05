@@ -40,7 +40,6 @@ namespace logic {
 int Driver::parse_file(const std::string& f) {
   filename_ = f;
   scan_begin();
-  yy::Parser parser(*this);
   //parser.set_debug_level(debug_level_ & TRACE_PARSE ? 1 : 0);
   int res = parser.parse();
   scan_end();
