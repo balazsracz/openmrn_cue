@@ -43,9 +43,14 @@ OlcbVariableFactory::UpdateAction OlcbVariableFactory::apply_configuration(
     int fd, bool initial_load, BarrierNotifiable* done) {
   AutoNotify an(done);
   config_fd_ = fd;
-  /// @todo needs implementation -- create variables etc. Note it has to be
-  /// asynchronous -- defer to a separate thread.
-  return REINIT_NEEDED;
+  runner_.compile(done->new_child());
+  if (initial_load) {
+    runner_.start_running();
+    return UPDATED;
+  } else {
+    /// @todo check if we actually have changed anything about variables.
+    return REINIT_NEEDED;
+  }
 }
 
 void OlcbVariableFactory::factory_reset(int fd) {
