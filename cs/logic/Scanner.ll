@@ -69,6 +69,7 @@ blank [ \t]
   loc.step ();
 %}
 
+"//".*     {  }
 {blank}+   loc.step ();
 [\n]+      loc.lines (yyleng); loc.step ();
 [\000\377] return logic::yy::Parser::make_END(loc);

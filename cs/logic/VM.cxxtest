@@ -551,5 +551,19 @@ TEST_F(VMTest, poly_assignment_ok) {
   EXPECT_THAT(get_op_stack(), ElementsAre(1, 1));
 }
 
+TEST_F(VMTest, comments) {
+  ASSERT_TRUE(compile("// blah\nint a=2;"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(2));
+
+  clear();
+
+  // Checks that when reporting syntax errors we correctly skip comment text
+  ASSERT_FALSE(compile("// blah\nblah"));
+  EXPECT_THAT(driver_.error_output_,
+              StartsWith("2.5: syntax error"));
+}
+
+
 
 } // namespace logic

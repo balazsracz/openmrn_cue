@@ -41,6 +41,9 @@
 #include "openlcb/MemoryConfigClient.hxx"
 #include "utils/async_datagram_test_helper.hxx"
 
+using ::testing::StartsWith;
+using ::testing::HasSubstr;
+
 const char *const openlcb::SNIP_DYNAMIC_FILENAME = "/dev/null";
 
 extern const openlcb::SimpleNodeStaticValues openlcb::SNIP_STATIC_DATA = {
@@ -245,7 +248,8 @@ TEST_F(EndToEndTest, fail) {
   factory_.runner()->compile(get_notifiable());
   wait_for_notification();
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
-  EXPECT_EQ("Compile failed. ", status);
+  EXPECT_THAT(status, StartsWith("Compile failed."));
+  EXPECT_THAT(status, HasSubstr("Undeclared variable"));
 
   pgm = "int blahblah = 2;";
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
