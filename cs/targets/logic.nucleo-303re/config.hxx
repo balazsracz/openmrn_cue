@@ -30,7 +30,7 @@ extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
     "Rev A", "1.00"};
 
 #define NUM_INPUTS 1
-#define NUM_EXTBOARDS 1
+#define NUM_EXTBOARDS 0
 
 /// Declares a repeated group of a given base group and number of repeats. The
 /// ProducerConfig and ConsumerConfig groups represent the configuration layout
@@ -42,7 +42,7 @@ using Ext0PC = RepeatedGroup<PCConfig, 32>;
 
 /// Modify this value every time the EEPROM needs to be cleared on the node
 /// after an update.
-static constexpr uint16_t CANONICAL_VERSION = 0x4288;
+static constexpr uint16_t CANONICAL_VERSION = 0x4278;
 
 CDI_GROUP(NucleoGroup, Name("Nucleo peripherals"), Description("These are physically located on the nucleo CPU daughterboard."));
 CDI_GROUP_ENTRY(green_led, ConsumerConfig, Name("Nucleo user LED"), Description("Green led (LD2)."));
