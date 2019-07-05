@@ -178,6 +178,7 @@ void Runner::compile_impl(Notifiable* done) {
     const auto& bl = variable_factory_->cfg().blocks().entry(i);
     
     std::string source = bl.body().text().read(fd);
+    source.push_back(0);
     write_string_to_file(tempfilename, source);
     std::string status;
     impl()->compile_driver_.clear();
