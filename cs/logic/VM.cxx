@@ -114,7 +114,6 @@ bool VM::parse_string() {
 }
 
 bool VM::execute(const void* data, size_t len) {
-  clear();
   ip_ = (const uint8_t*)data;
   eof_ = ip_ + len;
 

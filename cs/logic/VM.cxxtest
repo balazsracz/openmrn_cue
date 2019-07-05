@@ -116,8 +116,7 @@ class VMTest : public ::testing::Test {
 
   void clear() {
     bytecode_.clear();
-    vm_.operand_stack_.clear();
-    vm_.error_.clear();
+    vm_.clear();
   }
 
   /// Stuff that the VM has printed to the output.
@@ -212,6 +211,7 @@ TEST_F(VMTest, compile_empty) {
 
 TEST_F(VMTest, plus_e2e) {
   ASSERT_TRUE(compile("int a; a=1+3+8"));
+  vm_.clear();
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(12));
 }
@@ -406,7 +406,10 @@ TEST_F(VMTest, indirect_load) {
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(442));
 
-  bytecode_.clear();
+  clear();
+
+  m1 = inject_variable(13);
+  m2 = inject_variable(42);
   
   BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT_1);
   BytecodeStream::append_opcode(&bytecode_, INDIRECT_LOAD);
