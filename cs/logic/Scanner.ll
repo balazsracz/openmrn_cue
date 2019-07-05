@@ -71,6 +71,7 @@ blank [ \t]
 
 {blank}+   loc.step ();
 [\n]+      loc.lines (yyleng); loc.step ();
+[\000\377] return logic::yy::Parser::make_END(loc);
 "-"        return logic::yy::Parser::make_MINUS(loc);
 "+"        return logic::yy::Parser::make_PLUS(loc);
 "*"        return logic::yy::Parser::make_STAR(loc);
