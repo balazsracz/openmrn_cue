@@ -64,6 +64,7 @@ class EndToEndTestBase : public openlcb::TwoNodeDatagramTest {
     string payload(filesize, (char)0xff);
     config_file_.rewrite(payload);
     update_flow_.TEST_set_fd(config_file_.fd());
+    wait();
   }
   ~EndToEndTestBase() { wait(); }
 
@@ -88,7 +89,12 @@ class EndToEndTest : public EndToEndTestBase {
     openlcb::SimpleStackBase::factory_reset_all_events(cdi.idata(),
                                                        node_->node_id(), fd());
 
-    run_x([this]() { update_flow_.factory_reset(); });
+    update_flow_.factory_reset();
+    block_.release_block();
+    while(!update_flow_.TEST_is_terminated()) {
+      usleep(20000);
+    }
+    wait();
   }
   ~EndToEndTest() { wait(); }
 
@@ -96,7 +102,8 @@ class EndToEndTest : public EndToEndTestBase {
     factory_.runner()->single_step();
     wait();
   }
-  
+
+  BlockExecutor block_{nullptr};
   OlcbVariableFactory factory_{node_, cdi.logic()};
   VM vm_{&factory_};
 };
