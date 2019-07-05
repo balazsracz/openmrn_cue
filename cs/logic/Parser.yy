@@ -59,7 +59,7 @@ class Driver;
   // Initialize the initial location.
   @$.begin.filename = @$.end.filename = driver.get_filename();
 };
-%define parse.trace
+//%define parse.trace
 %define parse.error verbose
 %code
 {
