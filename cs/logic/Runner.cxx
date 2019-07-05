@@ -91,6 +91,9 @@ struct Runner::RunnerImpl {
   
   Runner* parent_;
 
+  /// Compilation engine.
+  Driver compile_driver_;
+  
   /// Execution engine.
   VM vm_;
 
@@ -177,10 +180,8 @@ void Runner::compile_impl(Notifiable* done) {
     std::string source = bl.body().text().read(fd);
     write_string_to_file(tempfilename, source);
     std::string status;
-    /// Engine that compiles the source code into binary instructions.
-    std::unique_ptr<Driver> compile_driver(new Driver);
     
-    if (compile_driver->parse_file(tempfilename) != 0) {
+    if (impl()->compile_driver_.parse_file(tempfilename) != 0) {
       status = "Compile failed. ";
       /// @todo get error message from compile driver.
       bi->enabled = false;
@@ -191,7 +192,7 @@ void Runner::compile_impl(Notifiable* done) {
     }
     if (bi->enabled) {
       std::string bc;
-      compile_driver->serialize(&bc);
+      impl()->compile_driver_.serialize(&bc);
       // purposefully not move to get the storage reallocated to match size.
       bi->bytecode = bc;
       impl()->vm_.clear();
