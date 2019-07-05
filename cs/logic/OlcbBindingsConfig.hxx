@@ -46,7 +46,7 @@ static const char ENABLED_MAP_VALUES[] = R"(
 )";
 
 CDI_GROUP(LogicBlockImport);
-CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<64>,
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<32>,
                 Name("Import variable name. Do not edit."));
 CDI_GROUP_ENTRY(
     event_on, openlcb::EventConfigEntry, //
@@ -62,7 +62,7 @@ using ReptImports = openlcb::RepeatedGroup<LogicBlockImport, 32>;
 
 CDI_GROUP(LogicBlockBody);
 CDI_GROUP_ENTRY(imports, ReptImports, Name("Imported variables for the logic block."));
-CDI_GROUP_ENTRY(text, openlcb::StringConfigEntry<2048>,
+CDI_GROUP_ENTRY(text, openlcb::StringConfigEntry<64>, // 2048
                 Name("Program text."));
 CDI_GROUP_ENTRY(status, openlcb::StringConfigEntry<256>,
                 Name("Status of program."));
