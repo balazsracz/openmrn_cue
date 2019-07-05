@@ -61,8 +61,8 @@ CDI_GROUP_END();
 using ReptImports = openlcb::RepeatedGroup<LogicBlockImport, 32>;
 
 CDI_GROUP(LogicBlockBody);
-CDI_GROUP_ENTRY(imports, ReptImports, Name("Imported variables for the logic block."));
-CDI_GROUP_ENTRY(text, openlcb::StringConfigEntry<64>, // 2048
+CDI_GROUP_ENTRY(imports, ReptImports, Name("Imported variables for the logic block."), RepName("Variable"));
+CDI_GROUP_ENTRY(text, openlcb::StringConfigEntry<2048>,
                 Name("Program text."));
 CDI_GROUP_ENTRY(status, openlcb::StringConfigEntry<256>,
                 Name("Status of program."));
@@ -80,7 +80,7 @@ CDI_GROUP_END();
 using ReptBlock = openlcb::RepeatedGroup<LogicBlock, 4>;
 
 CDI_GROUP(LogicConfig);
-CDI_GROUP_ENTRY(blocks, ReptBlock);
+CDI_GROUP_ENTRY(blocks, ReptBlock, RepName("Block"));
 CDI_GROUP_END();
 
 } // namespace logic

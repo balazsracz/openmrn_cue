@@ -42,7 +42,7 @@ using Ext0PC = RepeatedGroup<PCConfig, 32>;
 
 /// Modify this value every time the EEPROM needs to be cleared on the node
 /// after an update.
-static constexpr uint16_t CANONICAL_VERSION = 0x4278;
+static constexpr uint16_t CANONICAL_VERSION = 0x7278;
 
 CDI_GROUP(NucleoGroup, Name("Nucleo peripherals"), Description("These are physically located on the nucleo CPU daughterboard."));
 CDI_GROUP_ENTRY(green_led, ConsumerConfig, Name("Nucleo user LED"), Description("Green led (LD2)."));
@@ -57,10 +57,12 @@ CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
 CDI_GROUP_ENTRY(internal_config, InternalConfigData);
 CDI_GROUP_ENTRY(nucleo_onboard, NucleoGroup);
 CDI_GROUP_ENTRY(logic, logic::LogicConfig, Name("Logic"), Description("Configures logic blocks. Make sure you use 'Update Complete' after changing the logic code or configuration."));
+#if NUM_EXTBOARDS > 0
 CDI_GROUP_ENTRY(ext0_pc, Ext0PC, Name("Expansion board 0 lines"),
     Description("Line 1-8 is port Even/A, Line 9-16 is port Even/B, Line 17-24 "
                 "is Odd/A, Line 25-32 is Odd/B"),
     RepName("Line"));
+#endif
 CDI_GROUP_END();
 
 /// This segment is only needed temporarily until there is program code to set
