@@ -237,7 +237,6 @@ TEST_F(EndToEndTest, create2) {}
 
 
 TEST_F(EndToEndTest, fail) {
-  return;
   wait();
   string pgm = "blahblah = 2";
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
@@ -252,12 +251,41 @@ TEST_F(EndToEndTest, fail) {
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
 
   LOG(INFO, "sending update notify");
+  expect_packet(":X1910022AN02010D000003;");
+  expect_packet(":X19100225N02010D000103;");
   invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
               openlcb::NodeHandle(node_->node_id()));
   wait_for_updater();
   
   status = cdi.logic().blocks().entry(0).body().status().read(fd());
   EXPECT_EQ("Compile OK. ", status);
+}
+
+
+TEST_F(EndToEndTest, twoblocks) {
+  wait();
+  string pgm = "exported bool led; led = !led";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  cdi.logic().blocks().entry(1).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(1).enabled().write(fd(), 1);
+  LOG(INFO, "compiling code");
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+
+  status = cdi.logic().blocks().entry(1).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+
+  expect_any_packet(); /// @todo make actual expectations.
+  
+  step();
+
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+
+  step();
 }
 
 
