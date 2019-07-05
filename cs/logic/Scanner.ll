@@ -160,6 +160,7 @@ blank [ \t]
 void
 logic::Driver::scan_begin ()
 {
+  yy_init_globals();
   yy_flex_debug = debug_level_ & TRACE_LEX ? true : false;
   if (filename_.empty () || filename_ == "-")
     yyin = stdin;

@@ -62,7 +62,7 @@ class Driver {
   void clear() {
     current_context_.clear();
     commands_.clear();
-    next_guid_ = 1;
+    //next_guid_ = 1;
   }
   
   struct ParsingContext {
