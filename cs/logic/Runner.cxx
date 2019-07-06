@@ -59,7 +59,7 @@ namespace logic {
 
 /// Logic should run 10 times a second.
 constexpr long AUTOMATA_TICK_MSEC = 100;
-constexpr unsigned MAX_SOURCE_SIZE = 4096;
+constexpr unsigned MAX_SOURCE_SIZE = 2050;
 
 class RunnerTimer : public ::Timer {
  public:
