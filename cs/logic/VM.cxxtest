@@ -575,4 +575,104 @@ TEST_F(VMTest, bool_eq) {
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(1, 0, 0, 1));
 }
+
+TEST_F(VMTest, example_code) {
+  const char* script = R"(
+exported bool red_light;
+exported bool green_light;
+exported bool next_block;
+exported bool next_signal_track_circuit_in;
+exported bool track_circuit_out;
+
+if (next_block is Active) {
+  red_light = On;
+  green_light = Off;
+  track_circuit_out = Off;
+} else if (next_signal_track_circuit_in is Inactive) {
+  red_light = On;
+  green_light = On;
+  track_circuit_out = On;
+} else {
+  red_light = Off;
+  green_light = On;
+  track_circuit_out = On;
+}
+)";
+  ASSERT_TRUE(compile(script));
+}
+
+
+TEST_F(VMTest, example_code2) {
+  const char* script = R"(
+exported bool red_light;
+exported bool green_light;
+exported bool next_block;
+exported bool turnout_against_me;
+exported bool next_signal_track_circuit_in;
+exported bool track_circuit_out;
+
+if ((next_block is Active) or (turnout_against_me is true)) {
+  red_light = On;
+  green_light = Off;
+  track_circuit_out = Off;
+} else if (next_signal_track_circuit_in is inactive) {
+  red_light = On;
+  green_light = On;
+  track_circuit_out = On;
+} else {
+  red_light = Off;
+  green_light = On;
+  track_circuit_out = On;
+}
+)";
+  ASSERT_TRUE(compile(script));
+}
+
+
+TEST_F(VMTest, example_code3) {
+  const char* script = R"(
+exported bool main_red;
+exported bool main_green;
+exported bool main_next_block;
+exported bool main_track_circuit_in;
+exported bool diverging_red;
+exported bool diverging_green;
+exported bool diverging_next_block;
+exported bool diverging_track_circuit_in;
+exported bool turnout;
+exported bool track_circuit_out;
+
+bool permissive = false;
+if (main_next_block is Active or turnout is Thrown) {
+  main_red = On;
+  main_green = Off;
+} else if (main_track_circuit_in is Inactive) {
+  main_red = On;
+  main_green = On;
+  permissive = true;
+} else {
+  main_red = Off;
+  main_green = On;
+  permissive = true;
+}
+if (diverging_next_block is Active or turnout is Thrown) {
+  diverging_red = On;
+  diverging_green = Off;
+} else if (diverging_track_circuit_in is Inactive) {
+  diverging_red = On;
+  diverging_green = On;
+  permissive = true;
+} else {
+  diverging_red = Off;
+  diverging_green = On;
+  permissive = true;
+}
+)";
+  ASSERT_TRUE(compile(script));
+}
+
+
+
+
+
 } // namespace logic
