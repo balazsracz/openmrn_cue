@@ -115,6 +115,11 @@ extern "C" {
 extern int isatty(int fd) {
   return 0;
 }
+
+void reboot()
+{
+    NVIC_SystemReset();
+}
   
 /** Blink LED */
 uint32_t blinker_pattern = 0;
