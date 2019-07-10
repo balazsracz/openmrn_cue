@@ -66,7 +66,7 @@ class VMTest : public ::testing::Test {
     d.clear();
     
     if (d.parse_file(tf.name()) != 0) {
-      return ::testing::AssertionFailure() << "Failed to compile.";
+      return ::testing::AssertionFailure() << "Failed to compile: " << driver_.error_output_;
     }
     d.serialize(&bytecode_);
     return ::testing::AssertionSuccess();
