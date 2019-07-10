@@ -101,6 +101,7 @@ class Driver;
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
 %type  <std::shared_ptr<logic::BooleanExpression> > decl_optional_bool_exp
 %type  <std::shared_ptr<logic::Command> > command
+%type  <std::shared_ptr<logic::Command> > conditional
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<logic::Command> > variable_decl
 %type  <std::shared_ptr<logic::Command> > int_decl_single
@@ -277,19 +278,28 @@ storage_specifier "bool" { driver.decl_storage_ = $1; } bool_decl_list {
 }
 ;
 
-command:
-assignment optional_semicolon { $$ = std::move($1); };
-| "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
-| "if" "(" boolexp ")" "{" commands "}" "else" "{" commands "}" {
+conditional:
+ "if" "(" boolexp ")" "{" commands "}" "else" "{" commands "}" {
   $$ = std::make_shared<IfThenElse>(
       std::move($3),
       std::make_shared<CommandSequence>(std::move(*$6)),
       std::make_shared<CommandSequence>(std::move(*$10))); }
+| "if" "(" boolexp ")" "{" commands "}" "else" conditional {
+  $$ = std::make_shared<IfThenElse>(
+      std::move($3),
+      std::make_shared<CommandSequence>(std::move(*$6)),
+      std::move($9)); }
 | "if" "(" boolexp ")" "{" commands "}" {
   $$ = std::make_shared<IfThenElse>(
       std::move($3),
       std::make_shared<CommandSequence>(std::move(*$6)));
   }
+;
+
+command:
+assignment optional_semicolon { $$ = std::move($1); };
+| "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
+| conditional { $$ = std::move($1); } 
 | variable_decl optional_semicolon { $$ = std::move($1); }
 ;
 
