@@ -93,6 +93,8 @@ blank [ \t]
 "or"       return logic::yy::Parser::make_DOUBLEOR(loc);
 "!"        return logic::yy::Parser::make_BANG(loc);
 "not"      return logic::yy::Parser::make_BANG(loc);
+"=="       return logic::yy::Parser::make_DOUBLEEQ(loc);
+"is"       return logic::yy::Parser::make_DOUBLEEQ(loc);
 "if"       return logic::yy::Parser::make_IF(loc);
 "else"     return logic::yy::Parser::make_ELSE(loc);
 
@@ -106,16 +108,25 @@ blank [ \t]
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
 "True"     return logic::yy::Parser::make_BOOL(true, loc);
 "TRUE"     return logic::yy::Parser::make_BOOL(true, loc);
+"yes"      return logic::yy::Parser::make_BOOL(true, loc);
+"Yes"      return logic::yy::Parser::make_BOOL(true, loc);
+"YES"      return logic::yy::Parser::make_BOOL(true, loc);
 "thrown"     return logic::yy::Parser::make_BOOL(true, loc);
 "Thrown"     return logic::yy::Parser::make_BOOL(true, loc);
 "THROWN"     return logic::yy::Parser::make_BOOL(true, loc);
 "active"     return logic::yy::Parser::make_BOOL(true, loc);
 "Active"     return logic::yy::Parser::make_BOOL(true, loc);
 "ACTIVE"     return logic::yy::Parser::make_BOOL(true, loc);
+"on"       return logic::yy::Parser::make_BOOL(true, loc);
+"On"       return logic::yy::Parser::make_BOOL(true, loc);
+"ON"       return logic::yy::Parser::make_BOOL(true, loc);
 
 "false"     return logic::yy::Parser::make_BOOL(false, loc);
 "FALSE"     return logic::yy::Parser::make_BOOL(false, loc);
 "False"     return logic::yy::Parser::make_BOOL(false, loc);
+"no"        return logic::yy::Parser::make_BOOL(false, loc);
+"No"        return logic::yy::Parser::make_BOOL(false, loc);
+"NO"        return logic::yy::Parser::make_BOOL(false, loc);
 "closed"     return logic::yy::Parser::make_BOOL(false, loc);
 "Closed"     return logic::yy::Parser::make_BOOL(false, loc);
 "CLOSED"     return logic::yy::Parser::make_BOOL(false, loc);
@@ -123,6 +134,9 @@ blank [ \t]
 "Inactive"     return logic::yy::Parser::make_BOOL(false, loc);
 "InActive"     return logic::yy::Parser::make_BOOL(false, loc);
 "INACTIVE"     return logic::yy::Parser::make_BOOL(false, loc);
+"off"     return logic::yy::Parser::make_BOOL(false, loc);
+"Off"     return logic::yy::Parser::make_BOOL(false, loc);
+"OFF"     return logic::yy::Parser::make_BOOL(false, loc);
 
 {int}      {
   errno = 0;

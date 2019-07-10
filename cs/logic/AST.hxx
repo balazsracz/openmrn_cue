@@ -472,6 +472,34 @@ class BoolAnd : public BooleanExpression {
   std::shared_ptr<BooleanExpression> right_;
 };
 
+class BoolEq : public BooleanExpression {
+ public:
+  BoolEq(std::shared_ptr<BooleanExpression> left,
+          std::shared_ptr<BooleanExpression> right)
+      : left_(std::move(left)), right_(std::move(right)) {
+    HASSERT(left_);
+    HASSERT(right_);
+  }
+
+  void serialize(std::string* output) override {
+    left_->serialize(output);
+    right_->serialize(output);
+    BytecodeStream::append_opcode(output, BOOL_EQ);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("bool_eq(");
+    left_->debug_print(output);
+    output->append(",");
+    right_->debug_print(output);
+    output->append(")");
+  }
+
+ private:
+  std::shared_ptr<BooleanExpression> left_;
+  std::shared_ptr<BooleanExpression> right_;
+};
+
 class BoolOr : public BooleanExpression {
  public:
   BoolOr(std::shared_ptr<BooleanExpression> left,

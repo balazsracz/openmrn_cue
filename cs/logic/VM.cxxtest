@@ -570,4 +570,9 @@ TEST_F(VMTest, semicolons) {
   EXPECT_THAT(get_op_stack(), ElementsAre(-2, 5));
 }
 
+TEST_F(VMTest, bool_eq) {
+  ASSERT_TRUE(compile("bool a=Active; bool b=Inactive; bool c=(a is b); bool d=a == a;"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 0, 0, 1));
+}
 } // namespace logic

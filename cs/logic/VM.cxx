@@ -320,6 +320,18 @@ bool VM::execute(const void* data, size_t len) {
         operand_stack_.push_back(lhs % rhs);
         break;
       }
+      case BOOL_EQ: {
+        if (operand_stack_.size() < 2) {
+          error_ = StringPrintf("Stack underflow at BOOL_EQ");
+          return false;
+        }
+        int rhs = operand_stack_.back(); operand_stack_.pop_back();
+        rhs = !!rhs;
+        int lhs = operand_stack_.back(); operand_stack_.pop_back();
+        lhs = !!lhs;
+        operand_stack_.push_back(lhs == rhs);
+        break;
+      }
       case BOOL_NOT: {
         if (operand_stack_.size() < 1) {
           error_ = StringPrintf("Stack underflow at NOT");

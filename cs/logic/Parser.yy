@@ -83,6 +83,7 @@ class Driver;
   RBRACE  "}"
   DOUBLEAND  "&&"
   DOUBLEOR  "||"
+  DOUBLEEQ  "=="
   IF  "if"
   ELSE  "else"
   TYPEINT  "int"
@@ -343,6 +344,7 @@ exp "%" exp   {
 
 boolexp:
   "constbool"      { $$ = std::make_shared<BooleanConstant>($1); }
+|  boolexp "==" boolexp   { $$ = std::make_shared<BoolEq>(std::move($1), std::move($3)); }
 | "(" boolexp ")"   { std::swap ($$, $2); }
 | "!" boolexp       { $$ = std::make_shared<BoolNot>(std::move($2)); }
 |  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }

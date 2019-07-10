@@ -159,6 +159,7 @@ enum OpCode : uint8_t {
   NUMERIC_MUL,
   NUMERIC_DIV,
   NUMERIC_MOD,
+  BOOL_EQ,
 
   // Unary arithmetic operators. They act on the top of the stack.
   NUMERIC_INVERT,
