@@ -79,6 +79,10 @@ class OlcbVariableFactory : public VariableFactory,
   Runner* runner() {
     return &runner_;
   }
+
+  openlcb::Node* node() {
+    return node_;
+  }
   
  private:
   friend class OlcbBoolVariable;

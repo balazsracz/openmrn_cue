@@ -52,7 +52,12 @@ class OlcbBoolVariable : public Variable, private openlcb::BitEventInterface {
       : BitEventInterface(event_on, event_off),
         state_(false),
         state_known_(false),
-        parent_(parent) {}
+        parent_(parent) {
+    pc_.SendQueryProducer(&parent_->helper_, parent_->bn_.reset(&parent_->sn_));
+    parent_->sn_.wait_for_notification();
+    pc_.SendQueryConsumer(&parent_->helper_, parent_->bn_.reset(&parent_->sn_));
+    parent_->sn_.wait_for_notification();
+  }
 
   int max_state() override {
     // boolean: can be 0 or 1.

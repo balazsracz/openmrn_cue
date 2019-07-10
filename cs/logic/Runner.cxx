@@ -170,7 +170,10 @@ void Runner::compile_impl(Notifiable* done) {
 #else
   tempfilename = compile_tmp.name();
 #endif
-
+  while (!variable_factory_->node()->is_initialized()) {
+    usleep(20000);
+  }
+  
   int fd = variable_factory_->fd();
   for (unsigned i = 0; i < variable_factory_->cfg().blocks().num_repeats();
        ++i) {
