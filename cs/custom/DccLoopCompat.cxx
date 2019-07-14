@@ -44,10 +44,12 @@ void crash_fn(void) {
 }
 }
 
+/*
 void DccLoop_Init(void) __attribute__((alias("dcc_ignore_fn")));
 void DccLoop_HandlePacket(const PacketBase& can_buf) __attribute__((alias("crash_fn")));
 void DccLoop_ProcessIO(void) __attribute__((alias("crash_fn")));
 void DccLoop_Timer(void) __attribute__((alias("crash_fn")));
+*/
 
 void DccLoop_EmergencyStop(void) {
   // TODO
@@ -59,6 +61,7 @@ uint8_t DccLoop_HasPower(void) {
   return 1;
 }
 
+/*
 uint8_t DccLoop_SetLocoPaused(uint8_t id, uint8_t is_paused)__attribute__((alias("crash_fn")));
 void DccLoop_SetLocoRelativeSpeed(uint8_t id, uint8_t rel_speed)__attribute__((alias("crash_fn")));
 uint8_t DccLoop_GetLocoRelativeSpeed(uint8_t id)__attribute__((alias("crash_fn")));
@@ -79,3 +82,4 @@ uint8_t DccLoop_IsLocoPushPull(uint8_t id)__attribute__((alias("crash_fn")));
 // Sets a function button to a given value.
 // fn=0 is light. fn=1,2,3 is F1,F2,F3. (Corresponds to the canbus protocol.)
 uint8_t DccLoop_SetLocoFn(uint8_t id, uint8_t fn, uint8_t value)__attribute__((alias("crash_fn")));
+*/

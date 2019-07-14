@@ -32,6 +32,10 @@
  * @date 3 July 2019
  */
 
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+
 #include "logic/Runner.hxx"
 
 #include "logic/Driver.hxx"

@@ -4,6 +4,8 @@
 
 #ifdef ENABLE_WIICHUCK
 
+#define _DEFAULT_SOURCE
+
 #define LOGLEVEL INFO
 
 #include "custom/WiiChuckReader.hxx"

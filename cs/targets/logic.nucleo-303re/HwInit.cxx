@@ -33,6 +33,11 @@
  * @date April 18, 2018
  */
 
+#ifndef _DEFAULT_SOURCE
+/// @todo(balazs.racz) remove this by moving all usleep calls to the .cxx
+#define _DEFAULT_SOURCE
+#endif
+
 #include <new>
 #include <cstdint>
 
