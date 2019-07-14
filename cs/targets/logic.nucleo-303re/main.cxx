@@ -90,7 +90,7 @@ openlcb::ConfigDef cfg(0);
 // Defines weak constants used by the stack to tell it which device contains
 // the volatile configuration information. This device name appears in
 // HwInit.cxx that creates the device drivers.
-extern const char *const openlcb::CONFIG_FILENAME = "/dev/eeprom";
+extern const char *const openlcb::CONFIG_FILENAME = "/ffs/eeprom";
 // The size of the memory space to export over the above device.
 extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
@@ -252,8 +252,9 @@ logic::OlcbVariableFactory logic_blocks(stack.node(), cfg.seg().logic());
  */
 int appl_main(int argc, char *argv[])
 {
-    stack.check_version_and_factory_reset(
-        cfg.seg().internal_config(), openlcb::CANONICAL_VERSION, false);
+    stack.create_config_file_if_needed(cfg.seg().internal_config(),
+                                       openlcb::CANONICAL_VERSION,
+                                       openlcb::CONFIG_FILE_SIZE);
 
 #if 0 &&(NUM_EXTBOARDS > 0)
     {
