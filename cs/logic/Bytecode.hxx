@@ -177,6 +177,16 @@ enum OpCode : uint8_t {
   // bytes with the IP.
   JUMP,
 
+  /// Enter a subroutine. Pops destination address from the operand stack. Then
+  /// takes argument arg, creates a new stack frame in the execution
+  /// environment, and sets FP to the current operand stack length -
+  /// arg. Essentially arg is the number of arguments passed to the function
+  /// via the operand stack. Then jumps to the presented address.
+  CALL,
+
+  /// Return from a subroutine. TODO: spec
+  RET,
+  
   // Takes the top of the opstack (removes it), takes a varint argument as a
   // relative offset, and if the operand is zero, jumps to that relative
   // offset.

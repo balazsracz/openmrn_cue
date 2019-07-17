@@ -128,11 +128,11 @@ class VM {
     /// stack is truncated to this size.
     unsigned fp;
 
-    /// Frame pointer for variable stack. Contains the size ofthe variable
+    /// Frame pointer for variable stack. Contains the size of the variable
     /// stack before entering the current execution frame. When returning from
-    /// the execution frame, the variables above this index are destructed.
-    /// @todo unused?
-    //unsigned vp;
+    /// the execution frame, the variables at and above this index are
+    /// destructed.
+    unsigned vp;
     
     /// Where to return out of this stack frame.
     ip_t return_address {nullptr};

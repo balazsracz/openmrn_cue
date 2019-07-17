@@ -354,7 +354,31 @@ bool VM::execute(const void* data, size_t len) {
         --ip_;
         break;
       }
-
+      case CALL: {
+        if (operand_stack_.size() < 1) {
+          error_ = StringPrintf("Stack underflow at CALL");
+          return false;
+        }
+        int dst = operand_stack_.back(); operand_stack_.pop_back();
+        ++ip_;
+        int num_arg;
+        if (!parse_varint(&num_arg)) return false;
+        --ip_;
+        HASSERT(fp_ == call_stack_.back().fp);
+        call_stack_.emplace_back();
+        call_stack_.back().return_address = ip_;
+        call_stack_.back().fp = operand_stack_.size() - num_arg;
+        call_stack_.back().vp = variable_stack_.size();
+        ip_ += dst;
+        break;
+      }
+      case RET: {
+        const auto& s = call_stack_.back();
+        variable_stack_.resize(s.vp);
+        operand_stack_.resize(s.fp);
+        ip_ = s.return_address;
+        break;
+      }
       case TEST_JUMP_IF_FALSE: {
         if (operand_stack_.size() < 1) {
           error_ = StringPrintf("Stack underflow at TEST_JUMP_IF_FALSE");
