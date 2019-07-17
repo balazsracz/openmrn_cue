@@ -240,6 +240,23 @@ TEST_F(VMTest, plus_e2e) {
   EXPECT_THAT(get_op_stack(), ElementsAre(12));
 }
 
+TEST_F(VMTest, assign_short) {
+  ASSERT_TRUE(compile("int a; a=13"));
+  vm_.clear();
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(13));
+}
+
+TEST_F(VMTest, DISABLED_assign_shorter) {
+  // This does not compile at the moment because the idetifier 'a' is not yet
+  // declared at the moment that the lookahead symbol is read from flex. Adding
+  // the semicolon fixes this issue.
+  ASSERT_TRUE(compile("int a\na=13"));
+  vm_.clear();
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(13));
+}
+
 TEST_F(VMTest, multi_command) {
   ASSERT_TRUE(compile("int a; int b; a=1+3+8\nb=5"));
   ASSERT_TRUE(run());
