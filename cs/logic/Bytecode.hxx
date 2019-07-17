@@ -46,19 +46,14 @@ namespace logic {
 /// An entry in the symbol table.
 struct Symbol {
   enum Type {
-    /// Variable allocated on the operand stack of type 'int'.
-    LOCAL_VAR_INT,
-    /// Variable allocated on the operand stack of type 'bool'.
-    LOCAL_VAR_BOOL,
-    /// External or indirect variable of type 'int'.
-    INDIRECT_VAR_INT,
-    /// External or indirect variable of type 'bool'.
-    INDIRECT_VAR_BOOL,
+    /// Variable
+    VARIABLE,
     /// Function
     FUNCTION,
   };
 
   enum DataType {
+    DATATYPE_VOID,
     DATATYPE_INT,
     DATATYPE_BOOL,
   };
@@ -69,6 +64,8 @@ struct Symbol {
   };
 
   DataType get_data_type() const {
+    return data_type_;
+    /*
     switch (symbol_type_) {
       case LOCAL_VAR_INT:
       case INDIRECT_VAR_INT:
@@ -78,10 +75,12 @@ struct Symbol {
         return DATATYPE_BOOL;
       default:
         DIE("Unexpected symbol type.");
-    }
+        }*/
   }
 
   Access get_access() const {
+    return access_;
+    /*
     switch (symbol_type_) {
       case LOCAL_VAR_INT:
       case LOCAL_VAR_BOOL:
@@ -91,11 +90,12 @@ struct Symbol {
         return INDIRECT_VAR;
       default:
         DIE("Unexpected symbol type.");
-    }
+        }*/
   }
 
   static const char* datatype_to_string(DataType d) {
     switch(d) {
+      case DATATYPE_VOID: return "void";
       case DATATYPE_INT: return "int";
       case DATATYPE_BOOL: return "bool";
       default:
@@ -104,8 +104,13 @@ struct Symbol {
   }
   
   /// type of this symbol.
-  Type symbol_type_;
-  /// relative offset on the operand stack from the fp. Negative for a function in case the 
+  Type symbol_type_ : 8;
+  /// For variables, how do we access it.
+  Access access_ : 8;
+  /// What is the data type of this symbol.
+  DataType data_type_ : 8;
+  /// relative offset on the operand stack from the fp. Negative for a function
+  /// in case the
   int fp_offset_{-1};
   /// @todo add declaration location.
 };

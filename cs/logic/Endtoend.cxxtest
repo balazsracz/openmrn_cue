@@ -261,7 +261,7 @@ TEST_F(EndToEndTest, fail) {
   wait_for_notification();
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
   EXPECT_THAT(status, StartsWith("Compile failed."));
-  EXPECT_THAT(status, HasSubstr("Undeclared variable"));
+  EXPECT_THAT(status, HasSubstr("undeclared_identifier"));
 
   pgm = "int blahblah = 2;";
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);

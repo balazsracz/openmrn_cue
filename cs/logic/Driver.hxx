@@ -111,35 +111,40 @@ class Driver {
   /// Create a new local variable.
   /// @param name is the identifier ofthe local variable.
   /// @param type is the type (shall be LOCAL_VAR_NN).
-  /// @return true if the allocation was successful.
-  bool allocate_variable(const string& name, Symbol::Type type) {
-    auto* s = allocate_symbol(name, type);
-    if (!s) return false;
+  /// @return The symbol that was allocated, or nullptr if the allocation
+  /// failed..
+  Symbol* allocate_variable(const string& name, const yy::location& loc,
+                            Symbol::Type type) {
+    auto* s = allocate_symbol(name, loc, type);
+    if (!s) return nullptr;
     s->fp_offset_ = current_context()->frame_size_;
     current_context()->frame_size_++;
-    return true;
+    return s;
   }
 
   /// Create a new symbol.
   /// @param name is the name ofthe symbol. Will raise an error and return null
   /// if there is another symbol with the same name already.
+  /// @param loc is the location where this symbol was encountered. Used for
+  /// error printouts.
   /// @param type is the symbol type.
   /// @return null upon error or the pointer to the newly created symbol table
   /// entry.
-  Symbol* allocate_symbol(const string& name, Symbol::Type type) {
+  Symbol* allocate_symbol(const string& name, const yy::location& loc,
+                          Symbol::Type type) {
     if (current_context()->symbol_table_.find(name) !=
         current_context()->symbol_table_.end()) {
       string err = "Identifier '";
       err += name;
       err += "' is already declared.";
-      error(err);
+      error(loc, err);
       return nullptr;
     }
     auto& s = current_context()->symbol_table_[name];
     s.symbol_type_ = type;
     return &s;
   }
-  
+
   /// Looks up a symbol in the symbol table.
   /// @param name is the identifier of the symbol.
   /// @return symbol table entry, or null if this is an undeclared symbol.
@@ -162,7 +167,62 @@ class Driver {
     return &it->second;
   }
 
-  
+  /// Polymorphic variable declaration routine. Before calling, the storage
+  /// specifier and type must be set in {@ref decl_storage_} and
+  /// {@ref decl_type_}.
+  /// @param name is the name of the new variable.
+  /// @param loc is the location for the symbol name.
+  /// @param initial_value is a PolymorphicExpression, which may be void. Will
+  /// be destructively modified.
+  /// @param val_loc is the location of the initialization value.
+  /// @return nullptr if YYERROR needs to be called. An error message will have
+  /// been persisted already. Otherwise the declaration command.
+  std::shared_ptr<Command> declare_variable(
+      string name, const yy::location& loc,
+      PolymorphicExpression* initial_value, const yy::location& val_loc) {
+    Symbol* s = allocate_variable(name, loc, Symbol::VARIABLE);
+    if (!s) return nullptr;
+    s->data_type_ = decl_type_.builtin_type_;
+    if (decl_storage_ == INDIRECT_VAR) {
+      s->access_ = Symbol::INDIRECT_VAR;
+      if (!initial_value->is_void()) {
+        error(loc, "Exported variable declaration cannot have an initializer.");
+        return nullptr;
+      }
+      return std::make_shared<IndirectVarCreate>(std::move(name), s->fp_offset_,
+                                                 allocate_guid());
+    } else {
+      s->access_ = Symbol::LOCAL_VAR;
+      // local variable.
+      std::unique_ptr<VariableReference> r(
+          new LocalVariableReference(std::move(name), s->fp_offset_));
+      Symbol::DataType value_type = initial_value->get_data_type();;
+      bool has_value = value_type != Symbol::DATATYPE_VOID;
+      if (has_value && value_type != decl_type_.builtin_type_) {
+        error(val_loc,
+              StringPrintf("Incorrect type in assignment; expected %s, got %s.",
+                           Symbol::datatype_to_string(decl_type_.builtin_type_),
+                           Symbol::datatype_to_string(value_type)));
+        return nullptr;
+      }
+      switch(decl_type_.builtin_type_) {
+        case Symbol::DATATYPE_BOOL:
+          return std::make_shared<BooleanAssignment>(
+              std::move(r), has_value
+                                ? std::move(initial_value->bool_expr_)
+                                : std::make_shared<BooleanConstant>(false));
+        case Symbol::DATATYPE_INT:
+          return std::make_shared<NumericAssignment>(
+              std::move(r), has_value ? std::move(initial_value->int_expr_)
+                                      : std::make_shared<IntConstant>(0));
+        case Symbol::DATATYPE_VOID:
+          error(loc, "Variables cannot be void type.");
+          return nullptr;
+      }
+    }
+    return nullptr;
+  }
+
   /// Finds a variable type symbol in the symbol table. Reports an error and
   /// returns nullptr if the symbol is not found or not of the expected type.
   /// @param name is the symbol to look up.
@@ -228,6 +288,13 @@ class Driver {
   /// variable declaration has.
   VariableStorageSpecifier decl_storage_;
 
+  /// lexical context variable that describes what type the current variable
+  /// declaration has.
+  TypeSpecifier decl_type_;
+
+  /// Helper storage for variable declarations.
+  std::vector<std::shared_ptr<logic::Command> > decl_helper_;
+  
   /// True if we are in the global scope.
   // not currently used yet.
   //bool is_global_scope_;

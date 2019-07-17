@@ -535,6 +535,31 @@ class BoolOr : public BooleanExpression {
   std::shared_ptr<BooleanExpression> right_;
 };
 
+struct PolymorphicExpression {
+  PolymorphicExpression(std::shared_ptr<BooleanExpression> && bool_expr)
+      : bool_expr_(std::move(bool_expr)) {}
+  PolymorphicExpression(std::shared_ptr<IntExpression> && int_expr)
+      : int_expr_(std::move(int_expr)) {}
+  PolymorphicExpression() {}
+
+  bool is_void() {
+    return !(bool_expr_ || int_expr_);
+  }
+
+  Symbol::DataType get_data_type() {
+    if (bool_expr_) {
+      return Symbol::DATATYPE_BOOL;
+    } else if (int_expr_) {
+      return Symbol::DATATYPE_INT;
+    } else {
+      return Symbol::DATATYPE_VOID;
+    }  
+  }
+  
+  std::shared_ptr<BooleanExpression> bool_expr_;
+  std::shared_ptr<IntExpression> int_expr_;
+};
+
 /// Represents a variable as the argument to a function.
 class FunctionArgument {
  public:

@@ -582,7 +582,7 @@ TEST_F(VMTest, comments) {
   // Checks that when reporting syntax errors we correctly skip comment text
   ASSERT_FALSE(compile("// blah\nblah"));
   EXPECT_THAT(driver_.error_output_,
-              StartsWith("2.5: syntax error"));
+              StartsWith("2.1-5: syntax error"));
 }
 
 TEST_F(VMTest, semicolons) {
@@ -784,7 +784,7 @@ TEST_F(VMTest, call_only) {
   EXPECT_EQ(sub_entry, get_ip());
 }
 
-TEST_F(VMTest, function_compile) {
+TEST_F(VMTest, DISABLED_function_compile) {
   const char* script = R"(
 int test_function(int a, bool b) {
   int c = 0;

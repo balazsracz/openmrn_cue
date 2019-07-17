@@ -107,12 +107,13 @@ class Driver;
 %type  <std::shared_ptr<logic::Command> > command
 %type  <std::shared_ptr<logic::Command> > conditional
 %type  <std::shared_ptr<logic::Command> > assignment
+%type  <std::shared_ptr<logic::PolymorphicExpression> > optional_assignment_expression
 %type  <std::shared_ptr<logic::Command> > variable_decl
 %type  <std::shared_ptr<logic::Command> > int_decl_single
 %type  <std::shared_ptr<logic::Command> > bool_decl_single
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
-%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > int_decl_list
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > bool_decl_list
+%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > int_decl_list
 %type  <std::shared_ptr<Function> > function
 %type  <std::shared_ptr<FunctionArgument> > function_arg
 %type  <std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > > > function_arg_list
@@ -260,11 +261,51 @@ storage_specifier:
 
 
 optional_semicolon:
-//%empty {}
-//|
+%empty {}
+|
 ";"
 ;
 
+optional_assignment_expression:
+%empty { $$ = std::make_shared<PolymorphicExpression>(); }
+| "=" exp { $$ = std::make_shared<PolymorphicExpression>(std::move($2)); }
+| "=" boolexp { $$ = std::make_shared<PolymorphicExpression>(std::move($2)); }
+;
+
+multi_variable_decl:
+%empty {} |
+multi_variable_decl "," "undeclared_identifier" optional_assignment_expression {
+  auto cmd = driver.declare_variable(std::move($3), @3, $4.get(), @4);
+  if (!cmd) {
+    YYERROR;
+  }
+  driver.decl_helper_.emplace_back(std::move(cmd));
+};
+
+variable_decl:
+storage_specifier type_specifier "undeclared_identifier" optional_assignment_expression {
+  if ($1 == INDIRECT_VAR && !driver.is_global_context()) {
+    driver.error(@1, "Exported variables must appear in the global context.");
+    YYERROR;
+  }
+  driver.decl_storage_ = $1;
+  driver.decl_type_ = $2;
+  driver.decl_helper_.clear();
+  auto cmd = driver.declare_variable(std::move($3), @3, $4.get(), @4);
+  if (!cmd) {
+    YYERROR;
+  }
+  driver.decl_helper_.emplace_back(std::move(cmd));
+} multi_variable_decl optional_semicolon {
+  if (driver.decl_helper_.size() > 1) {
+    $$ = std::make_shared<CommandSequence>(std::move(driver.decl_helper_));
+  } else {
+    $$ = std::move(driver.decl_helper_[0]);
+  }
+  driver.decl_helper_.clear();
+};
+
+/*
 variable_decl:
 storage_specifier "int" {
   driver.decl_storage_ = $1;
@@ -286,7 +327,7 @@ storage_specifier "bool" { driver.decl_storage_ = $1; } bool_decl_list {
   }
 }
 ;
-
+*/
 conditional:
  "if" "(" boolexp ")" "{" commands "}" "else" "{" commands "}" {
   $$ = std::make_shared<IfThenElse>(
@@ -391,18 +432,23 @@ type_specifier:
 
 
 function:
-type_specifier "undeclared_identifier" "(" function_arg_list ")" "{" {
+storage_specifier type_specifier "undeclared_identifier" "(" function_arg_list ")" "{" {
   if (!driver.is_global_context()) {
     driver.error(
         @2, "Function definition is only allowed in the toplevel context.");
+    YYERROR;
+  }
+  if ($1 != LOCAL_VAR) {
+    driver.error(
+        @2, "Function definition cannot have exported storage specifier.");
     YYERROR;
   }
   driver.enter_function();
   /// @todo enter 
 } commands "}" {
   $$ = std::make_shared<Function>(&driver,
-      std::move($2), std::move($1), std::move($4),
-      std::make_shared<CommandSequence>(std::move(*$8)));
+      std::move($3), std::move($2), std::move($5),
+      std::make_shared<CommandSequence>(std::move(*$9)));
   driver.exit_function();
 };
 
