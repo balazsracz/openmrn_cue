@@ -784,6 +784,17 @@ TEST_F(VMTest, call_only) {
   EXPECT_EQ(sub_entry, get_ip());
 }
 
+TEST_F(VMTest, function_compile) {
+  const char* script = R"(
+int test_function(int a, bool b) {
+  int c = 0;
+  c = 1;
+}
+int x = 0, y;
+y = x;
+)";
+  ASSERT_TRUE(compile(script));
+}
 
 
 } // namespace logic
