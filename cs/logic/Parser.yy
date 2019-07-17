@@ -256,8 +256,9 @@ storage_specifier:
 
 
 optional_semicolon:
-%empty {}
-| ";"
+//%empty {}
+//|
+";"
 ;
 
 variable_decl:
