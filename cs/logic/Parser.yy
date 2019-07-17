@@ -305,6 +305,7 @@ assignment optional_semicolon { $$ = std::move($1); };
 | "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
 | conditional { $$ = std::move($1); } 
 | variable_decl optional_semicolon { $$ = std::move($1); }
+| function { $$ = std::move($1); }
 ;
 
 // @todo we need to switch the following to natively create CommandSequence and
@@ -376,17 +377,28 @@ boolexp:
 ;
 
 type_specifier:
-"int" { $$.builtin_type_ = Symbol::DATATYPE_INT;
+"int" {
+  $$.builtin_type_ = Symbol::DATATYPE_INT;
 } |
-"bool" { $$.builtin_type_ = Symbol::DATATYPE_BOOL;
+"bool" {
+  $$.builtin_type_ = Symbol::DATATYPE_BOOL;
 } ;
 
 
 function:
-type_specifier "identifier" "(" function_arg_list ")" "{" commands "}" {
-  $$ = std::make_shared<Function>(
+type_specifier "identifier" "(" function_arg_list ")" "{" {
+  if (!driver.is_global_context()) {
+    driver.error(
+        @2, "Function definition is only allowed in the toplevel context.");
+    YYERROR;
+  }
+  driver.enter_function();
+  /// @todo enter 
+} commands "}" {
+  $$ = std::make_shared<Function>(&driver,
       std::move($2), std::move($1), std::move($4),
-      std::make_shared<CommandSequence>(std::move(*$7)));
+      std::make_shared<CommandSequence>(std::move(*$8)));
+  driver.exit_function();
 };
 
 function_arg_list:
