@@ -101,19 +101,13 @@ class Driver;
 %type  <logic::VariableStorageSpecifier> storage_specifier
 %type  <logic::TypeSpecifier> type_specifier
 %type  <std::shared_ptr<logic::IntExpression> > exp
-%type  <std::shared_ptr<logic::IntExpression> > decl_optional_int_exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
-%type  <std::shared_ptr<logic::BooleanExpression> > decl_optional_bool_exp
 %type  <std::shared_ptr<logic::Command> > command
 %type  <std::shared_ptr<logic::Command> > conditional
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<logic::PolymorphicExpression> > optional_assignment_expression
 %type  <std::shared_ptr<logic::Command> > variable_decl
-%type  <std::shared_ptr<logic::Command> > int_decl_single
-%type  <std::shared_ptr<logic::Command> > bool_decl_single
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
-%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > bool_decl_list
-%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > int_decl_list
 %type  <std::shared_ptr<Function> > function
 %type  <std::shared_ptr<FunctionArgument> > function_arg
 %type  <std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > > > function_arg_list
@@ -123,35 +117,6 @@ class Driver;
 unit: commands { driver.commands_.swap(*$1); };
 
 assignment:
-/*
-"bool_var_identifier" "=" "bool_var_identifier" {
-  // Polymorphic assignment.
-  const Symbol* ls = driver.find_symbol($1);
-  Symbol::DataType dt = Symbol::DATATYPE_INT;
-  if (ls) {
-    dt = ls->get_data_type();
-  }
-  auto vp =
-      driver.get_variable_reference(std::move($1), @1, dt);
-  auto rp =
-      driver.get_variable_reference(std::move($3), @3, dt);
-  if (!vp || !rp) {
-    YYERROR;
-  }
-  switch(dt) {
-    case Symbol::DATATYPE_INT:
-      $$ = std::make_shared<NumericAssignment>(
-          std::move(vp), std::make_shared<IntVariable>(std::move(rp)));
-      break;
-    case Symbol::DATATYPE_BOOL:
-      $$ = std::make_shared<BooleanAssignment>(
-          std::move(vp), std::make_shared<BoolVariable>(std::move(rp)));
-      break;
-    default:
-      driver.error(@1, "Unexpected data type");
-      YYERROR;
-  }
-  } | */
 "int_var_identifier" "=" exp {
   auto vp =
       driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);
@@ -170,95 +135,10 @@ assignment:
 }
 ;
 
-decl_optional_int_exp:
-%empty { $$.reset(); }
-| "=" exp { $$ = std::move($2); };
-
-int_decl_single:
-"undeclared_identifier" decl_optional_int_exp {
-  Symbol::Type t = Symbol::LOCAL_VAR_INT;
-  if (driver.decl_storage_ == INDIRECT_VAR) {
-    t = Symbol::INDIRECT_VAR_INT;
-  }
-  if (!driver.allocate_variable($1, t)) {
-    YYERROR;
-  }
-  if (driver.decl_storage_ == INDIRECT_VAR) {
-    if ($2) {
-      driver.error(
-          @2, "Exported variable declaration cannot have an initializer.");
-      YYERROR;
-    }
-    $$ = std::make_shared<IndirectVarCreate>($1, driver.find_symbol($1)->fp_offset_, driver.allocate_guid());
-  } else {
-    // Local var.
-    auto vp =
-        driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);
-    if (!vp) YYERROR;
-    $$ = std::make_shared<NumericAssignment>(
-        std::move(vp), $2 ? std::move($2) : std::make_shared<IntConstant>(0));
-  }
-}
-
-int_decl_list:
-int_decl_single {
-  $$ = std::make_shared<std::vector<std::shared_ptr<logic::Command> > >();
-  $$->emplace_back(std::move($1));
-} |
-int_decl_list "," int_decl_single {
-  $$.swap($1);
-  $$->emplace_back(std::move($3));
-}
-;
-
-
-decl_optional_bool_exp:
-%empty { $$.reset(); }
-| "=" boolexp { $$ = std::move($2); };
-
-bool_decl_single:
-"undeclared_identifier" decl_optional_bool_exp {
-  Symbol::Type t = Symbol::LOCAL_VAR_BOOL;
-  if (driver.decl_storage_ == INDIRECT_VAR) {
-    t = Symbol::INDIRECT_VAR_BOOL;
-  }
-  if (!driver.allocate_variable($1, t)) {
-    YYERROR;
-  }
-  if (driver.decl_storage_ == INDIRECT_VAR) {
-    if ($2) {
-      driver.error(
-          @2, "Exported variable declaration cannot have an initializer.");
-      YYERROR;
-    }
-    $$ = std::make_shared<IndirectVarCreate>($1, driver.find_symbol($1)->fp_offset_, driver.allocate_guid());
-  } else {
-    // Local var.
-    auto vp =
-        driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_BOOL);
-    if (!vp) YYERROR;
-    $$ = std::make_shared<BooleanAssignment>(
-        std::move(vp),
-        $2 ? std::move($2) : std::make_shared<BooleanConstant>(false));
-  }
-}
-
-bool_decl_list:
-bool_decl_single {
-  $$ = std::make_shared<std::vector<std::shared_ptr<logic::Command> > >();
-  $$->emplace_back(std::move($1));
-} |
-bool_decl_list "," bool_decl_single {
-  $$.swap($1);
-  $$->emplace_back(std::move($3));
-}
-;
-
 storage_specifier:
 %empty { $$ = LOCAL_VAR; }
 | "exported" { $$ = INDIRECT_VAR; }
 ;
-
 
 optional_semicolon:
 %empty {}
@@ -305,29 +185,6 @@ storage_specifier type_specifier "undeclared_identifier" optional_assignment_exp
   driver.decl_helper_.clear();
 };
 
-/*
-variable_decl:
-storage_specifier "int" {
-  driver.decl_storage_ = $1;
-  if ($1 == INDIRECT_VAR && !driver.is_global_context()) {
-    driver.error(@1, "Exported variables must appear in the global context.");
-  }
-} int_decl_list {
-  if ($4->size() == 1) {
-    std::swap($$, (*$4)[0]);
-  } else {
-    $$ = std::make_shared<CommandSequence>(std::move(*$4));  
-  }
-} |
-storage_specifier "bool" { driver.decl_storage_ = $1; } bool_decl_list {
-  if ($4->size() == 1) {
-    std::swap($$, (*$4)[0]);
-  } else {
-    $$ = std::make_shared<CommandSequence>(std::move(*$4));  
-  }
-}
-;
-*/
 conditional:
  "if" "(" boolexp ")" "{" commands "}" "else" "{" commands "}" {
   $$ = std::make_shared<IfThenElse>(
