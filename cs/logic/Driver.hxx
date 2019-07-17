@@ -98,21 +98,33 @@ class Driver {
   /// @param type is the type (shall be LOCAL_VAR_NN).
   /// @return true if the allocation was successful.
   bool allocate_variable(const string& name, Symbol::Type type) {
+    auto* s = allocate_symbol(name, type);
+    if (!s) return false;
+    s->fp_offset_ = current_context()->frame_size_;
+    current_context()->frame_size_++;
+    return true;
+  }
+
+  /// Create a new symbol.
+  /// @param name is the name ofthe symbol. Will raise an error and return null
+  /// if there is another symbol with the same name already.
+  /// @param type is the symbol type.
+  /// @return null upon error or the pointer to the newly created symbol table
+  /// entry.
+  Symbol* allocate_symbol(const string& name, Symbol::Type type) {
     if (current_context()->symbol_table_.find(name) !=
         current_context()->symbol_table_.end()) {
       string err = "Identifier '";
       err += name;
       err += "' is already declared.";
       error(err);
-      return false;
+      return nullptr;
     }
     auto& s = current_context()->symbol_table_[name];
     s.symbol_type_ = type;
-    s.fp_offset_ = current_context()->frame_size_;
-    current_context()->frame_size_++;
-    return true;
+    return &s;
   }
-
+  
   /// Looks up a symbol in the symbol table.
   /// @param name is the identifier of the symbol.
   /// @return symbol table entry, or null if this is an undeclared symbol.
@@ -124,6 +136,18 @@ class Driver {
     return &it->second;
   }
 
+  /// Looks up a symbol in the symbol table.
+  /// @param name is the identifier of the symbol.
+  /// @return symbol table entry, or null if this is an undeclared symbol.
+  Symbol* find_mutable_symbol(const string& name) {
+    auto it = current_context()->symbol_table_.find(name);
+    if (it == current_context()->symbol_table_.end()) {
+      return nullptr;
+    }
+    return &it->second;
+  }
+
+  
   /// Finds a variable type symbol in the symbol table. Reports an error and
   /// returns nullptr if the symbol is not found or not of the expected type.
   /// @param name is the symbol to look up.
@@ -212,10 +236,21 @@ class Driver {
   /// Alocates a new GUID for an exported variable.
   int allocate_guid() { return next_guid_++; }
 
+  /// @param bytecode is a pointer that was passed to serialize().
+  /// @return true if this is the toplevel bytecode and thus we can trust that
+  /// offsets are actual IPs.
+  bool is_output_root(std::string* bytecode) {
+    return (bytecode == output_root_);
+  }
+  
  private:
   /// The name of the file being parsed.
   /// Used later to pass the file name to the location tracker.
   std::string filename_;
+
+  /// Caches the pointer to the string variable where we are serializing the
+  /// compiled bytecode.
+  std::string* output_root_;
 
   // Handling the scanner.
   void scan_begin();

@@ -47,6 +47,7 @@ int Driver::parse_file(const std::string& f) {
 }
 
 void Driver::serialize(std::string* output) {
+  output_root_ = output;
   string preamble;
   // Renders preamble.
   for (const auto& c : commands_) {
@@ -91,5 +92,22 @@ void Driver::error(const std::string& m) {
   error_output_.append(m);
   error_output_.push_back('\n');
 }
+
+void Function::register_function(std::string* output) {
+  if (!driver_->is_output_root(output)) {
+    driver_->error(
+        StringPrintf("Function %s not defined at the top level.", name_));
+    return;
+  }
+  unsigned jump_ofs = output->size();
+  auto* s = driver_->find_mutable_symbol(name_);
+  if (!s) {
+    driver_->error(StringPrintf(
+        "Function %s: symbol table entry not found during serialize.", name_));
+    return;
+  }
+  s->fp_offset_ = jump_ofs;
+}
+
 
 } // namespace logic

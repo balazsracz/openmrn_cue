@@ -36,6 +36,7 @@
 #define _LOGIC_BYTECODE_HXX_
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <string>
 
 #include "utils/macros.h"
@@ -53,6 +54,8 @@ struct Symbol {
     INDIRECT_VAR_INT,
     /// External or indirect variable of type 'bool'.
     INDIRECT_VAR_BOOL,
+    /// Function
+    FUNCTION,
   };
 
   enum DataType {
@@ -102,13 +105,17 @@ struct Symbol {
   
   /// type of this symbol.
   Type symbol_type_;
-  /// relative offset on the operand stack from the fp.
-  int fp_offset_;
+  /// relative offset on the operand stack from the fp. Negative for a function in case the 
+  int fp_offset_{-1};
   /// @todo add declaration location.
 };
 
 struct TypeSpecifier {
   Symbol::DataType builtin_type_;
+
+  string to_string() {
+    return Symbol::datatype_to_string(builtin_type_);    
+  }
 };
 
 enum OpCode : uint8_t {

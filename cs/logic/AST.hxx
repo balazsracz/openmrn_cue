@@ -45,6 +45,8 @@
 
 namespace logic {
 
+class Driver;
+
 enum VariableStorageSpecifier {
   LOCAL_VAR,
   INDIRECT_VAR
@@ -549,18 +551,53 @@ class FunctionArgument {
 class Function : public Command {
  public:
   Function(
-      string name, logic::TypeSpecifier return_type,
+      Driver* driver, string name, logic::TypeSpecifier return_type,
       std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > > args,
       std::shared_ptr<CommandSequence> body)
-      : name_(std::move(name)),
+      : driver_(driver),
+        name_(std::move(name)),
         return_type_(std::move(return_type)),
         args_(std::move(args)),
         body_(std::move(body)) {}
 
+  void serialize(std::string* output) override {
+    string tmp;
+    body_->serialize(&tmp);
+    BytecodeStream::append_opcode(&tmp, RET);
+
+    // Jump over the function body.
+    BytecodeStream::append_opcode(output, JUMP);
+    BytecodeStream::append_varint(output, tmp.size());
+
+    register_function(output);
+    output->append(tmp);
+  };
+
+  /// Add the function target address to the driver's jump table.
+  /// @param output is the 
+  void register_function(std::string* output);
+
+  void debug_print(std::string* output) override {
+    output->append(return_type_.to_string());
+    output->append(" ");
+    output->append(name_);
+    output->append("(");
+    for (const auto& arg: *args_) {
+      output->append(arg->type_.to_string());
+      output->append(" ");
+      output->append(arg->name_);
+    }
+    output->append(") {\n");
+    body_->debug_print(output);
+    output->append("}\n");
+  };
+
+  // The compiler driver.
+  Driver* driver_;
   // Name of the function.
   string name_;
   // Return type.
-  logic::TypeSpecifier return_type_;
+  TypeSpecifier return_type_;
   // Arguments
   std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > > args_;
   // Commands to execute inside this function.
