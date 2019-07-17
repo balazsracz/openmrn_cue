@@ -101,6 +101,8 @@ class VM {
 
   typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
 
+  typedef const uint8_t* ip_t;
+
  private:
   friend class BytecodeTest;
   friend class VMTest;
@@ -133,7 +135,7 @@ class VM {
     //unsigned vp;
     
     /// Where to return out of this stack frame.
-    const uint8_t* return_address {nullptr};
+    ip_t return_address {nullptr};
   };
 
   /// Instances of this struct will be pushed to the variable stack.
@@ -174,10 +176,10 @@ class VM {
   std::function<void(std::string)> print_cb_;
 
   /// Next instruction to execute.
-  const uint8_t* ip_;
+  ip_t ip_;
   /// Points to eof, which is the first character after ip_ that is not valid,
   /// aka end pointer (right open range).
-  const uint8_t* eof_;
+  ip_t eof_;
   /// Frame pointer for operand stack (index in the operand stack where the
   /// current function's stack frame is).
   unsigned fp_;
