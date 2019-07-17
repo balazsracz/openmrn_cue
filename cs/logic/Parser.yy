@@ -311,12 +311,13 @@ storage_specifier type_specifier "undeclared_identifier" "(" function_arg_list "
 };
 
 function_arg_list:
-%empty {
+function_arg {
   $$ = std::make_shared<std::vector<std::shared_ptr<FunctionArgument>>>();
+  $$->emplace_back(std::move($1));
 } |
 function_arg_list "," function_arg {
-  $1->push_back(std::move($3));
   $$ = std::move($1);
+  $$->emplace_back(std::move($3));
 };
 
 function_arg:
