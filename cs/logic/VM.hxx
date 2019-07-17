@@ -175,6 +175,9 @@ class VM {
   /// Output callback.
   std::function<void(std::string)> print_cb_;
 
+  /// Pointer to the data where we started executing from. This is equivalent
+  /// to IP 0.
+  const uint8_t* ip_start_;
   /// Next instruction to execute.
   ip_t ip_;
   /// Points to eof, which is the first character after ip_ that is not valid,

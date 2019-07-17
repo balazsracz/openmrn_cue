@@ -37,6 +37,7 @@
 #include "logic/Bytecode.hxx"
 
 #include "utils/StringPrintf.hxx"
+#include "utils/logging.h"
 
 namespace logic {
 
@@ -114,7 +115,7 @@ bool VM::parse_string() {
 }
 
 bool VM::execute(const void* data, size_t len) {
-  ip_ = (const uint8_t*)data;
+  ip_start_ = ip_ = (const uint8_t*)data;
   eof_ = ip_ + len;
 
   while(ip_ <= eof_) {
@@ -139,7 +140,7 @@ bool VM::execute(const void* data, size_t len) {
       }
       case STORE_FP_REL: {
         if (operand_stack_.size() < 1) {
-          error_ = StringPrintf("Stack underflow at MOVE_FP_REL");
+          error_ = StringPrintf("Stack underflow at STORE_FP_REL");
           return false;
         }
         int val = operand_stack_.back(); operand_stack_.pop_back();
@@ -149,7 +150,7 @@ bool VM::execute(const void* data, size_t len) {
         --ip_;
         unsigned ofs = fp_ + relofs;
         if (ofs >= operand_stack_.size()) {
-          error_ = "Invalid relative offset for MOVE_FP_REL";
+          error_ = "Invalid relative offset for STORE_FP_REL";
           return false;
         }
         operand_stack_[ofs] = val;
@@ -162,7 +163,7 @@ bool VM::execute(const void* data, size_t len) {
         --ip_;
         unsigned ofs = fp_ + relofs;
         if (ofs >= operand_stack_.size()) {
-          error_ = "Invalid relative offset for STORE_FP_REL";
+          error_ = "Invalid relative offset for LOAD_FP_REL";
           return false;
         }
         int val = operand_stack_[ofs];
@@ -359,24 +360,42 @@ bool VM::execute(const void* data, size_t len) {
           error_ = StringPrintf("Stack underflow at CALL");
           return false;
         }
+        if (call_stack_.size() < 1) {
+          error_ = StringPrintf("Call stack underflow at CALL");
+          return false;
+        }
         int dst = operand_stack_.back(); operand_stack_.pop_back();
         ++ip_;
         int num_arg;
         if (!parse_varint(&num_arg)) return false;
         --ip_;
-        HASSERT(fp_ == call_stack_.back().fp);
+        if (fp_ != call_stack_.back().fp) {
+          error_ = StringPrintf("Unexpected fp at CALL. Expected %d actual %d",
+                                call_stack_.back().fp, fp_);
+          return false;
+        }
         call_stack_.emplace_back();
         call_stack_.back().return_address = ip_;
         call_stack_.back().fp = operand_stack_.size() - num_arg;
+        fp_ = call_stack_.back().fp;
         call_stack_.back().vp = variable_stack_.size();
-        ip_ += dst;
+        LOG(INFO, "executing CALL. return address %u, dst %u", (unsigned)(call_stack_.back().return_address - ip_start_), (unsigned)dst);
+        ip_ = ip_start_ + dst;
+        --ip_; // compensate for ++ip at the end ofthis function.
         break;
       }
       case RET: {
+        if (call_stack_.size() <= 1) {
+          error_ = StringPrintf("Call stack underflow at RET");
+          return false;
+        }
         const auto& s = call_stack_.back();
         variable_stack_.resize(s.vp);
         operand_stack_.resize(s.fp);
         ip_ = s.return_address;
+        call_stack_.pop_back();
+        const auto& ss = call_stack_.back();
+        fp_ = ss.fp;
         break;
       }
       case TEST_JUMP_IF_FALSE: {

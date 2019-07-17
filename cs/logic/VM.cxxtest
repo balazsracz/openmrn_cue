@@ -103,6 +103,10 @@ class VMTest : public ::testing::Test {
     return vm_.variable_stack_;
   }
 
+  unsigned get_ip() {
+    return vm_.ip_ - vm_.ip_start_;
+  }
+  
   /// Directly inserts a variable into the VM's variable stack.
   /// @param arg will be used by the system to do fetches and stores in the
   /// variable.
@@ -688,7 +692,97 @@ if (diverging_next_block is Active or turnout is Thrown) {
   ASSERT_TRUE(compile(script));
 }
 
+TEST_F(VMTest, callfn) {
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, -3271);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 77);
+  BytecodeStream::append_opcode(&bytecode_, PRINT_NUM);
 
+  string sub;
+  BytecodeStream::append_opcode(&sub, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&sub, 27);
+  BytecodeStream::append_opcode(&sub, PRINT_NUM);
+  BytecodeStream::append_opcode(&sub, PUSH_CONSTANT_1);
+  BytecodeStream::append_opcode(&sub, PUSH_CONSTANT_1);
+  BytecodeStream::append_opcode(&sub, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&sub, 19);
+  BytecodeStream::append_opcode(&sub, STORE_FP_REL);
+  BytecodeStream::append_varint(&sub, -1);
+  BytecodeStream::append_opcode(&sub, RET);
+
+  // Skips the subroutine code.
+  BytecodeStream::append_opcode(&bytecode_, JUMP);
+  BytecodeStream::append_varint(&bytecode_, sub.size());
+  unsigned sub_entry = bytecode_.size();
+
+  bytecode_ += sub;
+
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 76);
+  BytecodeStream::append_opcode(&bytecode_, PRINT_NUM);
+  // Creates 3 zeros on the stack: two as arguments to the function, one as
+  // return value.
+  BytecodeStream::append_opcode(&bytecode_, ENTER);
+  BytecodeStream::append_varint(&bytecode_, 3);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, sub_entry);
+  BytecodeStream::append_opcode(&bytecode_, CALL);
+  BytecodeStream::append_varint(&bytecode_, 2);
+  
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 15);
+  BytecodeStream::append_opcode(&bytecode_, PRINT_NUM);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 15);
+  BytecodeStream::append_opcode(&bytecode_, STORE_FP_REL);
+  BytecodeStream::append_varint(&bytecode_, 0); // overwrite 1 with 15
+
+  vm_.clear();
+  EXPECT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(15, -3271, 19));
+  EXPECT_THAT(output_, ElementsAre("77", "76", "27", "15"));
+}
+
+TEST_F(VMTest, call_only) {
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, -3271);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 77);
+  BytecodeStream::append_opcode(&bytecode_, PRINT_NUM);
+
+  string sub;
+  BytecodeStream::append_opcode(&sub, TERMINATE);
+  BytecodeStream::append_opcode(&sub, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&sub, 27);
+  BytecodeStream::append_opcode(&sub, PRINT_NUM);
+
+  // Skips the subroutine code.
+  BytecodeStream::append_opcode(&bytecode_, JUMP);
+  BytecodeStream::append_varint(&bytecode_, sub.size());
+  unsigned sub_entry = bytecode_.size();
+
+  bytecode_ += sub;
+
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, 76);
+  BytecodeStream::append_opcode(&bytecode_, PRINT_NUM);
+  // Creates 3 zeros on the stack: two as arguments to the function, one as
+  // return value.
+  BytecodeStream::append_opcode(&bytecode_, ENTER);
+  BytecodeStream::append_varint(&bytecode_, 3);
+  BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
+  BytecodeStream::append_varint(&bytecode_, sub_entry);
+  BytecodeStream::append_opcode(&bytecode_, CALL);
+  BytecodeStream::append_varint(&bytecode_, 2);
+
+  vm_.clear();
+  EXPECT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, -3271, 0, 0, 0));
+  EXPECT_THAT(output_, ElementsAre("77", "76"));
+
+  EXPECT_EQ(sub_entry, get_ip());
+}
 
 
 
