@@ -801,9 +801,9 @@ TEST_F(VMTest, call_only) {
   EXPECT_EQ(sub_entry, get_ip());
 }
 
-TEST_F(VMTest, DISABLED_function_compile) {
+TEST_F(VMTest, function_compile) {
   const char* script = R"(
-int test_function(int a, bool b) {
+int   test_function (int a,bool b) {
   int c = 0;
   c = 1;
 }
@@ -811,6 +811,20 @@ int x = 0, y;
 y = x;
 )";
   ASSERT_TRUE(compile(script));
+  auto str = driver_.debug_print();
+  EXPECT_EQ(
+R"(int test_function(int a, bool b) {
+assign(c, 0)
+assign(c, 1)
+}
+;
+{
+assign(x, 0)
+assign(y, 0)
+}
+;
+assign(y, fetch(x));
+)", str);
 }
 
 
