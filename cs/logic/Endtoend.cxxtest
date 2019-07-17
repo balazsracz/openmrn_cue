@@ -115,6 +115,18 @@ class EndToEndTest : public EndToEndTestBase {
     wait();
   }
 
+  void expect_query(uint64_t var_on, uint64_t var_off) {
+    expect_packet(StringPrintf(":X1991422AN%016llx;", var_on));
+    expect_packet(StringPrintf(":X198F422AN%016llx;", var_on));
+    /// @todo unclear why the off event does not get queried.
+    //expect_packet(StringPrintf(":X1991422AN%016llx;", var_off));
+    //expect_packet(StringPrintf(":X198F422AN%016llx;", var_off));
+  }
+
+  uint64_t get_event(int id) {
+    return (openlcb::TEST_NODE_ID << 16) + id;
+  }
+  
   void test_flipflop() {
     clear_expect(true);
     LOG(INFO, "2 reply active");
@@ -196,7 +208,7 @@ TEST_F(EndToEndTest, compile_export) {
   string pgm = "exported bool foo; int a = 5+3+7;";
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
   cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
-  
+  expect_query(get_event(0), get_event(1));
   factory_.runner()->compile(get_notifiable());
   wait_for_notification();
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
@@ -211,14 +223,14 @@ TEST_F(EndToEndTest, run) {
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
   cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
   
+  expect_query(get_event(0), get_event(1));
+  expect_query(get_event(2), get_event(3));
   factory_.runner()->compile(get_notifiable());
   wait_for_notification();
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
   EXPECT_EQ("Compile OK. ", status);
 
   test_flipflop();
-
-
 
   expect_any_packet();
   invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
@@ -271,9 +283,15 @@ TEST_F(EndToEndTest, twoblocks) {
   string pgm = "exported bool led; led = !led";
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
   cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
   cdi.logic().blocks().entry(1).body().text().write(fd(), pgm);
   cdi.logic().blocks().entry(1).enabled().write(fd(), 1);
   LOG(INFO, "compiling code");
+  expect_query(get_event(0), get_event(1));
+  unsigned num_events_per_block =
+      cdi.logic().blocks().entry(0).body().imports().num_repeats() * 2;
+  expect_query(get_event(num_events_per_block),
+               get_event(num_events_per_block + 1));
   factory_.runner()->compile(get_notifiable());
   wait_for_notification();
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
