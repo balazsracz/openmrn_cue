@@ -167,7 +167,23 @@ blank [ \t]
   return logic::yy::Parser::make_STRING(output, loc);
 }
 
-{id}       return logic::yy::Parser::make_IDENTIFIER(yytext, loc);
+{id} {
+  auto* symbol = driver.find_symbol(yytext);
+  if (!symbol) {
+    return logic::yy::Parser::make_UNDECL_ID(yytext, loc);
+  }
+  if (symbol->symbol_type_ == logic::Symbol::FUNCTION) {
+    return logic::yy::Parser::make_FN_ID(yytext, loc);
+  } else {
+    auto t = symbol->get_data_type();
+    if (t == logic::Symbol::DATATYPE_INT) {
+      return logic::yy::Parser::make_INT_VAR_ID(yytext, loc);
+    } else if (t == logic::Symbol::DATATYPE_BOOL) {
+      return logic::yy::Parser::make_BOOL_VAR_ID(yytext, loc);
+    }
+  }
+  driver.error (loc, "unknown symbol type");
+}
 .          driver.error (loc, "invalid character");
 <<EOF>>    return logic::yy::Parser::make_END(loc);
 %%

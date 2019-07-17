@@ -91,7 +91,10 @@ class Driver;
   EXPORTED  "exported"
   AUTO  "auto"
 ;
-%token <std::string> IDENTIFIER "identifier"
+%token <std::string> UNDECL_ID "undeclared_identifier"
+%token <std::string> BOOL_VAR_ID "bool_var_identifier"
+%token <std::string> INT_VAR_ID "int_var_identifier"
+%token <std::string> FN_ID "function_identifier"
 %token <std::string> STRING "string"
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
@@ -119,7 +122,8 @@ class Driver;
 unit: commands { driver.commands_.swap(*$1); };
 
 assignment:
-"identifier" "=" "identifier" {
+/*
+"bool_var_identifier" "=" "bool_var_identifier" {
   // Polymorphic assignment.
   const Symbol* ls = driver.find_symbol($1);
   Symbol::DataType dt = Symbol::DATATYPE_INT;
@@ -146,8 +150,8 @@ assignment:
       driver.error(@1, "Unexpected data type");
       YYERROR;
   }
-} |
-"identifier" "=" exp {
+  } | */
+"int_var_identifier" "=" exp {
   auto vp =
       driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);
   if (!vp) {
@@ -155,7 +159,7 @@ assignment:
   }
   $$ = std::make_shared<NumericAssignment>(std::move(vp), std::move($3));
 }
-| "identifier" "=" boolexp {
+| "bool_var_identifier" "=" boolexp {
   auto vp =
       driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_BOOL);
   if (!vp) {
@@ -170,7 +174,7 @@ decl_optional_int_exp:
 | "=" exp { $$ = std::move($2); };
 
 int_decl_single:
-"identifier" decl_optional_int_exp {
+"undeclared_identifier" decl_optional_int_exp {
   Symbol::Type t = Symbol::LOCAL_VAR_INT;
   if (driver.decl_storage_ == INDIRECT_VAR) {
     t = Symbol::INDIRECT_VAR_INT;
@@ -212,7 +216,7 @@ decl_optional_bool_exp:
 | "=" boolexp { $$ = std::move($2); };
 
 bool_decl_single:
-"identifier" decl_optional_bool_exp {
+"undeclared_identifier" decl_optional_bool_exp {
   Symbol::Type t = Symbol::LOCAL_VAR_BOOL;
   if (driver.decl_storage_ == INDIRECT_VAR) {
     t = Symbol::INDIRECT_VAR_BOOL;
@@ -346,7 +350,7 @@ exp "%" exp   {
 | "(" exp ")"   { std::swap ($$, $2); }
 | "number"      { $$.reset(new IntConstant($1)); }
 | "-" "number"      { $$.reset(new IntConstant(-$2)); }
-| "identifier"  {
+| "int_var_identifier"  {
   auto vp =
       driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_INT);
   if (!vp) {
@@ -367,7 +371,7 @@ boolexp:
 | "!" boolexp       { $$ = std::make_shared<BoolNot>(std::move($2)); }
 |  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }
 |  boolexp "||" boolexp   { $$ = std::make_shared<BoolOr>(std::move($1), std::move($3)); }
-| "identifier"  {
+| "bool_var_identifier"  {
   auto vp =
       driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_BOOL);
   if (!vp) {
@@ -387,7 +391,7 @@ type_specifier:
 
 
 function:
-type_specifier "identifier" "(" function_arg_list ")" "{" {
+type_specifier "undeclared_identifier" "(" function_arg_list ")" "{" {
   if (!driver.is_global_context()) {
     driver.error(
         @2, "Function definition is only allowed in the toplevel context.");
@@ -412,7 +416,7 @@ function_arg_list "," function_arg {
 };
 
 function_arg:
-type_specifier "identifier" {
+type_specifier "undeclared_identifier" {
   $$ = std::make_shared<FunctionArgument>(std::move($2), std::move($1));
 };
 
