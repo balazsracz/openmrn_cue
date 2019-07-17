@@ -258,6 +258,7 @@ exp "%" exp   {
 }
 ;
 
+%right "!";
 %left "==" "!=";
 %left "&&";
 %left "||";
