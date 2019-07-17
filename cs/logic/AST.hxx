@@ -217,7 +217,7 @@ class NumericAssignment : public Command {
   void debug_print(std::string* output) override {
     output->append("assign(");
     variable_->debug_print(output);
-    output->append(",");
+    output->append(", ");
     value_->debug_print(output);
     output->append(")");
   }
@@ -266,7 +266,7 @@ class BooleanAssignment : public Command {
   void debug_print(std::string* output) override {
     output->append("boolassign(");
     variable_->debug_print(output);
-    output->append(",");
+    output->append(", ");
     value_->debug_print(output);
     output->append(")");
   }
@@ -608,13 +608,15 @@ class Function : public Command {
     output->append(name_);
     output->append("(");
     for (const auto& arg: *args_) {
+      if (output->back() != '(') {
+        output->append(", ");
+      }
       output->append(arg->type_.to_string());
       output->append(" ");
       output->append(arg->name_);
     }
-    output->append(") {\n");
+    output->append(") ");
     body_->debug_print(output);
-    output->append("}\n");
   };
 
   // The compiler driver.
