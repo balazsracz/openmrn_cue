@@ -206,6 +206,23 @@ TEST_F(VMTest, enter) {
   EXPECT_THAT(get_op_stack(), ElementsAre(1,0,1,0,0,0,0));
 }
 
+TEST_F(VMTest, print_num) {
+  bytecode_ = {PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, 4);
+  BytecodeStream::append_opcode(&bytecode_, PRINT_NUM);
+  EXPECT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("4"));
+  EXPECT_THAT(get_op_stack(), ElementsAre());
+}
+
+TEST_F(VMTest, print_string) {
+  BytecodeStream::append_opcode(&bytecode_, LOAD_STRING);
+  BytecodeStream::append_string(&bytecode_, "test string");
+  BytecodeStream::append_opcode(&bytecode_, PRINT_STR);
+  EXPECT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("test string"));
+}
+
 TEST_F(VMTest, compile_empty) {
   ASSERT_TRUE(compile(""));
   ASSERT_TRUE(run());

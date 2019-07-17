@@ -396,6 +396,10 @@ bool VM::execute(const void* data, size_t len) {
         print_cb_(StringPrintf("%d", arg));
         break;
       }
+      case PRINT_STR: {
+        print_cb_(string_acc_);
+        break;
+      }
       case NOP:
         break;
       default:
