@@ -149,7 +149,9 @@ enum OpCode : uint8_t {
   CREATE_VAR,
 
   /// Imports a variable. On the operand stack lhs = GUID of variable; rhs =
-  /// argument. The created variable is pushed to the variable stack.
+  /// argument. The created variable is pushed to the variable stack. The
+  /// offset in the variable stack for the new variable is pushed to the
+  /// operand stack.
   IMPORT_VAR,
   
   // Binary arithmetic operators. Take two values from the top of the stack, and
