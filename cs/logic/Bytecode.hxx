@@ -187,6 +187,9 @@ enum OpCode : uint8_t {
   // Takes the top of stack and prints it to the "output"
   PRINT_NUM,
 
+  // Takes the string accumulator and prints it to the "output"
+  PRINT_STR,
+  
   NOP = 0xff,
 };
 
