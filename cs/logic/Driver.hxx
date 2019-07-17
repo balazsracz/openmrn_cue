@@ -60,7 +60,9 @@ class Driver {
   Driver() {}
 
   void clear() {
-    current_context_.clear();
+    global_context_.clear();
+    function_context_.clear();
+    current_context_ = &global_context_;
     commands_.clear();
     error_output_.clear();
     //next_guid_ = 1;
@@ -80,17 +82,30 @@ class Driver {
     }
   };
 
-  ParsingContext current_context_;
-
+  ParsingContext global_context_;
+  ParsingContext function_context_;
+  ParsingContext* current_context_{&global_context_};
+  
   /// @return the current syntactical context.
   ParsingContext* current_context() {
-    return &current_context_;
+    return current_context_;
   }
 
+  /// Called when starting to compile the body of a function.
+  void enter_function() {
+    current_context_ = &function_context_;
+    function_context_.clear();
+  }
+
+  /// Called when leaving a function and going to the global scope.
+  void exit_function() {
+    current_context_ = &global_context_;
+  }
+  
   /// @return true if the currently parsing context is the global variable
   /// context.
   bool is_global_context() {
-    return true; /// @todo implement other contexts.
+    return current_context_ == &global_context_;
   }
   
   /// Create a new local variable.
