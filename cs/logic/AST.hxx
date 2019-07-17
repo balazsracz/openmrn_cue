@@ -533,6 +533,40 @@ class BoolOr : public BooleanExpression {
   std::shared_ptr<BooleanExpression> right_;
 };
 
+/// Represents a variable as the argument to a function.
+class FunctionArgument {
+ public:
+  FunctionArgument(string name, logic::TypeSpecifier type)
+      : name_(std::move(name))
+      , type_(std::move(type)) {}
+
+  std::string name_;
+  logic::TypeSpecifier type_;
+};
+
+/// Represents a function definition. (This is the code, not the actual call of
+/// the function).
+class Function : public Command {
+ public:
+  Function(
+      string name, logic::TypeSpecifier return_type,
+      std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > > args,
+      std::shared_ptr<CommandSequence> body)
+      : name_(std::move(name)),
+        return_type_(std::move(return_type)),
+        args_(std::move(args)),
+        body_(std::move(body)) {}
+
+  // Name of the function.
+  string name_;
+  // Return type.
+  logic::TypeSpecifier return_type_;
+  // Arguments
+  std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > > args_;
+  // Commands to execute inside this function.
+  std::shared_ptr<CommandSequence> body_;
+};
+
 } // namespace logic
 
 #endif // _LOGIC_AST_HXX_

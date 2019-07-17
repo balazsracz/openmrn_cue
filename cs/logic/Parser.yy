@@ -69,7 +69,7 @@ class Driver;
 %token
   END  0  "end of file"
   SEMICOLON  ";"
-  COMMA ","
+  COMMA   ","
   ASSIGN  "="
   MINUS   "-"
   PLUS    "+"
@@ -96,6 +96,7 @@ class Driver;
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
 %type  <logic::VariableStorageSpecifier> storage_specifier
+%type  <logic::TypeSpecifier> type_specifier
 %type  <std::shared_ptr<logic::IntExpression> > exp
 %type  <std::shared_ptr<logic::IntExpression> > decl_optional_int_exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
@@ -109,6 +110,9 @@ class Driver;
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > int_decl_list
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > bool_decl_list
+%type  <std::shared_ptr<Function> > function
+%type  <std::shared_ptr<FunctionArgument> > function_arg
+%type  <std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > > > function_arg_list
 //%printer { yyoutput << $$; } <*>;
 %%
 %start unit;
@@ -303,7 +307,9 @@ assignment optional_semicolon { $$ = std::move($1); };
 | variable_decl optional_semicolon { $$ = std::move($1); }
 ;
 
-
+// @todo we need to switch the following to natively create CommandSequence and
+// do away with this vector business. The CommandSequence should have an Add()
+// method.
 
 commands:
 %empty { $$ = std::make_shared<std::vector<std::shared_ptr<Command>>>(); }
@@ -368,6 +374,34 @@ boolexp:
   $$ = std::make_shared<BoolVariable>(std::move(vp));
 }
 ;
+
+type_specifier:
+"int" { $$.builtin_type_ = Symbol::DATATYPE_INT;
+} |
+"bool" { $$.builtin_type_ = Symbol::DATATYPE_BOOL;
+} ;
+
+
+function:
+type_specifier "identifier" "(" function_arg_list ")" "{" commands "}" {
+  $$ = std::make_shared<Function>(
+      std::move($2), std::move($1), std::move($4),
+      std::make_shared<CommandSequence>(std::move(*$7)));
+};
+
+function_arg_list:
+%empty {
+  $$ = std::make_shared<std::vector<std::shared_ptr<FunctionArgument>>>();
+} |
+function_arg_list "," function_arg {
+  $1->push_back(std::move($3));
+  $$ = std::move($1);
+};
+
+function_arg:
+type_specifier "identifier" {
+  $$ = std::make_shared<FunctionArgument>(std::move($2), std::move($1));
+};
 
 %%
 

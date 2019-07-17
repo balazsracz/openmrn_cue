@@ -107,6 +107,10 @@ struct Symbol {
   /// @todo add declaration location.
 };
 
+struct TypeSpecifier {
+  Symbol::DataType builtin_type_;
+};
+
 enum OpCode : uint8_t {
   TERMINATE = 0,
   PUSH_CONSTANT,
