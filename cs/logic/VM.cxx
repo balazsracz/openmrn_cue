@@ -359,7 +359,19 @@ bool VM::execute(const void* data, size_t len) {
         }
         break;
       }
-
+      case BOOL_PROJECT: {
+        if (operand_stack_.size() < 1) {
+          error_ = StringPrintf("Stack underflow at BOOL_PROJECT");
+          return false;
+        }
+        int rhs = operand_stack_.back(); operand_stack_.pop_back();
+        if (rhs == 0) {
+          operand_stack_.push_back(0);
+        } else {
+          operand_stack_.push_back(1);
+        }
+        break;
+      }
       case JUMP: {
         ++ip_;
         int r;

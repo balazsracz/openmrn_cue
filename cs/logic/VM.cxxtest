@@ -316,7 +316,38 @@ TEST_F(VMTest, bool_not) {
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(1, 0));
 }
-  
+
+TEST_F(VMTest, bool_project) {
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, -37);
+  BytecodeStream::append_opcode(&bytecode_, BOOL_PROJECT);
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 1));
+
+  clear();
+
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT_0};
+  BytecodeStream::append_opcode(&bytecode_, BOOL_PROJECT);
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 0));
+
+  clear();
+
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, 55);
+  BytecodeStream::append_opcode(&bytecode_, BOOL_PROJECT);
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 1));
+
+  clear();
+
+  bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};
+  BytecodeStream::append_varint(&bytecode_, 1);
+  BytecodeStream::append_opcode(&bytecode_, BOOL_PROJECT);
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 1));
+}
+
 TEST_F(VMTest, bool_and) {
   ASSERT_TRUE(compile("int a=1; if(true && true) {a=1+3}"));
   ASSERT_TRUE(run());

@@ -300,6 +300,8 @@ class BooleanAssignment : public Command {
 
   void serialize(std::string* output) override {
     value_->serialize(output);
+    // ensures we only write 0 or 1 to a boolean variable.
+    BytecodeStream::append_opcode(output, BOOL_PROJECT);
     variable_->serialize_store(output);
   }
 

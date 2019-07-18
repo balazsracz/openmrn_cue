@@ -201,6 +201,8 @@ enum OpCode : uint8_t {
   // Unary arithmetic operators. They act on the top of the stack.
   NUMERIC_INVERT,
   BOOL_NOT,
+  // turns a value on the top of the stack to a bool (0 or 1).
+  BOOL_PROJECT,
   
   // Branching
 
