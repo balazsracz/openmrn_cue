@@ -891,5 +891,20 @@ TEST_F(VMTest, function_call_does_not_corrupt_stack) {
   EXPECT_THAT(get_op_stack(), ElementsAre(23, 34, 12));
 }
 
+TEST_F(VMTest, arguments_stacked_correctly_in_function_call) {
+  const char* script = "int a = 23; int fn(int x, int y) { terminate(); }  int b= 34; fn(a+4, b*2);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(23, 34, 0, 27, 68));
+}
+
+TEST_F(VMTest, indirect_print) {
+  const char* script =
+      "int a = 23; int fn(int x) { print(x); }  fn(a); fn(17);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("23", "17"));
+}
+
 
 } // namespace logic
