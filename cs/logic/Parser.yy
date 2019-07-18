@@ -106,7 +106,8 @@ class Driver;
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
 %type  <std::string> anyfnname
-%type  <logic::VariableStorageSpecifier> storage_specifier
+%type  <logic::Symbol::Access> storage_specifier
+%type  <logic::Symbol::Access> fn_arg_storage_specifier
 %type  <logic::TypeSpecifier> type_specifier
 %type  <std::shared_ptr<logic::IntExpression> > exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
@@ -150,9 +151,15 @@ assignment:
 ;
 
 storage_specifier:
-%empty { $$ = LOCAL_VAR; }
-| "exported" { $$ = INDIRECT_VAR; }
+%empty { $$ = Symbol::LOCAL_VAR; }
+| "exported" { $$ = Symbol::INDIRECT_VAR; }
 ;
+
+fn_arg_storage_specifier:
+%empty { $$ = Symbol::LOCAL_VAR; }
+| "mutable" { $$ = Symbol::INDIRECT_VAR; }
+;
+
 
 optional_semicolon:
 %empty {}
@@ -183,7 +190,7 @@ multi_variable_decl "," "undeclared_identifier" optional_assignment_expression {
 
 variable_decl:
 storage_specifier type_specifier "undeclared_identifier" optional_assignment_expression {
-  if ($1 == INDIRECT_VAR && !driver.is_global_context()) {
+  if ($1 == Symbol::INDIRECT_VAR && !driver.is_global_context()) {
     driver.error(@1, "Exported variables must appear in the global context.");
     YYERROR;
   }
@@ -419,7 +426,7 @@ storage_specifier type_specifier "undeclared_identifier" "(" {
         @2, "Function definition is only allowed in the toplevel context.");
     YYERROR;
   }
-  if ($1 != LOCAL_VAR) {
+  if ($1 != Symbol::LOCAL_VAR) {
     driver.error(
         @2, "Function definition cannot have exported storage specifier.");
     YYERROR;
@@ -470,12 +477,12 @@ function_arg_list "," function_arg {
 };
 
 function_arg:
-type_specifier "undeclared_identifier" {
-  auto* s = driver.allocate_variable($2, @2, Symbol::VARIABLE);
+fn_arg_storage_specifier type_specifier "undeclared_identifier" {
+  auto* s = driver.allocate_variable($3, @3, Symbol::VARIABLE);
   /// @todo: support mutable/indirect variables.
   s->access_ = Symbol::LOCAL_VAR;
-  s->data_type_ = $1.builtin_type_;
-  $$ = std::make_shared<FunctionArgument>(std::move($2), std::move($1));
+  s->data_type_ = $2.builtin_type_;
+  $$ = std::make_shared<FunctionArgument>(std::move($3), std::move($2));
 };
 
 %%

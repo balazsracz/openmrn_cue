@@ -202,8 +202,8 @@ class Driver {
     Symbol* s = allocate_variable(name, loc, Symbol::VARIABLE);
     if (!s) return nullptr;
     s->data_type_ = decl_type_.builtin_type_;
-    if (decl_storage_ == INDIRECT_VAR) {
-      s->access_ = Symbol::INDIRECT_VAR;
+    s->access_ = decl_storage_;
+    if (decl_storage_ == Symbol::INDIRECT_VAR) {
       if (!initial_value->is_void()) {
         error(loc, "Exported variable declaration cannot have an initializer.");
         return nullptr;
@@ -211,7 +211,6 @@ class Driver {
       return std::make_shared<IndirectVarCreate>(std::move(name), s->fp_offset_,
                                                  allocate_guid());
     } else {
-      s->access_ = Symbol::LOCAL_VAR;
       // local variable. Create directly on top of the stack.
       Symbol::DataType value_type = initial_value->get_data_type();;
       bool has_value = value_type != Symbol::DATATYPE_VOID;
@@ -371,7 +370,7 @@ class Driver {
 
   /// lexical context variable that describes what storage option the current
   /// variable declaration has.
-  VariableStorageSpecifier decl_storage_;
+  Symbol::Access decl_storage_;
 
   /// lexical context variable that describes what type the current variable
   /// declaration has.
