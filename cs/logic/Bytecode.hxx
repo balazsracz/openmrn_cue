@@ -195,7 +195,7 @@ enum OpCode : uint8_t {
 
   /// Enter a subroutine. Pops destination address from the operand stack. Then
   /// takes argument arg, creates a new stack frame in the execution
-  /// environment, and sets FP to the current operand stack length -
+  /// environment, and sets FP to the current operand stack length minus
   /// arg. Essentially arg is the number of arguments passed to the function
   /// via the operand stack. Then jumps to the presented address.
   CALL,

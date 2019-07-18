@@ -91,10 +91,16 @@ class Driver {
     return current_context_;
   }
 
-  /// Called when starting to compile the body of a function.
-  void enter_function() {
+  /// Called when starting to compile the body of a function. Will clear the
+  /// current parsing context and start an empty function context.
+  void enter_function(TypeSpecifier return_type) {
     current_context_ = &function_context_;
     function_context_.clear();
+    /// @todo this needs to move to a real return statement.
+    auto* s = allocate_symbol("return_value", yy::location(), Symbol::VARIABLE);
+    s->access_ = Symbol::LOCAL_VAR;
+    s->fp_offset_ = -1;
+    s->data_type_ = return_type.builtin_type_;
   }
 
   /// Called when leaving a function and going to the global scope.

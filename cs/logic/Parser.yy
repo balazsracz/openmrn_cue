@@ -290,7 +290,7 @@ type_specifier:
 
 
 function:
-storage_specifier type_specifier "undeclared_identifier" "(" function_arg_list ")" "{" {
+storage_specifier type_specifier "undeclared_identifier" "(" {
   if (!driver.is_global_context()) {
     driver.error(
         @2, "Function definition is only allowed in the toplevel context.");
@@ -301,12 +301,12 @@ storage_specifier type_specifier "undeclared_identifier" "(" function_arg_list "
         @2, "Function definition cannot have exported storage specifier.");
     YYERROR;
   }
-  driver.enter_function();
-  /// @todo enter 
-} commands "}" {
+  driver.enter_function($2);
+} function_arg_list ")" {
+} "{" commands "}" {
   $$ = std::make_shared<Function>(&driver,
-      std::move($3), std::move($2), std::move($5),
-      std::make_shared<CommandSequence>(std::move(*$9)));
+      std::move($3), std::move($2), std::move($6),
+      std::make_shared<CommandSequence>(std::move(*$10)));
   driver.exit_function();
 };
 
@@ -322,6 +322,10 @@ function_arg_list "," function_arg {
 
 function_arg:
 type_specifier "undeclared_identifier" {
+  auto* s = driver.allocate_variable($2, @2, Symbol::VARIABLE);
+  /// @todo: support mutable/indirect variables.
+  s->access_ = Symbol::LOCAL_VAR;
+  s->data_type_ = $1.builtin_type_;
   $$ = std::make_shared<FunctionArgument>(std::move($2), std::move($1));
 };
 
