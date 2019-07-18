@@ -900,10 +900,11 @@ TEST_F(VMTest, arguments_stacked_correctly_in_function_call) {
 
 TEST_F(VMTest, indirect_print) {
   const char* script =
-      "int a = 23; int fn(int x) { print(x); }  fn(a); fn(17);";
+      "int a = 23; void fn(int x) { print(x); }  fn(a); fn(17); int b=2";
   ASSERT_TRUE(compile(script));
   ASSERT_TRUE(run());
   EXPECT_THAT(output_, ElementsAre("23", "17"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(23, 2));
 }
 
 

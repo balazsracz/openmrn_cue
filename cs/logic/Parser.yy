@@ -88,6 +88,7 @@ class Driver;
   ELSE  "else"
   TYPEINT  "int"
   TYPEBOOL  "bool"
+  TYPEVOID  "void"
   EXPORTED  "exported"
   AUTO  "auto"
   PRINT  "print"
@@ -102,6 +103,7 @@ class Driver;
 %token <std::string> STRING "string"
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
+%type  <std::string> anyfnname
 %type  <logic::VariableStorageSpecifier> storage_specifier
 %type  <logic::TypeSpecifier> type_specifier
 %type  <std::shared_ptr<logic::IntExpression> > exp
@@ -231,15 +233,21 @@ fncallargs "," poly_expression {
   $$->emplace_back(std::move($3));
 };
 
+anyfnname:
+"int_function_identifier" { $$ = std::move($1); }
+| "bool_function_identifier" { $$ = std::move($1); }
+| "void_function_identifier" { $$ = std::move($1); }
+;
+
 fncall:
-"int_function_identifier" "(" {
+anyfnname "(" {
 } fncallargs ")" optional_semicolon {
   auto* s = driver.find_function($1);
   if (!s) {
     YYERROR;
   }
-  $$ = std::make_shared<FunctionCallIgnoreRetval>(
-      driver.current_context()->frame_size_, $1, *s, std::move($4));
+  $$ = std::make_shared<FunctionCall>(
+      driver.current_context()->frame_size_, $1, *s, std::move($4), false);
 };
 
 printonearg:
@@ -361,7 +369,10 @@ type_specifier:
 } |
 "bool" {
   $$.builtin_type_ = Symbol::DATATYPE_BOOL;
-} ;
+}  |
+"void" {
+  $$.builtin_type_ = Symbol::DATATYPE_VOID;
+};
 
 
 function:

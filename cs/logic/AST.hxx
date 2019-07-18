@@ -660,7 +660,7 @@ class Function : public Command {
   std::shared_ptr<CommandSequence> body_;
 };
 
-class FunctionCallIgnoreRetval : public Command {
+class FunctionCall : public Command {
  public:
   typedef std::shared_ptr<
       std::vector<std::shared_ptr<logic::PolymorphicExpression> > >
@@ -670,18 +670,35 @@ class FunctionCallIgnoreRetval : public Command {
   /// @param name is the function to call
   /// @param fn is the Symbol of the function to call
   /// @param args are the expressions to be passed as function arguments.
-  FunctionCallIgnoreRetval(unsigned stack_ofs, string name, const Symbol& fn,
-                           ArgsType args)
+  /// @param need_retval true if we need to keep the return value, false if it
+  /// needs to be thrown away.
+  FunctionCall(unsigned stack_ofs, string name, const Symbol& fn,
+                           ArgsType args, bool need_retval)
       : stack_ofs_(stack_ofs),
         name_(std::move(name)),
         fn_(fn),
-        args_(std::move(args)) {
+        args_(std::move(args)),
+        need_retval_(need_retval) {
     HASSERT(args_);
   }
 
   void debug_print(std::string* output) override {
     output->append(name_);
-    output->append("();");
+    output->append("(");
+    bool first = true;
+    for (const auto& a: *args_) {
+      if (first) {
+        first = false;
+      } else {
+        output->append(", ");
+      }
+      if (a->int_expr_) {
+        a->int_expr_->debug_print(output);
+      } else if (a->bool_expr_) {
+        a->bool_expr_->debug_print(output);
+      }
+    }
+    output->append(")");
   }
 
   void serialize(std::string* output) override {
@@ -728,6 +745,9 @@ class FunctionCallIgnoreRetval : public Command {
   const Symbol& fn_;
   /// Argument list.
   ArgsType args_;
+  /// true if we need to keep the return value, false if it needs to be thrown
+  /// away.
+  bool need_retval_;
 };
 
 class PrintString : public Command {

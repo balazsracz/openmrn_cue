@@ -100,6 +100,7 @@ blank [ \t]
 
 "int"      return logic::yy::Parser::make_TYPEINT(loc);
 "bool"     return logic::yy::Parser::make_TYPEBOOL(loc);
+"void"     return logic::yy::Parser::make_TYPEVOID(loc);
 
 "exported" return logic::yy::Parser::make_EXPORTED(loc);  
 "auto" return logic::yy::Parser::make_AUTO(loc);  
