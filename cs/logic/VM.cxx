@@ -138,6 +138,19 @@ bool VM::execute(const void* data, size_t len) {
         --ip_;
         break;
       }
+      case CHECK_STACK_LENGTH: {
+        ++ip_;
+        int r;
+        if (!parse_varint(&r)) return false;
+        --ip_;
+        if (operand_stack_.size() != (unsigned)r) {
+          error_ = StringPrintf(
+              "At IP %u: Operand stack length error, expected %d, actual %u.",
+              (unsigned)(ip_ - ip_start_), r, operand_stack_.size());
+          return false;
+        }
+        break;
+      }
       case STORE_FP_REL: {
         if (operand_stack_.size() < 1) {
           error_ = StringPrintf("Stack underflow at STORE_FP_REL");

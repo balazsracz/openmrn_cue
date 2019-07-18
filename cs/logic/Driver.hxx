@@ -155,6 +155,13 @@ class Driver {
   /// @param name is the identifier of the symbol.
   /// @return symbol table entry, or null if this is an undeclared symbol.
   const Symbol* find_symbol(const string& name) {
+    return find_mutable_symbol(name);
+  }
+
+  /// Looks up a symbol in the symbol table.
+  /// @param name is the identifier of the symbol.
+  /// @return symbol table entry, or null if this is an undeclared symbol.
+  Symbol* find_mutable_symbol(const string& name) {
     auto it = current_context()->symbol_table_.find(name);
     if (it == current_context()->symbol_table_.end()) {
       // Checks the global context for functions of this name.
@@ -165,17 +172,6 @@ class Driver {
           return &it->second;
         }
       }
-      return nullptr;
-    }
-    return &it->second;
-  }
-
-  /// Looks up a symbol in the symbol table.
-  /// @param name is the identifier of the symbol.
-  /// @return symbol table entry, or null if this is an undeclared symbol.
-  Symbol* find_mutable_symbol(const string& name) {
-    auto it = current_context()->symbol_table_.find(name);
-    if (it == current_context()->symbol_table_.end()) {
       return nullptr;
     }
     return &it->second;

@@ -43,6 +43,10 @@
 
 #include "logic/Bytecode.hxx"
 
+/// If this is defined, the bytecode will have extra instructions rendered to
+/// double-check the depth of stack when allocating variables.
+#define RENDER_STACK_LENGTH_CHECK
+
 namespace logic {
 
 class Driver;
@@ -560,17 +564,6 @@ struct PolymorphicExpression {
   std::shared_ptr<IntExpression> int_expr_;
 };
 
-/// Represents a variable as the argument to a function.
-class FunctionArgument {
- public:
-  FunctionArgument(string name, logic::TypeSpecifier type)
-      : name_(std::move(name))
-      , type_(std::move(type)) {}
-
-  std::string name_;
-  logic::TypeSpecifier type_;
-};
-
 /// Represents a function definition. (This is the code, not the actual call of
 /// the function).
 class Function : public Command {
@@ -633,8 +626,22 @@ class Function : public Command {
 
 class FunctionCallIgnoreRetval : public Command {
  public:
-  FunctionCallIgnoreRetval(string name, const Symbol& fn)
-      : name_(std::move(name)), fn_(fn) {}
+  typedef std::shared_ptr<
+      std::vector<std::shared_ptr<logic::PolymorphicExpression> > >
+      ArgsType;
+  /// Constructor
+  /// @param stack_ofs is an fp-relative offset from whence the operand stack is not used (and can be reused for the purpose of argument passing.
+  /// @param name is the function to call
+  /// @param fn is the Symbol of the function to call
+  /// @param args are the expressions to be passed as function arguments.
+  FunctionCallIgnoreRetval(unsigned stack_ofs, string name, const Symbol& fn,
+                           ArgsType args)
+      : stack_ofs_(stack_ofs),
+        name_(std::move(name)),
+        fn_(fn),
+        args_(std::move(args)) {
+    HASSERT(args_);
+  }
 
   void debug_print(std::string* output) override {
     output->append(name_);
@@ -642,9 +649,27 @@ class FunctionCallIgnoreRetval : public Command {
   }
 
   void serialize(std::string* output) override {
+    BytecodeStream::append_opcode(output, CHECK_STACK_LENGTH);
+    BytecodeStream::append_varint(output, stack_ofs_);
+
     // Create space for return value of the function.
-    BytecodeStream::append_opcode(output, ENTER);
-    BytecodeStream::append_varint(output, 1);
+    BytecodeStream::append_opcode(output, PUSH_CONSTANT_0);
+
+    // Render arguments to the function.
+    unsigned c = 0;
+    for (const auto& arg : *args_) {
+      if (arg->bool_expr_) {
+        arg->bool_expr_->serialize(output);
+      } else if (arg->int_expr_) {
+        arg->int_expr_->serialize(output);
+      } else {
+        LOG_ERROR(
+            "Error serializing function call %s: arg %c has no expression.",
+            name_.c_str(), c);
+        BytecodeStream::append_opcode(output, PUSH_CONSTANT_0);
+      }
+      ++c;
+    }
 
     // Call target address.
     BytecodeStream::append_opcode(output, PUSH_CONSTANT);
@@ -652,17 +677,21 @@ class FunctionCallIgnoreRetval : public Command {
 
     // Execute call.
     BytecodeStream::append_opcode(output, CALL);
-    BytecodeStream::append_varint(output, 0);
+    BytecodeStream::append_varint(output, args_->size());
 
     // After return: clean up return value.
     BytecodeStream::append_opcode(output, POP_OP);
   }
   
  private:
+  /// FP-relative offset which should be the length of the stack.
+  int stack_ofs_;
   /// Name of the function we are calling.
   string name_;
   /// The symbol table entry for the function to call.
   const Symbol& fn_;
+  /// Argument list.
+  ArgsType args_;
 };
 
 class PrintString : public Command {

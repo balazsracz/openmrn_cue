@@ -109,7 +109,9 @@ class Driver;
 %type  <std::shared_ptr<logic::Command> > conditional
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<logic::Command> > fncall
-%type <std::shared_ptr<logic::Command> > print
+%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::PolymorphicExpression> > > > fncallargs
+%type  <std::shared_ptr<logic::PolymorphicExpression> > poly_expression
+%type  <std::shared_ptr<logic::Command> > print
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > printargs
 %type <std::shared_ptr<logic::Command> > printonearg
 %type  <std::shared_ptr<logic::PolymorphicExpression> > optional_assignment_expression
@@ -210,14 +212,33 @@ conditional:
   }
 ;
 
+poly_expression:
+exp { $$ = std::make_shared<PolymorphicExpression>(std::move($1)); }
+| boolexp { $$ = std::make_shared<PolymorphicExpression>(std::move($1)); }
+;
+
+fncallargs:
+%empty {
+  $$ = std::make_shared<std::vector<std::shared_ptr<logic::PolymorphicExpression> > >();
+} |
+poly_expression {
+  $$ = std::make_shared<std::vector<std::shared_ptr<logic::PolymorphicExpression> > >();
+  $$->emplace_back(std::move($1));
+} | 
+fncallargs "," poly_expression {
+  $$ = std::move($1);
+  $$->emplace_back(std::move($3));
+};
+
 fncall:
-"void_function_identifier" "(" {
-} ")" optional_semicolon {
+"int_function_identifier" "(" {
+} fncallargs ")" optional_semicolon {
   auto* s = driver.find_function($1);
   if (!s) {
     YYERROR;
   }
-  $$ = std::make_shared<FunctionCallIgnoreRetval>($1, *s);
+  $$ = std::make_shared<FunctionCallIgnoreRetval>(
+      driver.current_context()->frame_size_, $1, *s, std::move($4));
 };
 
 printonearg:
@@ -352,8 +373,20 @@ storage_specifier type_specifier "undeclared_identifier" "(" {
         @2, "Function definition cannot have exported storage specifier.");
     YYERROR;
   }
+  auto* s = driver.allocate_symbol($3, @3, Symbol::FUNCTION);
+  if (!s) {
+    YYERROR;
+  }
+  s->data_type_ = $2.builtin_type_;
   driver.enter_function($2);
 } function_arg_list ")" {
+  auto* fsym = driver.find_mutable_symbol($3);
+  if (!fsym) {
+    driver.error(
+        @3, "Internal error - symbol not found.");
+    YYERROR;
+  }
+  fsym->args_ = $6;
   const auto& al = *$6;
   for (unsigned i = 0; i < al.size(); ++i) {
     auto* s = driver.find_symbol(al[i]->name_);
@@ -373,6 +406,9 @@ storage_specifier type_specifier "undeclared_identifier" "(" {
 };
 
 function_arg_list:
+%empty {
+  $$ = std::make_shared<std::vector<std::shared_ptr<FunctionArgument>>>();
+} |
 function_arg {
   $$ = std::make_shared<std::vector<std::shared_ptr<FunctionArgument>>>();
   $$->emplace_back(std::move($1));

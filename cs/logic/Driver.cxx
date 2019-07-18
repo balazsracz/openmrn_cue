@@ -43,6 +43,7 @@ int Driver::parse_file(const std::string& f) {
   //parser.set_debug_level(debug_level_ & TRACE_PARSE ? 1 : 0);
   int res = parser.parse();
   scan_end();
+  if (!error_output_.empty()) return 1;
   return res;
 }
 
@@ -103,7 +104,8 @@ void Function::register_function(std::string* output) {
   auto* s = driver_->find_mutable_symbol(name_);
   if (!s) {
     driver_->error(StringPrintf(
-        "Function %s: symbol table entry not found during serialize.", name_));
+        "Function %s: symbol table entry not found during serialize.",
+        name_.c_str()));
     return;
   }
   s->fp_offset_ = jump_ofs;

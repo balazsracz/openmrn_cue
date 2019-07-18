@@ -38,10 +38,13 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <string>
+#include <memory>
 
 #include "utils/macros.h"
 
 namespace logic {
+
+struct FunctionArgument;
 
 /// An entry in the symbol table.
 struct Symbol {
@@ -112,6 +115,8 @@ struct Symbol {
   /// relative offset on the operand stack from the fp. Negative for a function
   /// in case the
   int fp_offset_{-1};
+  /// If this is a function, argument list to it.
+  std::weak_ptr<std::vector<std::shared_ptr<FunctionArgument> > > args_;  
   /// @todo add declaration location.
 };
 
@@ -121,6 +126,16 @@ struct TypeSpecifier {
   string to_string() {
     return Symbol::datatype_to_string(builtin_type_);    
   }
+};
+
+/// Represents a variable as the argument to a function.
+struct FunctionArgument {
+  FunctionArgument(string name, logic::TypeSpecifier type)
+      : name_(std::move(name))
+      , type_(std::move(type)) {}
+
+  std::string name_;
+  logic::TypeSpecifier type_;
 };
 
 enum OpCode : uint8_t {
@@ -134,6 +149,10 @@ enum OpCode : uint8_t {
   POP_OP,
   // Pushes zeros to the stack. Arg = how many zeros to push.
   ENTER,
+  // Verifies that the length of the operand stack is as expected. One varint
+  // argument arg. The operand stack's length shall be fp_ + arg, otherwise the
+  // VM terminates.
+  CHECK_STACK_LENGTH,
   // Pops the stack and writes the value an fp-relative position on the operand
   // stack. Arg=fp-relative offset of where to write the value.
   STORE_FP_REL,

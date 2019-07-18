@@ -57,6 +57,7 @@ class VMTest : public ::testing::Test {
  protected:
   VMTest() {
     vm_.set_output([this](string d) { output_.emplace_back(std::move(d)); });
+    vm_.clear();
   }
 
   ::testing::AssertionResult compile(const string& sourcecode) {
@@ -69,7 +70,12 @@ class VMTest : public ::testing::Test {
       return ::testing::AssertionFailure() << "Failed to compile: " << driver_.error_output_;
     }
     d.serialize(&bytecode_);
-    return ::testing::AssertionSuccess();
+    if (d.error_output_.empty()) {
+      return ::testing::AssertionSuccess();
+    } else {
+      return ::testing::AssertionFailure()
+             << "failed serializing: " << driver_.error_output_;
+    }
   }
 
   ::testing::AssertionResult run() {
@@ -853,6 +859,35 @@ assign(y, fetch(x));
 TEST_F(VMTest, function_use_args) {
   const char* script = "int fn(int a,bool b) { a = 13; }";
   ASSERT_TRUE(compile(script));
+}
+
+TEST_F(VMTest, void_function_not_called) {
+  const char* script = "int fn() { print(123); }  print(456);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("456"));
+}
+
+TEST_F(VMTest, void_function_called) {
+  const char* script = "int fn() { print(123); }  print(456); fn();";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("456", "123"));
+}
+
+TEST_F(VMTest, void_function_called_twice) {
+  const char* script = "int fn() { print(123); }  fn(); print(456); fn();";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("123", "456", "123"));
+}
+
+TEST_F(VMTest, function_call_does_not_corrupt_stack) {
+  const char* script = "int a = 23; int fn() { print(123); }  print(456); int b= 34; fn(); int c = 12;";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("456", "123"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(23, 34, 12));
 }
 
 
