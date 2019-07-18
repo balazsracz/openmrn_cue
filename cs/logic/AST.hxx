@@ -732,8 +732,10 @@ class FunctionCall : public Command {
     BytecodeStream::append_opcode(output, CALL);
     BytecodeStream::append_varint(output, args_->size());
 
-    // After return: clean up return value.
-    BytecodeStream::append_opcode(output, POP_OP);
+    if (!need_retval_) {
+      // After return: clean up return value.
+      BytecodeStream::append_opcode(output, POP_OP);
+    }
   }
   
  private:
@@ -748,6 +750,40 @@ class FunctionCall : public Command {
   /// true if we need to keep the return value, false if it needs to be thrown
   /// away.
   bool need_retval_;
+};
+
+class IntFunctionCall : public IntExpression {
+ public:
+  template <typename... Args>
+  IntFunctionCall(Args&&... args) : fc_(std::forward<Args>(args)...) {}
+
+  void debug_print(std::string* output) override {
+    fc_.debug_print(output);
+  }
+
+  void serialize(std::string* output) override {
+    fc_.serialize(output);
+  }
+    
+ private:
+  FunctionCall fc_;
+};
+
+class BoolFunctionCall : public BooleanExpression {
+ public:
+  template <typename... Args>
+  BoolFunctionCall(Args&&... args) : fc_(std::forward<Args>(args)...) {}
+
+  void debug_print(std::string* output) override {
+    fc_.debug_print(output);
+  }
+
+  void serialize(std::string* output) override {
+    fc_.serialize(output);
+  }
+    
+ private:
+  FunctionCall fc_;
 };
 
 class PrintString : public Command {

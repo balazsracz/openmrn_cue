@@ -339,6 +339,14 @@ exp "%" exp   {
   }
   $$ = std::make_shared<IntVariable>(std::move(vp));
 }
+| "int_function_identifier" "(" fncallargs ")" {
+  auto* s = driver.find_function($1);
+  if (!s) {
+    YYERROR;
+  }
+  $$ = std::make_shared<IntFunctionCall>(
+      driver.current_context()->frame_size_, $1, *s, std::move($3), true);
+}
 ;
 
 %right "!";
@@ -360,6 +368,14 @@ boolexp:
     YYERROR;
   }
   $$ = std::make_shared<BoolVariable>(std::move(vp));
+}
+| "bool_function_identifier" "(" fncallargs ")" {
+  auto* s = driver.find_function($1);
+  if (!s) {
+    YYERROR;
+  }
+  $$ = std::make_shared<BoolFunctionCall>(
+      driver.current_context()->frame_size_, $1, *s, std::move($3), true);
 }
 ;
 
