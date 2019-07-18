@@ -77,6 +77,7 @@ class Driver;
   SLASH   "/"
   PERCENT "%"
   BANG    "!"
+  AMP     "&"
   LPAREN  "("
   RPAREN  ")"
   LBRACE  "{"
@@ -90,6 +91,7 @@ class Driver;
   TYPEBOOL  "bool"
   TYPEVOID  "void"
   EXPORTED  "exported"
+  MUTABLE  "mutable"
   AUTO  "auto"
   PRINT  "print"
   TERMINATE  "terminate"
@@ -160,9 +162,14 @@ optional_semicolon:
 
 optional_assignment_expression:
 %empty { $$ = std::make_shared<PolymorphicExpression>(); }
-| "=" exp { $$ = std::make_shared<PolymorphicExpression>(std::move($2)); }
-| "=" boolexp { $$ = std::make_shared<PolymorphicExpression>(std::move($2)); }
-;
+| "=" exp {
+  $$ = std::make_shared<PolymorphicExpression>(std::move($2));
+  $$->loc_ = @2;
+}
+| "=" boolexp {
+  $$ = std::make_shared<PolymorphicExpression>(std::move($2));
+  $$->loc_ = @2;
+};
 
 multi_variable_decl:
 %empty {} |
@@ -216,9 +223,24 @@ conditional:
 ;
 
 poly_expression:
-exp { $$ = std::make_shared<PolymorphicExpression>(std::move($1)); }
-| boolexp { $$ = std::make_shared<PolymorphicExpression>(std::move($1)); }
-;
+exp {
+  $$ = std::make_shared<PolymorphicExpression>(std::move($1));
+  $$->loc_ = @1;
+} |
+boolexp {
+  $$ = std::make_shared<PolymorphicExpression>(std::move($1));
+  $$->loc_ = @1;
+} |
+"&" "int_var_identifier" {
+  $$ = std::make_shared<PolymorphicExpression>(Symbol::DATATYPE_INT,
+    driver.get_variable_reference(std::move($2), @2, Symbol::DATATYPE_INT));
+  $$->loc_ = @2;
+} |
+"&" "bool_var_identifier" {
+  $$ = std::make_shared<PolymorphicExpression>(Symbol::DATATYPE_BOOL,
+    driver.get_variable_reference(std::move($2), @2, Symbol::DATATYPE_BOOL));
+  $$->loc_ = @2;
+};
 
 fncallargs:
 %empty {
@@ -242,12 +264,11 @@ anyfnname:
 fncall:
 anyfnname "(" {
 } fncallargs ")" optional_semicolon {
-  auto* s = driver.find_function($1);
-  if (!s) {
+  $$ = driver.get_function_call<FunctionCall>(std::move($1), @$, std::move($4),
+                                              false);
+  if (!$$) {
     YYERROR;
   }
-  $$ = std::make_shared<FunctionCall>(
-      driver.current_context()->frame_size_, $1, *s, std::move($4), false);
 };
 
 printonearg:

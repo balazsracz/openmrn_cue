@@ -46,6 +46,9 @@ namespace logic {
 
 struct FunctionArgument;
 
+typedef std::shared_ptr<std::vector<std::shared_ptr<FunctionArgument> > >
+    FunctionArgList;
+
 /// An entry in the symbol table.
 struct Symbol {
   enum Type {
@@ -94,26 +97,27 @@ struct Symbol {
   /// in case the
   int fp_offset_{-1};
   /// If this is a function, argument list to it.
-  std::weak_ptr<std::vector<std::shared_ptr<FunctionArgument> > > args_;  
+  std::weak_ptr<typename FunctionArgList::element_type> args_;  
   /// @todo add declaration location.
 };
 
 struct TypeSpecifier {
   Symbol::DataType builtin_type_;
 
-  string to_string() {
+  string to_string() const {
     return Symbol::datatype_to_string(builtin_type_);    
   }
 };
 
 /// Represents a variable as the argument to a function.
 struct FunctionArgument {
-  FunctionArgument(string name, logic::TypeSpecifier type)
-      : name_(std::move(name))
-      , type_(std::move(type)) {}
+  FunctionArgument(string name, logic::TypeSpecifier type,
+                   Symbol::Access access = Symbol::LOCAL_VAR)
+      : name_(std::move(name)), type_(std::move(type)), access_(access) {}
 
   std::string name_;
   logic::TypeSpecifier type_;
+  Symbol::Access access_;
 };
 
 enum OpCode : uint8_t {

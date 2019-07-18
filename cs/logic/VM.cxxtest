@@ -947,5 +947,23 @@ TEST_F(VMTest, function_return) {
   EXPECT_THAT(get_op_stack(), ElementsAre(11));
 }
 
+TEST_F(VMTest, type_check_variable) {
+  const char* script =
+      "int a = 23; a = Inactive;";
+  ASSERT_FALSE(compile(script));
+}
+
+TEST_F(VMTest, type_check_function) {
+  const char* script =
+      "void fn(int a) { print(a); } fn(Inactive);";
+  ASSERT_FALSE(compile(script));
+}
+
+TEST_F(VMTest, argument_count_function) {
+  const char* script =
+      "int xx = 32; void fn(int a) { print(a); } fn(Inactive, 33); int yy = 4;";
+  ASSERT_FALSE(compile(script));
+}
+
 
 } // namespace logic

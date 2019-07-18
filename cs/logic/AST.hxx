@@ -42,6 +42,7 @@
 #include "utils/StringPrintf.hxx"
 
 #include "logic/Bytecode.hxx"
+#include "logic/location.hh"
 
 /// If this is defined, the bytecode will have extra instructions rendered to
 /// double-check the depth of stack when allocating variables.
@@ -582,10 +583,18 @@ struct PolymorphicExpression {
       : bool_expr_(std::move(bool_expr)) {}
   PolymorphicExpression(std::shared_ptr<IntExpression> && int_expr)
       : int_expr_(std::move(int_expr)) {}
+  PolymorphicExpression(Symbol::DataType type,
+                        std::unique_ptr<VariableReference> var)
+      : var_type_(type), var_(std::move(var)) {}
+
   PolymorphicExpression() {}
 
   bool is_void() {
     return !(bool_expr_ || int_expr_);
+  }
+
+  bool is_variable() {
+    return (bool)var_;
   }
 
   Symbol::DataType get_data_type() {
@@ -593,13 +602,18 @@ struct PolymorphicExpression {
       return Symbol::DATATYPE_BOOL;
     } else if (int_expr_) {
       return Symbol::DATATYPE_INT;
+    } else if (var_) {
+      return var_type_;
     } else {
       return Symbol::DATATYPE_VOID;
     }  
   }
   
+  yy::location loc_;
   std::shared_ptr<BooleanExpression> bool_expr_;
   std::shared_ptr<IntExpression> int_expr_;
+  Symbol::DataType var_type_ = Symbol::DATATYPE_VOID;
+  std::unique_ptr<VariableReference> var_;
 };
 
 /// Represents a function definition. (This is the code, not the actual call of
@@ -674,8 +688,8 @@ class FunctionCall : public Command {
   /// @param args are the expressions to be passed as function arguments.
   /// @param need_retval true if we need to keep the return value, false if it
   /// needs to be thrown away.
-  FunctionCall(unsigned stack_ofs, string name, const Symbol& fn,
-                           ArgsType args, bool need_retval)
+  FunctionCall(unsigned stack_ofs, string name, const Symbol& fn, ArgsType args,
+               bool need_retval)
       : stack_ofs_(stack_ofs),
         name_(std::move(name)),
         fn_(fn),

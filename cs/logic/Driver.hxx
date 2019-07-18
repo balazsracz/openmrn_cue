@@ -291,6 +291,66 @@ class Driver {
         return nullptr;
     }
   }
+
+  /// Creates a function call operation.
+  /// @return nullptr if there is a syntax error.
+  template<class CallType> std::shared_ptr<CallType> get_function_call(string name, const yy::location& loc, std::shared_ptr<std::vector<std::shared_ptr<logic::PolymorphicExpression> > > args, bool need_result) {
+    auto* sym = find_function(name);
+    if (!sym) {
+      error(loc, StringPrintf("Syntax error: function %s is not declared", name.c_str()));
+      return nullptr;
+    }
+    FunctionArgList sym_args_ = sym->args_.lock();
+    if (!sym_args_) {
+      error(loc, "internal error: sym_args_ is null");
+      return nullptr;
+    }
+    if (!args) {
+      error(loc, "internal error: args_ is null");
+      return nullptr;
+    }
+    if (args->size() != sym_args_->size()) {
+      error(loc, StringPrintf("Syntax error. Function %s takes %u arguments, given %u.", name.c_str(), (unsigned)sym_args_->size(), (unsigned)args->size()));
+      return nullptr;
+    }
+    // Type checks arguments.
+    for (unsigned i = 0; i < args->size(); ++i) {
+      bool act_var = (*args)[i]->is_variable();
+      Symbol::DataType act_type = (*args)[i]->get_data_type();
+      const TypeSpecifier& exp_type = (*sym_args_)[i]->type_;
+      Symbol::Access exp_acc = (*sym_args_)[i]->access_;
+      if (act_type != exp_type.builtin_type_) {
+        error((*args)[i]->loc_,
+              StringPrintf(
+                  "Syntax error calling function %s. Type error supplying "
+                  "argument %s, expected %s, actual %s.",
+                  name.c_str(), (*sym_args_)[i]->name_.c_str(),
+                  exp_type.to_string().c_str(),
+                  Symbol::datatype_to_string(act_type)));
+        return nullptr;
+      }
+      if (act_var && exp_acc != Symbol::INDIRECT_VAR) {
+        error(
+            (*args)[i]->loc_,
+            StringPrintf("Syntax error calling function %s. Argument %s should "
+                         "be an expression, given a reference. Remove '&'.",
+                         name.c_str(), (*sym_args_)[i]->name_.c_str()));
+        return nullptr;
+      }
+      if (!act_var && exp_acc == Symbol::INDIRECT_VAR) {
+        error(
+            (*args)[i]->loc_,
+            StringPrintf("Syntax error calling function %s. Argument %s should "
+                         "be a reference, got an expression. Use "
+                         "&variable_name syntax.",
+                         name.c_str(), (*sym_args_)[i]->name_.c_str()));
+        return nullptr;
+      }
+    }
+    return std::make_shared<CallType>(current_context()->frame_size_,
+                                      std::move(name), *sym, std::move(args),
+                                      need_result);
+  }
   
   /// The parsed AST of global statements.
   std::vector<std::shared_ptr<Command> > commands_;

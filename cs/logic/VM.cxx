@@ -146,7 +146,7 @@ bool VM::execute(const void* data, size_t len) {
         if (operand_stack_.size() != (unsigned)r) {
           error_ = StringPrintf(
               "At IP %u: Operand stack length error, expected %d, actual %u.",
-              (unsigned)(ip_ - ip_start_), r, operand_stack_.size());
+              (unsigned)(ip_ - ip_start_), r, (unsigned)operand_stack_.size());
           return false;
         }
         break;

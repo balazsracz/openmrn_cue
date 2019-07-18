@@ -87,6 +87,7 @@ blank [ \t]
 ";"        return logic::yy::Parser::make_SEMICOLON(loc);
 ","        return logic::yy::Parser::make_COMMA(loc);
 "="        return logic::yy::Parser::make_ASSIGN(loc);
+"&"        return logic::yy::Parser::make_AMP(loc);
 "&&"       return logic::yy::Parser::make_DOUBLEAND(loc);
 "and"      return logic::yy::Parser::make_DOUBLEAND(loc);
 "||"       return logic::yy::Parser::make_DOUBLEOR(loc);
@@ -104,6 +105,7 @@ blank [ \t]
 
 "exported" return logic::yy::Parser::make_EXPORTED(loc);  
 "auto" return logic::yy::Parser::make_AUTO(loc);  
+"mutable" return logic::yy::Parser::make_MUTABLE(loc);  
 
 "print" return logic::yy::Parser::make_PRINT(loc);
 "terminate" return logic::yy::Parser::make_TERMINATE(loc);
