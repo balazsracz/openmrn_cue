@@ -64,11 +64,11 @@ class OlcbBoolVariable : public Variable, private openlcb::BitEventInterface {
     return 1;
   }
 
-  int read(const VariableFactory* parent, uint16_t arg) override {
+  int read(const VariableFactory* parent, unsigned arg) override {
     return state_ ? 1 : 0;
   }
   
-  void write(const VariableFactory *parent, uint16_t arg, int value) override {
+  void write(const VariableFactory *parent, unsigned arg, int value) override {
     bool need_update = !state_known_;
     state_known_ = true;
     if (state_ && !value) need_update = true;

@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <string>
 #include <functional>
@@ -54,7 +55,7 @@ class VM {
   /// @param factory is used to instantiate variables duing the execution of
   /// the VM. Ownership is not transferred.
   VM(VariableFactory* factory)
-      : variable_factory_(factory), block_num_(0) {}
+      : variable_factory_(factory), block_num_(0), access_error_(0) {}
 
   /// Executes a given set of instructions. Return true if execution succeeded
   /// (hit the last byte or a TERMINATE command), false if an exception was
@@ -97,6 +98,7 @@ class VM {
     call_stack_.emplace_back();
     call_stack_.back().fp = 0;
     fp_ = 0;
+    access_error_ = 0;
   }
 
   typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
@@ -106,7 +108,8 @@ class VM {
  private:
   friend class BytecodeTest;
   friend class VMTest;
-
+  friend class VMAbsoluteVariable;
+  
   /// Reads a varint from the instruction stream.
   /// @param output the data goes here.
   /// @return true if a varint was successfully read; false if eof was hit.
@@ -122,6 +125,9 @@ class VM {
   /// @return false
   bool unexpected_eof(const char* where);
 
+  /// Adds a Variable Access Error.
+  void access_error();
+  
   struct ExecutionEnvironment {
     /// Frame pointer. Indexes into the operand_stack_ to define the base for
     /// all relative offset variables. When exiting a function, the operand
@@ -139,7 +145,7 @@ class VM {
   };
 
   /// Instances of this struct will be pushed to the variable stack.
-  struct VariableReference {
+  struct VMVariableReference {
     /// Holds ownership of a variable if it was created locally.
     std::unique_ptr<Variable> owned_var;
     /// Non-owned variable. owned_var is always copied here.
@@ -147,6 +153,43 @@ class VM {
     /// Argument to supply to the variable calls.
     unsigned arg;
   };
+
+  class VMAbsoluteVariable : public Variable {
+   public:
+    VMAbsoluteVariable(VM* parent) : parent_(parent) {}
+
+    /// @return the largest valid state value to write or return from this
+    /// variable.
+    int max_state() override {
+      return INT_MAX;
+    }
+
+    /// @param parent is the variable factory that created this variable.
+    /// @param arg is the index for vector variables, zero if not used.
+    /// @return the current value of this variable.
+    int read(const VariableFactory* parent, unsigned arg) override {
+      if (parent_->operand_stack_.size() <= arg) {
+        parent_->access_error();
+        return -1;
+      }
+      return parent_->operand_stack_[arg];
+    }
+
+    /// Write a value to the variable.
+    /// @param parent is the variable factory that created this variable.
+    /// @param arg is the index for vector variables, zero if not used.
+    /// @param value is the new (desired) state of the variable.
+    virtual void write(const VariableFactory* parent, unsigned arg,
+                       int value) override {
+      if (parent_->operand_stack_.size() <= arg) {
+        parent_->access_error();
+        return;
+      }
+      parent_->operand_stack_[arg] = value;
+    }
+
+    VM* parent_;
+  } operand_stack_variables_{this};
   
   /// Stack frames of the nested functions.
   std::vector<ExecutionEnvironment> call_stack_;
@@ -155,7 +198,7 @@ class VM {
   std::vector<int> operand_stack_;
 
   /// Stack of variable references.
-  std::vector<VariableReference> variable_stack_;
+  std::vector<VMVariableReference> variable_stack_;
 
   /// Accumulator of string arguments;
   std::string string_acc_;
@@ -193,6 +236,8 @@ class VM {
   bool is_preamble_{false};
   /// Number of the logic block. Used in variable creation requests.
   unsigned block_num_ : 8;
+    
+    unsigned access_error_ : 1;
 };
 
 

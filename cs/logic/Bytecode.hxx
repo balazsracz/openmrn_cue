@@ -170,6 +170,11 @@ enum OpCode : uint8_t {
   /// offset in the variable stack for the new variable is pushed to the
   /// operand stack.
   IMPORT_VAR,
+
+  /// arg = fp-relative offset of a local variable. Creates a new variable
+  /// pointing to the same storage location and pushes it to the variable
+  /// stack. The offset in the variable stack is pushed to the operand stack.
+  CREATE_INDIRECT_VAR,
   
   // Binary arithmetic operators. Take two values from the top of the stack, and
   // push one. The RHS is the top of the stack, the LHS is the second top.

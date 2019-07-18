@@ -309,7 +309,7 @@ class Driver {
       return nullptr;
     }
     if (args->size() != sym_args_->size()) {
-      error(loc, StringPrintf("Syntax error. Function %s takes %u arguments, given %u.", name.c_str(), (unsigned)sym_args_->size(), (unsigned)args->size()));
+      error(loc, StringPrintf("Syntax error. Function %s takes %u argument(s), given %u.", name.c_str(), (unsigned)sym_args_->size(), (unsigned)args->size()));
       return nullptr;
     }
     // Type checks arguments.
@@ -332,15 +332,15 @@ class Driver {
         error(
             (*args)[i]->loc_,
             StringPrintf("Syntax error calling function %s. Argument %s should "
-                         "be an expression, given a reference. Remove '&'.",
+                         "be an expression, but was given a reference. Remove '&'.",
                          name.c_str(), (*sym_args_)[i]->name_.c_str()));
         return nullptr;
       }
-      if (!act_var && exp_acc == Symbol::INDIRECT_VAR) {
+      if (!act_var && exp_acc != Symbol::LOCAL_VAR) {
         error(
             (*args)[i]->loc_,
             StringPrintf("Syntax error calling function %s. Argument %s should "
-                         "be a reference, got an expression. Use "
+                         "be a reference, but was given an expression. Use "
                          "&variable_name syntax.",
                          name.c_str(), (*sym_args_)[i]->name_.c_str()));
         return nullptr;

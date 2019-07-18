@@ -75,6 +75,10 @@ class VariableReference {
   /// it into the variable.
   virtual void serialize_store(std::string* output) = 0;
 
+  /// Create the VM commands to create a reference to this variable and store
+  /// it on top of the operand stack.
+  virtual void serialize_ref(std::string* output) = 0;
+  
   /// Print the variable representation to the sebug string.
   virtual void debug_print(std::string* output) = 0;
 };
@@ -93,6 +97,11 @@ class LocalVariableReference : public VariableReference {
   /// it into the variable.
   void serialize_store(std::string* output) override {
     BytecodeStream::append_opcode(output, STORE_FP_REL);
+    BytecodeStream::append_varint(output, fp_offset_);
+  }
+
+  void serialize_ref(std::string* output) override {
+    BytecodeStream::append_opcode(output, CREATE_INDIRECT_VAR);
     BytecodeStream::append_varint(output, fp_offset_);
   }
 
@@ -122,6 +131,10 @@ class GlobalVariableReference : public LocalVariableReference {
     BytecodeStream::append_opcode(output, INDIRECT_STORE);
   }
 
+  void serialize_ref(std::string* output) override {
+    LocalVariableReference::serialize_fetch(output);
+  }
+  
   /// Run once when the variable is defined for import. When called, the
   /// variable import result (the offset) is on the top of the
   /// stack. Initializes the internal storage value by pushing it to the right
@@ -726,6 +739,8 @@ class FunctionCall : public Command {
         arg->bool_expr_->serialize(output);
       } else if (arg->int_expr_) {
         arg->int_expr_->serialize(output);
+      } else if (arg->var_) {
+        arg->var_->serialize_ref(output);
       } else {
         LOG_ERROR(
             "Error serializing function call %s: arg %c has no expression.",

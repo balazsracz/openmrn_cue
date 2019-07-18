@@ -76,6 +76,13 @@ bool VM::unexpected_eof(const char* where) {
   return false;
 }
 
+void VM::access_error() {
+  access_error_ = 1;
+  error_ = StringPrintf("At IP %u: Variable access error.",
+                        (unsigned)(ip_ - ip_start_));
+}
+
+
 bool VM::parse_varint(int* output) {
   int ret = 0;
   if (ip_ >= eof_) {
@@ -143,7 +150,7 @@ bool VM::execute(const void* data, size_t len) {
         int r;
         if (!parse_varint(&r)) return false;
         --ip_;
-        if (operand_stack_.size() != (unsigned)r) {
+        if (operand_stack_.size() != (unsigned)(fp_ + r)) {
           error_ = StringPrintf(
               "At IP %u: Operand stack length error, expected %d, actual %u.",
               (unsigned)(ip_ - ip_start_), r, (unsigned)operand_stack_.size());
@@ -193,8 +200,9 @@ bool VM::execute(const void* data, size_t len) {
           error_ = "Invalid indirect variable reference.";
           return false;
         }
-        const VariableReference& ref = variable_stack_[varidx];
+        const VMVariableReference& ref = variable_stack_[varidx];
         int val = ref.var->read(variable_factory_, ref.arg);
+        if (access_error_) return false;
         operand_stack_.push_back(val);
         break;
       }
@@ -209,8 +217,9 @@ bool VM::execute(const void* data, size_t len) {
           error_ = "Invalid indirect variable reference.";
           return false;
         }
-        const VariableReference& ref = variable_stack_[varidx];
+        const VMVariableReference& ref = variable_stack_[varidx];
         ref.var->write(variable_factory_, ref.arg, value);
+        if (access_error_) return false;
         break;
       }
       case PUSH_TOP: {
@@ -269,9 +278,21 @@ bool VM::execute(const void* data, size_t len) {
           error_ = StringPrintf("Unknown variable GUID %d at IMPORT_VAR", guid);
           return false;
         }
-        VariableReference ref;
+        VMVariableReference ref;
         ref.var = it->second.get();
         ref.arg = arg;
+        variable_stack_.emplace_back(std::move(ref));
+        operand_stack_.push_back(variable_stack_.size() - 1);
+        break;
+      }
+      case CREATE_INDIRECT_VAR: {
+        int fpofs;
+        ++ip_;
+        if (!parse_varint(&fpofs)) return false;
+        --ip_;
+        VMVariableReference ref;
+        ref.var = &operand_stack_variables_;
+        ref.arg = fp_ + fpofs;
         variable_stack_.emplace_back(std::move(ref));
         operand_stack_.push_back(variable_stack_.size() - 1);
         break;

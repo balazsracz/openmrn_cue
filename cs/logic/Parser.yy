@@ -480,9 +480,9 @@ function_arg:
 fn_arg_storage_specifier type_specifier "undeclared_identifier" {
   auto* s = driver.allocate_variable($3, @3, Symbol::VARIABLE);
   /// @todo: support mutable/indirect variables.
-  s->access_ = Symbol::LOCAL_VAR;
+  s->access_ = $1;
   s->data_type_ = $2.builtin_type_;
-  $$ = std::make_shared<FunctionArgument>(std::move($3), std::move($2));
+  $$ = std::make_shared<FunctionArgument>(std::move($3), std::move($2), $1);
 };
 
 %%

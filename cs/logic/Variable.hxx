@@ -81,13 +81,13 @@ class Variable {
   /// @param parent is the variable factory that created this variable.
   /// @param arg is the index for vector variables, zero if not used.
   /// @return the current value of this variable.
-  virtual int read(const VariableFactory* parent, uint16_t arg) = 0;
+  virtual int read(const VariableFactory* parent, unsigned arg) = 0;
 
   /// Write a value to the variable.
   /// @param parent is the variable factory that created this variable.
   /// @param arg is the index for vector variables, zero if not used.
   /// @param value is the new (desired) state of the variable.
-  virtual void write(const VariableFactory* parent, uint16_t arg,
+  virtual void write(const VariableFactory* parent, unsigned arg,
                      int value) = 0;
 };
 

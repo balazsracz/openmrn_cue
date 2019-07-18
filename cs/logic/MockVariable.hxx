@@ -47,8 +47,8 @@ namespace logic {
 class MockVariable : public Variable {
  public:
   MOCK_METHOD0(max_state, int ());
-  MOCK_METHOD2(read, int(const VariableFactory* parent, uint16_t arg));
-  MOCK_METHOD3(write, void(const VariableFactory* parent, uint16_t arg, int value));
+  MOCK_METHOD2(read, int(const VariableFactory* parent, unsigned arg));
+  MOCK_METHOD3(write, void(const VariableFactory* parent, unsigned arg, int value));
 };
 
 /// Variable factory that creates StrictMock variables.

@@ -47,6 +47,7 @@ using ::testing::StrEq;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
 using ::testing::Return;
+using ::testing::HasSubstr;
 using ::testing::_;
 
 TempDir g_dir;
@@ -105,7 +106,7 @@ class VMTest : public ::testing::Test {
     return vm_.external_variables_;
   }
 
-  const std::vector<VM::VariableReference>& get_var_stack() {
+  const std::vector<VM::VMVariableReference>& get_var_stack() {
     return vm_.variable_stack_;
   }
 
@@ -951,18 +952,63 @@ TEST_F(VMTest, type_check_variable) {
   const char* script =
       "int a = 23; a = Inactive;";
   ASSERT_FALSE(compile(script));
+  EXPECT_THAT(driver_.error_output_,
+              HasSubstr("unexpected constbool"));
 }
 
 TEST_F(VMTest, type_check_function) {
   const char* script =
       "void fn(int a) { print(a); } fn(Inactive);";
   ASSERT_FALSE(compile(script));
+  EXPECT_THAT(driver_.error_output_,
+              HasSubstr("ype error"));
+  EXPECT_THAT(driver_.error_output_,
+              HasSubstr("expected int, actual bool"));
 }
 
 TEST_F(VMTest, argument_count_function) {
   const char* script =
       "int xx = 32; void fn(int a) { print(a); } fn(Inactive, 33); int yy = 4;";
   ASSERT_FALSE(compile(script));
+  EXPECT_THAT(driver_.error_output_,
+              HasSubstr("takes 1 argument(s), given 2"));
+}
+
+TEST_F(VMTest, mutable_argument_check) {
+  const char* script =
+      "int xx = 32; void fn(mutable int a) { a = 3; } fn(33); int yy = 4;";
+  ASSERT_FALSE(compile(script));
+  EXPECT_THAT(driver_.error_output_,
+              HasSubstr("should be a reference, but was given an expression")); 
+}
+
+TEST_F(VMTest, double_nested_call) {
+  const char* script =
+      "int xx = 32; void fna() { print(77); } "
+      "void fn(int a) { print(a); fna(); } "
+      "fn(xx); int yy = 44; print(xx);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("32", "77", "32"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(32, 44));
+}
+
+TEST_F(VMTest, mutable_argument) {
+  const char* script =
+      "int xx = 32; void fn(mutable int a) { a = 3; } fn(&xx); print(xx);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("3"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(3));
+}
+
+TEST_F(VMTest, nested_mutable_argument) {
+  const char* script =
+      "int xx = 32; void fn(mutable int a) { a = 3; } void ff(mutable int a) { fn(&a); } ff(&xx); print(xx);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("3"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(3));
 }
 
 
