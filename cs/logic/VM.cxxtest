@@ -827,5 +827,10 @@ assign(y, fetch(x));
 )", str);
 }
 
+TEST_F(VMTest, function_use_args) {
+  const char* script = "int fn(int a,bool b) { a = 13; }";
+  ASSERT_TRUE(compile(script));
+}
+
 
 } // namespace logic

@@ -303,6 +303,17 @@ storage_specifier type_specifier "undeclared_identifier" "(" {
   }
   driver.enter_function($2);
 } function_arg_list ")" {
+  const auto& al = *$6;
+  for (unsigned i = 0; i < al.size(); ++i) {
+    auto* s = driver.find_symbol(al[i]->name_);
+    if (!s) {
+      driver.error(@6, StringPrintf("internal error: could not find argument %s", al[i]->name_.c_str()));
+      YYERROR;
+    }
+    if (s->fp_offset_ != (int)i) {
+      driver.error(@6, StringPrintf("internal error: for argument %s, expected fp offset %u, actual %d", al[i]->name_.c_str(), i, s->fp_offset_));
+    }
+  }
 } "{" commands "}" {
   $$ = std::make_shared<Function>(&driver,
       std::move($3), std::move($2), std::move($6),
