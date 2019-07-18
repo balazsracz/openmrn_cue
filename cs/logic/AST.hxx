@@ -631,6 +631,40 @@ class Function : public Command {
   std::shared_ptr<CommandSequence> body_;
 };
 
+class FunctionCallIgnoreRetval : public Command {
+ public:
+  FunctionCallIgnoreRetval(string name, const Symbol& fn)
+      : name_(std::move(name)), fn_(fn) {}
+
+  void debug_print(std::string* output) override {
+    output->append(name_);
+    output->append("();");
+  }
+
+  void serialize(std::string* output) override {
+    // Create space for return value of the function.
+    BytecodeStream::append_opcode(output, ENTER);
+    BytecodeStream::append_varint(output, 1);
+
+    // Call target address.
+    BytecodeStream::append_opcode(output, PUSH_CONSTANT);
+    BytecodeStream::append_varint(output, fn_.fp_offset_);
+
+    // Execute call.
+    BytecodeStream::append_opcode(output, CALL);
+    BytecodeStream::append_varint(output, 0);
+
+    // After return: clean up return value.
+    BytecodeStream::append_opcode(output, POP_OP);
+  }
+  
+ private:
+  /// Name of the function we are calling.
+  string name_;
+  /// The symbol table entry for the function to call.
+  const Symbol& fn_;
+};
+
 } // namespace logic
 
 #endif // _LOGIC_AST_HXX_

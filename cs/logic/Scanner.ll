@@ -104,6 +104,8 @@ blank [ \t]
 "exported" return logic::yy::Parser::make_EXPORTED(loc);  
 "auto" return logic::yy::Parser::make_AUTO(loc);  
 
+               /*"print" return logic::yy::Parser::make_PRINT(loc);  */
+
 
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
 "True"     return logic::yy::Parser::make_BOOL(true, loc);
@@ -173,7 +175,15 @@ blank [ \t]
     return logic::yy::Parser::make_UNDECL_ID(yytext, loc);
   }
   if (symbol->symbol_type_ == logic::Symbol::FUNCTION) {
-    return logic::yy::Parser::make_FN_ID(yytext, loc);
+    auto t = symbol->get_data_type();
+    switch(t) {
+      case logic::Symbol::DATATYPE_INT:
+        return logic::yy::Parser::make_INT_FN_ID(yytext, loc);
+      case logic::Symbol::DATATYPE_BOOL:
+        return logic::yy::Parser::make_BOOL_FN_ID(yytext, loc);
+      case logic::Symbol::DATATYPE_VOID:
+        return logic::yy::Parser::make_VOID_FN_ID(yytext, loc);
+    }
   } else {
     auto t = symbol->get_data_type();
     if (t == logic::Symbol::DATATYPE_INT) {

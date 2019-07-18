@@ -94,7 +94,9 @@ class Driver;
 %token <std::string> UNDECL_ID "undeclared_identifier"
 %token <std::string> BOOL_VAR_ID "bool_var_identifier"
 %token <std::string> INT_VAR_ID "int_var_identifier"
-%token <std::string> FN_ID "function_identifier"
+%token <std::string> VOID_FN_ID "void_function_identifier"
+%token <std::string> INT_FN_ID "int_function_identifier"
+%token <std::string> BOOL_FN_ID "bool_function_identifier"
 %token <std::string> STRING "string"
 %token <int> NUMBER "number"
 %token <bool> BOOL "constbool"
@@ -105,6 +107,7 @@ class Driver;
 %type  <std::shared_ptr<logic::Command> > command
 %type  <std::shared_ptr<logic::Command> > conditional
 %type  <std::shared_ptr<logic::Command> > assignment
+%type  <std::shared_ptr<logic::Command> > fncall
 %type  <std::shared_ptr<logic::PolymorphicExpression> > optional_assignment_expression
 %type  <std::shared_ptr<logic::Command> > variable_decl
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
@@ -203,12 +206,24 @@ conditional:
   }
 ;
 
+fncall:
+"void_function_identifier" "(" {
+} ")" optional_semicolon {
+  auto* s = driver.find_function($1);
+  if (!s) {
+    YYERROR;
+  }
+  $$ = std::make_shared<FunctionCallIgnoreRetval>($1, *s);
+};
+
+
 command:
 assignment optional_semicolon { $$ = std::move($1); };
 | "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
 | conditional { $$ = std::move($1); } 
 | variable_decl optional_semicolon { $$ = std::move($1); }
 | function { $$ = std::move($1); }
+| fncall { $$ = std::move($1); }
 ;
 
 // @todo we need to switch the following to natively create CommandSequence and

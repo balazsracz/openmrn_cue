@@ -157,6 +157,14 @@ class Driver {
   const Symbol* find_symbol(const string& name) {
     auto it = current_context()->symbol_table_.find(name);
     if (it == current_context()->symbol_table_.end()) {
+      // Checks the global context for functions of this name.
+      if (!is_global_context()) {
+        it = global_context_.symbol_table_.find(name);
+        if (it != global_context_.symbol_table_.end() &&
+            it->second.symbol_type_ == Symbol::FUNCTION) {
+          return &it->second;
+        }
+      }
       return nullptr;
     }
     return &it->second;
@@ -173,6 +181,15 @@ class Driver {
     return &it->second;
   }
 
+  const Symbol* find_function(const string& name) {
+    auto it = global_context_.symbol_table_.find(name);
+    if (it == current_context()->symbol_table_.end()) {
+      return nullptr;
+    }
+    return &it->second;
+    
+  }
+  
   /// Polymorphic variable declaration routine. Before calling, the storage
   /// specifier and type must be set in {@ref decl_storage_} and
   /// {@ref decl_type_}.
