@@ -100,8 +100,8 @@ void Driver::error(const std::string& m) {
 
 void Function::register_function(std::string* output) {
   if (!driver_->is_output_root(output)) {
-    driver_->error(
-        StringPrintf("Function %s not defined at the top level.", name_));
+    driver_->error(StringPrintf("Function %s not defined at the top level.",
+                                name_.c_str()));
     return;
   }
   unsigned jump_ofs = output->size();

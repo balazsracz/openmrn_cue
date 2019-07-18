@@ -192,7 +192,7 @@ class IndirectVarCreate : public Command {
 
   void debug_print(std::string* output) override {
     output->append(StringPrintf("import_var(%s/guid %d,arg %d)",
-                                variable_.get_name(), guid_, arg_));
+                                variable_.get_name().c_str(), guid_, arg_));
   }
   
  private:

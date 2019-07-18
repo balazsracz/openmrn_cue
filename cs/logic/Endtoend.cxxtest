@@ -116,8 +116,8 @@ class EndToEndTest : public EndToEndTestBase {
   }
 
   void expect_query(uint64_t var_on, uint64_t var_off) {
-    expect_packet(StringPrintf(":X1991422AN%016llx;", var_on));
-    expect_packet(StringPrintf(":X198F422AN%016llx;", var_on));
+    expect_packet(StringPrintf(":X1991422AN%016llx;", (unsigned long long) var_on));
+    expect_packet(StringPrintf(":X198F422AN%016llx;", (unsigned long long) var_on));
     /// @todo unclear why the off event does not get queried.
     //expect_packet(StringPrintf(":X1991422AN%016llx;", var_off));
     //expect_packet(StringPrintf(":X198F422AN%016llx;", var_off));
