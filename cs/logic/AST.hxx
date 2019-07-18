@@ -131,7 +131,8 @@ class GlobalVariableReference : public LocalVariableReference {
   /// stack. Initializes the internal storage value by pushing it to the right
   /// place in the operand stack.
   void serialize_init(std::string* output) {
-    LocalVariableReference::serialize_store(output);
+    // The right place is always on the top of the stack.
+    //LocalVariableReference::serialize_store(output);
   }
   
   const string& get_name() {
@@ -201,6 +202,41 @@ class IndirectVarCreate : public Command {
   int arg_;
   /// Holds the metadata of the variable.
   GlobalVariableReference variable_;
+};
+
+class LocalVarCreate : public Command {
+ public:
+  LocalVarCreate(std::string name, TypeSpecifier type, int fp_offset,
+                 std::shared_ptr<Command> initial_value)
+      : name_(std::move(name)),
+        type_(type),
+        fp_offset_(fp_offset),
+        init_(std::move(initial_value)) {}
+
+  void debug_print(std::string* output) override {
+    output->append(type_.to_string());
+    output->append(" ");
+    output->append(name_);
+    output->append(" = ");
+    init_->debug_print(output);
+  }
+  
+  void serialize(std::string* output) override {
+#ifdef RENDER_STACK_LENGTH_CHECK
+    BytecodeStream::append_opcode(output, CHECK_STACK_LENGTH);
+    BytecodeStream::append_varint(output, fp_offset_);
+#endif
+    init_->serialize(output);
+  }
+  
+ private:
+  // Variable name.
+  string name_;
+  TypeSpecifier type_;
+  // FP-relative offset of where the variable should be on the stack.
+  int fp_offset_;
+  // Code that initializes the value.
+  std::shared_ptr<Command> init_; 
 };
 
 class NumericAssignment : public Command {

@@ -62,9 +62,13 @@ void Driver::serialize(std::string* output) {
   BytecodeStream::append_varint(output, preamble.size());
   output->append(preamble);
   
-  // Allocated global variables
-  BytecodeStream::append_opcode(output, ENTER);
-  BytecodeStream::append_varint(output, current_context()->frame_size_);
+  // Allocated global variables.  We do not need to reserve space for these on
+  // the stack, because they will get pushed when we pass the declaration
+  // instruction.
+  //
+  // BytecodeStream::append_opcode(output, ENTER);
+  // BytecodeStream::append_varint(output, current_context()->frame_size_);
+
   // Renders instructions.
   for (const auto& c : commands_) {
     c->serialize(output);

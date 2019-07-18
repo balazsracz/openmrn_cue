@@ -212,9 +212,7 @@ class Driver {
                                                  allocate_guid());
     } else {
       s->access_ = Symbol::LOCAL_VAR;
-      // local variable.
-      std::unique_ptr<VariableReference> r(
-          new LocalVariableReference(std::move(name), s->fp_offset_));
+      // local variable. Create directly on top of the stack.
       Symbol::DataType value_type = initial_value->get_data_type();;
       bool has_value = value_type != Symbol::DATATYPE_VOID;
       if (has_value && value_type != decl_type_.builtin_type_) {
@@ -224,20 +222,28 @@ class Driver {
                            Symbol::datatype_to_string(value_type)));
         return nullptr;
       }
+      std::shared_ptr<Command> init_cmd;
       switch(decl_type_.builtin_type_) {
         case Symbol::DATATYPE_BOOL:
-          return std::make_shared<BooleanAssignment>(
-              std::move(r), has_value
-                                ? std::move(initial_value->bool_expr_)
-                                : std::make_shared<BooleanConstant>(false));
+          if (has_value) {
+            init_cmd = std::move(initial_value->bool_expr_);
+          } else {
+            init_cmd = std::make_shared<BooleanConstant>(false);
+          }
+          break;
         case Symbol::DATATYPE_INT:
-          return std::make_shared<NumericAssignment>(
-              std::move(r), has_value ? std::move(initial_value->int_expr_)
-                                      : std::make_shared<IntConstant>(0));
+          if (has_value) {
+            init_cmd = std::move(initial_value->int_expr_);
+          } else {
+            init_cmd = std::make_shared<IntConstant>(0);
+          }
+          break;
         case Symbol::DATATYPE_VOID:
           error(loc, "Variables cannot be void type.");
           return nullptr;
       }
+      return std::make_shared<LocalVarCreate>(
+          std::move(name), decl_type_, s->fp_offset_, std::move(init_cmd));
     }
     return nullptr;
   }
