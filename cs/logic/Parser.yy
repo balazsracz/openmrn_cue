@@ -90,6 +90,7 @@ class Driver;
   TYPEBOOL  "bool"
   EXPORTED  "exported"
   AUTO  "auto"
+  PRINT  "print"
 ;
 %token <std::string> UNDECL_ID "undeclared_identifier"
 %token <std::string> BOOL_VAR_ID "bool_var_identifier"
@@ -108,6 +109,9 @@ class Driver;
 %type  <std::shared_ptr<logic::Command> > conditional
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<logic::Command> > fncall
+%type <std::shared_ptr<logic::Command> > print
+%type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > printargs
+%type <std::shared_ptr<logic::Command> > printonearg
 %type  <std::shared_ptr<logic::PolymorphicExpression> > optional_assignment_expression
 %type  <std::shared_ptr<logic::Command> > variable_decl
 %type  <std::shared_ptr<std::vector<std::shared_ptr<logic::Command> > > > commands
@@ -216,6 +220,37 @@ fncall:
   $$ = std::make_shared<FunctionCallIgnoreRetval>($1, *s);
 };
 
+printonearg:
+"string" {
+  $$ = std::make_shared<PrintString>(std::move($1));
+} |
+exp {
+  $$ = std::make_shared<PrintInt>(std::move($1));
+} /* |
+boolexp {
+  $$ = std::make_shared<PrintBool>(std::move($1));
+}*/
+;
+
+printargs:
+printonearg {
+  $$ = std::make_shared<std::vector<std::shared_ptr<Command>>>();
+  $$->push_back(std::move($1));
+} |
+printargs "," printonearg {
+  $$ = std::move($1);
+  $$->push_back(std::move($3));
+};
+
+print:
+"print" "(" printargs ")" optional_semicolon {
+  if ($3->size() == 1) {
+    $$ = std::move((*$3)[0]);
+  } else {
+    $$ = std::make_shared<CommandSequence>(std::move(*$3));
+  }
+};
+
 
 command:
 assignment optional_semicolon { $$ = std::move($1); };
@@ -224,6 +259,7 @@ assignment optional_semicolon { $$ = std::move($1); };
 | variable_decl optional_semicolon { $$ = std::move($1); }
 | function { $$ = std::move($1); }
 | fncall { $$ = std::move($1); }
+| print { $$ = std::move($1); }
 ;
 
 // @todo we need to switch the following to natively create CommandSequence and

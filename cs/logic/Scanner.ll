@@ -104,8 +104,7 @@ blank [ \t]
 "exported" return logic::yy::Parser::make_EXPORTED(loc);  
 "auto" return logic::yy::Parser::make_AUTO(loc);  
 
-               /*"print" return logic::yy::Parser::make_PRINT(loc);  */
-
+"print" return logic::yy::Parser::make_PRINT(loc);
 
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
 "True"     return logic::yy::Parser::make_BOOL(true, loc);
@@ -156,8 +155,9 @@ blank [ \t]
     driver.error(loc, "string must start with quotes");
     return logic::yy::Parser::make_STRING("", loc);
   }
-  while (!(*c) && !(*c == '"')) {
-    if (*c == '\\') {
+  ++c;
+  while ((*c) && !((*c) == '"')) {
+    if ((*c) == '\\') {
       ++c;
       if (!*c) {
         driver.error(loc, "unexpected 0 inside string");
@@ -165,6 +165,7 @@ blank [ \t]
       }
     }
     output.push_back(*c);
+    ++c;
   }  
   return logic::yy::Parser::make_STRING(output, loc);
 }

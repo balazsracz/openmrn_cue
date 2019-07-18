@@ -665,6 +665,45 @@ class FunctionCallIgnoreRetval : public Command {
   const Symbol& fn_;
 };
 
+class PrintString : public Command {
+ public:
+  PrintString(string txt) : txt_(std::move(txt)){}
+
+  void debug_print(std::string* output) override {
+    output->append("print(\"");
+    output->append(txt_);
+    output->append("\")");
+  }
+
+  void serialize(std::string* output) override {
+    BytecodeStream::append_opcode(output, LOAD_STRING);
+    BytecodeStream::append_string(output, txt_);
+    BytecodeStream::append_opcode(output, PRINT_STR);
+  }
+  
+ private:
+  string txt_;
+};
+
+class PrintInt : public Command {
+ public:
+  PrintInt(std::shared_ptr<IntExpression> value) : value_(std::move(value)){}
+
+  void debug_print(std::string* output) override {
+    output->append("print_num(");
+    value_->debug_print(output);
+    output->append(")");
+  }
+
+  void serialize(std::string* output) override {
+    value_->serialize(output);
+    BytecodeStream::append_opcode(output, PRINT_NUM);
+  }
+  
+ private:
+  std::shared_ptr<IntExpression> value_;
+};
+
 } // namespace logic
 
 #endif // _LOGIC_AST_HXX_

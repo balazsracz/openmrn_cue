@@ -709,6 +709,29 @@ if (diverging_next_block is Active or turnout is Thrown) {
   ASSERT_TRUE(compile(script));
 }
 
+TEST_F(VMTest, printcmd_string) {
+  const char* script = R"(print("hello, world");)";
+  ASSERT_TRUE(compile(script));
+  auto str = driver_.debug_print();
+  EXPECT_EQ(R"(print("hello, world");
+)", str);
+  
+  ASSERT_TRUE(run());
+  
+  EXPECT_THAT(output_, ElementsAre("hello, world"));
+}
+
+
+TEST_F(VMTest, print) {
+  const char* script = R"(
+int a=23; a = a + 1; print("hello, world", a, 2*a, "xx"); print("123", 456); )";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  
+  EXPECT_THAT(output_, ElementsAre("hello, world", "24", "48", "xx", "123", "456"));
+}
+
+
 TEST_F(VMTest, callfn) {
   bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};
   BytecodeStream::append_varint(&bytecode_, -3271);
