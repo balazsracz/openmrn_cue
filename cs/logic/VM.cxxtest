@@ -737,6 +737,15 @@ int a=23; a = a + 1; print("hello, world", a, 2*a, "xx"); print("123", 456); )";
   EXPECT_THAT(output_, ElementsAre("hello, world", "24", "48", "xx", "123", "456"));
 }
 
+TEST_F(VMTest, terminate) {
+  const char* script = R"(int a=23; a = a + 1; terminate(); int b=33; a = a+1;)";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  
+  EXPECT_THAT(get_op_stack(), ElementsAre(24));
+}
+
+
 
 TEST_F(VMTest, callfn) {
   bytecode_ = {PUSH_CONSTANT_1, PUSH_CONSTANT};

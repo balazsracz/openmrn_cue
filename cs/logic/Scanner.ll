@@ -105,6 +105,7 @@ blank [ \t]
 "auto" return logic::yy::Parser::make_AUTO(loc);  
 
 "print" return logic::yy::Parser::make_PRINT(loc);
+"terminate" return logic::yy::Parser::make_TERMINATE(loc);
 
 "true"     return logic::yy::Parser::make_BOOL(true, loc);
 "True"     return logic::yy::Parser::make_BOOL(true, loc);

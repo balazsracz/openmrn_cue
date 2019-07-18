@@ -91,6 +91,7 @@ class Driver;
   EXPORTED  "exported"
   AUTO  "auto"
   PRINT  "print"
+  TERMINATE  "terminate"
 ;
 %token <std::string> UNDECL_ID "undeclared_identifier"
 %token <std::string> BOOL_VAR_ID "bool_var_identifier"
@@ -272,7 +273,6 @@ print:
   }
 };
 
-
 command:
 assignment optional_semicolon { $$ = std::move($1); };
 | "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
@@ -281,6 +281,9 @@ assignment optional_semicolon { $$ = std::move($1); };
 | function { $$ = std::move($1); }
 | fncall { $$ = std::move($1); }
 | print { $$ = std::move($1); }
+| "terminate" "(" ")" optional_semicolon {
+  $$ = std::make_shared<Terminate>();
+}
 ;
 
 // @todo we need to switch the following to natively create CommandSequence and

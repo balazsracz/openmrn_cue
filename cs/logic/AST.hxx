@@ -769,6 +769,16 @@ class PrintInt : public Command {
   std::shared_ptr<IntExpression> value_;
 };
 
+class Terminate : public Command {
+ public:
+  void serialize(std::string* output) override {
+    BytecodeStream::append_opcode(output, TERMINATE);
+  };
+  void debug_print(std::string* output) override {
+    output->append("terminate()");
+  };
+};
+
 } // namespace logic
 
 #endif // _LOGIC_AST_HXX_
