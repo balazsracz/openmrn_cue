@@ -907,5 +907,14 @@ TEST_F(VMTest, indirect_print) {
   EXPECT_THAT(get_op_stack(), ElementsAre(23, 2));
 }
 
+TEST_F(VMTest, function_return) {
+  const char* script =
+      "int a = 23; int fn() { return_value = 11; }  a = fn(); print(a);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("11"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(11));
+}
+
 
 } // namespace logic
