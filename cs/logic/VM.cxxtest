@@ -1011,5 +1011,14 @@ TEST_F(VMTest, nested_mutable_argument) {
   EXPECT_THAT(get_op_stack(), ElementsAre(3));
 }
 
+TEST_F(VMTest, nested_locals) {
+  const char* script =
+      "int xx = 32; void qux(mutable int a) { print(a); a=17; } void fn() { int b = 5; qux(&b); print(b); }  fn(); print(xx);";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("5", "17", "32"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(32));
+}
+
 
 } // namespace logic

@@ -115,6 +115,8 @@ class EndToEndTest : public EndToEndTestBase {
     wait();
   }
 
+  /// Adds expectations that the initial query packets (for a variable
+  /// creation) are sent out.
   void expect_query(uint64_t var_on, uint64_t var_off) {
     expect_packet(StringPrintf(":X1991422AN%016llx;", (unsigned long long) var_on));
     expect_packet(StringPrintf(":X198F422AN%016llx;", (unsigned long long) var_on));
@@ -123,6 +125,20 @@ class EndToEndTest : public EndToEndTestBase {
     //expect_packet(StringPrintf(":X198F422AN%016llx;", var_off));
   }
 
+  /// Adds expectations that the identify packets after an UPDATE_COMPLETE are
+  /// sent out for a variable.
+  /// @param known true if the state is known at this point
+  /// @param active if the state is "event_on". Only interesting if
+  /// known==true.
+  void expect_identify(uint64_t var_on, uint64_t var_off, bool known, bool active) {
+    int on_num = known ? (active ? 4 : 5) : 7;
+    int off_num = known ? (active ? 5 : 4) : 7;
+    expect_packet(StringPrintf(":X1954%d22AN%016llx;", on_num, (unsigned long long) var_on));
+    expect_packet(StringPrintf(":X194C%d22AN%016llx;", on_num, (unsigned long long) var_on));
+    expect_packet(StringPrintf(":X1954%d22AN%016llx;", off_num, (unsigned long long) var_off));
+    expect_packet(StringPrintf(":X194C%d22AN%016llx;", off_num, (unsigned long long) var_off));
+  }
+  
   uint64_t get_event(int id) {
     return (openlcb::TEST_NODE_ID << 16) + id;
   }
@@ -230,6 +246,8 @@ TEST_F(EndToEndTest, run) {
   string status = cdi.logic().blocks().entry(0).body().status().read(fd());
   EXPECT_EQ("Compile OK. ", status);
 
+  wait();
+  
   test_flipflop();
 
   expect_any_packet();
@@ -310,5 +328,93 @@ TEST_F(EndToEndTest, twoblocks) {
   step();
 }
 
+TEST_F(EndToEndTest, indirect_flipflop_1) {
+  LOG(INFO, "start");
+  wait();
+  string pgm = "void copy(mutable bool dst, bool src) { dst = src; } "
+               "exported bool foo; exported bool bar; copy(&bar, foo);";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
+  expect_query(get_event(0), get_event(1));
+  expect_query(get_event(2), get_event(3));
+  expect_identify(get_event(0), get_event(1), false, false);
+  expect_identify(get_event(2), get_event(3), false, false);
+
+  expect_packet(":X1910022AN02010D000003;");
+  expect_packet(":X19100225N02010D000103;");
+  LOG(INFO, "send update");
+  invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
+              openlcb::NodeHandle(node_->node_id()));
+  wait();
+  wait_for_updater();
+  wait();
+  LOG(INFO, "finish update");
+
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+
+  test_flipflop();
+}
+
+TEST_F(EndToEndTest, indirect_flipflop_2) {
+  LOG(INFO, "start");
+  wait();
+  string pgm = "void copy(mutable bool dst, mutable bool src) { dst = src; } "
+               "exported bool foo; exported bool bar; copy(&bar, &foo);";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
+  expect_query(get_event(0), get_event(1));
+  expect_query(get_event(2), get_event(3));
+  expect_identify(get_event(0), get_event(1), false, false);
+  expect_identify(get_event(2), get_event(3), false, false);
+
+  expect_packet(":X1910022AN02010D000003;");
+  expect_packet(":X19100225N02010D000103;");
+  LOG(INFO, "send update");
+  invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
+              openlcb::NodeHandle(node_->node_id()));
+  wait();
+  wait_for_updater();
+  wait();
+  LOG(INFO, "finish update");
+
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+
+  test_flipflop();
+}
+
+
+TEST_F(EndToEndTest, nested_indirect_flipflop) {
+  LOG(INFO, "start");
+  wait();
+  string pgm = "void copy(mutable bool dst, mutable bool src) { dst = src; } "
+               "void test(mutable bool a, bool b) { copy(&a, &b); } "
+               "exported bool foo; exported bool bar; test(&bar, foo);";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
+  expect_query(get_event(0), get_event(1));
+  expect_query(get_event(2), get_event(3));
+  expect_identify(get_event(0), get_event(1), false, false);
+  expect_identify(get_event(2), get_event(3), false, false);
+
+  expect_packet(":X1910022AN02010D000003;");
+  expect_packet(":X19100225N02010D000103;");
+  LOG(INFO, "send update");
+  invoke_flow(&mem_cli_, openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE,
+              openlcb::NodeHandle(node_->node_id()));
+  wait();
+  wait_for_updater();
+  wait();
+  LOG(INFO, "finish update");
+
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_EQ("Compile OK. ", status);
+
+  test_flipflop();
+}
 
 }  // namespace logic
