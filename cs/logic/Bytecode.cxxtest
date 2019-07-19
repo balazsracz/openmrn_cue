@@ -42,11 +42,14 @@ namespace logic {
 
 class BytecodeTest : public ::testing::Test {
  protected:
-  BytecodeTest() {}
+  BytecodeTest() {
+    vm_.set_block_num(0);
+    vm_.jump(0);
+  }
 
   void parse_varint() {
-    vm_.ip_ = (uint8_t*)payload_.data();
-    vm_.eof_ = (uint8_t*)payload_.data() + payload_.size();
+    vm_._ip_ = (uint8_t*)payload_.data();
+    vm_._eof_ = (uint8_t*)payload_.data() + payload_.size();
 
     output_ = -232354235;
     EXPECT_TRUE(vm_.parse_varint(&output_));
@@ -54,9 +57,11 @@ class BytecodeTest : public ::testing::Test {
   }
 
   const string& parse_string(bool result = true) {
-    vm_.ip_ = (uint8_t*)payload_.data();
-    vm_.eof_ = (uint8_t*)payload_.data() + payload_.size();
-
+    vm_._ip_block_num_ = 0;
+    vm_._block_start_ = (uint8_t*)payload_.data();
+    vm_._ip_ = (uint8_t*)payload_.data();
+    vm_._eof_ = (uint8_t*)payload_.data() + payload_.size();
+    
     vm_.string_acc_ = "adslknaix";
     EXPECT_EQ(result, vm_.parse_string());
     return vm_.string_acc_;
@@ -77,7 +82,7 @@ class BytecodeTest : public ::testing::Test {
   }
 
   unsigned get_ip() {
-    return vm_.ip_ - (uint8_t*)payload_.data();
+    return vm_.get_ip();
   }
   
   StrictMock<MockVariableFactory> mock_factory_;

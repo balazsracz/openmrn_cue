@@ -46,6 +46,8 @@
 
 #include "logic/Variable.hxx"
 
+#include "utils/macros.h"
+
 namespace logic {
 
 /// Virtual machine for executing compiled bytecode.
@@ -55,22 +57,43 @@ class VM {
   /// @param factory is used to instantiate variables duing the execution of
   /// the VM. Ownership is not transferred.
   VM(VariableFactory* factory)
-      : variable_factory_(factory), block_num_(0), access_error_(0) {}
+      : variable_factory_(factory),
+        block_num_(0),
+        is_preamble_(0),
+        access_error_(0) {}
 
-  /// Executes a given set of instructions. Return true if execution succeeded
-  /// (hit the last byte or a TERMINATE command), false if an exception was
-  /// generated.
-  /// @param data is the first instruction to execute;
-  /// @param len is the number of bytes to execute.
-  bool execute(const void* data, size_t len);
+  /// Executes instructions from the current IP. Return true if execution
+  /// succeeded (hit the last byte or a TERMINATE command), false if an
+  /// exception was generated.
+  bool execute();
+  
   bool execute(const std::string& ops) {
-    return execute(ops.data(), ops.size());
+    /// @todo should be rewritten.
+    set_block_code(block_num_, ops);
+    return execute_block(block_num_);
+  }
+
+  /// Runs a single block of code.
+  bool execute_block(uint8_t block_num) {
+    set_block_num(block_num);
+    jump(get_block_start_ip());
+    return execute();
   }
 
   /// Sets whether the VM should be running in preamble mode or regular mode.
   /// @param is_preamble true if this is the preamble.
   void set_preamble(bool is_preamble) {
     is_preamble_ = is_preamble;
+  }
+
+  /// Call this after compile and pass in the compiled bytecode.
+  /// The given code can then be executed by execute_block().
+  void set_block_code(uint8_t block_num, std::string code) {
+    HASSERT(code.size() < (1u << BLOCK_CODE_IP_SHIFT));
+    if (blocks_.size() <= block_num) {
+      blocks_.resize(block_num + 1);
+    }
+    blocks_[block_num].code_ = std::move(code);
   }
 
   /// @return exception description if the execution failed.
@@ -103,12 +126,34 @@ class VM {
 
   typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
 
-  typedef const uint8_t* ip_t;
+  typedef unsigned ip_t;
 
  private:
   friend class BytecodeTest;
   friend class VMTest;
   friend class VMAbsoluteVariable;
+
+  /// Number of bits reserved for IPs within a single block.
+  static constexpr unsigned BLOCK_CODE_IP_SHIFT = 16;
+
+  /// @return the IP pointing to the start of the current block.
+  ip_t get_block_start_ip();
+
+  /// @return the IP pointing to the start of the current block.
+  ip_t get_ip();
+  
+  /// Set the current execution pointer to the given target. Updates internal
+  /// caches.
+  /// @return false if the jump target is invalid.
+  bool jump(ip_t target);
+
+  /// @return true if the current IP points outside of the valid range.
+  inline bool at_eof();
+
+  /// Retrieves the next instruction from the instruction stream. Increments
+  /// the instruction pointer.
+  /// @return the uint8 of the next instruction value.
+  inline uint8_t fetch_insn();
   
   /// Reads a varint from the instruction stream.
   /// @param output the data goes here.
@@ -141,7 +186,7 @@ class VM {
     unsigned vp;
     
     /// Where to return out of this stack frame.
-    ip_t return_address {nullptr};
+    ip_t return_address {0};
   };
 
   /// Instances of this struct will be pushed to the variable stack.
@@ -190,6 +235,14 @@ class VM {
 
     VM* parent_;
   } operand_stack_variables_{this};
+
+  struct BlockInfo {
+    /// The compiled bytecode for the block.
+    std::string code_;
+  };
+
+  /// All the known / registered blocks.
+  std::vector<BlockInfo> blocks_;
   
   /// Stack frames of the nested functions.
   std::vector<ExecutionEnvironment> call_stack_;
@@ -218,14 +271,13 @@ class VM {
   /// Output callback.
   std::function<void(std::string)> print_cb_;
 
-  /// Pointer to the data where we started executing from. This is equivalent
-  /// to IP 0.
-  const uint8_t* ip_start_;
   /// Next instruction to execute.
-  ip_t ip_;
+  const uint8_t* _block_start_;
+  /// Next instruction to execute.
+  const uint8_t* _ip_;
   /// Points to eof, which is the first character after ip_ that is not valid,
   /// aka end pointer (right open range).
-  ip_t eof_;
+  const uint8_t* _eof_;
   /// Frame pointer for operand stack (index in the operand stack where the
   /// current function's stack frame is).
   unsigned fp_;
@@ -233,11 +285,15 @@ class VM {
   /// current function's stack frame is).  @todo this is probably unused.
   //unsigned vp_;
   /// True if we are running preamble mode.
-  bool is_preamble_{false};
-  /// Number of the logic block. Used in variable creation requests.
+  /// Number of the logic block. Used in variable creation requests and when execution starts.
   unsigned block_num_ : 8;
-    
-    unsigned access_error_ : 1;
+  /// Block number where the current IP is. 
+  unsigned _ip_block_num_ : 8;
+  
+  unsigned is_preamble_ : 1;
+  /// True if the last variable access encountered an error. Set by
+  /// access_error()
+  unsigned access_error_ : 1;
 };
 
 

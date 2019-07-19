@@ -111,7 +111,7 @@ class VMTest : public ::testing::Test {
   }
 
   unsigned get_ip() {
-    return vm_.ip_ - vm_.ip_start_;
+    return vm_.get_ip();
   }
   
   /// Directly inserts a variable into the VM's variable stack.
@@ -868,7 +868,9 @@ TEST_F(VMTest, call_only) {
   EXPECT_THAT(get_op_stack(), ElementsAre(1, -3271, 0, 0, 0));
   EXPECT_THAT(output_, ElementsAre("77", "76"));
 
-  EXPECT_EQ(sub_entry, get_ip());
+  // Terminate got popped off the instruction stream right after the entry to
+  // the subroutine.
+  EXPECT_EQ(sub_entry + 1, get_ip());
 }
 
 TEST_F(VMTest, function_compile) {
