@@ -332,7 +332,7 @@ print:
 
 command:
 assignment optional_semicolon { $$ = std::move($1); };
-| "{" commands "}" { $$ = std::make_shared<CommandSequence>(std::move(*$2)); }
+| braced_commands { $$ = std::move($1); }
 | conditional { $$ = std::move($1); } 
 | variable_decl optional_semicolon { $$ = std::move($1); }
 | function { $$ = std::move($1); }

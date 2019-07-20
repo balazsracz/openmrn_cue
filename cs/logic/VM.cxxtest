@@ -273,7 +273,7 @@ TEST_F(VMTest, multi_command) {
 TEST_F(VMTest, multi_command_braces) {
   ASSERT_TRUE(compile("int a=1+3+8;\n{int c=1;\nint d=33;}\nint b=5;"));
   ASSERT_TRUE(run());
-  EXPECT_THAT(get_op_stack(), ElementsAre(12, 1, 33, 5));
+  EXPECT_THAT(get_op_stack(), ElementsAre(12, 5));
 }
 
 TEST_F(VMTest, ifthenelse_1) {
@@ -1021,7 +1021,7 @@ TEST_F(VMTest, nested_locals) {
   EXPECT_THAT(output_, ElementsAre("5", "17", "32"));
   EXPECT_THAT(get_op_stack(), ElementsAre(32));
 }
-
+ 
 TEST_F(VMTest, locals_in_conditionals) {
   const char* script = R"(
 int xx = 32;
@@ -1039,6 +1039,47 @@ print(rr);
   ASSERT_TRUE(run());
   EXPECT_THAT(output_, ElementsAre("33"));
   EXPECT_THAT(get_op_stack(), ElementsAre(32, 1, 33));
+}
+ 
+TEST_F(VMTest, locals_in_braces) {
+  const char* script = R"(
+int xx = 32;
+bool test = true;
+{
+  int yy = 17;
+  int zz = 33;
+}
+int rr = 33;
+print(rr);
+)";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("33"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(32, 1, 33));
+}
+
+TEST_F(VMTest, double_declaration) {
+  const char* script = R"(
+int xx = 32;
+bool xx = false;
+)";
+  ASSERT_FALSE(compile(script));
+  EXPECT_THAT(driver_.error_output_,
+              HasSubstr("syntax error"));
+  EXPECT_THAT(
+      driver_.error_output_,
+      HasSubstr(
+          "unexpected int_var_identifier, expecting undeclared_identifier"));
+}
+
+TEST_F(VMTest, double_declaration_ok) {
+  const char* script = R"(
+{ int xx = 32; }
+bool xx = false;
+)";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0));
 }
 
 
