@@ -82,8 +82,6 @@ class RunnerTimer : public ::Timer {
 struct BlockInfo {
   /// true if the block is operational
   bool enabled;
-  /// Compiled bytecode.
-  std::string bytecode;
 };
 
 struct Runner::RunnerImpl {
@@ -146,7 +144,7 @@ void Runner::single_step() {
     impl()->vm_.clear();
     impl()->vm_.set_preamble(false);
     impl()->vm_.set_block_num(i);
-    if (!impl()->vm_.execute(bi->bytecode)) {
+    if (!impl()->vm_.execute_block(i)) {
       std::string status = "Error in running: " + impl()->vm_.get_error();
       int fd = variable_factory_->fd();
       const auto& bl = variable_factory_->cfg().blocks().entry(i);
@@ -202,18 +200,16 @@ void Runner::compile_impl(Notifiable* done) {
     if (bi->enabled) {
       std::string bc;
       impl()->compile_driver_.serialize(&bc);
-      // purposefully not move to get the storage reallocated to match size.
-      bi->bytecode = bc;
       impl()->vm_.clear();
+      // purposefully not move to get the storage reallocated to match size.
+      impl()->vm_.set_block_code(i, bc);
       impl()->vm_.set_preamble(true);
-      impl()->vm_.set_block_num(i);
-      if (!impl()->vm_.execute(bi->bytecode)) {
+      if (!impl()->vm_.execute_block(i)) {
         status = "Error in preamble: " + impl()->vm_.get_error();
         bi->enabled = false;
       }
     } else {
-      std::string s;
-      s.swap(bi->bytecode);
+      impl()->vm_.clear_block_code(i);
     }
     if (status != bl.body().status().read(fd)) {
       bl.body().status().write(fd, status);

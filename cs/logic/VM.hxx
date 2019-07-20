@@ -93,9 +93,16 @@ class VM {
     if (blocks_.size() <= block_num) {
       blocks_.resize(block_num + 1);
     }
-    blocks_[block_num].code_ = std::move(code);
+    blocks_[block_num].code_.swap(code);
   }
 
+  void clear_block_code(uint8_t block_num) {
+    if (blocks_.size() > block_num) {
+      std::string s;
+      blocks_[block_num].code_.swap(s);
+    }
+  }
+  
   /// @return exception description if the execution failed.
   const std::string& get_error() {
     return error_;
