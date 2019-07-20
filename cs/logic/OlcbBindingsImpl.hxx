@@ -53,6 +53,9 @@ class OlcbBoolVariable : public Variable, private openlcb::BitEventInterface {
         state_(false),
         state_known_(false),
         parent_(parent) {
+    // This will ensure that all local variables have replied to this query
+    // before continuing. 
+    parent_->helper_.set_wait_for_local_loopback(true);
     pc_.SendQueryProducer(&parent_->helper_, parent_->bn_.reset(&parent_->sn_));
     parent_->sn_.wait_for_notification();
     pc_.SendQueryConsumer(&parent_->helper_, parent_->bn_.reset(&parent_->sn_));
@@ -75,6 +78,7 @@ class OlcbBoolVariable : public Variable, private openlcb::BitEventInterface {
     if (!state_ && value) need_update = true;
     state_ = value ? true : false;
     if (need_update) {
+      parent_->helper_.set_wait_for_local_loopback(true);
       pc_.SendEventReport(&parent_->helper_, parent_->bn_.reset(&parent_->sn_));
       parent_->sn_.wait_for_notification();
     }

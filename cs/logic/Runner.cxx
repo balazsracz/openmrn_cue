@@ -187,15 +187,19 @@ void Runner::compile_impl(Notifiable* done) {
     write_string_to_file(tempfilename, source);
     std::string status;
     impl()->compile_driver_.clear();
+    impl()->compile_driver_.set_guid_start(i << 16);
     if (impl()->compile_driver_.parse_file(tempfilename) != 0) {
       status = "Compile failed.\n";
       status += impl()->compile_driver_.error_output_;
-      /// @todo get error message from compile driver.
       bi->enabled = false;
     } else {
       status = "Compile OK. ";
       bi->enabled = CDI_READ_TRIMMED(bl.enabled, fd);
-      if (!bi->enabled) status += "Disabled.";
+      if (!bi->enabled) {
+        status += "Disabled.";
+        impl()->vm_.save_variables(i<<16, (i+1)<<16);
+        impl()->vm_.destroy_saved_variables();
+      }
     }
     if (bi->enabled) {
       std::string bc;
@@ -204,10 +208,12 @@ void Runner::compile_impl(Notifiable* done) {
       // purposefully not move to get the storage reallocated to match size.
       impl()->vm_.set_block_code(i, bc);
       impl()->vm_.set_preamble(true);
+      impl()->vm_.save_variables(i<<16, (i+1)<<16);
       if (!impl()->vm_.execute_block(i)) {
         status = "Error in preamble: " + impl()->vm_.get_error();
         bi->enabled = false;
       }
+      impl()->vm_.destroy_saved_variables();
     } else {
       impl()->vm_.clear_block_code(i);
     }

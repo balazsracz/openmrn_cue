@@ -70,6 +70,21 @@ void BytecodeStream::append_varint(std::string* output, int value) {
   }
 }
 
+void VM::save_variables(unsigned begin, unsigned end) {
+  auto it = external_variables_.lower_bound(begin);
+  // yes we need the lower bound again, because end is already open
+  // (excluding).
+  auto it_end = external_variables_.lower_bound(end);
+  while (it != it_end) {
+    external_variable_holding_.emplace_back(std::move(it->second));
+    it = external_variables_.erase(it);
+  }
+}
+
+void VM::destroy_saved_variables() {
+  external_variable_holding_.clear();
+}
+
 /// @return the IP pointing to the start of the current block.
 VM::ip_t VM::get_block_start_ip() {
   return block_num_ << BLOCK_CODE_IP_SHIFT;

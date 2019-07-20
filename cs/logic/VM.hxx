@@ -131,6 +131,12 @@ class VM {
     access_error_ = 0;
   }
 
+  /// Extracts all variables in GUID range of [begin, end) into a temporary
+  /// holding area.
+  void save_variables(unsigned begin, unsigned end);
+  /// Deletes all variables in the temporary holding area.
+  void destroy_saved_variables();
+    
   typedef std::map<unsigned, std::unique_ptr<Variable> > ExternalVariableMap;
 
   typedef unsigned ip_t;
@@ -179,7 +185,7 @@ class VM {
 
   /// Adds a Variable Access Error.
   void access_error();
-  
+
   struct ExecutionEnvironment {
     /// Frame pointer. Indexes into the operand_stack_ to define the base for
     /// all relative offset variables. When exiting a function, the operand
@@ -206,6 +212,9 @@ class VM {
     unsigned arg;
   };
 
+  /// Implementation of the Variable interface that points to a temporary on
+  /// the operand stack. This is used when a local variable (from the operand
+  /// stack) is passed as a mutable value to a function.
   class VMAbsoluteVariable : public Variable {
    public:
     VMAbsoluteVariable(VM* parent) : parent_(parent) {}
@@ -272,6 +281,9 @@ class VM {
   /// Holds (and owns) all external variables that are defined.
   ExternalVariableMap external_variables_;
 
+  /// Holding area for save_variables.
+  std::vector<std::unique_ptr<Variable> > external_variable_holding_;
+  
   /// Stores the last VM exception.
   std::string error_;
 

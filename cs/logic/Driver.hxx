@@ -67,6 +67,14 @@ class Driver {
     error_output_.clear();
     //next_guid_ = 1;
   }
+
+  /// Call this function before starting to compile a piece of code. GUIDs of
+  /// global variables will be assigned starting from this value.
+  /// @param next_guid the first defined exported variable will get this GUID,
+  /// then assigned increasing.
+  void set_guid_start(unsigned next_guid) {
+    next_guid_ = next_guid;
+  }
   
   struct ParsingContext {
     /// Symbol table available in the current context.
