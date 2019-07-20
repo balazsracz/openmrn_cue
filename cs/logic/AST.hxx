@@ -152,12 +152,25 @@ class GlobalVariableReference : public LocalVariableReference {
 /// Compound command (aka brace enclosed command sequence).
 class CommandSequence : public Command {
  public:
-  CommandSequence(std::vector<std::shared_ptr<Command> > &&commands)
-      : commands_(std::move(commands)) {}
+  CommandSequence(std::vector<std::shared_ptr<Command> >&& commands,
+                  int trim_stack_from = -1, int trim_stack_to = -1)
+      : commands_(std::move(commands)),
+        trim_stack_from_(trim_stack_from),
+        trim_stack_to_(trim_stack_to) {}
 
   void serialize(std::string* output) override {
     for (const auto& c : commands_) {
       c->serialize(output);
+    }
+    if (trim_stack_from_ >= 0) {
+#ifdef RENDER_STACK_LENGTH_CHECK    
+      BytecodeStream::append_opcode(output, CHECK_STACK_LENGTH);
+      BytecodeStream::append_varint(output, trim_stack_from_);
+#endif
+      if (trim_stack_to_ >= 0) {
+        BytecodeStream::append_opcode(output, LEAVE);
+        BytecodeStream::append_varint(output, trim_stack_from_ - trim_stack_to_);
+      }
     }
   }
 
@@ -172,6 +185,10 @@ class CommandSequence : public Command {
 
  private:
   std::vector<std::shared_ptr<Command> > commands_;
+  /// If non-negative, the stack will be checked to be this size at the end.
+  int trim_stack_from_;
+  /// If non-negative, the stack will be trimmed to this size at the end.
+  int trim_stack_to_;
 };
 
 class IntExpression : public Command {};

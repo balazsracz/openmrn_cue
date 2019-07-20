@@ -80,7 +80,6 @@ class Driver;
   AMP     "&"
   LPAREN  "("
   RPAREN  ")"
-  LBRACE  "{"
   RBRACE  "}"
   DOUBLEAND  "&&"
   DOUBLEOR  "||"
@@ -96,6 +95,7 @@ class Driver;
   PRINT  "print"
   TERMINATE  "terminate"
 ;
+%token <int> LBRACE "{" // stores the fp_offset_ to return to.
 %token <std::string> UNDECL_ID "undeclared_identifier"
 %token <std::string> BOOL_VAR_ID "bool_var_identifier"
 %token <std::string> INT_VAR_ID "int_var_identifier"
@@ -112,6 +112,7 @@ class Driver;
 %type  <std::shared_ptr<logic::IntExpression> > exp
 %type  <std::shared_ptr<logic::BooleanExpression> > boolexp
 %type  <std::shared_ptr<logic::Command> > command
+%type  <std::shared_ptr<logic::Command> > braced_commands
 %type  <std::shared_ptr<logic::Command> > conditional
 %type  <std::shared_ptr<logic::Command> > assignment
 %type  <std::shared_ptr<logic::Command> > fncall
@@ -211,22 +212,42 @@ storage_specifier type_specifier "undeclared_identifier" optional_assignment_exp
   driver.decl_helper_.clear();
 };
 
-conditional:
- "if" "(" boolexp ")" "{" commands "}" "else" "{" commands "}" {
-  $$ = std::make_shared<IfThenElse>(
-      std::move($3),
-      std::make_shared<CommandSequence>(std::move(*$6)),
-      std::make_shared<CommandSequence>(std::move(*$10))); }
-| "if" "(" boolexp ")" "{" commands "}" "else" conditional {
-  $$ = std::make_shared<IfThenElse>(
-      std::move($3),
-      std::make_shared<CommandSequence>(std::move(*$6)),
-      std::move($9)); }
-| "if" "(" boolexp ")" "{" commands "}" {
-  $$ = std::make_shared<IfThenElse>(
-      std::move($3),
-      std::make_shared<CommandSequence>(std::move(*$6)));
+braced_commands:
+"{" {
+  if ($1 >= 0) {
+    driver.error(@1, "Internal error: unexpected positive brace contents.");
+    YYERROR;
   }
+  $1 = driver.current_context()->frame_size_;
+} commands "}" {
+  if ($1 < 0) {
+    driver.error(@1, "Internal error: unexpected negative brace contents.");
+    YYERROR;
+  }
+  if ((int)driver.current_context()->frame_size_ != $1) {
+    // we have local variables.
+    $$ = std::make_shared<CommandSequence>(
+        std::move(*$3), driver.current_context()->frame_size_, $1);
+    driver.trim_stack($1);
+    driver.current_context()->frame_size_ = $1;
+  } else {
+    $$ = std::make_shared<CommandSequence>(
+        std::move(*$3), driver.current_context()->frame_size_);
+  }
+};
+
+conditional:
+ "if" "(" boolexp ")" braced_commands "else" braced_commands {
+  $$ =
+      std::make_shared<IfThenElse>(std::move($3), std::move($5), std::move($7));
+}
+| "if" "(" boolexp ")" braced_commands "else" conditional {
+  $$ =
+      std::make_shared<IfThenElse>(std::move($3), std::move($5), std::move($7));
+}
+| "if" "(" boolexp ")" braced_commands {
+  $$ = std::make_shared<IfThenElse>(std::move($3), std::move($5));
+}
 ;
 
 poly_expression:

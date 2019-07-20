@@ -187,6 +187,23 @@ bool VM::execute() {
         operand_stack_.resize(operand_stack_.size() + r);
         break;
       }
+      case LEAVE: {
+        GET_VARINT(r);
+        if (r < 0) {
+          error_ = StringPrintf(
+              "At IP %u: LEAVE with negative argument %d.",
+              get_ip(), r);
+          return false;
+        }
+        if (r > (int)operand_stack_.size()) {
+          error_ = StringPrintf(
+              "At IP %u: Stack underflow with LEAVE; arg=%d stack size=%u",
+              get_ip(), r, (int)operand_stack_.size());
+          return false;
+        }
+        operand_stack_.resize(operand_stack_.size() - r);
+        break;
+      }
       case CHECK_STACK_LENGTH: {
         GET_VARINT(r);
         if (operand_stack_.size() != (unsigned)(fp_ + r)) {

@@ -113,6 +113,21 @@ class Driver {
   bool is_global_context() {
     return current_context_ == &global_context_;
   }
+
+  /// Removes all entries from the symbol table whose fp offsets is >=
+  /// new_size. This is in preparation of leaving a syntactic context where
+  /// variables were allocated on the stack.
+  void trim_stack(unsigned new_size) {
+    auto& table = current_context()->symbol_table_;
+    for (auto it = table.begin(); it != table.end();) {
+      if (it->second.fp_offset_ >= 0 &&
+          it->second.fp_offset_ <= (int)new_size) {
+        it = table.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
   
   /// Create a new local variable.
   /// @param name is the identifier ofthe local variable.

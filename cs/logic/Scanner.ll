@@ -82,7 +82,7 @@ blank [ \t]
 "mod"      return logic::yy::Parser::make_PERCENT(loc);
 "("        return logic::yy::Parser::make_LPAREN(loc);
 ")"        return logic::yy::Parser::make_RPAREN(loc);
-"{"        return logic::yy::Parser::make_LBRACE(loc);
+"{"        return logic::yy::Parser::make_LBRACE(-1, loc);
 "}"        return logic::yy::Parser::make_RBRACE(loc);
 ";"        return logic::yy::Parser::make_SEMICOLON(loc);
 ","        return logic::yy::Parser::make_COMMA(loc);

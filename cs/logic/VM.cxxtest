@@ -1022,5 +1022,24 @@ TEST_F(VMTest, nested_locals) {
   EXPECT_THAT(get_op_stack(), ElementsAre(32));
 }
 
+TEST_F(VMTest, locals_in_conditionals) {
+  const char* script = R"(
+int xx = 32;
+bool test = true;
+if (test) {
+  int yy = 17;
+  int zz = 33;
+} else {
+  int qq = 8;
+}
+int rr = 33;
+print(rr);
+)";
+  ASSERT_TRUE(compile(script));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("33"));
+  EXPECT_THAT(get_op_stack(), ElementsAre(32, 1, 33));
+}
+
 
 } // namespace logic

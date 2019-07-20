@@ -131,6 +131,9 @@ enum OpCode : uint8_t {
   POP_OP,
   // Pushes zeros to the stack. Arg = how many zeros to push.
   ENTER,
+  // Removes a certain number of elements from the top of the stack. Arg = how
+  // many to remove.
+  LEAVE,
   // Verifies that the length of the operand stack is as expected. One varint
   // argument arg. The operand stack's length shall be fp_ + arg, otherwise the
   // VM terminates.
