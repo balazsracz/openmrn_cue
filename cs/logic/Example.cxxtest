@@ -75,3 +75,23 @@ TEST(ParserTest, indirect_var) {
   logic::Driver d;
   EXPECT_EQ(0, d.parse_file(tf.name()));
 }
+
+TEST(ParserTest, precedence_test) {
+  TempFile tf(g_dir, "simple");
+  tf.rewrite("int a = 1+2*3 ; bool xa, xb, xc; bool b = xa || xb && xc; b = xa && xb || xc");
+  logic::Driver d;
+  EXPECT_EQ(0, d.parse_file(tf.name()));
+  EXPECT_EQ("int a = plus(1,mul(2,3));\n"
+            "{\nbool xa = false\nbool xb = false\nbool xc = false\n}\n;\n"
+            "bool b = bool_or(fetch(xa),bool_and(fetch(xb),fetch(xc)));\n"
+            "boolassign(b, bool_or(bool_and(fetch(xa),fetch(xb)),fetch(xc)));"
+            "\n", d.debug_print());
+}
+
+TEST(ParserTest, precedence_test_2) {
+  TempFile tf(g_dir, "simple");
+  tf.rewrite("bool b = 15 < 37 || 42 + 2 >= 3;");
+  logic::Driver d;
+  EXPECT_EQ(0, d.parse_file(tf.name()));
+  EXPECT_EQ("bool b = bool_or(lt(15,37),geq(plus(42,2),3));\n", d.debug_print());
+}

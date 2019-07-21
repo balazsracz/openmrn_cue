@@ -81,17 +81,22 @@ class Driver;
   LPAREN  "("
   RPAREN  ")"
   RBRACE  "}"
-  DOUBLEAND  "&&"
+  DOUBLEAND "&&"
   DOUBLEOR  "||"
   DOUBLEEQ  "=="
-  IF  "if"
-  ELSE  "else"
-  TYPEINT  "int"
-  TYPEBOOL  "bool"
-  TYPEVOID  "void"
-  EXPORTED  "exported"
+  NEQ     "!="
+  LEQ     "<="
+  GEQ     ">="
+  LT      "<"
+  GT      ">"
+  IF      "if"
+  ELSE    "else"
+  TYPEINT "int"
+  TYPEBOOL "bool"
+  TYPEVOID "void"
+  EXPORTED "exported"
   MUTABLE  "mutable"
-  AUTO  "auto"
+  AUTO    "auto"
   STATIC  "static"
   PRINT  "print"
   TERMINATE  "terminate"
@@ -132,6 +137,14 @@ class Driver;
 %%
 %start unit;
 unit: commands { driver.commands_.swap(*$1); };
+
+%left "||";
+%left "&&";
+%left "==" "!=";
+%nonassoc "<" "<=" ">" ">=";
+%left "+" "-";
+%left "*" "/" "%";
+%right "!";
 
 assignment:
 "int_var_identifier" "=" exp {
@@ -356,8 +369,6 @@ commands:
   $$ = std::move($1);
 };
 
-%left "+" "-";
-%left "*" "/" "%";
 exp:
 exp "+" exp   {
   $$ = std::make_shared<IntBinaryExpression>(NUMERIC_PLUS, std::move($1),
@@ -400,10 +411,7 @@ exp "%" exp   {
 }
 ;
 
-%right "!";
-%left "==" "!=";
-%left "&&";
-%left "||";
+//%left "==" "!=";
 
 boolexp:
   "constbool"      { $$ = std::make_shared<BooleanConstant>($1); }
@@ -412,6 +420,12 @@ boolexp:
 | "!" boolexp       { $$ = std::make_shared<BoolNot>(std::move($2)); }
 |  boolexp "&&" boolexp   { $$ = std::make_shared<BoolAnd>(std::move($1), std::move($3)); }
 |  boolexp "||" boolexp   { $$ = std::make_shared<BoolOr>(std::move($1), std::move($3)); }
+|  exp "<=" exp { $$ = std::make_shared<IntComp>(NUMERIC_LEQ, std::move($1), std::move($3));  }
+|  exp ">=" exp { $$ = std::make_shared<IntComp>(NUMERIC_GEQ, std::move($1), std::move($3));  }
+|  exp "<" exp { $$ = std::make_shared<IntComp>(NUMERIC_LT, std::move($1), std::move($3));  }
+|  exp ">" exp { $$ = std::make_shared<IntComp>(NUMERIC_GT, std::move($1), std::move($3));  }
+|  exp "==" exp { $$ = std::make_shared<IntComp>(NUMERIC_EQ, std::move($1), std::move($3));  }
+|  exp "!=" exp { $$ = std::make_shared<IntComp>(NUMERIC_NEQ, std::move($1), std::move($3));  }
 | "bool_var_identifier"  {
   auto vp =
       driver.get_variable_reference(std::move($1), @1, Symbol::DATATYPE_BOOL);

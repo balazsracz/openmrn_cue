@@ -1121,4 +1121,66 @@ print(xx);
   EXPECT_THAT(output_, ElementsAre("67"));
 }
 
-} // namespace logic
+TEST_F(VMTest, int_comparisons_1) {
+  const char* script = R"(
+bool a = 15 < 20;
+bool b = 15 <= 20;
+bool e = 20 > 15;
+bool f = 20 >= 15;
+
+bool o = 20 < 15;
+bool p = 20 <= 15;
+bool s = 15 > 20;
+bool t = 15 >= 20;
+)";
+  ASSERT_TRUE(compile(script));
+
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 1, 1, 1, 0, 0, 0, 0));
+}
+
+TEST_F(VMTest, int_comparisons_2) {
+  const char* script = R"(
+bool c = 15 == 15;
+bool d = 15 != 20;
+
+bool q = 15 == 20;
+bool r = 15 != 15;
+)";
+  ASSERT_TRUE(compile(script));
+
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(1, 1, 0, 0));
+}
+
+TEST_F(VMTest, int_comparisons_3) {
+  const char* script = R"(
+bool a = 15 < 15;
+bool b = 15 <= 15;
+bool e = 15 > 15;
+bool f = 15 >= 15;
+)";
+  ASSERT_TRUE(compile(script));
+
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 0, 1));
+}
+
+TEST_F(VMTest, conditional_comparisons) {
+  const char* script = R"(
+int a = 15;
+int b = 30;
+if (a < b || a >= 15) {
+  print("ok");
+}
+)";
+  ASSERT_TRUE(compile(script));
+
+  ASSERT_TRUE(run());
+  EXPECT_THAT(output_, ElementsAre("ok"));
+}
+
+}  // namespace logic
+
+#if 0
+#endif

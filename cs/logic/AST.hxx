@@ -459,6 +459,69 @@ class IntBinaryExpression : public IntExpression {
       case NUMERIC_PLUS:
         output->append("plus(");
         break;
+      case NUMERIC_MINUS:
+        output->append("minus(");
+        break;
+      case NUMERIC_MUL:
+        output->append("mul(");
+        break;
+      case NUMERIC_DIV:
+        output->append("div(");
+        break;
+      case NUMERIC_MOD:
+        output->append("mod(");
+        break;
+      default:
+        output->append("?\?\?(");
+    }
+    left_->debug_print(output);
+    output->append(",");
+    right_->debug_print(output);
+    output->append(")");
+  }
+
+ private:
+  /// Opcode that performs the given expression on the top of the stack.
+  OpCode opcode_;
+  std::shared_ptr<IntExpression> left_;
+  std::shared_ptr<IntExpression> right_;
+};
+
+class IntComp : public BooleanExpression {
+ public:
+  IntComp(OpCode op, std::shared_ptr<IntExpression> left,
+          std::shared_ptr<IntExpression> right)
+      : opcode_(op), left_(std::move(left)), right_(std::move(right)) {
+    HASSERT(left_);
+    HASSERT(right_);
+  }
+
+  void serialize(std::string* output) override {
+    left_->serialize(output);
+    right_->serialize(output);
+    BytecodeStream::append_opcode(output, opcode_);
+  }
+
+  void debug_print(std::string* output) override {
+    switch(opcode_) {
+      case NUMERIC_EQ:
+        output->append("eq(");
+        break;
+      case NUMERIC_NEQ:
+        output->append("noteq(");
+        break;
+      case NUMERIC_LEQ:
+        output->append("leq(");
+        break;
+      case NUMERIC_GEQ:
+        output->append("geq(");
+        break;
+      case NUMERIC_LT:
+        output->append("lt(");
+        break;
+      case NUMERIC_GT:
+        output->append("gt(");
+        break;
       default:
         output->append("?\?\?(");
     }
@@ -577,7 +640,7 @@ class BoolAnd : public BooleanExpression {
 class BoolEq : public BooleanExpression {
  public:
   BoolEq(std::shared_ptr<BooleanExpression> left,
-          std::shared_ptr<BooleanExpression> right)
+         std::shared_ptr<BooleanExpression> right)
       : left_(std::move(left)), right_(std::move(right)) {
     HASSERT(left_);
     HASSERT(right_);

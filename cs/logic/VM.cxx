@@ -400,6 +400,38 @@ bool VM::execute() {
         operand_stack_.push_back(lhs == rhs);
         break;
       }
+      case NUMERIC_LEQ:
+      case NUMERIC_GEQ:
+      case NUMERIC_LT:
+      case NUMERIC_GT:
+      case NUMERIC_EQ:
+      case NUMERIC_NEQ: {
+        GET_FROM_STACK(rhs, "INTCOMP");
+        GET_FROM_STACK(lhs, "INTCOMP");
+        int ret;
+        switch(insn) {
+          case NUMERIC_LEQ:
+            ret = (lhs <= rhs);
+            break;
+          case NUMERIC_GEQ:
+            ret = (lhs >= rhs);
+            break;
+          case NUMERIC_LT:
+            ret = (lhs < rhs);
+            break;
+          case NUMERIC_GT:
+            ret = (lhs > rhs);
+            break;
+          case NUMERIC_EQ:
+            ret = (lhs == rhs);
+            break;
+          case NUMERIC_NEQ:
+            ret = (lhs != rhs);
+            break;
+        }
+        operand_stack_.push_back(ret);
+        break;
+      }
       case BOOL_NOT: {
         GET_FROM_STACK(rhs, "");
         if (rhs == 0) {
