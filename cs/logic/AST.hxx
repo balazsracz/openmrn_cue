@@ -135,15 +135,6 @@ class GlobalVariableReference : public LocalVariableReference {
     LocalVariableReference::serialize_fetch(output);
   }
   
-  /// Run once when the variable is defined for import. When called, the
-  /// variable import result (the offset) is on the top of the
-  /// stack. Initializes the internal storage value by pushing it to the right
-  /// place in the operand stack.
-  void serialize_init(std::string* output) {
-    // The right place is always on the top of the stack.
-    //LocalVariableReference::serialize_store(output);
-  }
-  
   const string& get_name() {
     return name_;
   }
@@ -213,7 +204,6 @@ class IndirectVarCreate : public Command {
     BytecodeStream::append_opcode(output, PUSH_CONSTANT);
     BytecodeStream::append_varint(output, arg_);
     BytecodeStream::append_opcode(output, IMPORT_VAR);
-    variable_.serialize_init(output);
   }
 
   void debug_print(std::string* output) override {
@@ -228,6 +218,48 @@ class IndirectVarCreate : public Command {
   int arg_;
   /// Holds the metadata of the variable.
   GlobalVariableReference variable_;
+};
+
+class StaticVarCreate : public Command {
+ public:
+  StaticVarCreate(std::string name, TypeSpecifier type, int guid, int fp_offset,
+                  std::shared_ptr<Command> initial_value)
+      : guid_(guid),
+        type_(type),
+        variable_(name, fp_offset),
+        init_(std::move(initial_value)) {}
+
+  void serialize(std::string* output) override {
+    BytecodeStream::append_opcode(output, CREATE_STATIC_VAR);
+    BytecodeStream::append_varint(output, guid_);
+    // Now there are two values on the stack: <bottom> = indirect var
+    // offset. <top> = 0 if no init is necessary, 1 if init is necessary.
+    string init;
+    init_->serialize(&init);
+    variable_.serialize_store(&init);
+    BytecodeStream::append_opcode(output, TEST_JUMP_IF_FALSE);
+    BytecodeStream::append_varint(output, init.size());
+    output->append(init);
+  }
+
+  void debug_print(std::string* output) override {
+    output->append("static ");
+    output->append(type_.to_string());
+    output->append(" ");
+    output->append(variable_.get_name());
+    output->append(" = ");
+    init_->debug_print(output);
+  }
+  
+ private:
+  /// Guild of the variable to create and import.
+  int guid_;
+  // Variable (syntactic) type.
+  TypeSpecifier type_;
+  /// Holds the metadata of the variable.
+  GlobalVariableReference variable_;
+  // Code that initializes the value.
+  std::shared_ptr<Command> init_; 
 };
 
 class LocalVarCreate : public Command {

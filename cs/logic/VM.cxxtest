@@ -80,6 +80,7 @@ class VMTest : public ::testing::Test {
   }
 
   ::testing::AssertionResult run() {
+    vm_.set_block_num(0);
     if (vm_.execute(bytecode_)) {
       return ::testing::AssertionSuccess();
     } else {
@@ -1082,5 +1083,42 @@ bool xx = false;
   EXPECT_THAT(get_op_stack(), ElementsAre(0));
 }
 
+TEST_F(VMTest, static_variables) {
+  const char* script = R"(
+static int xx = 32;
+int yy = xx + 1;
+print(xx);
+)";
+  driver_.set_guid_start(99);
+  ASSERT_TRUE(compile(script));
+
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 33));
+  EXPECT_THAT(output_, ElementsAre("32"));
+
+  vm_.clear();
+  output_.clear();
+  EXPECT_THAT(get_op_stack(), ElementsAre());
+  EXPECT_THAT(output_, ElementsAre());
+
+  vm_.clear();
+  output_.clear();
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 33));
+  EXPECT_THAT(output_, ElementsAre("32"));
+
+  const auto& m = get_external_vars();
+  auto it = m.find(99);
+  ASSERT_TRUE(it != m.end());
+  EXPECT_EQ(32, it->second->read(nullptr, 0));
+
+  it->second->write(nullptr, 0, 67);
+
+  vm_.clear();
+  output_.clear();
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 68));
+  EXPECT_THAT(output_, ElementsAre("67"));
+}
 
 } // namespace logic

@@ -338,6 +338,22 @@ bool VM::execute() {
         operand_stack_.push_back(variable_stack_.size() - 1);
         break;
       }
+      case CREATE_STATIC_VAR: {
+        GET_VARINT(guid);
+        bool created = false;
+        auto& global_ref = external_variables_[guid];
+        if (!global_ref.get()) {
+          created = true;
+          global_ref.reset(new StaticVariable);
+        }
+        VMVariableReference ref;
+        ref.var = global_ref.get();
+        ref.arg = 0;
+        variable_stack_.emplace_back(std::move(ref));
+        operand_stack_.push_back(variable_stack_.size() - 1);
+        operand_stack_.push_back(created ? 1 : 0);
+        break;
+      }
       case NUMERIC_PLUS: {
         GET_FROM_STACK(rhs, "NUMERIC_PLUS");
         GET_FROM_STACK(lhs, "NUMERIC_PLUS");

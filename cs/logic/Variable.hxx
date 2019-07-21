@@ -37,6 +37,7 @@
 
 #include <string>
 #include <memory>
+#include <limits.h>
 
 namespace logic {
 
@@ -89,6 +90,35 @@ class Variable {
   /// @param value is the new (desired) state of the variable.
   virtual void write(const VariableFactory* parent, unsigned arg,
                      int value) = 0;
+};
+
+/// Implementation of the Variable interface that is static, i.e. the value
+/// is kept between different runs. The value is stored in the object
+/// directly.
+class StaticVariable : public Variable {
+ public:
+  StaticVariable() {}
+
+  /// @return the largest valid state value to write or return from this
+  /// variable.
+  int max_state() override { return INT_MAX; }
+
+  /// @param parent is the variable factory that created this variable.
+  /// @param arg is the index for vector variables, zero if not used.
+  /// @return the current value of this variable.
+  int read(const VariableFactory* parent, unsigned arg) override {
+    return value_;
+  }
+
+  /// Write a value to the variable.
+  /// @param parent is the variable factory that created this variable.
+  /// @param arg is the index for vector variables, zero if not used.
+  /// @param value is the new (desired) state of the variable.
+  void write(const VariableFactory* parent, unsigned arg, int value) override {
+    value_ = value;
+  }
+
+  int value_{0};
 };
 
 /// Abstract interface to the component that is responsible for creating the

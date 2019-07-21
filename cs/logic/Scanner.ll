@@ -104,10 +104,11 @@ blank [ \t]
 "void"     return logic::yy::Parser::make_TYPEVOID(loc);
 
 "exported" return logic::yy::Parser::make_EXPORTED(loc);  
-"auto" return logic::yy::Parser::make_AUTO(loc);  
-"mutable" return logic::yy::Parser::make_MUTABLE(loc);  
+"auto"     return logic::yy::Parser::make_AUTO(loc);  
+"mutable"  return logic::yy::Parser::make_MUTABLE(loc);  
+"static"   return logic::yy::Parser::make_STATIC(loc);  
 
-"print" return logic::yy::Parser::make_PRINT(loc);
+"print"    return logic::yy::Parser::make_PRINT(loc);
 "terminate" return logic::yy::Parser::make_TERMINATE(loc);
 
 "true"     return logic::yy::Parser::make_BOOL(true, loc);

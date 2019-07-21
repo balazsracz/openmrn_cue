@@ -66,7 +66,8 @@ struct Symbol {
 
   enum Access {
     LOCAL_VAR,
-    INDIRECT_VAR
+    INDIRECT_VAR,
+    STATIC_VAR
   };
 
   DataType get_data_type() const {
@@ -168,6 +169,14 @@ enum OpCode : uint8_t {
   /// which it will be stored).
   CREATE_VAR,
 
+  /// Creates a static variable. arg = GUID of the variable (under which it
+  /// will be stored). The variable will be entered to the variable stack
+  /// (equivalent to IMPORT), and the offset is pushed onto the operand
+  /// stack. Another value will be pushed to the op stack, 0 if there was not
+  /// yet a variable under this GUID and it was newly created, or 0 if the
+  /// variable aready existed.
+  CREATE_STATIC_VAR,
+  
   /// Imports a variable. On the operand stack lhs = GUID of variable; rhs =
   /// argument. The created variable is pushed to the variable stack. The
   /// offset in the variable stack for the new variable is pushed to the

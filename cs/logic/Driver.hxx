@@ -235,7 +235,7 @@ class Driver {
                                                  allocate_guid());
     } else {
       // local variable. Create directly on top of the stack.
-      Symbol::DataType value_type = initial_value->get_data_type();;
+      Symbol::DataType value_type = initial_value->get_data_type();
       bool has_value = value_type != Symbol::DATATYPE_VOID;
       if (has_value && value_type != decl_type_.builtin_type_) {
         error(val_loc,
@@ -264,8 +264,15 @@ class Driver {
           error(loc, "Variables cannot be void type.");
           return nullptr;
       }
-      return std::make_shared<LocalVarCreate>(
-          std::move(name), decl_type_, s->fp_offset_, std::move(init_cmd));
+      if (decl_storage_ == Symbol::STATIC_VAR) {
+        s->access_ = Symbol::INDIRECT_VAR;
+        return std::make_shared<StaticVarCreate>(std::move(name), decl_type_,
+                                                 allocate_guid(), s->fp_offset_,
+                                                 std::move(init_cmd));
+      } else if (decl_storage_ == Symbol::LOCAL_VAR) {
+        return std::make_shared<LocalVarCreate>(
+            std::move(name), decl_type_, s->fp_offset_, std::move(init_cmd));
+      }
     }
     return nullptr;
   }

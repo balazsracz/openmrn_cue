@@ -92,6 +92,7 @@ class Driver;
   EXPORTED  "exported"
   MUTABLE  "mutable"
   AUTO  "auto"
+  STATIC  "static"
   PRINT  "print"
   TERMINATE  "terminate"
 ;
@@ -154,6 +155,7 @@ assignment:
 storage_specifier:
 %empty { $$ = Symbol::LOCAL_VAR; }
 | "exported" { $$ = Symbol::INDIRECT_VAR; }
+| "static" { $$ = Symbol::STATIC_VAR; }
 ;
 
 fn_arg_storage_specifier:
@@ -191,8 +193,8 @@ multi_variable_decl "," "undeclared_identifier" optional_assignment_expression {
 
 variable_decl:
 storage_specifier type_specifier "undeclared_identifier" optional_assignment_expression {
-  if ($1 == Symbol::INDIRECT_VAR && !driver.is_global_context()) {
-    driver.error(@1, "Exported variables must appear in the global context.");
+  if ($1 != Symbol::LOCAL_VAR && !driver.is_global_context()) {
+    driver.error(@1, "Exported and static variables must appear in the global context.");
     YYERROR;
   }
   driver.decl_storage_ = $1;

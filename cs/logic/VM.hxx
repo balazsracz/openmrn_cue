@@ -240,8 +240,8 @@ class VM {
     /// @param parent is the variable factory that created this variable.
     /// @param arg is the index for vector variables, zero if not used.
     /// @param value is the new (desired) state of the variable.
-    virtual void write(const VariableFactory* parent, unsigned arg,
-                       int value) override {
+    void write(const VariableFactory* parent, unsigned arg,
+               int value) override {
       if (parent_->operand_stack_.size() <= arg) {
         parent_->access_error();
         return;
@@ -251,7 +251,7 @@ class VM {
 
     VM* parent_;
   } operand_stack_variables_{this};
-
+  
   struct BlockInfo {
     /// The compiled bytecode for the block.
     std::string code_;
