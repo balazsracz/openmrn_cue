@@ -393,16 +393,16 @@ bool VM::execute() {
         break;
       }
       case BOOL_EQ: {
-        GET_FROM_STACK(rhs, "");
-        GET_FROM_STACK(lhs, "");
+        GET_FROM_STACK(rhs, "BOOLEQ");
+        GET_FROM_STACK(lhs, "BOOLEQ");
         rhs = !!rhs;
         lhs = !!lhs;
         operand_stack_.push_back(lhs == rhs);
         break;
       }
       case BOOL_NEQ: {
-        GET_FROM_STACK(rhs, "");
-        GET_FROM_STACK(lhs, "");
+        GET_FROM_STACK(rhs, "BOOLNEQ");
+        GET_FROM_STACK(lhs, "BOOLNEQ");
         rhs = !!rhs;
         lhs = !!lhs;
         operand_stack_.push_back(lhs != rhs);
