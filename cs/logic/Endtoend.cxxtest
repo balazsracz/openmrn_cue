@@ -207,6 +207,17 @@ TEST_F(EndToEndTest, compile_something) {
   EXPECT_EQ("Compile OK. Disabled.", status);
 }
 
+TEST_F(EndToEndTest, compile_failed_something) {
+  wait();
+  string pgm = "a = 5+3+7;";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_THAT(status, HasSubstr("syntax error"));
+}
+
 TEST_F(EndToEndTest, compile_enabled) {
   wait();
   string pgm = "int a = 5+3+7;";
@@ -294,7 +305,6 @@ TEST_F(EndToEndTest, fail) {
   status = cdi.logic().blocks().entry(0).body().status().read(fd());
   EXPECT_EQ("Compile OK. ", status);
 }
-
 
 TEST_F(EndToEndTest, twoblocks) {
   wait();
@@ -385,7 +395,6 @@ TEST_F(EndToEndTest, indirect_flipflop_2) {
 
   test_flipflop();
 }
-
 
 TEST_F(EndToEndTest, nested_indirect_flipflop) {
   LOG(INFO, "start");
