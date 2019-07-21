@@ -86,6 +86,7 @@ class OlcbVariableFactory : public VariableFactory,
   
  private:
   friend class OlcbBoolVariable;
+  friend class OlcbIntVariable;
   
   /// Node object that will be used to communicate with the OpenLCB bus.
   openlcb::Node* node_;

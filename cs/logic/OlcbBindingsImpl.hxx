@@ -113,6 +113,196 @@ class OlcbBoolVariable : public Variable, private openlcb::BitEventInterface {
   openlcb::BitEventPC pc_{this};
 };
 
+
+class OlcbIntVariable : public Variable, private openlcb::SimpleEventHandler {
+ public:
+  int max_state() override {
+    // boolean: can be 0 or 1.
+    return num_states_ - 1;
+  }
+
+  int read(const VariableFactory* parent, unsigned arg) override {
+    return state_;
+  }
+  
+  void write(const VariableFactory *parent, unsigned arg, int value) override {
+    bool need_update = !state_known_;
+    state_known_ = true;
+    if (((int)state_) != value) need_update = true;
+    state_ = value;
+    if (need_update) {
+      parent_->helper_.set_wait_for_local_loopback(true);
+      parent_->helper_.WriteAsync(
+          node(), openlcb::Defs::MTI_EVENT_REPORT,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(event_base_ + state_),
+          parent_->bn_.reset(&parent_->sn_));
+      parent_->sn_.wait_for_notification();
+    }
+  }
+
+  /// Constructor.
+  /// @param event_base is the event ID that is equivalent to state 0.
+  /// @param num_states is the number of consecutive event IDs that are
+  /// meaningful starting with event_base.
+  /// @param parent is the variable factory that owns *this.
+  OlcbIntVariable(uint64_t event_base, uint8_t num_states,
+                  OlcbVariableFactory* parent)
+      : event_base_(event_base),
+        state_known_(false),
+        state_(0),
+        num_states_(num_states),
+        parent_(parent) {
+    uint64_t reg_event = event_base_;
+    unsigned mask = openlcb::EventRegistry::align_mask(&reg_event, num_states_);
+    openlcb::EventRegistry::instance()->register_handler(
+        EventRegistryEntry(this, reg_event, 0), mask);
+
+    StateType ofs = 0;
+    while (!state_known_ && ofs < num_states_) {
+      parent_->helper_.set_wait_for_local_loopback(true);
+      parent_->helper_.WriteAsync(node(), openlcb::Defs::MTI_CONSUMER_IDENTIFY,
+                                  openlcb::WriteHelper::global(),
+                                  openlcb::eventid_to_buffer(event_base_ + ofs),
+                                  parent_->bn_.reset(&parent_->sn_));
+      parent_->sn_.wait_for_notification();
+      ++ofs;
+    }
+  }
+
+  ~OlcbIntVariable() {
+    openlcb::EventRegistry::instance()->unregister_handler(this);
+  }
+
+  void handle_event_report(const openlcb::EventRegistryEntry &entry,
+                           openlcb::EventReport *event,
+                           BarrierNotifiable *done) override {
+    AutoNotify an(done);
+    if (decode_event(event->event, &state_)) {
+      state_known_ = true;
+    }
+  }
+
+  void handle_identify_consumer(
+      const openlcb::EventRegistryEntry &registry_entry,
+      openlcb::EventReport *event, BarrierNotifiable *done) override {
+    AutoNotify an(done);
+    StateType st;
+    if (!decode_event(event->event, &st)) {
+      return;
+    }
+    openlcb::EventState est =
+        state_known_ ? (st == state_ ? openlcb::EventState::VALID
+                                     : openlcb::EventState::INVALID)
+                     : openlcb::EventState::UNKNOWN;
+    openlcb::Defs::MTI mti = openlcb::Defs::MTI_CONSUMER_IDENTIFIED_VALID + est;
+    event->event_write_helper<1>()->WriteAsync(
+        node(), mti, openlcb::WriteHelper::global(),
+        openlcb::eventid_to_buffer(event->event), done->new_child());
+    if (state_known_ && st != state_) {
+      event->event_write_helper<2>()->WriteAsync(
+          node(), openlcb::Defs::MTI_CONSUMER_IDENTIFIED_VALID,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(event_base_ + state_), done->new_child());
+    }
+  };
+
+  void handle_identify_producer(
+      const openlcb::EventRegistryEntry &registry_entry,
+      openlcb::EventReport *event, BarrierNotifiable *done) override {
+    AutoNotify an(done);
+    StateType st;
+    if (!decode_event(event->event, &st)) {
+      return;
+    }
+    openlcb::EventState est =
+        state_known_ ? (st == state_ ? openlcb::EventState::VALID
+                                     : openlcb::EventState::INVALID)
+                     : openlcb::EventState::UNKNOWN;
+    openlcb::Defs::MTI mti = openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID + est;
+    event->event_write_helper<1>()->WriteAsync(
+        node(), mti, openlcb::WriteHelper::global(),
+        openlcb::eventid_to_buffer(event->event), done->new_child());
+    if (state_known_ && st != state_) {
+      event->event_write_helper<2>()->WriteAsync(
+          node(), openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(event_base_ + state_), done->new_child());
+    }
+  };
+
+  void handle_consumer_identified(
+      const openlcb::EventRegistryEntry &registry_entry,
+      openlcb::EventReport *event, BarrierNotifiable *done) override {
+    AutoNotify an(done);
+    if (state_known_) return;
+    if (event->state != openlcb::EventState::VALID) return;
+    if (decode_event(event->event, &state_)) {
+      state_known_ = true;
+    }
+  }
+
+  void handle_producer_identified(
+      const openlcb::EventRegistryEntry &registry_entry,
+      openlcb::EventReport *event, BarrierNotifiable *done) override {
+    AutoNotify an(done);
+    if (state_known_) return;
+    if (event->state != openlcb::EventState::VALID) return;
+    if (decode_event(event->event, &state_)) {
+      state_known_ = true;
+    }
+  }
+  
+  void handle_identify_global(const openlcb::EventRegistryEntry &registry_entry,
+                              openlcb::EventReport *event,
+                              BarrierNotifiable *done) override {
+    AutoNotify an(done);
+    if (event->dst_node && event->dst_node != node()) {
+      return;
+    }
+    auto range = openlcb::EncodeRange(event_base_, num_states_);
+    event->event_write_helper<1>()->WriteAsync(
+        node(), openlcb::Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
+        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
+        done->new_child());
+    event->event_write_helper<2>()->WriteAsync(
+        node(), openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
+        done->new_child());
+    done->notify();
+  };
+
+ private:
+  typedef uint8_t StateType;
+  
+  /// @return the node pointer on which this variable is exported.
+  openlcb::Node *node()
+  {
+    return parent_->node();
+  }
+
+  /// Test if a given event ID is interesting for us.
+  /// @param event_id event coming form the network.
+  /// @param st will be set to the state it means.
+  /// @return true if it is an interesting event (st will be set), false if it
+  /// is not an event for us (st will be uninitialized).
+  bool decode_event(uint64_t event_id, StateType* st) {
+    if (event_id < event_base_) return false;
+    if (event_id >= event_base_ + num_states_) return false;
+    *st = event_id - event_base_;
+    return true;
+  }
+
+  uint64_t event_base_;
+  uint8_t state_known_ : 1;
+  StateType state_;
+  /// Number of different states. Largest event valid is event_base_ +
+  /// num_states_ - 1.
+  StateType num_states_;
+  /// Pointer to the Olcb variable factory that owns this. externally owned.
+  OlcbVariableFactory* parent_;
+};
+
 } // namespace logic
 
 #endif // _LOGIC_OLCBBINDINGSIMPL_HXX_
