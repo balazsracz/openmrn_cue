@@ -411,8 +411,6 @@ exp "%" exp   {
 }
 ;
 
-//%left "==" "!=";
-
 boolexp:
   "constbool"      { $$ = std::make_shared<BooleanConstant>($1); }
 |  boolexp "==" boolexp   { $$ = std::make_shared<BoolCmp>(BOOL_EQ, std::move($1), std::move($3)); }
@@ -517,7 +515,6 @@ function_arg_list "," function_arg {
 function_arg:
 fn_arg_storage_specifier type_specifier "undeclared_identifier" {
   auto* s = driver.allocate_variable($3, @3, Symbol::VARIABLE);
-  /// @todo: support mutable/indirect variables.
   s->access_ = $1;
   s->data_type_ = $2.builtin_type_;
   $$ = std::make_shared<FunctionArgument>(std::move($3), std::move($2), $1);
