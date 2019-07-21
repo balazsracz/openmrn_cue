@@ -196,6 +196,7 @@ enum OpCode : uint8_t {
   NUMERIC_DIV,
   NUMERIC_MOD,
   BOOL_EQ,
+  BOOL_NEQ,
 
   NUMERIC_LEQ,
   NUMERIC_GEQ,

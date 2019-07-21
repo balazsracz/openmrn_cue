@@ -653,6 +653,12 @@ TEST_F(VMTest, bool_eq) {
   EXPECT_THAT(get_op_stack(), ElementsAre(1, 0, 0, 1));
 }
 
+TEST_F(VMTest, bool_neq) {
+  ASSERT_TRUE(compile("bool a=Active isnot Active; bool b = Closed != Thrown"));
+  ASSERT_TRUE(run());
+  EXPECT_THAT(get_op_stack(), ElementsAre(0, 1));
+}
+
 TEST_F(VMTest, example_code) {
   const char* script = R"(
 exported bool red_light;

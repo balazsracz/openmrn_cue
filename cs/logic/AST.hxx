@@ -637,11 +637,11 @@ class BoolAnd : public BooleanExpression {
   std::shared_ptr<BooleanExpression> right_;
 };
 
-class BoolEq : public BooleanExpression {
+class BoolCmp : public BooleanExpression {
  public:
-  BoolEq(std::shared_ptr<BooleanExpression> left,
+  BoolCmp(OpCode opcode, std::shared_ptr<BooleanExpression> left,
          std::shared_ptr<BooleanExpression> right)
-      : left_(std::move(left)), right_(std::move(right)) {
+      : opcode_(opcode), left_(std::move(left)), right_(std::move(right)) {
     HASSERT(left_);
     HASSERT(right_);
   }
@@ -649,11 +649,20 @@ class BoolEq : public BooleanExpression {
   void serialize(std::string* output) override {
     left_->serialize(output);
     right_->serialize(output);
-    BytecodeStream::append_opcode(output, BOOL_EQ);
+    BytecodeStream::append_opcode(output, opcode_);
   }
 
   void debug_print(std::string* output) override {
-    output->append("bool_eq(");
+    switch(opcode_) {
+      case BOOL_EQ:
+        output->append("bool_eq(");
+        break;
+      case BOOL_NEQ:
+        output->append("bool_neq(");
+        break;
+      default:
+        output->append("\?\?\?(");
+    }
     left_->debug_print(output);
     output->append(",");
     right_->debug_print(output);
@@ -661,6 +670,8 @@ class BoolEq : public BooleanExpression {
   }
 
  private:
+  /// Opcode that performs the given expression on the top of the stack.
+  OpCode opcode_;
   std::shared_ptr<BooleanExpression> left_;
   std::shared_ptr<BooleanExpression> right_;
 };

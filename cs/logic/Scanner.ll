@@ -97,6 +97,8 @@ blank [ \t]
 "=="       return logic::yy::Parser::make_DOUBLEEQ(loc);
 "is"       return logic::yy::Parser::make_DOUBLEEQ(loc);
 "!="       return logic::yy::Parser::make_NEQ(loc);
+"isnot"    return logic::yy::Parser::make_NEQ(loc);
+"isnt"     return logic::yy::Parser::make_NEQ(loc);
 "<="       return logic::yy::Parser::make_LEQ(loc);
 ">="       return logic::yy::Parser::make_GEQ(loc);
 "<"        return logic::yy::Parser::make_LT(loc);

@@ -400,6 +400,14 @@ bool VM::execute() {
         operand_stack_.push_back(lhs == rhs);
         break;
       }
+      case BOOL_NEQ: {
+        GET_FROM_STACK(rhs, "");
+        GET_FROM_STACK(lhs, "");
+        rhs = !!rhs;
+        lhs = !!lhs;
+        operand_stack_.push_back(lhs != rhs);
+        break;
+      }
       case NUMERIC_LEQ:
       case NUMERIC_GEQ:
       case NUMERIC_LT:
