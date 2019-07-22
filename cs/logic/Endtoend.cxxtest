@@ -581,7 +581,7 @@ TEST_F(EndToEndTest, int_var_test_2) {
 
 TEST_F(EndToEndTest, exported_int) {
   wait();
-  string pgm = "exported int signal;";
+  string pgm = "exported int signal max_state(3)";
   cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
   cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
   

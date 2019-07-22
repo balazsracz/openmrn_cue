@@ -115,6 +115,9 @@ blank [ \t]
 "mutable"  return logic::yy::Parser::make_MUTABLE(loc);  
 "static"   return logic::yy::Parser::make_STATIC(loc);  
 
+"description" return logic::yy::Parser::make_DESCRIPTION(loc);  
+"max_state" return logic::yy::Parser::make_MAX_STATE(loc);  
+               
 "print"    return logic::yy::Parser::make_PRINT(loc);
 "terminate" return logic::yy::Parser::make_TERMINATE(loc);
 

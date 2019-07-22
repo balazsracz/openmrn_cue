@@ -168,9 +168,9 @@ assignment:
 ;
 
 storage_specifier:
-%empty { $$ = Symbol::LOCAL_VAR; }
-| "exported" { $$ = Symbol::INDIRECT_VAR; }
-| "static" { $$ = Symbol::STATIC_VAR; }
+%empty { $$ = Symbol::LOCAL_VAR; driver.decl_storage_ = $$; }
+| "exported" { $$ = Symbol::INDIRECT_VAR; driver.decl_storage_ = $$; }
+| "static" { $$ = Symbol::STATIC_VAR; driver.decl_storage_ = $$; }
 ;
 
 fn_arg_storage_specifier:
@@ -197,11 +197,19 @@ optional_assignment_expression:
 };
 
 variable_parameters:
-%empty {} |
-variable_parameters "max_state" "(" "number" ")" {
-  /// @todo
+%empty {
+  driver.clear_variable_parameters();
 } |
-variable_parameters "description" "(" "string" ")" {}
+variable_parameters "max_state" "(" "number" ")" {
+  if (!driver.set_var_num_states(@2, $4 + 1)) {
+    YYERROR;
+  }
+} |
+variable_parameters "description" "(" "string" ")" {
+  if (!driver.set_var_description(@2, std::move($4))) {
+    YYERROR;
+  }
+}
 ;
 
 multi_variable_decl:
@@ -215,7 +223,7 @@ multi_variable_decl "," "undeclared_identifier" variable_parameters optional_ass
 };
 
 variable_decl:
-storage_specifier type_specifier "undeclared_identifier" optional_assignment_expression {
+storage_specifier type_specifier "undeclared_identifier" variable_parameters optional_assignment_expression {
   if ($1 != Symbol::LOCAL_VAR && !driver.is_global_context()) {
     driver.error(@1, "Exported and static variables must appear in the global context.");
     YYERROR;
@@ -223,7 +231,7 @@ storage_specifier type_specifier "undeclared_identifier" optional_assignment_exp
   driver.decl_storage_ = $1;
   driver.decl_type_ = $2;
   driver.decl_helper_.clear();
-  auto cmd = driver.declare_variable(std::move($3), @3, $4.get(), @4);
+  auto cmd = driver.declare_variable(std::move($3), @3, $5.get(), @5);
   if (!cmd) {
     YYERROR;
   }
@@ -456,12 +464,15 @@ boolexp:
 type_specifier:
 "int" {
   $$.builtin_type_ = Symbol::DATATYPE_INT;
+  driver.decl_type_ = $$;
 } |
 "bool" {
   $$.builtin_type_ = Symbol::DATATYPE_BOOL;
+  driver.decl_type_ = $$;
 }  |
 "void" {
   $$.builtin_type_ = Symbol::DATATYPE_VOID;
+  driver.decl_type_ = $$;
 };
 
 

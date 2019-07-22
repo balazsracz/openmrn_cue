@@ -71,7 +71,7 @@ TEST(ParserTest, indirect_var_error) {
 
 TEST(ParserTest, indirect_var) {
   TempFile tf(g_dir, "simple");
-  tf.rewrite("exported int a;");
+  tf.rewrite("exported bool a;");
   logic::Driver d;
   EXPECT_EQ(0, d.parse_file(tf.name()));
 }

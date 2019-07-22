@@ -536,9 +536,12 @@ TEST_F(VMTest, indirect_store) {
 }
 
 TEST_F(VMTest, indirect_create_e2e) {
-  ASSERT_TRUE(compile("exported int a; exported int b; int c=4; c=c+1"));
+  ASSERT_TRUE(compile("exported int a max_state(3); exported int b max_state(3); int c=4; c=c+1"));
   auto* vara = mock_factory_.expect_variable(
-      "a", ::testing::Field(&VariableCreationRequest::block_num, 0));
+      "a",
+      ::testing::AllOf(::testing::Field(&VariableCreationRequest::block_num, 0),
+                       ::testing::Field(&VariableCreationRequest::type,
+                                        VariableCreationRequest::TYPE_INT)));
   auto* varb = mock_factory_.expect_variable("b", _);
   ASSERT_TRUE(run_preamble());
   EXPECT_THAT(get_op_stack(), ElementsAre());
@@ -558,8 +561,20 @@ TEST_F(VMTest, indirect_create_e2e) {
   EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 5));
 }
 
+TEST_F(VMTest, indirect_create_description) {
+  ASSERT_TRUE(compile("exported int a description(\"foo\") max_state(3); exported int b max_state(5); int c=4; c=c+1"));
+  mock_factory_.expect_variable(
+      "foo",
+      ::testing::AllOf(::testing::Field(&VariableCreationRequest::block_num, 0),
+                       ::testing::Field(&VariableCreationRequest::type,
+                                        VariableCreationRequest::TYPE_INT)));
+  mock_factory_.expect_variable("b", _);
+  ASSERT_TRUE(run_preamble());
+  EXPECT_THAT(get_op_stack(), ElementsAre());
+}
+
 TEST_F(VMTest, indirect_e2e) {
-  ASSERT_TRUE(compile("exported int a; exported int b; int c=b; a=b"));
+  ASSERT_TRUE(compile("exported int a max_state(3); exported int b max_state(3); int c=b; a=b"));
   auto* vara = mock_factory_.expect_variable(
       "a", ::testing::Field(&VariableCreationRequest::block_num, 11));
   auto* varb = mock_factory_.expect_variable("b", _);
@@ -614,7 +629,7 @@ TEST_F(VMTest, indirect_e2e_bool) {
 }
 
 TEST_F(VMTest, indirect_e2e_int) {
-  ASSERT_TRUE(compile("exported int a;"));
+  ASSERT_TRUE(compile("exported int a max_state(2);"));
   mock_factory_.expect_variable("a", _);
   ASSERT_TRUE(run_preamble());
 }

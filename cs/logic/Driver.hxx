@@ -250,6 +250,7 @@ class Driver {
       return false;
     }
     decl_num_states_ = num_states;
+    return true;
   }
   
   /// Polymorphic variable declaration routine. Before calling, the storage
@@ -272,6 +273,15 @@ class Driver {
     if (decl_storage_ == Symbol::INDIRECT_VAR) {
       if (!initial_value->is_void()) {
         error(loc, "Exported variable declaration cannot have an initializer.");
+        return nullptr;
+      }
+      if (!decl_name_.empty()) {
+        name = std::move(decl_name_);
+      }
+      if (s->get_data_type() == Symbol::DATATYPE_INT && decl_num_states_ < 0) {
+        error(loc,
+              "Exported int variable must be declared with num state "
+              "information.");
         return nullptr;
       }
       return std::make_shared<IndirectVarCreate>(
@@ -454,7 +464,7 @@ class Driver {
   string decl_name_;
 
   /// For int variables, the count of states the variable can assume.
-  int decl_num_states_;
+  int decl_num_states_{-1};
   
   /// Helper storage for variable declarations.
   std::vector<std::shared_ptr<logic::Command> > decl_helper_;

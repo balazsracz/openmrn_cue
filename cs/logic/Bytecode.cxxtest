@@ -54,6 +54,7 @@ class BytecodeTest : public ::testing::Test {
     output_ = -232354235;
     EXPECT_TRUE(vm_.parse_varint(&output_));
     EXPECT_NE(-232354235, output_);
+    EXPECT_EQ(vm_._eof_, vm_._ip_);
   }
 
   const string& parse_string(bool result = true) {
