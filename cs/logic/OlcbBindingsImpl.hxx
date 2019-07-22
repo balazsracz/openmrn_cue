@@ -141,6 +141,11 @@ class OlcbIntVariable : public Variable, private openlcb::SimpleEventHandler {
     }
   }
 
+  /// @return true if the state is known (recovered from the network or set).
+  bool is_known() {
+    return state_known_;
+  }
+  
   /// Constructor.
   /// @param event_base is the event ID that is equivalent to state 0.
   /// @param num_states is the number of consecutive event IDs that are
@@ -256,6 +261,7 @@ class OlcbIntVariable : public Variable, private openlcb::SimpleEventHandler {
   void handle_identify_global(const openlcb::EventRegistryEntry &registry_entry,
                               openlcb::EventReport *event,
                               BarrierNotifiable *done) override {
+    LOG(INFO, "handle identify global");
     AutoNotify an(done);
     if (event->dst_node && event->dst_node != node()) {
       return;
@@ -269,7 +275,16 @@ class OlcbIntVariable : public Variable, private openlcb::SimpleEventHandler {
         node(), openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
         openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
         done->new_child());
-    done->notify();
+    if (state_known_) {
+      event->event_write_helper<3>()->WriteAsync(
+          node(), openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(event_base_ + state_), done->new_child());
+      event->event_write_helper<4>()->WriteAsync(
+          node(), openlcb::Defs::MTI_CONSUMER_IDENTIFIED_VALID,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(event_base_ + state_), done->new_child());
+    }
   };
 
  private:

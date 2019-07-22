@@ -428,6 +428,8 @@ TEST_F(EndToEndTest, nested_indirect_flipflop) {
 
 
 TEST_F(EndToEndTest, int_var_test) {
+  clear_expect(true);
+  LOG(INFO,"State queries sent out at initialization.");
   expect_packet(":X198F422AN02010D000003000E;");
   expect_packet(":X198F422AN02010D000003000F;");
   expect_packet(":X198F422AN02010D0000030010;");
@@ -441,12 +443,130 @@ TEST_F(EndToEndTest, int_var_test) {
   expect_packet(":X194C722AN02010D0000030012;");
   expect_packet(":X194C722AN02010D0000030013;");
   OlcbIntVariable var(get_event(14), 6, &factory_);
+  wait();
+  clear_expect(true);
 
+  // State is unknown.
+  LOG(INFO,"Read with state unknown.");
+  EXPECT_EQ(0, var.read(&factory_, 0));
+  EXPECT_FALSE(var.is_known());
+
+  send_packet_and_expect_response(":X198F4111N02010D0000030012;",
+                                  ":X194C722AN02010D0000030012;");
+
+  send_packet_and_expect_response(":X19914111N02010D0000030012;",
+                                  ":X1954722AN02010D0000030012;");
+  clear_expect(true);
+
+  LOG(INFO,"Global identify with state unknown.");
+  expect_packet(":X194A422AN02010D000003001F;");
+  expect_packet(":X1952422AN02010D000003001F;");
+  send_packet(":X19970111N;");
+  wait();
+  clear_expect(true);
+
+  LOG(INFO,"Addressed identify with state unknown.");
+  expect_packet(":X194A422AN02010D000003001F;");
+  expect_packet(":X1952422AN02010D000003001F;");
+  send_packet(":X19968111N022A;");
+  wait();
+  clear_expect(true);
   
+  LOG(INFO, "Set state from program.");
+  expect_packet(":X195B422AN02010D0000030011;");
+  var.write(&factory_, 0, 3);
+  wait();
+  clear_expect(true);
 
+  // State is known.
+  LOG(INFO, "Read with state known.");
+  EXPECT_EQ(3, var.read(&factory_, 0));
+  EXPECT_TRUE(var.is_known());
 
+  // Reply sends back (semi-unsolicited) state information.
+  LOG(INFO, "State query with state known.");
+  expect_packet(":X1954422AN02010D0000030011;");
+  send_packet_and_expect_response(":X19914111N02010D0000030013;",
+                                  ":X1954522AN02010D0000030013;");
+
+  LOG(INFO, "Global identify with state known.");
+  expect_packet(":X194A422AN02010D000003001F;");
+  expect_packet(":X1952422AN02010D000003001F;");
+  expect_packet(":X1954422AN02010D0000030011;");
+  expect_packet(":X194C422AN02010D0000030011;");
+  send_packet(":X19970111N;");
+  wait();
+  clear_expect(true);
+
+  LOG(INFO,"Addressed identify with state known.");
+  expect_packet(":X194A422AN02010D000003001F;");
+  expect_packet(":X1952422AN02010D000003001F;");
+  expect_packet(":X1954422AN02010D0000030011;");
+  expect_packet(":X194C422AN02010D0000030011;");
+  send_packet(":X19968111N022A;");
+  wait();
+  clear_expect(true);
+
+  LOG(INFO, "Uninteresting events.");
+  send_packet(":X19914111N02010D0000030014;");
+  send_packet(":X198F4111N02010D0000030014;");
+  send_packet(":X19914111N02010D000003000D;");
+  send_packet(":X198F4111N02010D000003000D;");
+
+  LOG(INFO, "State set by network.");
+  send_packet(":X195B4111N02010D0000030012;");
+  wait();
+  EXPECT_EQ(4, var.read(&factory_, 0));
+  EXPECT_TRUE(var.is_known());
+
+  LOG(INFO, "State copy on create.");
+  expect_any_packet();
+  OlcbIntVariable var2(get_event(14), 6, &factory_);
+  wait();
+  EXPECT_EQ(4, var2.read(&factory_, 0));
+  EXPECT_TRUE(var2.is_known());
+  
   wait();
 }
-  
+
+TEST_F(EndToEndTest, int_var_test_2) {
+  clear_expect(true);
+  LOG(INFO,"State queries sent out at initialization.");
+  expect_packet(":X198F422AN02010D000003000E;");
+  expect_packet(":X198F422AN02010D000003000F;");
+  expect_packet(":X198F422AN02010D0000030010;");
+  expect_packet(":X198F422AN02010D0000030011;");
+  expect_packet(":X198F422AN02010D0000030012;");
+  expect_packet(":X198F422AN02010D0000030013;");
+  expect_packet(":X194C722AN02010D000003000E;");
+  expect_packet(":X194C722AN02010D000003000F;");
+  expect_packet(":X194C722AN02010D0000030010;");
+  expect_packet(":X194C722AN02010D0000030011;");
+  expect_packet(":X194C722AN02010D0000030012;");
+  expect_packet(":X194C722AN02010D0000030013;");
+  OlcbIntVariable var(get_event(14), 6, &factory_);
+  wait();
+  clear_expect(true);
+
+  // State is unknown.
+  LOG(INFO,"Read with state unknown.");
+  EXPECT_EQ(0, var.read(&factory_, 0));
+  EXPECT_FALSE(var.is_known());
+
+  wait();
+
+  LOG(INFO,"State set from network.");
+  send_packet(":X19544111N02010D0000030011;");
+  wait();
+  EXPECT_EQ(3, var.read(&factory_, 0));
+  EXPECT_TRUE(var.is_known());
+
+  LOG(INFO,"State not re-set from network.");
+  send_packet(":X19544111N02010D0000030012;");
+  wait();
+  EXPECT_EQ(3, var.read(&factory_, 0));
+  EXPECT_TRUE(var.is_known());
+}
+
 
 }  // namespace logic
