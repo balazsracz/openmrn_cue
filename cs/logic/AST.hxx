@@ -188,14 +188,25 @@ class BooleanExpression : public Command {};
 
 class IndirectVarCreate : public Command {
  public:
-  IndirectVarCreate(std::string name, int fp_offset, int guid, int arg = 0)
-      : guid_(guid), arg_(arg), variable_(name, fp_offset) {}
+  IndirectVarCreate(std::string name, int fp_offset, int guid,
+                    const Symbol::DataType type, int num_states = -1,
+                    int arg = 0)
+      : guid_(guid),
+        arg_(arg),
+        type_(type),
+        num_states_(num_states),
+        variable_(name, fp_offset) {}
 
   void serialize_preamble(std::string* output) override {
     BytecodeStream::append_opcode(output, LOAD_STRING);
     BytecodeStream::append_string(output, variable_.get_name());
     BytecodeStream::append_opcode(output, CREATE_VAR);
     BytecodeStream::append_varint(output, guid_);
+    if (type_ == Symbol::DATATYPE_BOOL) {
+      BytecodeStream::append_varint(output, -1);
+    } else {
+      BytecodeStream::append_varint(output, num_states_);
+    }
   }
 
   void serialize(std::string* output) override {
@@ -216,6 +227,10 @@ class IndirectVarCreate : public Command {
   int guid_;
   /// Argument to supply to the variable access.
   int arg_;
+  /// Data type of the variable to be declared.
+  Symbol::DataType type_;
+  /// Number of states.
+  int num_states_;
   /// Holds the metadata of the variable.
   GlobalVariableReference variable_;
 };

@@ -579,5 +579,18 @@ TEST_F(EndToEndTest, int_var_test_2) {
   EXPECT_TRUE(var.is_known());
 }
 
+TEST_F(EndToEndTest, exported_int) {
+  wait();
+  string pgm = "exported int signal;";
+  cdi.logic().blocks().entry(0).body().text().write(fd(), pgm);
+  cdi.logic().blocks().entry(0).enabled().write(fd(), 1);
+  
+  LOG(INFO, "compiling code");
+  factory_.runner()->compile(get_notifiable());
+  wait_for_notification();
+  string status = cdi.logic().blocks().entry(0).body().status().read(fd());
+  EXPECT_THAT(status, HasSubstr("rror creating variable"));
+}
+
 
 }  // namespace logic

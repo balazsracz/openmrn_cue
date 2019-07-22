@@ -53,9 +53,22 @@ struct VariableCreationRequest {
     default_event = 0;
     default_on_event = 0;
     block_num = 0;
+    type = TYPE_BOOL;
+    num_states = 2;
   }
   /// Number of logic block in which this variable shall be created.
   uint8_t block_num;
+
+  enum Type : uint8_t {
+    TYPE_BOOL,
+    TYPE_INT
+  };
+
+  /// Variable type.
+  Type type{TYPE_BOOL};
+
+  /// Number of states (for int variables).
+  int num_states{2};
   
   /// User visible name of the variable (may be syntactical name or a string
   /// provided by the code author).

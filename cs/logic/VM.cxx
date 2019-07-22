@@ -307,9 +307,19 @@ bool VM::execute() {
         break;
       case CREATE_VAR: {
         GET_VARINT(guid);
+        GET_VARINT(num_states);
         variable_request_.name = std::move(string_acc_);
         variable_request_.block_num = block_num_;
+        if (num_states >= 0) {
+          variable_request_.type = VariableCreationRequest::TYPE_INT;
+          variable_request_.num_states = num_states;
+        }
         auto var = variable_factory_->create_variable(&variable_request_);
+        if (!var) {
+          error_ = StringPrintf("Error creating variable '%s'.",
+                                variable_request_.name.c_str());
+          return false;
+        }
         variable_request_.clear();
         external_variables_[guid] = std::move(var);
         break;

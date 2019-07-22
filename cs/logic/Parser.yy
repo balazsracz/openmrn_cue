@@ -96,6 +96,8 @@ class Driver;
   TYPEVOID "void"
   EXPORTED "exported"
   MUTABLE  "mutable"
+  MAX_STATE "max_state"
+  DESCRIPTION "description"
   AUTO    "auto"
   STATIC  "static"
   PRINT  "print"
@@ -194,10 +196,18 @@ optional_assignment_expression:
   $$->loc_ = @2;
 };
 
+variable_parameters:
+%empty {} |
+variable_parameters "max_state" "(" "number" ")" {
+  /// @todo
+} |
+variable_parameters "description" "(" "string" ")" {}
+;
+
 multi_variable_decl:
 %empty {} |
-multi_variable_decl "," "undeclared_identifier" optional_assignment_expression {
-  auto cmd = driver.declare_variable(std::move($3), @3, $4.get(), @4);
+multi_variable_decl "," "undeclared_identifier" variable_parameters optional_assignment_expression {
+  auto cmd = driver.declare_variable(std::move($3), @3, $5.get(), @5);
   if (!cmd) {
     YYERROR;
   }

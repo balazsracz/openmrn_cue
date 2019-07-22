@@ -166,7 +166,8 @@ enum OpCode : uint8_t {
 
   /// Invokes the variable factory to create a variable. Uses the string
   /// accumulator for the variable name. arg = GUID of the variable (under
-  /// which it will be stored).
+  /// which it will be stored). arg2 = -1 for bool variable, >= 2 for an int
+  /// variable (of arg2 states).
   CREATE_VAR,
 
   /// Creates a static variable. arg = GUID of the variable (under which it

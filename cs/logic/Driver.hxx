@@ -208,6 +208,49 @@ class Driver {
     return &it->second;
     
   }
+
+  void clear_variable_parameters() {
+    decl_name_.clear();
+    decl_num_states_ = -1;
+  }
+
+  /// Set the description for a variable that is being allocated now.
+  /// @param loc is the syntactical location.
+  /// @param descr will be entered as the variable name (instead of the
+  /// syntactic name).
+  /// @return false if a syntax error is encountered. The error will be
+  /// persisted in the driver and the caller needs to jump to YYERROR.
+  bool set_var_description(const yy::location& loc, string descr) {
+    if (decl_storage_ != Symbol::INDIRECT_VAR) {
+      error(loc,
+            "syntax error: export parameters are only valid for exported "
+            "variables.");
+      return false;
+    }
+    decl_name_ = std::move(descr);
+    return true;
+  }
+
+  /// Set the description for a variable that is being allocated now.
+  /// @param loc is the syntactical location.
+  /// @param descr will be entered as the variable name (instead of the
+  /// syntactic name).
+  /// @return false if a syntax error is encountered. The error will be
+  /// persisted in the driver and the caller needs to jump to YYERROR.
+  bool set_var_num_states(const yy::location& loc, int num_states) {
+    if (decl_storage_ != Symbol::INDIRECT_VAR) {
+      error(loc,
+            "syntax error: export parameters are only valid for exported "
+            "variables.");
+      return false;
+    }
+    if (decl_type_.builtin_type_ != Symbol::DATATYPE_INT) {
+      error(loc,
+            "syntax error: max_state is only valid for exported int variable.");
+      return false;
+    }
+    decl_num_states_ = num_states;
+  }
   
   /// Polymorphic variable declaration routine. Before calling, the storage
   /// specifier and type must be set in {@ref decl_storage_} and
@@ -231,8 +274,9 @@ class Driver {
         error(loc, "Exported variable declaration cannot have an initializer.");
         return nullptr;
       }
-      return std::make_shared<IndirectVarCreate>(std::move(name), s->fp_offset_,
-                                                 allocate_guid());
+      return std::make_shared<IndirectVarCreate>(
+          std::move(name), s->fp_offset_, allocate_guid(), s->get_data_type(),
+          decl_num_states_);
     } else {
       // local variable. Create directly on top of the stack.
       Symbol::DataType value_type = initial_value->get_data_type();
@@ -406,6 +450,12 @@ class Driver {
   /// declaration has.
   TypeSpecifier decl_type_;
 
+  /// Name of the variable that we are declaring right now.
+  string decl_name_;
+
+  /// For int variables, the count of states the variable can assume.
+  int decl_num_states_;
+  
   /// Helper storage for variable declarations.
   std::vector<std::shared_ptr<logic::Command> > decl_helper_;
   

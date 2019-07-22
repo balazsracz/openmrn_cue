@@ -161,6 +161,7 @@ TEST_F(VMTest, create_variable) {
   BytecodeStream::append_string(&bytecode_, "varname");
   BytecodeStream::append_opcode(&bytecode_, CREATE_VAR);
   BytecodeStream::append_varint(&bytecode_, 12345);
+  BytecodeStream::append_varint(&bytecode_, -1);
   auto* var = mock_factory_.expect_variable("varname", _);
   ASSERT_TRUE(run());
   // Check guid and variable pointer.
@@ -176,6 +177,7 @@ TEST_F(VMTest, import_variable) {
   BytecodeStream::append_string(&bytecode_, "varname");
   BytecodeStream::append_opcode(&bytecode_, CREATE_VAR);
   BytecodeStream::append_varint(&bytecode_, 12345);
+  BytecodeStream::append_varint(&bytecode_, -1);
   auto* var = mock_factory_.expect_variable("varname", _);
   BytecodeStream::append_opcode(&bytecode_, PUSH_CONSTANT);
   BytecodeStream::append_varint(&bytecode_, 12345);
@@ -609,6 +611,12 @@ TEST_F(VMTest, indirect_e2e_bool) {
   
   ASSERT_TRUE(run());
   EXPECT_THAT(get_op_stack(), ElementsAre(0, 1, 0));
+}
+
+TEST_F(VMTest, indirect_e2e_int) {
+  ASSERT_TRUE(compile("exported int a;"));
+  mock_factory_.expect_variable("a", _);
+  ASSERT_TRUE(run_preamble());
 }
 
 TEST_F(VMTest, poly_assignment) {

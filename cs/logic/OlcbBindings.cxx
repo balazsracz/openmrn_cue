@@ -74,6 +74,11 @@ std::unique_ptr<Variable> OlcbVariableFactory::create_variable(
   HASSERT(request->block_num < cfg_.blocks().num_repeats());
   const auto& body = cfg_.blocks().entry(request->block_num).body();
   int freeidx = -1;
+
+  if (request->type != VariableCreationRequest::TYPE_BOOL) {
+    return nullptr;
+  }
+  
   /// @todo instead of looking for a free index here, we should rather
   /// rearrange existing entries to be in the order of the declared variables.
   for (unsigned varidx = 0; varidx < body.imports().num_repeats(); ++varidx) {
