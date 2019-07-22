@@ -202,6 +202,8 @@ class IndirectVarCreate : public Command {
     BytecodeStream::append_string(output, variable_.get_name());
     BytecodeStream::append_opcode(output, CREATE_VAR);
     BytecodeStream::append_varint(output, guid_);
+    LOG(VERBOSE, "serialize create_var name %s type %d num st %d",
+        variable_.get_name().c_str(), (int)type_, (int)num_states_);
     if (type_ == Symbol::DATATYPE_BOOL) {
       BytecodeStream::append_varint(output, -1);
     } else {

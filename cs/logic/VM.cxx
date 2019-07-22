@@ -314,6 +314,7 @@ bool VM::execute() {
           variable_request_.type = VariableCreationRequest::TYPE_INT;
           variable_request_.num_states = num_states;
         }
+        LOG(VERBOSE, "create variable name %s st %d type %d", variable_request_.name.c_str(), num_states, variable_request_.type);
         auto var = variable_factory_->create_variable(&variable_request_);
         if (!var) {
           error_ = StringPrintf("Error creating variable '%s'.",
