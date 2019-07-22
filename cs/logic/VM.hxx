@@ -60,7 +60,9 @@ class VM {
       : variable_factory_(factory),
         block_num_(0),
         is_preamble_(0),
-        access_error_(0) {}
+        access_error_(0) {
+    factory->set_access_error_callback(std::bind(&VM::access_error, this));
+  }
 
   /// Executes instructions from the current IP. Return true if execution
   /// succeeded (hit the last byte or a TERMINATE command), false if an

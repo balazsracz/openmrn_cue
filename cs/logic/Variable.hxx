@@ -37,6 +37,7 @@
 
 #include <string>
 #include <memory>
+#include <functional>
 #include <limits.h>
 
 namespace logic {
@@ -136,6 +137,21 @@ class VariableFactory {
   /// @return newly created variable.
   virtual std::unique_ptr<Variable> create_variable(
       VariableCreationRequest* request) = 0;
+
+  /// To be called by the VM.
+  /// @param cb will be called by the variable implementations when an access
+  /// error is encountered.
+  virtual void set_access_error_callback(std::function<void()> cb) {
+    access_error_cb_ = std::move(cb);
+  }
+
+  /// To be called by variables when a read or write fails.
+  virtual void report_access_error() {
+    if (access_error_cb_) access_error_cb_();
+  }
+
+ private:
+  std::function<void()> access_error_cb_;
 };
 
 } // namespace logic

@@ -126,6 +126,11 @@ class OlcbIntVariable : public Variable, private openlcb::SimpleEventHandler {
   }
   
   void write(const VariableFactory *parent, unsigned arg, int value) override {
+    if (value < 0 || value >= num_states_) {
+      // ignore bad writes.
+      parent_->report_access_error();
+      return;
+    }
     bool need_update = !state_known_;
     state_known_ = true;
     if (((int)state_) != value) need_update = true;

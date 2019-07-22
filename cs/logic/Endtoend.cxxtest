@@ -428,6 +428,9 @@ TEST_F(EndToEndTest, nested_indirect_flipflop) {
 
 
 TEST_F(EndToEndTest, int_var_test) {
+  bool called = false;
+  factory_.set_access_error_callback([&called](){called = true;});
+  
   clear_expect(true);
   LOG(INFO,"State queries sent out at initialization.");
   expect_packet(":X198F422AN02010D000003000E;");
@@ -518,6 +521,14 @@ TEST_F(EndToEndTest, int_var_test) {
   wait();
   EXPECT_EQ(4, var.read(&factory_, 0));
   EXPECT_TRUE(var.is_known());
+
+  clear_expect(true);
+  LOG(INFO, "Invalid update.");
+  EXPECT_FALSE(called);
+  var.write(&factory_, 0, 6);
+  EXPECT_TRUE(called);
+  wait();
+  clear_expect(true);
 
   LOG(INFO, "State copy on create.");
   expect_any_packet();
