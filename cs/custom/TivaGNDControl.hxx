@@ -41,6 +41,7 @@
 class TivaGNDControl {
  public:
   TivaGNDControl() {
+#ifdef HARDWARE_REVA
     GNDACTRL_NOFF_Pin::set(true);
     GNDACTRL_NON_Pin::set(true);
     GNDBCTRL_NOFF_Pin::set(true);
@@ -49,27 +50,56 @@ class TivaGNDControl {
     GNDBCTRL_NOFF_Pin::set(false);
     SysCtlDelay(10);
     GNDACTRL_NON_Pin::set(false);
+#elif defined(HARDWARE_REVB)
+    GNDACTRL_ON_Pin::hw_set_to_safe();
+    GNDBCTRL_ON_Pin::hw_set_to_safe();
+    GNDACTRL_NOFF_Pin::hw_set_to_safe();
+    GNDBCTRL_NOFF_Pin::hw_set_to_safe();
+#else
+    #error not defined rev
+#endif
   }
 
   static const int kDelayCrossover = 40;
 
   static void enable_railcom_cutout(bool railcom) {
     if (railcom) {
-      // switch to B
-      GNDACTRL_NON_Pin::set(true);
-      GNDACTRL_NOFF_Pin::set(false);
+      // switch to A
+
+      // safe mode
+      GNDBCTRL_NON_Pin::set(true);
       GNDBCTRL_NOFF_Pin::set(true);
+      GNDACTRL_NON_Pin::set(true);
+      GNDACTRL_NOFF_Pin::set(true);
+      SysCtlDelay(kDelaySafe);
+
+      // turn off A drive
+      GNDACTRL_NOFF_Pin::set(false);
       SysCtlDelay(kDelayCrossover);
-      // TODO GNDBCTRL_NON_Pin::set(false);
+
+      // turn on B drive
+      GNDBCTRL_NON_Pin::set(false);
     } else {
       // switch to A
-      // TODO GNDBCTRL_NON_Pin::set(true);
-      GNDBCTRL_NOFF_Pin::set(false);
+
+      // safe mode
+      GNDBCTRL_NON_Pin::set(true);
+      GNDBCTRL_NOFF_Pin::set(true);
+      GNDACTRL_NON_Pin::set(true);
       GNDACTRL_NOFF_Pin::set(true);
+      SysCtlDelay(kDelaySafe);
+
+      // turn off B drive
+      GNDBCTRL_NOFF_Pin::set(false);
       SysCtlDelay(kDelayCrossover);
+
+      // turn on A drive
       GNDACTRL_NON_Pin::set(false);
     }
   }
+
+  static constexpr unsigned kDelaySafe = 100;
+  static constexpr unsigned kDelayOn = 100;
 
   static constexpr unsigned kDelayAOff = 26;
   static constexpr unsigned kDelayAOn = 1*26 + 22;
@@ -83,6 +113,14 @@ class TivaGNDControl {
   /// constraints are: at least kDeadBand, and second_delay + off > on.
   static constexpr unsigned second_delay(unsigned off, unsigned on) {
     return std::min(kDeadBand, on > off ? on - off : 1);
+  }
+
+  static void disengage() {
+    GNDBCTRL_NON_Pin::set(true);
+    GNDACTRL_NON_Pin::set(true);
+    SysCtlDelay(100);
+    GNDACTRL_NOFF_Pin::set(false);
+    GNDBCTRL_NOFF_Pin::set(false);
   }
 
   static void rr_test(bool railcom) {
