@@ -49,9 +49,11 @@ namespace bracz_custom {
 
 namespace sp = std::placeholders;
 
+extern StoredBitSet* const g_gpio_stored_bit_set;
+
 class DetectorOptions : public DefaultConfigUpdateListener {
  public:
-  DetectorOptions(const DetectorTuningOptions& opts) : opts_(opts) {}
+    DetectorOptions(const DetectorTuningOptions& opts, unsigned count) : opts_(opts), numPorts_(count) {}
 
   uint16_t initStraggleDelay_;
   uint16_t initStaticDelay_;
@@ -92,15 +94,22 @@ class DetectorOptions : public DefaultConfigUpdateListener {
     CDI_FACTORY_RESET(opts_.turnon_fast_retry_count);
     CDI_FACTORY_RESET(opts_.turnon_fast_retry_delay);
     CDI_FACTORY_RESET(opts_.short_retry_delay);
+    for (unsigned p = 0; p < numPorts_; ++p) {
+        factory_reset_stored_bits<0>(p);
+    }
+    g_gpio_stored_bit_set->flush();
   }
 
  private:
+  template<int N>
+  static void factory_reset_stored_bits(unsigned port);
+
   const DetectorTuningOptions opts_;
+  // The total number of detector ports. Used for factory reset.
+  unsigned numPorts_;
 
   DISALLOW_COPY_AND_ASSIGN(DetectorOptions);
 };
-
-extern StoredBitSet* const g_gpio_stored_bit_set;
 
 /// TODO:
 /// - add readout of event IDs from config
@@ -226,6 +235,14 @@ class DetectorPort : public StateFlowBase {
       set_output_enable(false);
     }
     wakeup_normal_state();
+  }
+
+  /// Sets all stored bits to their factory reset default value.
+  static void factory_reset_stored_bits(unsigned port) {
+    unsigned ofs = CHANNEL_0_OFS + (port * BITS_PER_CHANNEL);
+    g_gpio_stored_bit_set->set_bit(ofs + NETWORK_ENABLE_OFS, 1);
+    g_gpio_stored_bit_set->set_bit(ofs + NETWORK_OCCUPANCY_OFS, 0);
+    g_gpio_stored_bit_set->set_bit(ofs + NETWORK_OVERCURRENT_OFS, 0);
   }
 
  private:
@@ -582,6 +599,13 @@ class DetectorPort : public StateFlowBase {
   const DetectorOptions& opts_;
   openlcb::CallbackEventHandler eventHandler_;
 };
+
+template<int N>
+void DetectorOptions::factory_reset_stored_bits(unsigned port) {
+  DetectorPort::factory_reset_stored_bits(port);
+}
+
+
 
 }  // namespace bracz_custom
 

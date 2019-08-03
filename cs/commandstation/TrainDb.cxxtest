@@ -4,7 +4,7 @@
 
 namespace openlcb {
 void PrintTo(const openlcb::NodeID& id, std::ostream& o) {
-  o << "Node ID 0x" << StringPrintf("%012x", id);
+  o << "Node ID 0x" << StringPrintf("%012" PRIx64, id);
 }
 }
 
