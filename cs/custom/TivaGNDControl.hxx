@@ -163,12 +163,20 @@ class TivaBypassControl {
   static const int kDelayCrossover2 = 5;
 
   TivaBypassControl() {
+#ifdef HARDWARE_REVA    
     RCBYPASS_OFF_Pin::set(false);
     SysCtlDelay(kDelayCrossover1);
     RCBYPASS_NON_Pin::set(false);
+#elif defined(HARDWARE_REVB)
+    RCBYPASS_Pin::set(true);
+#else
+    #error not defined rev
+#endif
+  
   }
 
   static void set(bool bypass_on) {
+#if defined(HARDWARE_REVA)
     if (bypass_on) {
       RCBYPASS_OFF_Pin::set(false);
       SysCtlDelay(kDelayCrossover1);
@@ -178,6 +186,11 @@ class TivaBypassControl {
       SysCtlDelay(kDelayCrossover2);
       RCBYPASS_OFF_Pin::set(true);
     }
+#elif defined(HARDWARE_REVB)
+    RCBYPASS_Pin::set(bypass_on);
+#else
+    #error not defined rev
+#endif    
   }
 };
 

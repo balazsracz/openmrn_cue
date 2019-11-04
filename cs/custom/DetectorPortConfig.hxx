@@ -40,6 +40,7 @@
 namespace bracz_custom {
 
 CDI_GROUP(DetectorPortOccupancy);
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<32>, Name("Automatically filled by port name."));
 CDI_GROUP_ENTRY(
                 occ_on, openlcb::EventConfigEntry,  //
     Name("Occupied"),
@@ -52,6 +53,7 @@ CDI_GROUP_ENTRY(
 CDI_GROUP_END();
 
 CDI_GROUP(DetectorPortOvercurrent);
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<32>, Name("Automatically filled by port name."));
 CDI_GROUP_ENTRY(
     over_on, openlcb::EventConfigEntry,  //
     Name("Shorted"),
@@ -64,6 +66,7 @@ CDI_GROUP_ENTRY(
 CDI_GROUP_END();
 
 CDI_GROUP(DetectorPortEnable);
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<32>, Name("Automatically filled by port name."));
 CDI_GROUP_ENTRY(
     enable_on, openlcb::EventConfigEntry,  //
     Name("Turn On"),

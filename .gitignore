@@ -1,2 +1,4 @@
 cdi.cxxout
 compile_cdi
+*.hxxout
+*.cxxout
