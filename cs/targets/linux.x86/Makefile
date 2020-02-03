@@ -39,3 +39,5 @@ cleangen:
 	rm -f logic-demo.cout
 
 veryclean: cleangen
+
+export CXXFLAGSEXTRA += -Wno-attribute-alias
