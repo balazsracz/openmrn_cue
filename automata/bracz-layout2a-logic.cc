@@ -171,9 +171,14 @@ I2CSignal signal_A271_adv(&ba, 39, "A271.adv");
 I2CSignal signal_A179_main(&ba, 26, "A179.main");
 I2CSignal signal_A179_adv(&ba, 27, "A179.adv");
 
+// Single mast M+A
+I2CSignal signal_YEx_main(&ba, 22, "YEx.main");  // 157 (0x9D)
+I2CSignal signal_YEx_adv(&ba, 23, "YEx.adv");
+
 // Single mast M+A about 7cm thin wires, M+F plug.
 I2CSignal signal_A259_main(&bc, 31, "A259.main");  // 159 (0x9F)
 I2CSignal signal_A259_adv(&bc, 32, "A259.adv");
+
 
 // Single mast M+A about 12 cm long thing ires with one taped with scotch
 // tape. M plug.
@@ -751,6 +756,11 @@ PhysicalSignal BBB3(&b9.In6, nullptr, nullptr, nullptr,
                     nullptr, nullptr, nullptr,
                     nullptr);
 
+PhysicalSignal YEx(&ba.In6, nullptr, nullptr, nullptr,
+                    &signal_YEx_main.signal, &signal_YEx_adv.signal, nullptr,
+                    nullptr);
+
+
 StandardMiddleDetector Det_239(&brd, A239.sensor_raw,
                                logic->Allocate("Det239", 32, 8));
 
@@ -915,6 +925,16 @@ StandardMovableTurnout Turnout_W280(&brd, logic->Allocate("W280", 40),
 TurnoutWrap TW280(&Turnout_W280.b, kThrownToPoint);
 
 
+MagnetDef Magnet_YDW1(&g_magnet_aut, "YD.W1", &ba.ActGreenGreen,
+                      &b9.ActGreenRed, MovableTurnout::kClosed);
+StandardMovableTurnout Turnout_YDW1(&brd,
+                                    logic->Allocate("YD.W1", 40),
+                                    &Magnet_YDW1);
+
+
+StubBlock Stub_Yex(&brd, &YEx, nullptr, logic, "YD.Ex");
+
+
 /*
 MagnetDef Magnet_W360(&g_magnet_aut, "W360", &bb.ActBlueGrey, &bb.ActBlueBrown,
                       MovableTurnout::kThrown);
@@ -1043,7 +1063,9 @@ bool ignored3 = BindPairs({
     {Turnout_W159.b.side_thrown(), DKW_260.b.point_b2()},
     {Turnout_W161.b.side_thrown(), DKW_260.b.point_a1()},
     {Turnout_W270.b.side_thrown(), Turnout_W170.b.side_thrown()},
-    {Turnout_W280.b.side_closed(), Turnout_W180.b.side_closed()},
+    {Turnout_W280.b.side_closed(), Turnout_YDW1.b.side_thrown()},
+    {Turnout_YDW1.b.side_closed(), Turnout_W180.b.side_closed()},
+    {Turnout_YDW1.b.side_points(), Stub_Yex.entry()},
     {Turnout_W230.b.side_closed(), Turnout_BBW1.b.side_points()},
     {Turnout_BBW1.b.side_closed(), Turnout_BBW2.b.side_points()},
     {Turnout_BBW2.b.side_closed(), Stub_BBB1.entry()},
