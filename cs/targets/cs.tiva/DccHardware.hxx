@@ -136,6 +136,10 @@ struct DccHwDefs {
     io::TrackPktLed::toggle();
   }
 
+  static bool use_slow_turnon() {
+    return false;
+  }
+
   /** the time (in nanoseconds) to wait between turning off the low driver and
    * turning on the high driver. */
   static const int H_DEADBAND_DELAY_NSEC = 2000;
