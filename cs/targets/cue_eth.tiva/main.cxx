@@ -200,6 +200,7 @@ AccessoryOvercurrentMeasurement<AccHwDefs> g_acc_short_detector(stack.service(),
 int appl_main(int argc, char* argv[])
 {
     stack.add_can_port_select("/dev/can0");
+    stack.start_tcp_hub_server();
     stack.memory_config_handler()->registry()->insert(stack.node(), 0xA0, &automata_space);
     stack.memory_config_handler()->registry()->insert(stack.node(), 10, &automata_debug_space);
     stack.loop_executor();

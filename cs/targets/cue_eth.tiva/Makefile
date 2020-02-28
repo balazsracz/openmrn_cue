@@ -6,6 +6,8 @@ endif
 
 include hardware.mk
 
+include $(OPENMRNPATH)/etc/freertos_tcp.mk
+
 ifeq ($(MISSING_DEPS),)
 
 #AUTOMATA=convention-logic

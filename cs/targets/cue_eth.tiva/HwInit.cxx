@@ -55,6 +55,7 @@
 #include "TivaFlash.hxx"
 #include "TivaEEPROMEmulation.hxx"
 #include "DccHardware.hxx"
+#include "FreeRTOSTCP.hxx"
 
 #include "DummyGPIO.hxx"
 
@@ -87,6 +88,9 @@ static TivaUart uart2("/dev/ser0", UART2_BASE, INT_RESOLVE(INT_UART2_, 0));
 
 /** CAN 0 CAN driver instance */
 static TivaCan can0("/dev/can0", CAN0_BASE, INT_RESOLVE(INT_CAN0_, 0));
+
+/** FreeRTOS TCPIP instance */
+static FreeRTOSTCP tcpip;
 
 extern "C" {
 
@@ -312,6 +316,12 @@ void hw_preinit(void)
     LED_B3_Pin::set(false);
     LED_B4_Pin::set(false);
 
+}
+
+void hw_init()
+{
+    // Start the FreeRTOS TCPIP processes
+    tcpip.start();
 }
 
 }  // extern C
