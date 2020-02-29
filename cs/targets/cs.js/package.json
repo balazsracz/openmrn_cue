@@ -1,0 +1,7 @@
+{
+  "name": "openmrn-js-hub",
+  "version": "0.9.1",
+  "dependencies": {
+    "serialport": "*"
+  }
+}

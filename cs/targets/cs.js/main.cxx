@@ -48,6 +48,8 @@
 #include "custom/LoggingBit.hxx"
 #include "openlcb/TractionCvSpace.hxx"
 #include "utils/JSTcpClient.hxx"
+#include "utils/JSSerialPort.hxx"
+#include "utils/JSTcpHub.hxx"
 
 
 static const openlcb::NodeID NODE_ID = 0x050101011440ULL;
@@ -82,6 +84,71 @@ extern const size_t const_lokdb_size;
 const size_t const_lokdb_size = sizeof(const_lokdb) / sizeof(const_lokdb[0]);
 }  // namespace commandstation
 
+int port = -1;
+std::vector<string> device_paths;
+int upstream_port = 12021;
+const char *upstream_host = nullptr;
+bool print_packets = false;
+
+void usage(const char *e)
+{
+  fprintf(stderr,
+          "Usage: %s [-l] [-p port] [-d device_path] [-u upstream_host [-q "
+          "upstream_port]]\n\n",
+          e);
+  fprintf(stderr, "Fake command station.\n\nArguments:\n");
+  fprintf(stderr,
+          "\t-p port     If specified, listens on this port number for "
+          "GridConnect TCP connections.\n");
+  fprintf(stderr,
+          "\t-d device   is a path to a physical device doing "
+          "serial-CAN or USB-CAN. If specified, opens device and "
+          "adds it to the hub.\n");
+  fprintf(stderr, "\t-D lists available serial ports.\n");
+  fprintf(stderr,
+          "\t-u upstream_host   is the host name for an upstream "
+          "hub. If specified, this hub will connect to an upstream "
+          "hub.\n");
+  fprintf(stderr,
+          "\t-q upstream_port   is the port number for the upstream hub.\n");
+  exit(1);
+}
+
+void parse_args(int argc, char *argv[])
+{
+    int opt;
+    while ((opt = getopt(argc, argv, "hp:u:q:d:lD")) >= 0)
+    {
+        switch (opt)
+        {
+            case 'h':
+                usage(argv[0]);
+                break;
+            case 'd':
+                device_paths.push_back(optarg);
+                break;
+            case 'D':
+                JSSerialPort::list_ports();
+                break;
+            case 'p':
+                port = atoi(optarg);
+                break;
+            case 'u':
+                upstream_host = optarg;
+                break;
+            case 'q':
+                upstream_port = atoi(optarg);
+                break;
+            case 'l':
+                print_packets = true;
+                break;
+            default:
+                fprintf(stderr, "Unknown option %c\n", opt);
+                usage(argv[0]);
+        }
+    }
+}
+
 openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
 const char* const openlcb::SNIP_DYNAMIC_FILENAME =
@@ -110,7 +177,23 @@ openlcb::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if, &
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
-  new JSTcpClient(stack.can_hub(), "localhost", 12021);
+  parse_args(argc, argv);
+  std::unique_ptr<JSTcpHub> hub;
+  if (port >= 0) {
+    hub.reset(new JSTcpHub(stack.can_hub(), port));
+  }
+  std::unique_ptr<JSTcpClient> client;
+  if (upstream_host) {
+    client.reset(
+        new JSTcpClient(stack.can_hub(), upstream_host, upstream_port));
+  }
+  std::vector<std::unique_ptr<JSSerialPort>> devices;
+  for (auto &d : device_paths) {
+    devices.emplace_back(new JSSerialPort(stack.can_hub(), d));
+  }
+  if (print_packets) {
+    stack.print_all_packets();
+  }
 
   stack.loop_executor();
   return 0;
