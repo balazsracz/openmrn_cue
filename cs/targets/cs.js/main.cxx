@@ -60,6 +60,7 @@ OVERRIDE_CONST(local_alias_cache_size, 5000);
 OVERRIDE_CONST(remote_alias_cache_size, 5000);
 // Forces all trains to be our responsibility.
 OVERRIDE_CONST(mobile_station_train_count, 0);
+OVERRIDE_CONST(gc_generate_newlines, 1);
 
 namespace commandstation {
 extern const struct const_traindb_entry_t const_lokdb[];
@@ -77,6 +78,8 @@ const struct const_traindb_entry_t const_lokdb[] = {
     {5000, {0xff}, "TT 5000", DCC_28},
     {5104, {0xff}, "TT 5104", DCC_28},
     {5100, {0xff}, "TT 5100", DCC_28},
+    {13, {0xff}, "MM 13", MARKLIN_NEW},
+    {15, {0xff}, "MM 15", MARKLIN_NEW},
   { 0, {0,}, "", 0},
   { 0, {0,}, "", 0},
 };
@@ -149,8 +152,8 @@ void parse_args(int argc, char *argv[])
     }
 }
 
-openlcb::MockSNIPUserFile snip_user_file("Default user name",
-                                         "Default user description");
+openlcb::MockSNIPUserFile snip_user_file("Fake CS",
+                                         "");
 const char* const openlcb::SNIP_DYNAMIC_FILENAME =
     openlcb::MockSNIPUserFile::snip_user_file_path;
 
@@ -194,7 +197,6 @@ int appl_main(int argc, char* argv[]) {
   if (print_packets) {
     stack.print_all_packets();
   }
-
   stack.loop_executor();
   return 0;
 }
