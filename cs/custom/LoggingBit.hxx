@@ -55,7 +55,7 @@ public:
     void set_state(bool new_value) override
     {
         state_ = new_value;
-#ifdef __linux__
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
         LOG(INFO, "bit %s set to %d", name_, state_);
 #else
         resetblink(state_ ? 1 : 0);
