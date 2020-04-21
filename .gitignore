@@ -2,3 +2,4 @@ cdi.cxxout
 compile_cdi
 *.hxxout
 *.cxxout
+node_modules
