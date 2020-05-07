@@ -32,7 +32,7 @@
  * @date 6 Feb 2016
  */
 
-#include "booster_main/dcc_control.hxx"
+#include "dcc/DccOutput.hxx"
 #include "dcc/PacketSource.hxx"
 #include "dcc/UpdateLoop.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
