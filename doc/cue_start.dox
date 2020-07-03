@@ -1,114 +1,119 @@
 ﻿/**
- * @page cue_start Cue Node Getting Started Guide
- *
- * @section tableofcontents Table of Contents
- * - @ref linux
- * - @ref openmrn_cue_location
- * - @ref targets
- *   - @ref devkit
- * - @ref logicblock
- * - @ref addcb
- * - @ref variable
- * - @ref usecases
- *   - @ref turnface
- *   - @ref turntrail
- *
- * @section linux Linux
- * This section describes how to use Linux as a development and compiling 
- * environment for the OpenMRN Cue (aka Logic Node)  application. Before 
- * you begin, a couple of pointers on packages you may want to have before 
- * you begin the procedure, in addition to the packages for OpenMRN compliaton:
+* @page cue_start Cue Node Getting Started Guide
+*
+* @section tableofcontents Table of Contents
+* - @ref linux
+* - @ref openmrn_cue_location
+* - @ref targets
+*   - @ref devkit
+* - @ref logicblock
+* - @ref addcb
+* - @ref variable
+* - @ref usecases
+*   - @ref turnface
+*   - @ref turntrail
+*
+* @section linux Linux
+* This section describes how to use Linux as a development and compiling 
+* environment for the OpenMRN Cue (aka Logic Node)  application. Before 
+* you begin, a couple of pointers on packages you may want to have before 
+* you begin the procedure, in *addition* to the packages for OpenMRN compliaton:
 *
 *
 * -# Bison (version 3.1)
 * **NOTE:** Potentially your distro's packages will not be this version. You may have to download and compile from source
 * -# flex
- *
- * **Note** Use Oracle’s JRE instead of the OpenJDK’s offering if you want to use JMRI or STM32CubeMX.
- *
- * Use your package manager for the distro that you are running to verify they
- * exist on your system, or install them so you are ready.
- *
- * @subsection openmrn_cue_location OpenMRN Cue Location
- * The build system for OpenMRN Cue is quite intelligent, following the OpenMRN codebase.
- *  You will need to have both OpenMRN and OpenMRN-Cue git repositories downloaded and accessible. 
- * It is  designed to find the OpenMRN source tree in one of three separate locations in the following order:
- *
- * The Cue software is expected at:
- * -# ~/openmrn-cue
- * 
- * OpenMRN software is expected at:
- * -# OPENMRNPATH environment variable
- * -# /opt/openmrn
- * -# ~/openmrn
- *
- * Sometimes it is useful to use a symbolic link to point one of these paths
- * to an alternate OpenMRN source tree.
- *
- * @subsection targets Targets
- * Currently, the supported targets for the Cue OpenMRN code are the Nucleo 303RE and Nucleo 767zi boards.
- * These boards are assumed to be using the DevKit base board to provide power and CAN bus connectivity.
- * If you have an OpenMRN reposority that is compiling the mainline OpenMRN code,
- * you should have the STM libraries needed. Please note that the 767zi target is new to OpenMRN
- * and you may need to download and add the library for the F7 family of hardware.
- * 
- * If you follow the getting started documentation for standard OpenMRN, you can use the same procedure 
- * to find and download the F7 library, and creating the same symbolic links as you did for the
- * F3 or F0 family.
- *
- *
- *
- * @subsection devkit DevKit and Nucleo for Cue
- * You will want to compile the application at openmrn_cue/cs/targets/logic.nucleo-xxx, where xxx is your 
- * appropriate target.
- * As portions of the code are self describing as part of the complilation process, you will need to run
- * the make command multiple times to fix this "chicken and egg" problem.
- *
- * @code
- * openmrn_cue/cs/targets/logic.nucleo-303re$ make -k
- *
- * @endcode
- * This will run and ignore any errors. You should get a single error that the AST.hxx file is missing
- * one of its includes, _location.yy_.
- * If you get back multiple errors, note them to fix. Common problems and fixes are listed in the next section.
- *
- * @code
- * openmrn_cue/cs/targets/logic.nucleo-303re$ make
- *
- * @endcode
- * 
- * This compliation attempt should complete without __any__ errors.
- * Assuming it does, you will get a binary ELF file that you can move into a binary for the Nucleo 
- * board via objcopy.
- *
- *
- * @subsubsection tscompile Troubleshooting the Compliation Process
- * Errors that you might receive and their suggested solutions is as follows:
- *
- * Error | Solution
- * ----- | --------
- * Bison error about error handling | Please check your bison version, you need Bison 3.1. Currently, Ubuntu has either 3.0 or 3.3 packaged. Neither one works. You will need to download bison from GNU and compile from source.
- * Flex error | you need flex
- * location.yy not found from include statement in AST.hxx | Expected on first compile. Second compile should not have this problem. 
- *
- * 
- *
- * @subsubsection nodeid A Word about NodeIDs
- * **Please note that the code from OpenMRN Cue that you cloned down with git has a NodeID set inside it that does not conform to the standard as it, according to the letter of the law, belongs to the OpenLCB working group. You will want to change it and then factory reset the board via a CDI change to also update the EventIDs.**
- *
- * @subsection logicblock Logic Blocks for ABS
- * The premade logic blocks can be found at https://sites.google.com/site/balazsracz/rr/logic_text
- * 
- * Note that there are different logic blocks per scenario. At this time, there are logic blocks for 
- * single blocks, single blocks facing a turnout, and single blocks trailing a turnout. Using
- * search light type signals. 3 light CPL signals and other scenario code blocks are
- * currently under development.
- *
- *
- * @subsection variable Variables
- * There are variables used to determine which events should be produced or consumed by the cue
- * node. The following chart will define the variables and their use.
- *
+*
+* **Note** You may need to use Oracle’s JRE instead of the OpenJDK’s offering if you want to use JMRI or STM32CubeMX. As of this writing (June 2020), OpenJDK 11.0.7 on Ubuntu works with JMRI.
+*
+* Use your package manager for the distro that you are running to verify these 
+* packages exist on your system, or install them so you are ready.
+*
+* @subsection openmrn_cue_location OpenMRN Cue Location
+* The build system for OpenMRN Cue is quite intelligent, following the OpenMRN codebase.
+*  You will need to have both OpenMRN and OpenMRN-Cue git repositories downloaded and accessible. 
+* It is  designed to find the OpenMRN source tree in one of three separate locations in the following order:
+*
+* The Cue software is expected at:
+* -# ~/openmrn-cue
+* 
+* OpenMRN software is expected at:
+* -# OPENMRNPATH environment variable
+* -# /opt/openmrn
+* -# ~/openmrn
+*
+* Sometimes it is useful to use a symbolic link to point one of these paths
+* to an alternate OpenMRN source tree.
+*
+* @subsection targets Targets
+* Currently, the supported targets for the Cue OpenMRN code are the Nucleo 303RE and Nucleo 767ZI boards.
+* These boards are assumed to be using the DevKit base board to provide power and CAN bus connectivity.
+* 
+* _ToDo: Link to minimal DevKit hardware build for Logic Node.
+* _ToDo2: Instructions on minimal hardware build.
+*
+*
+* If you have an OpenMRN reposority that is compiling the mainline OpenMRN code,
+* you should have the STM libraries needed. Please note that the 767ZI target is new to OpenMRN
+* and you may need to download and add the library for the F7 family of hardware.
+* 
+* If you follow the getting started documentation for standard OpenMRN, you can use the same procedure 
+* to find and download the F7 library, and creating the same symbolic links as you did for the
+* F3 or F0 family.
+*
+* 
+*
+* @subsection devkit DevKit and Nucleo for Cue
+* You will want to compile the application at openmrn_cue/cs/targets/logic.nucleo-xxx, where xxx is your 
+* appropriate target.
+* As portions of the code are self describing as part of the complilation process, you will need to run
+* the make command multiple times to fix this "chicken and egg" problem.
+*
+* @code
+* openmrn_cue/cs/targets/logic.nucleo-303re$ make -k
+*
+* @endcode
+* This will run and ignore any errors. You should get a single error that the AST.hxx file is missing
+* one of its includes, _location.yy_.
+* If you get back multiple errors, note them to fix. Common problems and fixes are listed in the next section.
+*
+* @code
+* openmrn_cue/cs/targets/logic.nucleo-303re$ make
+*
+* @endcode
+* 
+* This compliation attempt should complete without __any__ errors.
+* Assuming it does, you will get a binary ELF file that you can move into a binary for the Nucleo 
+* board via objcopy.
+*
+*
+* @subsubsection tscompile Troubleshooting the Compliation Process
+* Errors that you might receive and their suggested solutions is as follows:
+*
+* Error | Solution
+* ----- | --------
+* Bison error about error handling | Please check your bison version, you need Bison 3.1. Currently, Ubuntu has either 3.0 or 3.3 packaged. Neither one works. You will need to download bison from GNU and compile from source.
+* Flex error | you need flex
+* location.yy not found from include statement in AST.hxx | Expected on first compile. Second compile should not have this problem. 
+*
+* 
+*
+* @subsubsection nodeid A Word about NodeIDs
+* **Please note that the code from OpenMRN Cue that you cloned down with git has a NodeID set inside it that does not conform to the standard as it, according to the letter of the law, belongs to the OpenLCB working group. You will want to change it and then factory reset the board via a CDI change to also update the EventIDs.**
+*
+* @subsection logicblock Logic Blocks for ABS
+* The premade logic blocks can be found at https://sites.google.com/site/balazsracz/rr/logic_text
+* 
+* Note that there are different logic blocks per scenario. At this time, there are logic blocks for 
+* single blocks, single blocks facing a turnout, and single blocks trailing a turnout. Using
+* search light type signals. 3 light CPL signals and other scenario code blocks are
+* currently under development.
+*
+*
+* @subsection variable Variables
+* There are variables used to determine which events should be produced or consumed by the cue
+* node. The following chart will define the variables and their use.
+*
   Variable Name | Event ID Source | Type of Event
    ------------- | --------------- | -------------
   red_light true| Block Signal Stop Aspect | Activation
