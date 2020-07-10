@@ -1,7 +1,11 @@
 {
-  "name": "openmrn-js-hub",
-  "version": "0.9.1",
+  "name": "openmrn-cs-test",
+  "version": "1.0.0",
   "dependencies": {
     "serialport": "*"
+  },
+  "bin": "cs.js",
+  "pkg": {
+      "assets": []
   }
 }
