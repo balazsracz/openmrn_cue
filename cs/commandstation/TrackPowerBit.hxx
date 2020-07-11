@@ -39,54 +39,47 @@
 
 namespace commandstation {
 
-class TrackPowerBit : public openlcb::BitEventInterface {
+class TrackPowerState {
  public:
-  static constexpr auto REASON = DccOutput::DisableReason::GLOBAL_EOFF;
-  static constexpr unsigned UREASON = (unsigned)REASON;
+  TrackPowerState(openlcb::Node* node, uint64_t event_eoff_on,
+                  uint64_t event_eoff_off, uint64_t event_estop_on,
+                  uint64_t event_estop_off)
+      : node_(node),
+        trackPowerBit_(this, event_eoff_on, event_eoff_off),
+        estopBit_(this, event_estop_on, event_estop_off) {}
 
-  TrackPowerBit(openlcb::Node* node, uint64_t event_on, uint64_t event_off)
-      : BitEventInterface(event_on, event_off), node_(node) {}
+  openlcb::BitEventInterface* get_power_bit() { return &trackPowerBit_; }
 
-  openlcb::EventState get_current_state() OVERRIDE {
-    auto disable_bits =
-        get_dcc_output(DccOutput::TRACK)->get_disable_output_reasons();
-    return (disable_bits & UREASON) == 0 ? openlcb::EventState::VALID
-                                         : openlcb::EventState::INVALID;
-  }
-  void set_state(bool new_value) OVERRIDE {
-    if (new_value) {
-      LOG(WARNING, "enable dcc");
-      if (estopSource_.isRegistered_) {
-        packet_processor_remove_refresh_source(&estopSource_);
-        estopSource_.isRegistered_ = 0;
-      }
-      get_dcc_output(DccOutput::TRACK)->clear_disable_output_for_reason(REASON);
-      get_dcc_output(DccOutput::LCC)->clear_disable_output_for_reason(REASON);
-    } else {
-      LOG(WARNING, "send ESTOP");
-      if (estopSource_.isRegistered_) {
-        return estop_expired();
-      } else {
-        packet_processor_add_refresh_source(
-            &estopSource_, dcc::UpdateLoopBase::ESTOP_PRIORITY);
-        estopSource_.start(std::bind(&TrackPowerBit::estop_expired, this));
-        estopSource_.isRegistered_ = 1;
-      }
+  openlcb::BitEventInterface* get_estop_bit() { return &estopBit_; }
+
+ private:
+  openlcb::Node* node_;
+
+  void register_source(std::function<void()> done) {
+    if (!estopSource_.isRegistered_) {
+      estopSource_.isRegistered_ = true;
+      packet_processor_add_refresh_source(
+          &estopSource_, dcc::UpdateLoopBase::ESTOP_PRIORITY);
+    }
+    if (done) {
+      estopSource_.start(done);
     }
   }
 
-  openlcb::Node* node() OVERRIDE { return node_; }
-
- private:
-  void estop_expired() {
-    LOG(WARNING, "disable dcc");
-    get_dcc_output(DccOutput::TRACK)->disable_output_for_reason(REASON);
-    get_dcc_output(DccOutput::LCC)->disable_output_for_reason(REASON);
+  void unregister_source() {
+    if (!estopSource_.isRegistered_) {
+      return;
+    }
+    if (estopSource_.isEOff_ == 0 && estopSource_.isEStop_ == 0) {
+      packet_processor_remove_refresh_source(&estopSource_);
+      estopSource_.isRegistered_ = false;
+    }
   }
-
+  
   class EstopPacketSource : public dcc::NonTrainPacketSource {
    public:
-    EstopPacketSource() : isRegistered_(0) {}
+    EstopPacketSource()
+        : isRegistered_(0), isEOff_(0), isEStop_(0), nextDcc_(1) {}
 
     /// Call this function to start sending ESTOP packets and get a callback
     /// when 20 estop packets were sent to the track.
@@ -94,6 +87,10 @@ class TrackPowerBit : public openlcb::BitEventInterface {
       nextDcc_ = 1;
       numToNotify_ = 20;
       done_ = std::move(done);
+    }
+
+    bool counting() {
+      return numToNotify_ > 0;
     }
 
    private:
@@ -118,6 +115,8 @@ class TrackPowerBit : public openlcb::BitEventInterface {
    public:
     /// Used by the caller to keep state.
     uint8_t isRegistered_ : 1;
+    uint8_t isEOff_ : 1;
+    uint8_t isEStop_ : 1;
 
    private:
     /// Whether the next estop packet should be dcc or mm.
@@ -128,7 +127,79 @@ class TrackPowerBit : public openlcb::BitEventInterface {
     std::function<void()> done_{nullptr};
   } estopSource_;
 
-  openlcb::Node* node_;
-};
+  class TrackPowerBit : public openlcb::BitEventInterface {
+   public:
+    static constexpr auto REASON = DccOutput::DisableReason::GLOBAL_EOFF;
+    static constexpr unsigned UREASON = (unsigned)REASON;
+
+    TrackPowerBit(TrackPowerState* parent, uint64_t event_on,
+                  uint64_t event_off)
+        : BitEventInterface(event_on, event_off), parent_(parent) {}
+
+    openlcb::EventState get_current_state() OVERRIDE {
+      auto disable_bits =
+          get_dcc_output(DccOutput::TRACK)->get_disable_output_reasons();
+      return (disable_bits & UREASON) == 0 ? openlcb::EventState::VALID
+                                           : openlcb::EventState::INVALID;
+    }
+    void set_state(bool new_value) OVERRIDE {
+      if (new_value) {
+        LOG(WARNING, "enable dcc");
+        parent_->estopSource_.isEOff_ = 0;
+        parent_->unregister_source();
+        get_dcc_output(DccOutput::TRACK)
+            ->clear_disable_output_for_reason(REASON);
+        get_dcc_output(DccOutput::LCC)->clear_disable_output_for_reason(REASON);
+      } else {
+        LOG(WARNING, "send EOFF");
+        parent_->estopSource_.isEOff_ = 1;
+        parent_->register_source(
+            std::bind(&TrackPowerBit::estop_expired, this));
+      }
+    }
+
+    openlcb::Node* node() override { return parent_->node_; }
+
+   private:
+    void estop_expired() {
+      LOG(WARNING, "disable dcc");
+      get_dcc_output(DccOutput::TRACK)->disable_output_for_reason(REASON);
+      get_dcc_output(DccOutput::LCC)->disable_output_for_reason(REASON);
+    }
+
+    TrackPowerState* parent_;
+  } trackPowerBit_;
+
+  class GlobalStopBit : public openlcb::BitEventInterface {
+   public:
+    GlobalStopBit(TrackPowerState* parent, uint64_t event_on, uint64_t event_off)
+        : BitEventInterface(event_on, event_off), parent_(parent) {}
+
+    openlcb::Node* node() override { return parent_->node_; }
+
+    openlcb::EventState get_current_state() OVERRIDE {
+      if (parent_->estopSource_.isEStop_) {
+        return openlcb::EventState::INVALID;
+      } else {
+        return openlcb::EventState::VALID;
+      }
+    }
+
+    void set_state(bool new_value) OVERRIDE {
+      if (new_value) {
+        parent_->estopSource_.isEStop_ = false;
+        parent_->unregister_source();
+      } else {
+        parent_->estopSource_.isEStop_ = true;
+        parent_->register_source(nullptr);
+      }
+    }
+
+   private:
+    /// Links to the parent object.
+    TrackPowerState* parent_;
+  } estopBit_;
+
+};  // class
 
 }  // namespace commandstation
