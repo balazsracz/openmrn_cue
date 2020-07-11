@@ -138,7 +138,7 @@ const struct const_traindb_entry_t const_lokdb[] = {
   // id 3
   { 38, //{ 0, 3, 4, 0xff, },
     { LIGHT, FN_NONEXISTANT, FN_NONEXISTANT, FNT11, ABV, 0xff, },
-    "BDe 4/4 1640", DCC_128 | PUSHPULL },  // Tams LD-G32, DC motor
+    "BDe 4/4 1640", DCC_128 },  // Tams LD-G32, DC motor
   // 3 (jim's)
   //{ 0x0761, { 0, 3, 0xff }, { LIGHT, WHISTLE, 0xff, }, "Jim's steam", OLCBUSER },
   { 0, {0,}, "", 0},

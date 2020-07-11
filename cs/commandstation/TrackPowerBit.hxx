@@ -32,7 +32,7 @@
  * @date 6 Feb 2016
  */
 
-#include "commandstation/dcc_control.hxx"
+#include "dcc/DccOutput.hxx"
 #include "dcc/PacketSource.hxx"
 #include "dcc/UpdateLoop.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
@@ -41,12 +41,17 @@ namespace commandstation {
 
 class TrackPowerBit : public openlcb::BitEventInterface {
  public:
+  static constexpr auto REASON = DccOutput::DisableReason::GLOBAL_EOFF;
+  static constexpr unsigned UREASON = (unsigned)REASON;
+
   TrackPowerBit(openlcb::Node* node, uint64_t event_on, uint64_t event_off)
       : BitEventInterface(event_on, event_off), node_(node) {}
 
   openlcb::EventState get_current_state() OVERRIDE {
-    return query_dcc() ? openlcb::EventState::VALID
-                       : openlcb::EventState::INVALID;
+    auto disable_bits =
+        get_dcc_output(DccOutput::TRACK)->get_disable_output_reasons();
+    return (disable_bits & UREASON) == 0 ? openlcb::EventState::VALID
+                                         : openlcb::EventState::INVALID;
   }
   void set_state(bool new_value) OVERRIDE {
     if (new_value) {
@@ -55,7 +60,8 @@ class TrackPowerBit : public openlcb::BitEventInterface {
         packet_processor_remove_refresh_source(&estopSource_);
         estopSource_.isRegistered_ = 0;
       }
-      enable_dcc();
+      get_dcc_output(DccOutput::TRACK)->clear_disable_output_for_reason(REASON);
+      get_dcc_output(DccOutput::LCC)->clear_disable_output_for_reason(REASON);
     } else {
       LOG(WARNING, "send ESTOP");
       if (estopSource_.isRegistered_) {
@@ -74,7 +80,8 @@ class TrackPowerBit : public openlcb::BitEventInterface {
  private:
   void estop_expired() {
     LOG(WARNING, "disable dcc");
-    disable_dcc();
+    get_dcc_output(DccOutput::TRACK)->disable_output_for_reason(REASON);
+    get_dcc_output(DccOutput::LCC)->disable_output_for_reason(REASON);
   }
 
   class EstopPacketSource : public dcc::NonTrainPacketSource {

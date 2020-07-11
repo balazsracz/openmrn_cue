@@ -42,11 +42,6 @@
 #include "DummyGPIO.hxx"
 #include "hardware.hxx"
 
-#define DECL_PIN(NAME, PORT, NUM)                \
-  static const auto NAME##_PERIPH = SYSCTL_PERIPH_GPIO##PORT; \
-  static const auto NAME##_BASE = GPIO_PORT##PORT##_BASE; \
-  static const auto NAME##_PIN = GPIO_PIN_##NUM
-
 struct RailcomDefs
 {
     static const uint32_t CHANNEL_COUNT = 1;
@@ -72,10 +67,12 @@ struct RailcomDefs
         CH1_Pin::set_hw();
     }
 
-    static void enable_measurement() {}
+    static void enable_measurement(bool) {}
     static void disable_measurement() {}
 
     static bool need_ch1_cutout() { return true; }
+
+    static uint32_t get_timer_tick() { return 0; }
 
     static uint8_t get_feedback_channel() {
         return 0xff;
@@ -131,6 +128,8 @@ struct DccHwDefs {
    *  packet '1' bit) */
   static int dcc_preamble_count() { return 16; }
 
+  static bool use_slow_turnon() { return false; }
+  
   static void flip_led() {
     LED_3_Pin::toggle();
   }

@@ -2,25 +2,39 @@
 #include "commandstation/track_test_helper.hxx"
 #include "utils/Singleton.hxx"
 
-class MockDccControl : public Singleton<MockDccControl> {
+DccOutput* dcc_output_main = nullptr;
+DccOutput* dcc_output_lcc = nullptr;
+
+DccOutput* get_dcc_output(DccOutput::Type type) {
+  if (type == DccOutput::TRACK) {
+    return dcc_output_main;
+  }
+  if (type == DccOutput::LCC) {
+    return dcc_output_lcc;
+  }
+  return nullptr;
+}
+
+class MockDccOutput : public DccOutput {
  public:
-  MOCK_METHOD0(query_dcc, bool());
-  MOCK_METHOD0(enable_dcc, void());
-  MOCK_METHOD0(disable_dcc, void());
+  MOCK_METHOD1(disable_output_for_reason, void(DisableReason));
+  MOCK_METHOD1(clear_disable_output_for_reason, void(DisableReason));
+  MOCK_METHOD0(get_disable_output_reasons, uint8_t(void));
+  MOCK_METHOD1(set_railcom_cutout_enabled, void(RailcomCutout));
 };
-
-bool query_dcc() { return Singleton<MockDccControl>::instance()->query_dcc(); }
-
-void enable_dcc() { Singleton<MockDccControl>::instance()->enable_dcc(); }
-
-void disable_dcc() { Singleton<MockDccControl>::instance()->disable_dcc(); }
 
 namespace commandstation {
 namespace {
 
 class TrackPowerTest : public UpdateProcessorTest {
  protected:
-  StrictMock<MockDccControl> mockDcc_;
+  TrackPowerTest() {
+    dcc_output_main = &mockMain_;
+    dcc_output_lcc = &mockLcc_;
+  }
+  
+  StrictMock<MockDccOutput> mockMain_;
+  StrictMock<MockDccOutput> mockLcc_;
   TrackPowerBit powerBit_{node_,
                           openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
                           openlcb::Defs::EMERGENCY_OFF_EVENT};
@@ -35,7 +49,8 @@ TEST_F(TrackPowerTest, create) {
 }
 
 TEST_F(TrackPowerTest, enable) {
-  EXPECT_CALL(mockDcc_, enable_dcc());
+  EXPECT_CALL(mockMain_, clear_disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF));
+  EXPECT_CALL(mockLcc_, clear_disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF));
   send_packet(":X195B4123N010000000000FFFE;");
   wait();
 }
@@ -43,7 +58,8 @@ TEST_F(TrackPowerTest, enable) {
 TEST_F(TrackPowerTest, disable_no_packet) {
   send_packet(":X195B4123N010000000000FFFF;");
   wait();
-  Mock::VerifyAndClear(&mockDcc_);
+  Mock::VerifyAndClear(&mockMain_);
+  Mock::VerifyAndClear(&mockLcc_);
 }
 
 TEST_F(TrackPowerTest, disable_estop_packets) {
@@ -55,7 +71,8 @@ TEST_F(TrackPowerTest, disable_estop_packets) {
   qwait();
   send_packet(":X195B4123N010000000000FFFF;");
   wait();
-  Mock::VerifyAndClear(&mockDcc_);
+  Mock::VerifyAndClear(&mockMain_);
+  Mock::VerifyAndClear(&mockLcc_);
   EXPECT_CALL(trackSendQueue_,
               arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2))))
       .Times(10);
@@ -65,10 +82,12 @@ TEST_F(TrackPowerTest, disable_estop_packets) {
     send_empty_packet();
   }
   wait();
-  EXPECT_CALL(mockDcc_, disable_dcc());
+  EXPECT_CALL(mockMain_, disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF));
+  EXPECT_CALL(mockLcc_, disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF));
   send_empty_packet();
   wait();
-  Mock::VerifyAndClear(&mockDcc_);
+  Mock::VerifyAndClear(&mockMain_);
+  Mock::VerifyAndClear(&mockLcc_);
   // after disabling dcc we are still getting estop packets.
   EXPECT_CALL(trackSendQueue_,
               arrived(PacketIs(0x4, dcc_from(0, 0b01100001, -2))))
@@ -81,7 +100,8 @@ TEST_F(TrackPowerTest, disable_estop_packets) {
   wait();
 
   // After reenable we'll get idle packets.
-  EXPECT_CALL(mockDcc_, enable_dcc());
+  EXPECT_CALL(mockMain_, clear_disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF));
+  EXPECT_CALL(mockLcc_, clear_disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF));
   send_packet(":X195B4123N010000000000FFFE;");
   qwait();
   EXPECT_CALL(trackSendQueue_, arrived(PacketIs(0x04, dcc_from(0xFF, 0, 0xFF))))
@@ -93,19 +113,24 @@ TEST_F(TrackPowerTest, disable_estop_packets) {
 }
 
 TEST_F(TrackPowerTest, query) {
-  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(true));
+  EXPECT_CALL(mockMain_, get_disable_output_reasons())
+      .WillOnce(Return((uint8_t)0));
   send_packet_and_expect_response(":X198F4123N010000000000FFFF;",
                                   ":X194C522AN010000000000FFFF;");
   qwait();
-  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(true));
+  EXPECT_CALL(mockMain_, get_disable_output_reasons())
+      .WillOnce(Return((uint8_t)DccOutput::DisableReason::SHORTED));
   send_packet_and_expect_response(":X198F4123N010000000000FFFE;",
                                   ":X194C422AN010000000000FFFE;");
   qwait();
-  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(false));
+  EXPECT_CALL(mockMain_, get_disable_output_reasons())
+      .WillOnce(Return((uint8_t)DccOutput::DisableReason::GLOBAL_EOFF |
+                       (uint8_t)DccOutput::DisableReason::SHORTED));
   send_packet_and_expect_response(":X198F4123N010000000000FFFF;",
                                   ":X194C422AN010000000000FFFF;");
   qwait();
-  EXPECT_CALL(mockDcc_, query_dcc()).WillOnce(Return(false));
+  EXPECT_CALL(mockMain_, get_disable_output_reasons())
+      .WillOnce(Return((uint8_t)DccOutput::DisableReason::GLOBAL_EOFF));
   send_packet_and_expect_response(":X198F4123N010000000000FFFE;",
                                   ":X194C522AN010000000000FFFE;");
   qwait();

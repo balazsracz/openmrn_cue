@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE // for usleep
 #if defined(__linux__) || defined(__FreeRTOS__)
 #define ENABLE_WIICHUCK
 #endif

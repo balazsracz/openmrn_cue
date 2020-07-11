@@ -1,12 +1,10 @@
 cdi.cxxout
 compile_cdi
-Revision.hxxout
+*.hxxout
+*.cxxout
+node_modules
 
 # bison / flex artifacts
-Parser.hxxout
-Parser.cxxout
-Scanner.hxxout
-Scanner.cxxout
 location.hh
 position.hh
 stack.hh

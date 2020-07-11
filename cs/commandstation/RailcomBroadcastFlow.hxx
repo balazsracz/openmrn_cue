@@ -61,7 +61,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
     delete[] channels_;
   }
 
-  Action entry() {
+  Action entry() override {
     auto channel = message()->data()->channel;
     if (channel == 0xff) {
       uint32_t new_values = message()->data()->ch1Data[0];
