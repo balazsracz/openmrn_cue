@@ -3,6 +3,7 @@ SUBDIRS ?= \
 	  custom \
 	  commandstation \
 	  mobilestation \
+	  logic \
 
 
 ifeq ($(strip $(TARGET)),linux.x86)

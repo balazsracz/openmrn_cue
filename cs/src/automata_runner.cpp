@@ -2,7 +2,9 @@
 #define _ISOC99_SOURCE
 #endif
 
-#define _DEFAULT_SOURCE // for usleep
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 
 #define LOGLEVEL WARNING
 // Workaroundfor bug in <memory> for gcc 2.6.2 lpcxpresso newlib

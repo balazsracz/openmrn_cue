@@ -1,0 +1,27 @@
+FULLPATHCSRCS = $(wildcard $(VPATH)/*.c)
+FULLPATHCXXSRCS = $(wildcard $(VPATH)/*.cxx)
+FULLPATHCPPSRCS = $(wildcard $(VPATH)/*.cpp)
+CSRCS = $(notdir $(FULLPATHCSRCS))
+CXXSRCS = $(notdir $(FULLPATHCXXSRCS))
+CPPSRCS = $(notdir $(FULLPATHCPPSRCS))
+
+
+Scanner.cxxout: Scanner.ll Parser.cxxout
+	flex -o $@ $<
+
+Parser.cxxout: Parser.yy
+	bison -v --report=solved --report-file=/tmp/bison.report -o $@ $<
+
+../logic/Parser.hxxout ../logic/location.hh: Parser.cxxout
+
+../logic/Scanner.hxxout: Scanner.cxxout
+
+Scanner.o Parser.o: %.o: %.cxxout
+	$(CXX) $(CXXFLAGS) -MD -MF $*.d -x c++ $(abspath $<) -o $@
+
+# This is actually a fake, they are not cpp files but this way we can convince
+# applib.mk to add .o files to the link. The rule to make the .o files is
+# above.
+CPPSRCS += Scanner.cpp Parser.cpp
+
+Driver.o: Parser.o Scanner.o

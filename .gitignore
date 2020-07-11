@@ -3,3 +3,8 @@ compile_cdi
 *.hxxout
 *.cxxout
 node_modules
+
+# bison / flex artifacts
+location.hh
+position.hh
+stack.hh

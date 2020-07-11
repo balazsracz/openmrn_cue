@@ -1,0 +1,162 @@
+/** \copyright
+ * Copyright (c) 2019, Balazs Racz
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are  permitted provided that the following conditions are met:
+ *
+ *  - Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ *  - Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * \file Bytecode.cxxtest
+ *
+ * Unit tests for the bytecode parser/serializer.
+ *
+ * @author Balazs Racz
+ * @date 15 June 2019
+ */
+
+#include "logic/Bytecode.hxx"
+
+#include "utils/test_main.hxx"
+#include "logic/VM.hxx"
+#include "logic/MockVariable.hxx"
+
+namespace logic {
+
+class BytecodeTest : public ::testing::Test {
+ protected:
+  BytecodeTest() {
+    vm_.set_block_num(0);
+    vm_.jump(0);
+  }
+
+  void parse_varint() {
+    vm_._ip_ = (uint8_t*)payload_.data();
+    vm_._eof_ = (uint8_t*)payload_.data() + payload_.size();
+
+    output_ = -232354235;
+    EXPECT_TRUE(vm_.parse_varint(&output_));
+    EXPECT_NE(-232354235, output_);
+    EXPECT_EQ(vm_._eof_, vm_._ip_);
+  }
+
+  const string& parse_string(bool result = true) {
+    vm_._ip_block_num_ = 0;
+    vm_._block_start_ = (uint8_t*)payload_.data();
+    vm_._ip_ = (uint8_t*)payload_.data();
+    vm_._eof_ = (uint8_t*)payload_.data() + payload_.size();
+    
+    vm_.string_acc_ = "adslknaix";
+    EXPECT_EQ(result, vm_.parse_string());
+    return vm_.string_acc_;
+  }
+  
+  void do_test(int value) {
+    payload_.clear();
+    SCOPED_TRACE(value);
+    BytecodeStream::append_varint(&payload_, value);
+    parse_varint();
+    EXPECT_EQ(value, output_);
+  }
+
+  int get_size(int value) {
+    payload_.clear();
+    BytecodeStream::append_varint(&payload_, value);
+    return payload_.size();
+  }
+
+  unsigned get_ip() {
+    return vm_.get_ip();
+  }
+  
+  StrictMock<MockVariableFactory> mock_factory_;
+  /// The virtual machine instance.
+  VM vm_{&mock_factory_};
+  string payload_;
+  int output_;
+};
+
+TEST_F(BytecodeTest, varint_save)
+{
+  for (int i : {0, 1, 2, 13, 21, 31, 32, 62, 63, 64, 65, 254, 255, 256, 257}) {
+    do_test(i);
+    do_test(-i);
+  }
+  do_test(INT_MAX);
+  do_test(-INT_MAX);
+  do_test(INT_MIN);
+  for (int i : {8190,8191,8192,8193}) {
+    do_test(i);
+    do_test(-i);
+  }
+}
+
+TEST_F(BytecodeTest, varint_size)
+{
+  for (int i : {0, 1, 2, 13, 21, 31, 32, 62, 63}) {
+    EXPECT_EQ(1, get_size(i));
+    EXPECT_EQ(1, get_size(-i));
+  }
+  EXPECT_EQ(2, get_size(64));
+  EXPECT_EQ(1, get_size(-64));
+  for (int i : {65, 66, 128, 8190, 8191}) {
+    EXPECT_EQ(2, get_size(i));
+    EXPECT_EQ(2, get_size(-i));
+  }
+  EXPECT_EQ(3, get_size(8192));
+  EXPECT_EQ(2, get_size(-8192));
+}
+
+TEST_F(BytecodeTest, string) {
+  payload_.clear();
+  string expected = "abcdef";
+  BytecodeStream::append_string(&payload_, expected);
+  EXPECT_EQ(expected, parse_string());
+
+  payload_.clear();
+  expected = "abcdef";
+  expected.push_back(0);
+  expected.push_back(1);
+  expected.push_back(0);
+  expected.push_back(2);
+  BytecodeStream::append_string(&payload_, expected);
+  EXPECT_EQ(expected, parse_string());
+  
+  EXPECT_EQ(payload_.size(), get_ip());
+}
+
+TEST_F(BytecodeTest, string_failed) {
+  payload_.clear();
+  string expected = "abcdef";
+  
+  EXPECT_EQ("", parse_string(false));
+
+  payload_.clear();
+  expected = "abcdef";
+  expected.push_back(0);
+  expected.push_back(1);
+  expected.push_back(0);
+  expected.push_back(2);
+  BytecodeStream::append_string(&payload_, expected);
+  payload_.pop_back();
+  EXPECT_EQ("", parse_string(false));
+}
+
+}  // namespace logic
