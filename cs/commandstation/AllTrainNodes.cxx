@@ -530,6 +530,35 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
                                                 int address) {
   Impl* impl = new Impl;
   impl->id = train_id;
+#ifdef __EMSCRIPTEN__
+  switch (mode) {
+    case MARKLIN_OLD:
+    case MARKLIN_DEFAULT:
+    case MARKLIN_NEW:
+    case MARKLIN_TWOADDR:
+      impl->train_ =
+          new openlcb::LoggingTrain(address, dcc::TrainAddressType::MM);
+      break;
+    case DCC_14:      
+    case DCC_14_LONG_ADDRESS:      
+    case DCC_28:
+    case DCC_28_LONG_ADDRESS:
+    case DCC_128:
+    case DCC_128_LONG_ADDRESS:
+      if ((mode & DCC_LONG_ADDRESS) || address >= 128) {
+        impl->train_ =
+            new openlcb::LoggingTrain(address, dcc::TrainAddressType::DCC_LONG_ADDRESS);
+      } else {
+        impl->train_ =
+            new openlcb::LoggingTrain(address, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+      }
+      break;
+    default:
+      impl->train_ = new openlcb::LoggingTrain(
+          address, dcc::TrainAddressType::DCC_LONG_ADDRESS);
+      break;
+    };
+#else  
   switch (mode) {
     case MARKLIN_OLD: {
       impl->train_ = new dcc::MMOldTrain(dcc::MMAddress(address));
@@ -573,6 +602,7 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
       impl->train_ = nullptr;
       LOG_ERROR("Unhandled train drive mode.");
   }
+#endif  
   if (impl->train_) {
     trains_.push_back(impl);
     impl->node_ =

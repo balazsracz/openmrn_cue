@@ -103,7 +103,7 @@ struct ProgrammingTrackSpaceConfig::Shadow {
   uint32_t verify_cooldown_repeats;
 };
 
-#if __GNUC__ > 6
+#if (__GNUC__ > 6) || defined(__EMSCRIPTEN__)
 #define SHADOW_OFFSETOF(entry)                                  \
     (offsetof(ProgrammingTrackSpaceConfig::Shadow, entry))
 #else
