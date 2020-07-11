@@ -26,19 +26,19 @@ const struct const_traindb_entry_t const_lokdb[] = {
       LIGHT, TELEX, FNT11, ABV, 0xff,
      },
      "Am 843 093-6",
-     DCCMODE_FAKE_DRIVE},
+     DCC_128_LONG_ADDRESS},
     {22,
      {
       LIGHT, FNT11, ABV, 0xff,
      },
      "RE 460 TSR",
-     DCCMODE_FAKE_DRIVE},  // todo: there is no beamer here // LD-32 decoder
+     DCC_128_LONG_ADDRESS},  // todo: there is no beamer here // LD-32 decoder
     {465,
      {
       LIGHT, SPEECH, 0xff,
      },
      "Jim's steam",
-     DCCMODE_FAKE_DRIVE},
+     DCC_128_LONG_ADDRESS},
     {0,
      {
       0,
@@ -73,6 +73,7 @@ class AllTrainNodesTestBase : public openlcb::TractionTest {
     inject_allocated_alias(0x442);
     inject_allocated_alias(0x443);
     inject_allocated_alias(0x33A);
+    inject_allocated_alias(0x33B);
   }
 
   void wait() {
@@ -80,7 +81,22 @@ class AllTrainNodesTestBase : public openlcb::TractionTest {
     openlcb::TractionTest::wait();
   }
 
-  openlcb::ConfigUpdateFlow cfgflow{ifCan_.get()};
+  void expect_train_start(openlcb::NodeAlias alias, int addr, dcc::TrainAddressType type = dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+    openlcb::NodeID address = openlcb::TractionDefs::train_node_id_from_legacy(type, addr);
+    expect_packet(StringPrintf(":X10701%03XN%012" PRIX64 ";", alias, address));
+    expect_packet(StringPrintf(":X19100%03XN%012" PRIX64 ";", alias, address));
+    expect_packet(
+        StringPrintf(":X19547%03XN0101000000000303;", alias));
+    expect_packet(
+        StringPrintf(":X19524%03XN090099FF00000000;", alias));
+  }
+  
+  openlcb::ConfigUpdateFlow updateFlow_{ifCan_.get()};
+  openlcb::SimpleInfoFlow infoFlow_{&g_service};
+  openlcb::CanDatagramService datagramService_{ifCan_.get(), 5, 2};
+  openlcb::MemoryConfigHandler memoryConfigHandler_{&datagramService_, nullptr,
+                                                    5};
+  std::unique_ptr<AllTrainNodes> trainNodes_;
 };
 
 class AllTrainNodesTest : public AllTrainNodesTestBase {
@@ -101,22 +117,40 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
 
   ~AllTrainNodesTest() { wait(); }
 
-  void expect_train_start(openlcb::NodeAlias alias, int addr, dcc::TrainAddressType type = dcc::TrainAddressType::DCC_LONG_ADDRESS) {
-    openlcb::NodeID address = openlcb::TractionDefs::train_node_id_from_legacy(type, addr);
-    expect_packet(StringPrintf(":X10701%03XN%012" PRIX64 ";", alias, address));
-    expect_packet(StringPrintf(":X19100%03XN%012" PRIX64 ";", alias, address));
-    expect_packet(
-        StringPrintf(":X19547%03XN0101000000000303;", alias));
-    expect_packet(
-        StringPrintf(":X19524%03XN090099FF00000000;", alias));
+  TrainDb trainDb_;
+};
+
+// Test helper class that uses storage-based train DB.
+class StoredTrainNodesTest : public AllTrainNodesTestBase {
+ protected:
+  StoredTrainNodesTest() {
+    string empty;
+    empty.resize(cfg_.size());
+    configFile_.write(empty);
   }
 
-  TrainDb trainDb_;
-  openlcb::SimpleInfoFlow infoFlow_{&g_service};
-  openlcb::CanDatagramService datagramService_{ifCan_.get(), 5, 2};
-  openlcb::MemoryConfigHandler memoryConfigHandler_{&datagramService_, nullptr,
-                                                    5};
-  std::unique_ptr<AllTrainNodes> trainNodes_;
+  void start() {
+    updateFlow_.TEST_set_fd(configFile_.fd());
+    wait();
+    // print_all_packets();
+    expect_train_start(0x440, const_lokdb[0].address);
+    expect_train_start(0x441, const_lokdb[1].address);
+    expect_train_start(0x442, const_lokdb[2].address);
+    BlockExecutor b(nullptr);
+    trainNodes_.reset(new AllTrainNodes{&trainDb_, &trainService_, &infoFlow_,
+	  &memoryConfigHandler_});
+    b.release_block();
+    // TODO: there is a race condition here but I'm not sure why.
+    wait();
+    wait();
+  }
+  
+  ~StoredTrainNodesTest() { wait(); }
+
+  TrainDbConfig cfg_{0};
+  TrainDb trainDb_{cfg_};
+  TempFile configFile_{*TempDir::instance(), "db_cdi_file"};
 };
+
 
 } // namespace commandstation

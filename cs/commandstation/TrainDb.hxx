@@ -140,7 +140,7 @@ class TrainDb {
    * found. @param hint is a train_id that might be a match. */
   std::shared_ptr<TrainDbEntry> find_entry(openlcb::NodeID traction_node_id,
                                            unsigned hint = 0) {
-    if (hint <= entries_.size() &&
+    if (hint < entries_.size() &&
         entries_[hint]->get_traction_node() == traction_node_id) {
       return entries_[hint];
     }
