@@ -192,7 +192,7 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
       address_prefix /= 10;
     }
   }
-  if ((mode != DCCMODE_DEFAULT) && (event & EXACT) && (event & ALLOCATE)) {
+  if ((mode != DCCMODE_DEFAULT) && (event & EXACT) && (event & ALLOCATE) && (event & ADDRESS_ONLY)) {
     // Request specified a drive mode and allocation. We check the drive mode
     // to match.
     if (desired_address_type != actual_address_type) {
@@ -302,7 +302,8 @@ openlcb::EventId FindProtocolDefs::input_to_allocate(const string& input) {
     return 0;
   }
   auto event = input_to_event(input);
-  event |= (FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT);
+  event |= (FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT |
+            FindProtocolDefs::ADDRESS_ONLY);
   return event;
 }
 

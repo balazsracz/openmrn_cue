@@ -181,6 +181,31 @@ TEST_F(FindProtocolTest, WithAllocateDefault28) {
   EXPECT_EQ("23S", entry->get_train_name());
 }
 
+// Regression test for #132
+TEST_F(FindProtocolTest, WithAllocateShort6) {
+  // Check down the train initialization part.
+  wait();
+  clear_expect(true); // strict
+  expect_packet(":X19544440N090099FFFFFFF600;");
+  send_packet(":X19914123N090099FFFFFFF600;");
+  wait();
+  clear_expect(true); // strict
+  expect_train_start(0x443, 6, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544443N090099FFFFFFF6E0;");
+  send_packet(":X19914471N090099FFFFFFF6E0;");
+  wait();
+  while (!trainNodes_->find_flow_is_idle()) {
+    usleep(100);
+  }
+  wait();
+  clear_expect();
+  // Checks that the new train is indeed DCC with address 6.
+  auto entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  EXPECT_EQ(DCC_128, entry->get_legacy_drive_mode());
+  EXPECT_EQ(6, entry->get_legacy_address());
+  EXPECT_EQ("6S", entry->get_train_name());
+}
+
 TEST_F(FindProtocolTest, WithAllocateDefaultMarklin) {
   ScopedOverride so(&FindProtocolDefs::DEFAULT_DRIVE_MODE, MARKLIN_NEW);
   // Check down the train initialization part.
