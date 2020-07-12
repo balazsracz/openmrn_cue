@@ -35,10 +35,12 @@ class TrackPowerTest : public UpdateProcessorTest {
   
   StrictMock<MockDccOutput> mockMain_;
   StrictMock<MockDccOutput> mockLcc_;
-  TrackPowerBit powerBit_{node_,
-                          openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
-                          openlcb::Defs::EMERGENCY_OFF_EVENT};
-  openlcb::BitEventConsumer powerC_{&powerBit_};
+  TrackPowerState power_{node_,  //
+                         openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+                         openlcb::Defs::EMERGENCY_OFF_EVENT,
+                         openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT,
+                         openlcb::Defs::EMERGENCY_STOP_EVENT};
+  openlcb::BitEventConsumer powerC_{power_.get_power_bit()};
 };
 
 TEST_F(TrackPowerTest, create) {
