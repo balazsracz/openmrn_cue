@@ -90,7 +90,20 @@ class AllTrainNodesTestBase : public openlcb::TractionTest {
     expect_packet(
         StringPrintf(":X19524%03XN090099FF00000000;", alias));
   }
-  
+
+  /// Sends an addressed message to the bus. Performs
+  /// synchronous (dynamic) memory allocation so use it sparingly and when
+  /// there is sufficient amount of RAM available.
+  /// @param mti is the message to send
+  /// @param dst is the node to send message to.
+  /// @param payload is the contents of the message
+  void send_message_to(openlcb::Defs::MTI mti, openlcb::NodeHandle dst,
+                       const string& payload = openlcb::EMPTY_PAYLOAD) {
+    auto *b = node_->iface()->addressed_message_write_flow()->alloc();
+    b->data()->reset(mti, node_->node_id(), dst, payload);
+    node_->iface()->addressed_message_write_flow()->send(b);
+  }
+
   openlcb::ConfigUpdateFlow updateFlow_{ifCan_.get()};
   openlcb::SimpleInfoFlow infoFlow_{&g_service};
   openlcb::CanDatagramService datagramService_{ifCan_.get(), 5, 2};

@@ -158,7 +158,7 @@ TEST_F(FindManyTrainTestBase, Create) {}
 
 TEST_F(FindManyTrainTestBase, Search7) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(7, false, DCCMODE_OLCBUSER);
+  b->data()->reset(7, false, DCC_ANY);
   print_all_packets();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
@@ -176,7 +176,7 @@ TEST_F(FindManyTrainTestBase, Search7) {
 
 TEST_F(FindManyTrainTestBase, Search5) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(5, false, DCCMODE_OLCBUSER);
+  b->data()->reset(5, false, DCC_ANY);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
@@ -206,7 +206,7 @@ TEST_F(FindManyTrainTestBase, Search5) {
   printf("restrict search.\n");
   // Restrict the search
   b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(51, false, DCCMODE_OLCBUSER);
+  b->data()->reset(51, false, DCCMODE_DEFAULT);
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(2); // no new SNIP lookup.
   EXPECT_CALL(canBus_, mwrite(_)).Times(AtMost(7));
@@ -238,7 +238,7 @@ TEST_F(FindManyTrainTestBase, Search5) {
 TEST_F(FindManyTrainTestBase, PageSize) {
   trainCache_.set_nodes_to_show(2);
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(5, false, DCCMODE_OLCBUSER);
+  b->data()->reset(5, false, DCCMODE_DEFAULT);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
@@ -254,7 +254,7 @@ TEST_F(FindManyTrainTestBase, ScrollToLastLine) {
   trainCache_.set_nodes_to_show(2);
   trainCache_.set_scroll_to_last_line(true);
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(5, false, DCCMODE_OLCBUSER);
+  b->data()->reset(5, false, DCCMODE_DEFAULT);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
@@ -291,7 +291,7 @@ TEST_F(FindManyTrainTestBase, ScrollToLastLine) {
 
 TEST_F(FindManyTrainTestBase, Scroll3) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(3, false, DCCMODE_OLCBUSER);
+  b->data()->reset(3, false, DCCMODE_DEFAULT);
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
   EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
@@ -369,7 +369,7 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
 
 TEST_F(FindManyTrainTestBase, BidirScrollNoPage) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(5, false, DCCMODE_OLCBUSER);
+  b->data()->reset(5, false, DCCMODE_DEFAULT);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
@@ -401,7 +401,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollNoPage) {
 
 TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(3, false, DCCMODE_OLCBUSER);
+  b->data()->reset(3, false, DCCMODE_DEFAULT);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
@@ -476,7 +476,7 @@ TEST_F(FindManyTrainTestBase, BidirScrollWithPage) {
 
 TEST_F(FindManyTrainTestBase, PrefetchTest) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(3, false, DCCMODE_OLCBUSER);
+  b->data()->reset(3, false, DCCMODE_DEFAULT);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
@@ -540,7 +540,7 @@ TEST_F(FindManyTrainTestBase, PrefetchTest) {
 
 TEST_F(FindManyTrainTestBase, ScrollToTest) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(3, false, DCCMODE_OLCBUSER);
+  b->data()->reset(3, false, DCCMODE_DEFAULT);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);
@@ -611,7 +611,7 @@ TEST_F(FindManyTrainTestBase, ScrollToTest) {
 
 TEST_F(FindManyTrainTestBase, ScrollToTestEmpty) {
   auto b = get_buffer_deleter(remoteClient_.alloc());
-  b->data()->reset(831, false, DCCMODE_OLCBUSER);
+  b->data()->reset(831, false, DCCMODE_DEFAULT);
 
   expect_any_packet();
   trainCache_.reset_search(std::move(b), &mockNotifiable_);

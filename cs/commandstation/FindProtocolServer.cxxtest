@@ -477,12 +477,15 @@ TEST_F(MatchNodeTest, with_protocol) {
   // Baseline.
   EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
             check_match(0xFFF123, FindProtocolDefs::EXACT, "Foo", 123));
-  // If the protocol is specified, we return a non-exact match only.
-  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
-            check_match(0xFFF123, MARKLIN_NEW, "Foo", 123));
-  // If exact is needed, no match.
-  EXPECT_FALSE(
-      check_match(0xFFF123, FindProtocolDefs::EXACT | MARKLIN_NEW, "Foo", 123));
+  // If the protocol is specified to be MARKLIN, there is no match as the train
+  // is DCC.
+  EXPECT_FALSE(check_match(0xFFF123, MARKLIN_ANY, "Foo", 123, DCC_28));
+  // But if the train is also marklin, that is fine.
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY | EXACT,
+      check_match(0xFFF123, MARKLIN_ANY, "Foo", 123, MARKLIN_NEW));
+  // If exact is needed, but protocols don't match, no match either.
+  EXPECT_FALSE(check_match(0xFFF123, FindProtocolDefs::EXACT | MARKLIN_NEW,
+                           "Foo", 123, DCC_28));
 
   // A DCC long address received matched against a short-addressed train:
   EXPECT_FALSE(

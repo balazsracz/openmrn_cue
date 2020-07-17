@@ -93,6 +93,19 @@ uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
 }  // namespace
 
 // static
+bool FindProtocolDefs::match_event_to_drive_mode(openlcb::EventId event,
+                                                 DccMode mode) {
+  DccMode req_mode = (DccMode)(event & DCCMODE_PROTOCOL_MASK);
+  if (req_mode == DCCMODE_DEFAULT) {
+    return true;
+  }
+  if (mode == DCCMODE_DEFAULT) {
+    return true;
+  }
+  return dcc_mode_to_protocol(mode) == dcc_mode_to_protocol(req_mode);
+}
+
+// static
 unsigned FindProtocolDefs::query_to_address(openlcb::EventId event,
                                             DccMode* mode) {
   unsigned supplied_address = 0;
@@ -165,9 +178,15 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
   DccMode mode;
   unsigned supplied_address = query_to_address(event, &mode);
   bool has_address_prefix_match = false;
+  auto actual_drive_mode = train->get_legacy_drive_mode();
   auto desired_address_type = dcc_mode_to_address_type(mode, supplied_address);
-  auto actual_address_type = dcc_mode_to_address_type(train->get_legacy_drive_mode(),
-                                              legacy_address);
+  auto actual_address_type =
+      dcc_mode_to_address_type(actual_drive_mode, legacy_address);
+  if (!match_event_to_drive_mode(event, actual_drive_mode)) {
+    // The request specified a restriction on the locomotive mode and this
+    // restriction does not match the current loco.
+    return 0;
+  }
   if (supplied_address == legacy_address) {
     if (actual_address_type == dcc::TrainAddressType::UNSUPPORTED ||
         desired_address_type == dcc::TrainAddressType::UNSPECIFIED ||
