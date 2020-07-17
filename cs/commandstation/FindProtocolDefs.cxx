@@ -55,6 +55,18 @@ namespace {
 /// @returns true for a character that is a digit.
 bool is_number(char c) { return ('0' <= c) && (c <= '9'); }
 
+/// @returns true if the user has any digits as a query.
+bool has_query(openlcb::EventId event) {
+  for (int shift = FindProtocolDefs::TRAIN_FIND_MASK - 4;
+       shift >= FindProtocolDefs::TRAIN_FIND_MASK_LOW; shift -= 4) {
+    uint8_t nibble = (event >> shift) & 0xf;
+    if ((0 <= nibble) && (nibble <= 9)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /// @returns the same bitmask as match_query_to_node.
 uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
   int count_matches = 0;
@@ -75,7 +87,7 @@ uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
   // If we are here, we have exhausted (and matched) all digits that were sent
   // by the query.
   if (count_matches == 0) {
-    // Query had no digits. That's weird and should be incompliant.
+    // Query had no digits. This is handled elsewhere.
     return 0;
   }
   // Look for more digits in the name.
@@ -177,6 +189,7 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
   unsigned legacy_address = train->get_legacy_address();
   DccMode mode;
   unsigned supplied_address = query_to_address(event, &mode);
+  bool req_has_query = has_query(event);
   bool has_address_prefix_match = false;
   auto actual_drive_mode = train->get_legacy_drive_mode();
   auto desired_address_type = dcc_mode_to_address_type(mode, supplied_address);
@@ -221,6 +234,10 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
   if (event & ADDRESS_ONLY) {
     if (((event & EXACT) != 0) || (!has_address_prefix_match)) return 0;
     return MATCH_ANY | ADDRESS_ONLY;
+  }
+  if (!req_has_query) {
+    if ((event & EXACT) != 0) return 0;
+    return MATCH_ANY;
   }
   // Match against the train name string.
   uint8_t first_name_match = 0xFF;

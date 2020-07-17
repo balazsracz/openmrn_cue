@@ -36,6 +36,7 @@ class FindProtocolTest : public AllTrainNodesTest {
     uint64_t event = create_query(nibbles, settings);
     LOG(INFO, "query event: %016" PRIX64, event);
     for (uint16_t alias : results) {
+      SCOPED_TRACE(alias);
       LOG(INFO, "expected result: %x", (unsigned)alias);
       expect_packet(StringPrintf(":X19544%03XN%016" PRIX64 ";", alias, event));
     }
@@ -350,7 +351,8 @@ TEST_F(FindProtocolTest, BunchOfQueries) {
   find_nodes(0x000465, 0, {0x442});
   find_nodes(0xFFFF46, 0, {0x442, 0x441});
   find_nodes(0xFFFFF4, 0, {0x442, 0x441, 0x440});
-  find_nodes(0xFFFFFF, 0, {});
+  print_all_packets();
+  find_nodes(0xFFFFFF, 0, {0x442, 0x441, 0x440});
   find_nodes(0xFFFFFF, FindProtocolDefs::ADDRESS_ONLY, {});
 }
 
@@ -567,7 +569,7 @@ TEST_F(MatchNodeTest, multi_part_name) {
 }
 
 TEST_F(MatchNodeTest, emptyqry) {
-  EXPECT_FALSE(check_match(0xFFFFFF, 0, "BR 123", 555));
+  EXPECT_EQ(MATCH_ANY, check_match(0xFFFFFF, 0, "BR 123", 555));
 }
 
 }  // namespace commandstation
