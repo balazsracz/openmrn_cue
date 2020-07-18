@@ -23,7 +23,6 @@
 * -# Bison (version 3.1)
 * **NOTE:** Potentially your distro's packages will not be this version. You may have to download and compile from source
 * -# flex
-<<<<<<< HEAD
  *
  * **Note** Use Oracle’s JRE instead of the OpenJDK’s offering if you want to use JMRI or STM32CubeMX.
  *
@@ -60,8 +59,8 @@
  * @subsubsection DevKit Hardware Note
  * It is possible to install the 767 board onto the DevKit board.  As the 767 board is significantly 
  * larger than the F303RE board, it will overhang across the area used for the servo headers JP1 and JP2. 
- * We recommend building a DevKit with only the CAN and power sections built to be used for Logic Nodes. <todo
- * insert picture here>
+ * We recommend building a DevKit with only the CAN and power sections built to be used for Logic Nodes. _todo
+ * insert picture here_
  *
  *
  *
@@ -212,7 +211,6 @@
 * There are variables used to determine which events should be produced or consumed by the cue
 * node. The following chart will define the variables and their use.
 *
->>>>>>> 47a7a493ed5fb3317aca09398e4c11b9b8db91c3
   Variable Name | Event ID Source | Type of Event
    ------------- | --------------- | -------------
   red_light true| Block Signal Stop Aspect | Activation
@@ -225,17 +223,23 @@ Next_block true Unoccupied| occu block that signal protects | Inactivation
  *
  * @subsection addcb Adding Code Blocks to Cue
  * To add any code block to Cue, select a block tab. Add a name and select the drop down to "Running". Then, copy the code
- * block into the "Program Text" text box. Once copied, click the save changes button and then use the "More" button and select "Update Complete".
+ * block into the "Program Text" text box. 
+ * @image html LogicNodeProgramBox.png
+ * 
+ * Once copied, click the save changes button and then use the "More" button and select "Update Complete".
+ * @image html LogicUpdateComplete.png
  *
  * It will take at least a few seconds for the code to get copied to the Node from JMRI and then for the Node to compile and activate that copied code.
  * Inside the "Status of Program" text box, you can potentially receive a few different return messages.
  *
+ * @image html LogicCompileBox.png
+ * 
  * Compile OK == Ready for further work
  * Compile OK. Disabled == Check the status drop down to make sure it is enabled. If moving to enable doesn’t seem to take effect after a “Write” command, reboot the logic node.
  * If Okay; hit “Refresh All” and wait. 
  *
  * Once everything redraws inside JMRI, you will note the variable tabs have been renamed:
- * <insert picture>
+ * @image html LogicNode.png
  * 
  *
  *

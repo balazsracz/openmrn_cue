@@ -1,9 +1,13 @@
 warning: source ../src is not a readable file or directory... skipping.
 warning: source ../include is not a readable file or directory... skipping.
-warning: source ./images is not a readable file or directory... skipping.
 warning: source ../src is not a readable file or directory... skipping.
 warning: source ../include is not a readable file or directory... skipping.
 warning: source ../applications is not a readable file or directory... skipping.
 warning: source ../boards is not a readable file or directory... skipping.
-/home/rick/openmrn_cue/doc/cue_start.dox:68: warning: Unsupported xml/html tag <todo> found
-/home/rick/openmrn_cue/doc/cue_start.dox:149: warning: Unsupported xml/html tag <insert> found
+/home/rick/openmrn_cue/doc/cue_start.dox:129: warning: multiple use of section label 'openmrn_cue_location' while adding section, (first occurrence: /home/rick/openmrn_cue/doc/cue_start.dox, line 32)
+/home/rick/openmrn_cue/doc/cue_start.dox:145: warning: multiple use of section label 'targets' while adding section, (first occurrence: /home/rick/openmrn_cue/doc/cue_start.dox, line 48)
+/home/rick/openmrn_cue/doc/cue_start.dox:163: warning: multiple use of section label 'devkit' while adding section, (first occurrence: /home/rick/openmrn_cue/doc/cue_start.dox, line 67)
+/home/rick/openmrn_cue/doc/cue_start.dox:187: warning: multiple use of section label 'tscompile' while adding section, (first occurrence: /home/rick/openmrn_cue/doc/cue_start.dox, line 91)
+/home/rick/openmrn_cue/doc/cue_start.dox:198: warning: multiple use of section label 'nodeid' while adding section, (first occurrence: /home/rick/openmrn_cue/doc/cue_start.dox, line 102)
+/home/rick/openmrn_cue/doc/cue_start.dox:201: warning: multiple use of section label 'logicblock' while adding section, (first occurrence: /home/rick/openmrn_cue/doc/cue_start.dox, line 106)
+/home/rick/openmrn_cue/doc/cue_start.dox:210: warning: multiple use of section label 'variable' while adding section, (first occurrence: /home/rick/openmrn_cue/doc/cue_start.dox, line 118)
