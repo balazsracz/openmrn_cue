@@ -8,6 +8,7 @@
     <docanchor file="cue_start" title="Linux">linux</docanchor>
     <docanchor file="cue_start" title="OpenMRN Cue Location">openmrn_cue_location</docanchor>
     <docanchor file="cue_start" title="Targets">targets</docanchor>
+    <docanchor file="cue_start" title="Hardware Note">DevKit</docanchor>
     <docanchor file="cue_start" title="DevKit and Nucleo for Cue">devkit</docanchor>
     <docanchor file="cue_start" title="Troubleshooting the Compliation Process">tscompile</docanchor>
     <docanchor file="cue_start" title="A Word about NodeIDs">nodeid</docanchor>

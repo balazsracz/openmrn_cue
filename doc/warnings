@@ -4,3 +4,5 @@ warning: source ../src is not a readable file or directory... skipping.
 warning: source ../include is not a readable file or directory... skipping.
 warning: source ../applications is not a readable file or directory... skipping.
 warning: source ../boards is not a readable file or directory... skipping.
+/home/rick/openmrn_cue/doc/cue_start.dox:68: warning: Unsupported xml/html tag <todo> found
+/home/rick/openmrn_cue/doc/cue_start.dox:149: warning: Unsupported xml/html tag <insert> found
