@@ -470,7 +470,8 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
                              openlcb::TrainService* traction_service,
                              openlcb::SimpleInfoFlow* info_flow,
                              openlcb::MemoryConfigHandler* memory_config)
-    : AllTrainNodesInterface(traction_service), db_(db),
+    : AllTrainNodesInterface(traction_service),
+      db_(db),
       memoryConfigService_(memory_config),
       snipHandler_(new TrainSnipHandler(this, info_flow)),
       pipHandler_(new TrainPipHandler(this)) {
@@ -604,8 +605,7 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
 #endif  
   if (impl->train_) {
     trains_.push_back(impl);
-    impl->node_ =
-        new openlcb::TrainNodeForProxy(train_service(), impl->train_);
+    impl->node_ = new openlcb::TrainNodeForProxy(train_service(), impl->train_);
     impl->eventHandler_ =
         new openlcb::FixedEventProducer<openlcb::TractionDefs::IS_TRAIN_EVENT>(
             impl->node_);
@@ -616,7 +616,8 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
   }
 }
 
-openlcb::NodeID AllTrainNodes::allocate_node(DccMode drive_type, unsigned address) {
+openlcb::NodeID AllTrainNodes::allocate_node(DccMode drive_type,
+                                             unsigned address) {
   Impl* impl = create_impl(-1, drive_type, address);
   if (!impl) return 0; // failed.
   impl->id = db_->add_dynamic_entry(new DccTrainDbEntry(address, drive_type));

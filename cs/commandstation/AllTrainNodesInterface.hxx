@@ -36,8 +36,8 @@
 #ifndef _COMMANDSTATION_ALLTRAINNODESINTERFACE_HXX_
 #define _COMMANDSTATION_ALLTRAINNODESINTERFACE_HXX_
 
-#include "openlcb/Defs.hxx"
 #include "commandstation/TrainDbDefs.hxx"
+#include "openlcb/Defs.hxx"
 
 namespace openlcb {
 class TrainService;
@@ -79,7 +79,7 @@ class AllTrainNodesInterface {
   /// mode).
   /// @return the openlcb train node ID, or 0 if the arguments are not valid.
   virtual openlcb::NodeID allocate_node(DccMode mode, unsigned address) = 0;
-  
+
  protected:
   /// Pointer to the traction service instance. Externally owned.
   openlcb::TrainService* trainService_;
