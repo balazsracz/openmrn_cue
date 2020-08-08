@@ -34,6 +34,9 @@
  * @date 13 May 2014
  */
 
+#ifndef _COMMANDSTATION_UPDATEPROCESSOR_HXX_
+#define _COMMANDSTATION_UPDATEPROCESSOR_HXX_
+
 #include <vector>
 #include <algorithm>
 
@@ -161,3 +164,5 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
 };
 
 }  // namespace commandstation
+
+#endif // _COMMANDSTATION_UPDATEPROCESSOR_HXX_
