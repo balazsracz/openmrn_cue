@@ -40,6 +40,7 @@
 
 #include "commandstation/TrainDbDefs.hxx"
 #include "openlcb/Defs.hxx"
+#include "utils/Destructable.hxx"
 
 namespace openlcb {
 class TrainService;
@@ -50,7 +51,7 @@ class TrainDbEntry;
 
 /// Abstract class for the AllTrainNodes that prevents pulling in transitive
 /// dependencies.
-class AllTrainNodesInterface {
+class AllTrainNodesInterface : public Destructable {
  public:
   /// Constructor.
   /// @param service points to the traction service. Externally owned
