@@ -38,9 +38,9 @@
 #include <memory>
 #include <vector>
 
-#include "openlcb/SimpleInfoProtocol.hxx"
-#include "commandstation/TrainDb.hxx"
 #include "commandstation/AllTrainNodesInterface.hxx"
+#include "commandstation/TrainDb.hxx"
+#include "openlcb/SimpleInfoProtocol.hxx"
 
 namespace openlcb {
 class Node;

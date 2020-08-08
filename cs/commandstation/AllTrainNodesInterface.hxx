@@ -1,5 +1,5 @@
 /** \copyright
- * Copyright (c) 2014-2016, Balazs Racz
+ * Copyright (c) 2020, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@
  * dependencies.
  *
  * @author Balazs Racz
- * @date 18 Feb 2016
+ * @date 8 Aug 2020
  */
 
 #ifndef _COMMANDSTATION_ALLTRAINNODESINTERFACE_HXX_
@@ -44,6 +44,7 @@ class TrainService;
 }
 
 namespace commandstation {
+class TrainDbEntry;
 
 /// Abstract class for the AllTrainNodes that prevents pulling in transitive
 /// dependencies.
@@ -65,8 +66,7 @@ class AllTrainNodesInterface {
   /// @return the train database entry for a given train index, or nullptr if
   /// the train index is not valid.
   /// @param index 0..size() - 1.
-  virtual std::shared_ptr<commandstation::TrainDbEntry> get_traindb_entry(
-      size_t index) = 0;
+  virtual std::shared_ptr<TrainDbEntry> get_traindb_entry(size_t index) = 0;
 
   /// @return the openlcb train node ID for a given train index, or 0 if
   /// the train index is not valid.
