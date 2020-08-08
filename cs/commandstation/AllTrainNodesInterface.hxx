@@ -36,6 +36,8 @@
 #ifndef _COMMANDSTATION_ALLTRAINNODESINTERFACE_HXX_
 #define _COMMANDSTATION_ALLTRAINNODESINTERFACE_HXX_
 
+#include <memory>
+
 #include "commandstation/TrainDbDefs.hxx"
 #include "openlcb/Defs.hxx"
 
