@@ -83,6 +83,12 @@ class AllTrainNodesInterface : public Destructable {
   /// @return the openlcb train node ID, or 0 if the arguments are not valid.
   virtual openlcb::NodeID allocate_node(DccMode mode, unsigned address) = 0;
 
+#ifdef GTEST
+  /// @return true if the locomotive find flow has completed processing all
+  /// past requests.
+  virtual bool find_flow_is_idle() = 0;
+#endif  
+  
  protected:
   /// Pointer to the traction service instance. Externally owned.
   openlcb::TrainService* trainService_;
