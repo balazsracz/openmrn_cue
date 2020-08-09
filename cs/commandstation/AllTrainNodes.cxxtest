@@ -39,11 +39,6 @@
 
 namespace commandstation {
 
-// These components of the command station are needed in order to instantiate
-// real dcc train impl objects.
-DccPacketSink g_hardware;
-UpdateProcessor g_update_processor{&g_service, &g_hardware};
-
 TEST_F(AllTrainNodesTest, CreateDestroy) {}
 
 TEST_F(AllTrainNodesTest, PIPRequest) {

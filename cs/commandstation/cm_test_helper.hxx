@@ -1,7 +1,7 @@
 #include "commandstation/AllTrainNodes.hxx"
+#include "commandstation/UpdateProcessor.hxx"
 #include "commandstation/TrainDb.hxx"
 #include "utils/async_traction_test_helper.hxx"
-
 #include "openlcb/SimpleInfoProtocol.hxx"
 #include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "openlcb/ConfigUpdateFlow.hxx"
@@ -18,6 +18,21 @@ extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 }
 
 namespace commandstation {
+
+/// Fake track interface. Receives DCC packets from the packet update loop, and
+/// drops them on the floor.
+class DccPacketSink : public dcc::PacketFlowInterface {
+ public:
+  /// Virtual entry point for receiving the next packet.
+  void send(Buffer<dcc::Packet>* b, unsigned prio) {
+    b->unref();
+  }
+};
+
+// These components of the command station are needed in order to instantiate
+// real dcc train impl objects.
+DccPacketSink g_hardware;
+UpdateProcessor g_update_processor{&g_service, &g_hardware};
 
 const struct const_traindb_entry_t const_lokdb[] = {
     // 0
@@ -49,13 +64,6 @@ const struct const_traindb_entry_t const_lokdb[] = {
 
 extern const size_t const_lokdb_size =
     sizeof(const_lokdb) / sizeof(const_lokdb[0]);
-
-class DccPacketSink : public dcc::PacketFlowInterface {
- public:
-  void send(Buffer<dcc::Packet>* b, unsigned prio) {
-    b->unref();
-  }
-};
 
 extern const char TRAINCDI_DATA[] = "Test cdi data";
 extern const size_t TRAINCDI_SIZE = sizeof(TRAINCDI_DATA);
@@ -109,7 +117,7 @@ class AllTrainNodesTestBase : public openlcb::TractionTest {
   openlcb::CanDatagramService datagramService_{ifCan_.get(), 5, 2};
   openlcb::MemoryConfigHandler memoryConfigHandler_{&datagramService_, nullptr,
                                                     5};
-  std::unique_ptr<AllTrainNodes> trainNodes_;
+  std::unique_ptr<AllTrainNodesInterface> trainNodes_;
 };
 
 class AllTrainNodesTest : public AllTrainNodesTestBase {
