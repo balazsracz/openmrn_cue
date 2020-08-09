@@ -19,8 +19,11 @@ extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 
 namespace commandstation {
 
+/// Fake track interface. Receives DCC packets from the packet update loop, and
+/// drops them on the floor.
 class DccPacketSink : public dcc::PacketFlowInterface {
  public:
+  /// Virtual entry point for receiving the next packet.
   void send(Buffer<dcc::Packet>* b, unsigned prio) {
     b->unref();
   }
