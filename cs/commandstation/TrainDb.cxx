@@ -49,10 +49,10 @@ class PtrTrainDbEntry : public TrainDbEntry {
   void start_read_functions() override { init(); }
 
  protected:
-  /** Child classes must call tis once after creation. */
+  /** Child classes must call this once after creation. */
   void init() {
     maxFn_ = 0;
-    for (int i = 0; i < DCC_MAX_FN; ++i) {
+    for (unsigned i = 0; i < DCC_MAX_FN; ++i) {
       if (entry()->function_labels[i] != FN_NONEXISTANT) {
         maxFn_ = i + 1;
       }

@@ -40,7 +40,7 @@
 
 namespace commandstation {
 
-#define DCC_MAX_FN 29
+static constexpr unsigned DCC_MAX_FN = 29;
 
 
 enum Symbols {
