@@ -136,12 +136,10 @@ class DccTrainDbEntry : public TrainDbEntry {
 struct AllTrainNodes::Impl {
  public:
   ~Impl() {
-    delete eventHandler_;
     delete node_;
     delete train_;
   }
   int id;
-  openlcb::SimpleEventHandler* eventHandler_ = nullptr;
   openlcb::Node* node_ = nullptr;
   openlcb::TrainImpl* train_ = nullptr;
 };
@@ -606,9 +604,6 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
   if (impl->train_) {
     trains_.push_back(impl);
     impl->node_ = new openlcb::TrainNodeForProxy(train_service(), impl->train_);
-    impl->eventHandler_ =
-        new openlcb::FixedEventProducer<openlcb::TractionDefs::IS_TRAIN_EVENT>(
-            impl->node_);
     return impl;
   } else {
     delete impl;
