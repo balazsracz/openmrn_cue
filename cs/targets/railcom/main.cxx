@@ -61,6 +61,7 @@
 
 #include "freertos_drivers/ti/TivaCpuLoad.hxx"
 #include "utils/CpuDisplay.hxx"
+#include "utils/stdio_logging.h"
 
 
 TivaCpuLoad<TivaCpuLoadDefHw> load_monitor;
@@ -304,6 +305,8 @@ void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
+  LOG(ALWAYS, "hello world");
+  
   LED_BLUE_Pin::set(false);
   stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
   int fd = ::open(openlcb::CONFIG_FILENAME, O_RDWR);
