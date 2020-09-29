@@ -32,6 +32,8 @@
  * @date 5 Jun 2015
  */
 
+#define _DEFAULT_SOURCE // for usleep
+
 #include <functional>
 
 #include "os/os.h"
@@ -88,7 +90,7 @@ extern const char* const openlcb::SNIP_DYNAMIC_FILENAME =
     openlcb::CONFIG_FILENAME;
 extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
-static_assert(openlcb::CONFIG_FILE_SIZE <= 1024, "Need to adjust eeprom size");
+static_assert(openlcb::CONFIG_FILE_SIZE <= 1524, "Need to adjust eeprom size");
 
 typedef BLINKER_Pin LED_RED_Pin;
 
@@ -321,7 +323,7 @@ int appl_main(int argc, char* argv[]) {
       cfg.seg().current().overcurrent().count_total().read(fd),
       cfg.seg().current().overcurrent().min_active().read(fd)};
 
-  static bracz_custom::DetectorOptions opts(cfg.seg().detector_options());
+  static bracz_custom::DetectorOptions opts(cfg.seg().detector_options(), 6);
   
   static bracz_custom::DetectorPort ports[6] = {
       {stack.node(), 0, fd, cfg.seg().detectors().entry<0>(), opts},
