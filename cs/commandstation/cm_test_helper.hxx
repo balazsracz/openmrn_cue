@@ -138,6 +138,13 @@ class AllTrainNodesTest : public AllTrainNodesTestBase {
 
   ~AllTrainNodesTest() { wait(); }
 
+  /// Lookup a TrainDB entry from the AllTrainNodes object.
+  /// @param id the train ID, 0.. train_nodes()->size() - 1.
+  /// @return the train DB entry or a nullptr if it is invalid.
+  std::shared_ptr<commandstation::TrainDbEntry> get_traindb_entry(int id) {
+    return trainDb_.get_entry(id);
+  }
+
   TrainDb trainDb_;
 };
 
@@ -167,6 +174,10 @@ class StoredTrainNodesTest : public AllTrainNodesTestBase {
   }
   
   ~StoredTrainNodesTest() { wait(); }
+
+  std::shared_ptr<commandstation::TrainDbEntry> get_traindb_entry(int id) {
+    return trainDb_.get_entry(id);
+  }
 
   TrainDbConfig cfg_{0};
   TrainDb trainDb_{cfg_};

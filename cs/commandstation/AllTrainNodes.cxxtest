@@ -54,8 +54,8 @@ TEST_F(AllTrainNodesTest, CreateNode) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(183, db_entry->get_legacy_address());
   EXPECT_EQ(string("183"), db_entry->get_train_name());
 }
@@ -67,8 +67,8 @@ TEST_F(AllTrainNodesTest, CreateNodeShort) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(18, db_entry->get_legacy_address());
   EXPECT_EQ(string("18S"), db_entry->get_train_name());
 }
@@ -80,8 +80,8 @@ TEST_F(AllTrainNodesTest, CreateNodeLong) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(18, db_entry->get_legacy_address());
   EXPECT_EQ(string("018L"), db_entry->get_train_name());
 }
@@ -93,8 +93,8 @@ TEST_F(AllTrainNodesTest, CreateNodeMarklin) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(13, db_entry->get_legacy_address());
   EXPECT_EQ(string("13M"), db_entry->get_train_name());
 }
@@ -144,7 +144,7 @@ TEST_F(StoredTrainNodesTest, create_with_train_search_7) {
   expect_train_start(0x443, 53, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
   start();
 
-  auto db_entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  auto db_entry = get_traindb_entry(trainNodes_->size() - 1);
   
   clear_expect(true); // strict
   expect_packet(":X19544443N090099FFFFFFF700;");
@@ -170,7 +170,7 @@ TEST_F(StoredTrainNodesTest, create_with_train_search_7) {
       FindProtocolDefs::match_query_to_node(0x090099FFFFFFF7C0, db_entry.get()));
 
   
-  db_entry = trainNodes_->get_traindb_entry(0);
+  db_entry = get_traindb_entry(0);
 
   EXPECT_EQ("Am 843 093-6", db_entry->get_train_name());
   EXPECT_EQ(43, db_entry->get_legacy_address());
@@ -193,7 +193,7 @@ TEST_F(StoredTrainNodesTest, create_with_train_search_7_alt) {
   expect_train_start(0x443, 53, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
   start();
 
-  auto db_entry = trainNodes_->get_traindb_entry(trainNodes_->size() - 1);
+  auto db_entry = get_traindb_entry(trainNodes_->size() - 1);
   
   clear_expect(true); // strict
   expect_packet(":X19544443N090099FFFFFFF700;");
@@ -219,7 +219,7 @@ TEST_F(StoredTrainNodesTest, create_with_train_search_7_alt) {
       FindProtocolDefs::match_query_to_node(0x090099FFFFFFF7C0, db_entry.get()));
 
   
-  db_entry = trainNodes_->get_traindb_entry(0);
+  db_entry = get_traindb_entry(0);
 
   EXPECT_EQ("Am 843 093-6", db_entry->get_train_name());
   EXPECT_EQ(43, db_entry->get_legacy_address());

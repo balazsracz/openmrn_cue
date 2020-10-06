@@ -379,21 +379,7 @@ class FindTrainNode : public StateFlow<Buffer<FindTrainNodeRequest>, QList<1>> {
       remoteLookupFlow_(node) {}
 
  private:
-  Action entry() override { return call_immediately(STATE(try_find_in_db)); }
-
-  /** Looks through all nodes that exist in the train DB and tries to find one
-   * with the given legacy address. */
-  Action try_find_in_db() {
-    for (unsigned train_id = 0; train_id < allTrainNodes_->size(); ++train_id) {
-      auto e = allTrainNodes_->get_traindb_entry(train_id);
-      if (!e.get() || input()->address != e->get_legacy_address()) {
-        continue;
-      }
-      // TODO: check drive mode.
-      return return_ok(allTrainNodes_->get_train_node_id(train_id));
-    }
-    return call_immediately(STATE(try_find_on_openlcb));
-  }
+  Action entry() override { return call_immediately(STATE(try_find_on_openlcb)); }
 
   Action try_find_on_openlcb() {
     return invoke_subflow_and_wait(&remoteLookupFlow_, STATE(olcb_find_done),

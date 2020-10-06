@@ -63,7 +63,7 @@ class FindTrainNodeTest : public TrainDbTest {
 
 TEST_F(FindTrainNodeTest, CreateDestroy) { wait(); }
 
-TEST_F(FindTrainNodeTest, FindLocalTrain) { 
+TEST_F(FindTrainNodeTest, DISABLED_FindLocalTrain) { 
   wait();
   auto b = invoke_flow(&findFlow_, (DccMode)0, 51);
 
@@ -71,7 +71,7 @@ TEST_F(FindTrainNodeTest, FindLocalTrain) {
   EXPECT_EQ(0x060100000000u | 51u, b->data()->nodeId);
 }
 
-TEST_F(FindTrainNodeTest, FindLocalTrainLong) { 
+TEST_F(FindTrainNodeTest, DISABLED_FindLocalTrainLong) { 
   /// @todo (balazs.racz) remove FindTrainNode class and it's tests. These
   /// tests do no longer represent realistic usage of this class, but there are
   /// no production usage dependencies on it anyway. RemoteFindTrainFlow
@@ -82,7 +82,7 @@ TEST_F(FindTrainNodeTest, FindLocalTrainLong) {
   EXPECT_EQ(0x06010000C000u | 2u, b->data()->nodeId);
 }
 
-TEST_F(FindTrainNodeTest, FindLocalTrainLong2) { 
+TEST_F(FindTrainNodeTest, DISABLED_FindLocalTrainLong2) { 
   auto b = invoke_flow(&findFlow_, (DccMode) 0, 350);
 
   EXPECT_EQ(0, b->data()->resultCode);
