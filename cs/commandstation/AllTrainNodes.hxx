@@ -63,7 +63,8 @@ class AllTrainNodes : public AllTrainNodesInterface {
   openlcb::TrainImpl* get_train_impl(int id);
 
   /// Returns a traindb entry or nullptr if the id is too high.
-  std::shared_ptr<TrainDbEntry> get_traindb_entry(size_t id) override;
+  std::shared_ptr<TrainDbEntry> get_traindb_entry(size_t id,
+                                                  Notifiable* done) override;
 
   /// Returns a node id or 0 if the id is not known to be a train.
   openlcb::NodeID get_train_node_id(size_t id) override;

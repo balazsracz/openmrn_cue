@@ -168,7 +168,9 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::NodeID node_id) {
 }
 
 /// Returns a traindb entry or nullptr if the id is too high.
-std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(size_t id) {
+std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(
+    size_t id, Notifiable* done) {
+  done->notify();
   return db_->get_entry(id);
 }
 
@@ -205,7 +207,7 @@ class AllTrainNodes::TrainSnipHandler
 
   Action send_response_request() {
     auto* b = get_allocation_result(responseFlow_);
-    auto entry = parent_->get_traindb_entry(impl_->id);
+    auto entry = parent_->db_->get_entry(impl_->id);
     if (entry.get()) {
       snipName_ = entry->get_train_name();
     } else {
@@ -345,7 +347,7 @@ class AllTrainNodes::TrainFDISpace : public openlcb::MemorySpace {
 
  private:
   void reset_file() {
-    auto e = parent_->get_traindb_entry(impl_->id);
+    auto e = parent_->db_->get_entry(impl_->id);
     e->start_read_functions();
     gen_.reset(std::move(e));
   }
