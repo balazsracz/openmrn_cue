@@ -140,6 +140,9 @@ enum DccMode {
   /// Mask for testing whether the protocol is a Markin-Motorola protocol
   /// variant.
   MARKLIN_ANY_MASK = 0b11100,
+  /// Mask for the Marklin protocol version speed step setting.
+  MARKLIN_V_MASK = 0b00011,
+  
   /// Acquisition for a Marklin locomotive with default setting.
   MARKLIN_DEFAULT = MARKLIN_ANY,
   /// Force MM protocol version 1 (F0 only).
