@@ -71,6 +71,7 @@ struct RailcomDefs
     static void disable_measurement() {}
 
     static bool need_ch1_cutout() { return true; }
+    static void middle_cutout_hook() {}
 
     static uint32_t get_timer_tick() { return 0; }
 
