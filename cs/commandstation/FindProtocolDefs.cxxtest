@@ -45,6 +45,11 @@ string A2Q(unsigned address, bool exact, int mode) {
       FindProtocolDefs::address_to_query(address, exact, (DccMode)mode));
 }
 
+string A2A(unsigned address, bool exact, int mode) {
+  return eventtohex(
+      FindProtocolDefs::address_to_allocate(address, exact, (DccMode)mode));
+}
+
 string I2Q(const string& input) {
   return eventtohex(FindProtocolDefs::input_to_search(input));
 }
@@ -66,6 +71,14 @@ TEST(AddressToQueryTest, simplexlate) {
   // Forced long
   EXPECT_EQ("090099FFFFFF130C", A2Q(13, false, DCC_LONG_ADDRESS | DCC_ANY));
   EXPECT_EQ("090099FF13572100", A2Q(135721, false, 0));
+}
+
+TEST(AddressToAllocateTest, simplexlate) {
+  EXPECT_EQ("090099FFFFFF1380", A2A(13, false, DCCMODE_DEFAULT));
+  EXPECT_EQ("090099FFFFFF1381", A2A(13, false, DCCMODE_OLCBUSER));
+  // Forced long
+  EXPECT_EQ("090099FFFFFF138C", A2A(13, false, DCC_LONG_ADDRESS | DCC_ANY));
+  EXPECT_EQ("090099FF13572180", A2A(135721, false, 0));
 }
 
 TEST(InputToQueryTest, simplexlate) {
