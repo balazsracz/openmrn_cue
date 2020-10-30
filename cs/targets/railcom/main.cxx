@@ -299,13 +299,63 @@ void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
   out->divide = div;
 }
 
+#include "dcc/DccDebug.hxx"
+#include "utils/StringPrintf.hxx"
+#include "utils/FdUtils.hxx"
+
+class DecoderThread : public OSThread
+{
+public:
+    DecoderThread()
+    {
+        start("dcc_printer", 0, 2048);
+    }
+
+    void *entry() override
+    {
+        setblink(0);
+        int fd = ::open("/dev/nrz0", O_RDONLY);
+        HASSERT(fd >= 0);
+        // int wfd = ::open("/dev/serUSB0", O_RDWR);
+        int wfd = ::open("/dev/ser0", O_RDWR);
+        HASSERT(wfd >= 0);
+        string msg = "Hello worlddd!";
+        ::write(wfd, msg.data(), msg.size());
+
+        int cnt = 0;
+        while (1)
+        {
+            DCCPacket packet_data;
+            int sret = ::read(fd, &packet_data, sizeof(packet_data));
+            HASSERT(sret == sizeof(packet_data));
+#if 1
+            long long t = os_get_time_monotonic();
+            string txt = StringPrintf("\n%02d.%06d %04d ",
+                (unsigned)((t / 1000000000) % 100),
+                (unsigned)((t / 1000) % 1000000), cnt % 10000);
+            ::write(wfd, txt.data(), txt.size());
+            txt = dcc::packet_to_string(packet_data);
+            FdUtils::repeated_write(wfd, txt.data(), txt.size());
+            //::write(wfd, txt.data(), txt.size());
+            // we purposefully do not check the return value, because if there
+            // was not enough space in the serial write buffer, we need to throw
+            // away data.
+#endif
+            ++cnt;
+            resetblink((cnt >> 3) & 1);
+        }
+    }
+
+} dcc_test_thread;
+
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
-  LOG(ALWAYS, "hello world");
+  LOG(VERBOSE, "hello world");
   
   LED_BLUE_Pin::set(false);
   stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
