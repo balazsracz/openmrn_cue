@@ -481,6 +481,8 @@ int appl_main(int argc, char* argv[]) {
   dcc_test_thread.start("dcc_printer", 0, 2048);
 #endif  
 
+  DCC_IN_Pin::set_hw();
+
   // Uncomment this line to print all railcom packets to the LCC bus using a
   // non-standard message. This is a lot of traffic, so only useful for
   // debugging.
