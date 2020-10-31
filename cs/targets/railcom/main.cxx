@@ -64,6 +64,17 @@
 #include "utils/stdio_logging.h"
 
 
+
+extern TivaDAC<DACDefs> dac;
+
+OVERRIDE_CONST(main_thread_stack_size, 2500);
+extern const openlcb::NodeID __application_node_id;
+openlcb::SimpleCanStack stack(__application_node_id);
+
+
+/// Set this to 1 to display the CPU load using the RGB led (green/yellow/red).
+#if 0
+
 TivaCpuLoad<TivaCpuLoadDefHw> load_monitor;
 
 extern "C" {
@@ -73,14 +84,13 @@ void timer4a_interrupt_handler(void)
 }
 }
 
-
-extern TivaDAC<DACDefs> dac;
-
-OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const openlcb::NodeID __application_node_id;
-openlcb::SimpleCanStack stack(__application_node_id);
-
 CpuDisplay load_display(stack.service(), LED_RED_Pin::instance(), LED_GREEN_Pin::instance());
+
+using HaveDccSignalPin = DummyPin;
+
+#else
+using HaveDccSignalPin = LED_GREEN_Pin;
+#endif
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
 
@@ -373,7 +383,7 @@ class WatchForDccSignal : public StateFlowBase {
       unsigned diff = current_sample_count - lastSampleCount_;
       constexpr auto num_channel = cfg.seg().detectors().num_repeats();
       if (diff >= SAMPLE_THRESHOLD) {
-        //DEBUG3_Pin::set(true);
+        HaveDccSignalPin::set(true);
         for (unsigned i = 0; i < num_channel; ++i) {
           pports[i].set_have_dcc_signal(true);
         }
@@ -381,7 +391,7 @@ class WatchForDccSignal : public StateFlowBase {
         for (unsigned i = 0; i < num_channel; ++i) {
           pports[i].set_have_dcc_signal(false);
         }
-        //DEBUG3_Pin::set(false);
+        HaveDccSignalPin::set(false);
       }
     }
 
