@@ -415,7 +415,7 @@ class WatchForDccSignal : public StateFlowBase {
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
-  LOG(VERBOSE, "hello world");
+  LOG(ALWAYS, "hello world");
   
   LED_BLUE_Pin::set(false);
   stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
