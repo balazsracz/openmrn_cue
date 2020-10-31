@@ -299,16 +299,20 @@ void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
   out->divide = div;
 }
 
+// Enable this if you want all DCC packets to be printed to the debug USB.
+#if 0
+
 #include "dcc/DccDebug.hxx"
 #include "utils/StringPrintf.hxx"
 #include "utils/FdUtils.hxx"
+
+#define HAVE_DECODER_THREAD
 
 class DecoderThread : public OSThread
 {
 public:
     DecoderThread()
     {
-        start("dcc_printer", 0, 2048);
     }
 
     void *entry() override
@@ -348,6 +352,52 @@ public:
 
 } dcc_test_thread;
 
+#endif
+
+bracz_custom::DetectorPort* pports = nullptr;
+
+class WatchForDccSignal : public StateFlowBase {
+ public:
+  WatchForDccSignal() : StateFlowBase(stack.service()) {
+    start_flow(STATE(sleep_signal));
+  }
+
+ private:
+  Action sleep_signal() {
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(5), STATE(evaluate));
+  }
+
+  Action evaluate() {
+    unsigned current_sample_count = DCCDecode::sampleCount_;
+    if (current_sample_count >= lastSampleCount_) {
+      unsigned diff = current_sample_count - lastSampleCount_;
+      constexpr auto num_channel = cfg.seg().detectors().num_repeats();
+      if (diff >= SAMPLE_THRESHOLD) {
+        //DEBUG3_Pin::set(true);
+        for (unsigned i = 0; i < num_channel; ++i) {
+          pports[i].set_have_dcc_signal(true);
+        }
+      } else {
+        for (unsigned i = 0; i < num_channel; ++i) {
+          pports[i].set_have_dcc_signal(false);
+        }
+        //DEBUG3_Pin::set(false);
+      }
+    }
+
+    lastSampleCount_ = current_sample_count;
+    return call_immediately(STATE(sleep_signal));
+  }
+
+  /// How many samples we should be seeing in a sleep period in order to know
+  /// that DCC signal is active. A sleep period is 5 msec, of which we can have
+  /// 1.5 msec as marklin preamble then 272 usec per bit, which gives 25 cap
+  /// events. This won't work for zero stretching DCC though.
+  static constexpr unsigned SAMPLE_THRESHOLD = 20;
+  /// last seen value of the counter of all samples of the DCC signal.
+  unsigned lastSampleCount_{0};
+  StateFlowTimer timer_{this};
+} g_wait_for_dcc_signal;
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -387,12 +437,12 @@ int appl_main(int argc, char* argv[]) {
       {stack.node(), 5, fd, cfg.seg().detectors().entry<5>(), opts},
   };
 
-  bracz_custom::DetectorPort* pports = ports;
+  pports = ports;
 
   auto occupancy_proxy =
-      [pports](unsigned ch, bool value) { pports[ch].set_occupancy(value); };
+      [](unsigned ch, bool value) { pports[ch].set_occupancy(value); };
   auto overcurrent_proxy =
-      [pports](unsigned ch, bool value) { pports[ch].set_overcurrent(value); };
+      [](unsigned ch, bool value) { pports[ch].set_overcurrent(value); };
 
   static RailcomOccupancyDecoder<CountingDebouncer> occ_decoder(
       0xff, 6, occupancy_proxy, occupancy_debouncer_opts);
@@ -412,13 +462,20 @@ int appl_main(int argc, char* argv[]) {
 
   *stat_led_ptr() = 0;
 
-  // we need to enable the dcc receiving driver.
-  ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
   HubDeviceNonBlock<dcc::RailcomHubFlow> railcom_port(&railcom_hub,
                                                       "/dev/railcom");
-  // occupancy info will be proxied by the broadcast decoder
-  // railcom_hub.register_port(&occupancy_report);
-  //openlcb::RailcomToOpenLCBDebugProxy debugproxy(&railcom_hub, stack.node(), nullptr);
+  // we need to enable the dcc receiving driver, but only AFTER the railcom
+  // driver was opened.
+  ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
+#ifdef HAVE_DECODER_THREAD
+  dcc_test_thread.start("dcc_printer", 0, 2048);
+#endif  
+
+  // Uncomment this line to print all railcom packets to the LCC bus using a
+  // non-standard message. This is a lot of traffic, so only useful for
+  // debugging.
+  //
+  // openlcb::RailcomToOpenLCBDebugProxy debugproxy(&railcom_hub, stack.node(), nullptr);
 
   stack.loop_executor();
   return 0;
