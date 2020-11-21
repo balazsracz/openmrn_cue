@@ -326,9 +326,9 @@ TEST_F(FindProtocolTest, AllocateAndFind) {
   twait();
 
   clear_expect(true); // strict
-  expect_train_start(0x33A, 23, dcc::TrainAddressType::DCC_LONG_ADDRESS);
+  expect_train_start(0x444, 23, dcc::TrainAddressType::DCC_LONG_ADDRESS);
   // now address 23 long
-  expect_packet(":X1954433AN090099FFFFF023C0;");
+  expect_packet(":X19544444N090099FFFFF023C0;");
   send_packet(":X19914123N090099FFFFF023C0;");
   twait();
 }

@@ -75,13 +75,11 @@ extern const size_t TRAINTMPCDI_SIZE = sizeof(TRAINTMPCDI_DATA);
 class AllTrainNodesTestBase : public openlcb::TractionTest {
  protected:
   AllTrainNodesTestBase() {
-    // create_allocated_alias();
     inject_allocated_alias(0x440);
     inject_allocated_alias(0x441);
     inject_allocated_alias(0x442);
     inject_allocated_alias(0x443);
-    inject_allocated_alias(0x33A);
-    inject_allocated_alias(0x33B);
+    inject_allocated_alias(0x444);
   }
 
   void wait() {
