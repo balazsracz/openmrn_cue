@@ -132,10 +132,6 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
  protected:
   RemoteFindTrainNodeTest() {
     secondIf_.add_addressed_message_support();
-    run_x([this](){
-      secondIf_.alias_allocator()->TEST_add_allocated_alias(0x922);
-    });
-
     wait();
     print_all_packets();
   }
@@ -147,6 +143,9 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
   const uint64_t SECOND_NODE_ID = openlcb::TEST_NODE_ID + 256;
   openlcb::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
   openlcb::AddAliasAllocator secAdd{SECOND_NODE_ID, &secondIf_};
+  RunInConstructOnMain aliasCreate_{[this]() {
+    secondIf_.alias_allocator()->TEST_add_allocated_alias(0x922);
+  }};
   openlcb::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
 
   RemoteFindTrainNode remoteClient_{&secondNode_};
