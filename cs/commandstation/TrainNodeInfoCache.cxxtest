@@ -75,10 +75,6 @@ class FindManyTrainTestBase : public TrainDbTest {
 
   FindManyTrainTestBase() {
     secondIf_.add_addressed_message_support();
-    // Adds one alias buffer to the alias allocation flow.
-    run_x([this](){
-      secondIf_.alias_allocator()->TEST_add_allocated_alias(0x922);
-    });
     wait();
     trainCache_.set_cache_max_size(16, 4);
     trainCache_.set_nodes_to_show(3);
@@ -135,6 +131,9 @@ class FindManyTrainTestBase : public TrainDbTest {
   const uint64_t SECOND_NODE_ID = openlcb::TEST_NODE_ID + 256;
   openlcb::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
   openlcb::AddAliasAllocator aa_{SECOND_NODE_ID, &secondIf_};
+  RunInConstructOnMain addAlias_{[this]() {
+    secondIf_.alias_allocator()->TEST_add_allocated_alias(0x922);
+  }};
   openlcb::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
 
   RemoteFindTrainNode remoteClient_{&secondNode_};
