@@ -128,8 +128,8 @@ TEST_F(StoredTrainNodesTest, create_with_train_search_6) {
   wait();
   clear_expect(true); // strict
 
-  expect_train_start(0x33A, 6, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
-  expect_packet(":X1954433AN090099FFFFFFF6E0;");
+  expect_train_start(0x444, 6, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544444N090099FFFFFFF6E0;");
   send_packet(  ":X19914471N090099FFFFFFF6E0;");
   twait();
   clear_expect(true); // strict
@@ -152,8 +152,8 @@ TEST_F(StoredTrainNodesTest, create_with_train_search_7) {
   wait();
   clear_expect(true); // strict
 
-  expect_train_start(0x33A, 7, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
-  expect_packet(":X1954433AN090099FFFFFFF7E0;");
+  expect_train_start(0x444, 7, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544444N090099FFFFFFF7E0;");
   send_packet(  ":X19914471N090099FFFFFFF7E0;");
   twait();
   clear_expect(true); // strict
@@ -201,8 +201,8 @@ TEST_F(StoredTrainNodesTest, create_with_train_search_7_alt) {
   wait();
   clear_expect(true); // strict
 
-  expect_train_start(0x33A, 7, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
-  expect_packet(":X1954433AN090099FFFFFFF7E0;");
+  expect_train_start(0x444, 7, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544444N090099FFFFFFF7E0;");
   send_packet(  ":X19914471N090099FFFFFFF7E0;");
   twait();
   clear_expect(true); // strict
