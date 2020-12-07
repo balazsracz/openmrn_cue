@@ -133,6 +133,9 @@ struct DccHwDefs {
    *  packet '1' bit) */
   static int dcc_preamble_count() { return 16; }
 
+  /** @return whether we need the half-zero after the railcom cutout. */
+  static bool generate_railcom_halfzero() { return true; }
+
   static void flip_led() {
     io::TrackPktLed::toggle();
   }
