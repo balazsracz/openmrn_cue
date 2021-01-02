@@ -430,7 +430,7 @@ class ProgrammingTrackFrontend
   /// Beignning of paged mode operation. Sends out the page preset
   /// instructions.
   Action send_page_preset() {
-    unsigned page = request()->cvOffset_ / 4 + 1;
+    unsigned page = (request()->cvOffset_ / 4 + 1) & 0xFF;
     // cvOffset_ and pagedRegister_ are both zero based.
     pagedRegister_ = request()->cvOffset_ & 3;
     // In order to make paged and register mode be compatible, we special case
@@ -445,14 +445,6 @@ class ProgrammingTrackFrontend
         page = 1;
         pagedRegister_ = 4;
         break;
-      case 1020:
-      case 1021:
-      case 1022:
-      case 1023:
-        // These have an invalid page preset. We will map them to register mode
-        // addressing instead for registers 5-8.
-        page = 1;
-        pagedRegister_ = request()->cvOffset_ - 1020 + 4;
     }
     serviceModePacket_.set_dcc_svc_paged_set_page(page);
     foundAck_ = 0;
