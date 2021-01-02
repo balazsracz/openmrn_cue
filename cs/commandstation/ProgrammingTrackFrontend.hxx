@@ -46,6 +46,9 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
   enum DirectReadBit { DIRECT_READ_BIT };
   enum PomWriteByte { POM_WRITE_BYTE };
   enum PomReadByte { POM_READ_BYTE };
+  enum PagedWriteByte { PAGED_WRITE_BYTE };
+  enum PagedVerifyByte { PAGED_VERIFY_BYTE };
+  enum PagedReadByte { PAGED_READ_BYTE };
 
   /// Request to write a byte sized CV in direct mode.
   /// @param cv_number is the 1-based CV number (as the user sees it).
@@ -67,6 +70,27 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     cmd_ = Type::POM_WRITE_BYTE;
     addrType_ = addrtype;
     dccAddress_ = dcc_address;
+    cvOffset_ = cv_number - 1;
+    value_ = value;
+  }
+
+  /// Request to write a byte sized CV in paged mode.
+  /// @param cv_number is the 1-based CV number (as the user sees it).
+  /// @param value is the value to set the CV to.
+  void reset(PagedWriteByte, unsigned cv_number, uint8_t value) {
+    reset_base();
+    cmd_ = Type::PAGED_WRITE_BYTE;
+    cvOffset_ = cv_number - 1;
+    value_ = value;
+  }
+
+  /// Request to verify a byte sized CV in paged mode. Returns OK if the verify
+  /// succeeds, and ERROR_FAILED_VERIFY if the verification does not succeed.
+  /// @param cv_number is the 1-based CV number (as the user sees it).
+  /// @param value is the value to check that the CV matches.
+  void reset(PagedVerifyByte, unsigned cv_number, uint8_t value) {
+    reset_base();
+    cmd_ = Type::PAGED_VERIFY_BYTE;
     cvOffset_ = cv_number - 1;
     value_ = value;
   }
@@ -112,7 +136,10 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     DIRECT_READ_BYTE,
     DIRECT_READ_BIT,
     POM_WRITE_BYTE,
-    POM_READ_BYTE
+    POM_READ_BYTE,
+    PAGED_WRITE_BYTE,
+    PAGED_VERIFY_BYTE,
+    PAGED_READ_BYTE
   };
 
   /// What is the instruction to do.
@@ -182,6 +209,8 @@ class ProgrammingTrackFrontend
       case RequestType::DIRECT_WRITE_BIT:
       case RequestType::DIRECT_READ_BYTE:
       case RequestType::DIRECT_READ_BIT:
+      case RequestType::PAGED_WRITE_BYTE:
+      case RequestType::PAGED_VERIFY_BYTE:
         return call_immediately(STATE(enter_service_mode));
       case RequestType::POM_READ_BYTE:
         numTry_ = 0;
@@ -189,6 +218,9 @@ class ProgrammingTrackFrontend
       case RequestType::POM_WRITE_BYTE:
         numTry_ = 0;
         return call_immediately(STATE(pom_write_byte));
+      case RequestType::PAGED_READ_BYTE:
+        // not implemented
+        break;
     }
     return return_with_error(ERROR_UNIMPLEMENTED_CMD);
   }
@@ -218,6 +250,9 @@ class ProgrammingTrackFrontend
         break;
       case RequestType::DIRECT_READ_BYTE:
         return call_immediately(STATE(direct_read_byte));
+      case RequestType::PAGED_WRITE_BYTE:
+      case RequestType::PAGED_VERIFY_BYTE:
+        return call_immediately(STATE(send_page_preset));
       default:
         return exit_unimplemented();
     }
@@ -390,6 +425,133 @@ class ProgrammingTrackFrontend
     return invoke_subflow_and_wait(
         backend_, STATE(return_response),
         ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+  }
+
+  /// Beignning of paged mode operation. Sends out the page preset
+  /// instructions.
+  Action send_page_preset() {
+    unsigned page = request()->cvOffset_ / 4 + 1;
+    // cvOffset_ and pagedRegister_ are both zero based.
+    pagedRegister_ = request()->cvOffset_ & 3;
+    // In order to make paged and register mode be compatible, we special case
+    // some CV numbers.
+    switch (request()->cvOffset_) {
+      case 6:  // cv7
+      case 7:  // cv8
+        page = 1;
+        pagedRegister_ = request()->cvOffset_;
+        break;
+      case 28:  // cv29=basic configuration register, available at reg 0b100.
+        page = 1;
+        pagedRegister_ = 4;
+        break;
+      case 1020:
+      case 1021:
+      case 1022:
+      case 1023:
+        // These have an invalid page preset. We will map them to register mode
+        // addressing instead for registers 5-8.
+        page = 1;
+        pagedRegister_ = request()->cvOffset_ - 1020 + 4;
+    }
+    serviceModePacket_.set_dcc_svc_paged_set_page(page);
+    foundAck_ = 0;
+    hasWriteAck_ = 0;
+    static constexpr bool kTerminateOnAck = true;
+    return invoke_subflow_and_wait(
+        backend_, STATE(send_paged_command),
+        ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
+        (unsigned)DEFAULT_PAGED_PAGESET_REPEATS, kTerminateOnAck);
+  }
+
+  Action send_pageset_cooldown() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    LOG(INFO, "page preset ack %u", b->data()->hasAck_);
+    return invoke_subflow_and_wait(backend_, STATE(send_paged_command),
+                                   ProgrammingTrackRequest::SEND_RESET,
+                                   (unsigned)DEFAULT_PAGED_COOLDOWN_REPEATS);
+  }
+
+  Action send_paged_command() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    LOG(INFO, "page preset ack2 %u", b->data()->hasAck_);
+    static constexpr bool kTerminateOnAck = true;
+    switch (request()->cmd_) {
+      case RequestType::PAGED_WRITE_BYTE:
+        serviceModePacket_.set_dcc_svc_paged_write_reg(pagedRegister_,
+                                                       request()->value_);
+        return invoke_subflow_and_wait(
+            backend_, STATE(paged_write_done),
+            ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET,
+            serviceModePacket_, (unsigned)DEFAULT_PAGED_WRITE_REPEATS,
+            kTerminateOnAck);
+      case RequestType::PAGED_VERIFY_BYTE:
+        serviceModePacket_.set_dcc_svc_paged_verify_reg(pagedRegister_,
+                                                        request()->value_);
+        return invoke_subflow_and_wait(
+            backend_, STATE(check_final_byte),
+            ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET,
+            serviceModePacket_, (unsigned)DEFAULT_PAGED_VERIFY_REPEATS,
+            kTerminateOnAck);
+      default:
+        return exit_unimplemented();
+    }
+  }
+
+  /// Called after having sent the up to 11 write repeats or an ack is seen.
+  Action paged_write_done() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    unsigned repeats = DEFAULT_PAGED_COOLDOWN_REPEATS;
+    if (request()->cvOffset_ == 0) {
+      repeats = DEFAULT_PAGED_ADDRESS_COOLDOWN_REPEATS;
+    }
+    return invoke_subflow_and_wait(backend_, STATE(paged_write_cooldown_done),
+                                   ProgrammingTrackRequest::SEND_RESET,
+                                   repeats);
+  }
+
+  /// After the write cooldown reset packets are sent out. Save the ack bits
+  /// and send out some verify packets.
+  Action paged_write_cooldown_done() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    hasWriteAck_ = foundAck_;
+    foundAck_ = 0;
+    if (request()->cvOffset_ == 7 && request()->value_ == 8) {
+      // Decoder hard reset. We give a lot of time to reset eeprom instead of
+      // verifying.
+      return invoke_subflow_and_wait(
+          backend_, STATE(paged_hard_reset_exit),
+          ProgrammingTrackRequest::SEND_RESET,
+          (unsigned)DEFAULT_PAGED_HARD_RESET_REPEATS);
+    }
+    serviceModePacket_.set_dcc_svc_paged_verify_reg(pagedRegister_,
+                                                    request()->value_);
+    static constexpr bool kTerminateOnAck = true;
+    return invoke_subflow_and_wait(
+        backend_, STATE(write_verify_cooldown_done),
+        ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
+        (unsigned)DEFAULT_PAGED_VERIFY_REPEATS, kTerminateOnAck);
+  }
+
+  /// Called after the hard reset cooldown. Exits service mode.
+  Action paged_hard_reset_exit() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    if (foundAck_ || hasWriteAck_) {
+      request()->resultCode |= ERROR_CODE_OK;
+    } else {
+      request()->resultCode |= ERROR_NO_LOCO;
+    }
+    return invoke_subflow_and_wait(backend_, STATE(return_response),
+                                   ProgrammingTrackRequest::EXIT_SERVICE_MODE);
   }
 
   Action return_response() {
@@ -602,6 +764,21 @@ class ProgrammingTrackFrontend
   /// in railcom.
   static constexpr unsigned DEFAULT_POM_READ_RETRIES = 3;
 
+  /// How many times we send out a paged mode page-set packet.
+  static constexpr unsigned DEFAULT_PAGED_PAGESET_REPEATS = 5;
+  /// How many times we send out a paged mode write packet.
+  static constexpr unsigned DEFAULT_PAGED_WRITE_REPEATS = 5;
+  /// How many times we send out a paged mode verify packet. This includes a
+  /// cooldown.
+  static constexpr unsigned DEFAULT_PAGED_VERIFY_REPEATS = 11;
+  /// How many times we send out a reset packet after a write or page-set
+  /// operation.
+  static constexpr unsigned DEFAULT_PAGED_COOLDOWN_REPEATS = 5;
+  /// How many times we send out a reset packet after an address write.
+  static constexpr unsigned DEFAULT_PAGED_ADDRESS_COOLDOWN_REPEATS = 10;
+  /// How many times we send out a reset packet after a hard reset (CV8=8).
+  static constexpr unsigned DEFAULT_PAGED_HARD_RESET_REPEATS = 100;
+
   /// Error codes used by the POM railcom readout.
   enum {
     ERROR_NOOP = 0,
@@ -644,7 +821,9 @@ class ProgrammingTrackFrontend
   uint8_t seenRailcomBusy_ : 1;
   /// 1 if we have seen any unknown or garbage data from railcom.
   uint8_t seenRailcomGarbage_ : 1;
-  
+  /// Register to use in paged mode. 0-based.
+  uint8_t pagedRegister_ : 3;
+
   StateFlowTimer timer_{this};
   long long deadline_;  //< time when we should give up and return error.
   vector<dcc::RailcomPacket> interpretedResponse_;

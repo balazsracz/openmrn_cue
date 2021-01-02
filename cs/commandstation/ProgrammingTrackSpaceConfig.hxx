@@ -37,9 +37,9 @@ static const char OPERATING_MODE_MAP_VALUES[] = R"(
 <relation><property>0</property><value>Disabled</value></relation>
 <relation><property>1</property><value>Direct mode</value></relation>
 <relation><property>2</property><value>POM mode</value></relation>
+<relation><property>3</property><value>Paged mode</value></relation>
 <relation><property>10</property><value>Advanced mode</value></relation>
 )";
-
 
 CDI_GROUP(ProgrammingTrackSpaceConfigAdvanced);
 CDI_GROUP_ENTRY(
@@ -56,7 +56,7 @@ CDI_GROUP_ENTRY(
 CDI_GROUP_END();
 
 CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(openlcb::MemoryConfigDefs::SPACE_DCC_CV), Offset(0x7F100000),
-          Name("Programming track operation"),
+          Name("Programming Track Operation"),
           Description("Use this component to read and write CVs on the "
                       "programming track of the command station."));
 
@@ -64,31 +64,32 @@ enum OperatingMode {
   DISABLED = 0,
   DIRECT_MODE = 1,
   POM_MODE = 2,
+  PAGED_MODE = 3,
   ADVANCED = 10,
 };
 
-CDI_GROUP_ENTRY(mode, openlcb::Uint32ConfigEntry, Name("Operating mode"), MapValues(OPERATING_MODE_MAP_VALUES));
-CDI_GROUP_ENTRY(cv, openlcb::Uint32ConfigEntry, Name("CV number"), Description("Number of CV to read or write (1..1024)."), Default(0), Min(0), Max(1024));
+CDI_GROUP_ENTRY(mode, openlcb::Uint32ConfigEntry, Name("Operating Mode"), MapValues(OPERATING_MODE_MAP_VALUES));
+CDI_GROUP_ENTRY(cv, openlcb::Uint32ConfigEntry, Name("CV Number"), Description("Number of CV to read or write (1..1024)."), Default(0), Min(0), Max(1024));
 CDI_GROUP_ENTRY(
-    value, openlcb::Uint32ConfigEntry, Name("CV value"),
+    value, openlcb::Uint32ConfigEntry, Name("CV Value"),
     Description(
-        "Set 'Operating mode' and 'CV number' first, then: hit 'Refresh' to "
+        "Set 'Operating Mode' and 'CV Number' first, then: hit 'Refresh' to "
         "read the entire CV, or enter a value and hit 'Write' to set the CV."),
     Default(0), Min(0), Max(255));
 CDI_GROUP_ENTRY(
-    bit_write_value, openlcb::Uint32ConfigEntry, Name("Bit change"),
+    bit_write_value, openlcb::Uint32ConfigEntry, Name("Bit Change"),
     Description(
-        "Set 'Operating mode' and 'CV number' first, then: write 1064 to set "
+        "Set 'Operating Mode' and 'CV Number' first, then: write 1064 to set "
         "the single bit whose value is 64, or 2064 to clear that bit. Write "
         "100 to 107 to set bit index 0 to 7, or 200 to 207 to clear bit 0 to "
         "7. Values outside of these two ranges do nothing."),
     Default(1000), Min(100), Max(2128));
 CDI_GROUP_ENTRY(bit_value_string, openlcb::StringConfigEntry<24>,
-                Name("Read bits decomposition"),
+                Name("Read Bits Decomposition"),
                 Description("Hit Refresh on this line after reading a CV value "
                             "to see which bits are set."));
 CDI_GROUP_ENTRY(advanced, ProgrammingTrackSpaceConfigAdvanced,
-                Name("Advanced settings"));
+                Name("Advanced Settings"));
 struct Shadow;
 CDI_GROUP_END();
 
