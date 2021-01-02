@@ -498,7 +498,7 @@ class ProgrammingTrackFrontend
     }
   }
 
-  /// Called after having sent the up to 11 write repeats or an ack is seen.
+  /// Called after having sent the up to 5 write repeats or an ack is seen.
   Action paged_write_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     if (b->data()->hasAck_) {
@@ -513,7 +513,7 @@ class ProgrammingTrackFrontend
                                    repeats);
   }
 
-  /// After the write cooldown reset packets are sent out. Save the ack bits
+  /// After the write cooldown reset packets are sent out. Saves the ack bits
   /// and send out some verify packets.
   Action paged_write_cooldown_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
