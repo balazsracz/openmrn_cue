@@ -91,17 +91,11 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
 
   size_t write(address_t destination, const uint8_t *data, size_t len,
                errorcode_t *error, Notifiable *again) override {
+    if (!precompute_address(&destination, error)) {
+      return 0;
+    }
     if (destination <= MAX_CV) {
       len = 1;
-      if (pomAddressType_ == dcc::TrainAddressType::UNSPECIFIED) {
-        store_.mode = htobe32(ProgrammingTrackSpaceConfig::DIRECT_MODE);
-      } else if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-                 pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
-        store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
-      } else {
-        *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
-        return 0;
-      }
       store_.cv = htobe32(destination + 1);
       store_.value = htobe32(data[0]);
       return eval_async_state(STATE(do_cv_write), again, error, len);
@@ -137,20 +131,14 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
   
   size_t read(address_t source, uint8_t *dst, size_t len, errorcode_t *error,
               Notifiable *again) override {
+    if (!precompute_address(&source, error)) {
+      return 0;
+    }
     if (source <= MAX_CV) {
       len = 1;
       // saves the stored CV value to the caller buffer in case this is the
       // second call after async done.
       *dst = be32toh(store_.value);
-      if (pomAddressType_ == dcc::TrainAddressType::UNSPECIFIED) {
-        store_.mode = htobe32(ProgrammingTrackSpaceConfig::DIRECT_MODE);
-      } else if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-                 pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
-        store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
-      } else {
-        *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
-        return 0;
-      }
       store_.cv = htobe32(source + 1);
       return eval_async_state(STATE(do_cv_read), again, error, len);
     }
@@ -187,6 +175,58 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     return UPDATED;
   }
 
+  /// Helper function to process the memory space address. Fills in
+  /// store_.mode.
+  /// @param address will be normalized to the 0..1023 CV space if mode
+  /// supported
+  /// @param error will be filled in if the mode is not supported.
+  /// @return false in case of error.
+  bool precompute_address(address_t* address, errorcode_t* error) {
+    if ((*address >> 24) == (MIN_ADDRESS >> 24)) {
+      // The virtual address space.
+      return true;
+    }
+    bool valid_cv = (*address & 0xFFFFFFu) < 1024;
+    if (!valid_cv) {
+      *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+      return false;
+    }
+    switch (*address >> 24) {
+      case 0x00:
+        // Default mode.
+        if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+            pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+          store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
+        } else if (pomAddressType_ == dcc::TrainAddressType::UNSPECIFIED) {
+          store_.mode = htobe32(ProgrammingTrackSpaceConfig::DIRECT_MODE);
+        } else {
+          *error = openlcb::Defs::ERROR_INVALID_ARGS;
+          return false;
+        }
+        break;
+      case 0x01:
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::DIRECT_MODE);
+        break;
+      case 0x02:
+        if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+            pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+          store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
+        } else {
+          *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+          return false;
+        }
+        break;
+      case 0x03:
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::PAGED_MODE);
+        break;
+      default:
+        *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+        return false;
+    }
+    *address &= 0xFFFFFFu;
+    return true;
+  }
+
   /// Helper function for calling async states from write() and read()
   /// commands.
   /// @param start_state is the state flow state to call to startthe async
@@ -220,16 +260,25 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
           ProgrammingTrackFrontendRequest::DIRECT_WRITE_BYTE,
           be32toh(store_.cv), be32toh(store_.value));
     }
-    if ((pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-        pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) &&
-        mode == ProgrammingTrackSpaceConfig::POM_MODE) {
+    if (mode == ProgrammingTrackSpaceConfig::PAGED_MODE) {
       update_bits_decomposition();
       return invoke_subflow_and_wait(
-          frontend_, STATE(cv_read_done),
-          ProgrammingTrackFrontendRequest::POM_WRITE_BYTE, pomAddressType_,
-          pomAddress_, be32toh(store_.cv), be32toh(store_.value));
+          frontend_, STATE(cv_write_done),
+          ProgrammingTrackFrontendRequest::PAGED_WRITE_BYTE, be32toh(store_.cv),
+          be32toh(store_.value));
     }
-    return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
+    if (mode == ProgrammingTrackSpaceConfig::POM_MODE) {
+      if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+          pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+        update_bits_decomposition();
+        return invoke_subflow_and_wait(
+            frontend_, STATE(cv_read_done),
+            ProgrammingTrackFrontendRequest::POM_WRITE_BYTE, pomAddressType_,
+            pomAddress_, be32toh(store_.cv), be32toh(store_.value));
+      }
+      return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
+    }
+    return finish_async_state(openlcb::Defs::ERROR_UNIMPLEMENTED);
   }
 
   Action cv_write_done() {
@@ -311,15 +360,17 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
           ProgrammingTrackFrontendRequest::DIRECT_READ_BYTE,
           be32toh(store_.cv));
     }
-    if ((pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-        pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) &&
-        mode == ProgrammingTrackSpaceConfig::POM_MODE) {
-      return invoke_subflow_and_wait(
-          frontend_, STATE(cv_read_done),
-          ProgrammingTrackFrontendRequest::POM_READ_BYTE, pomAddressType_,
-          pomAddress_, be32toh(store_.cv));
+    if (mode == ProgrammingTrackSpaceConfig::POM_MODE) {
+      if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+          pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+        return invoke_subflow_and_wait(
+            frontend_, STATE(cv_read_done),
+            ProgrammingTrackFrontendRequest::POM_READ_BYTE, pomAddressType_,
+            pomAddress_, be32toh(store_.cv));
+      }
+      return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
     }
-    return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
+    return finish_async_state(openlcb::Defs::ERROR_UNIMPLEMENTED);
   }
 
   Action cv_read_done() {
