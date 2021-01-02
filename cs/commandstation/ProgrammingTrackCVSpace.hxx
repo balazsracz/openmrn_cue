@@ -267,16 +267,18 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
           ProgrammingTrackFrontendRequest::PAGED_WRITE_BYTE, be32toh(store_.cv),
           be32toh(store_.value));
     }
-    if ((pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-        pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) &&
-        mode == ProgrammingTrackSpaceConfig::POM_MODE) {
-      update_bits_decomposition();
-      return invoke_subflow_and_wait(
-          frontend_, STATE(cv_read_done),
-          ProgrammingTrackFrontendRequest::POM_WRITE_BYTE, pomAddressType_,
-          pomAddress_, be32toh(store_.cv), be32toh(store_.value));
+    if (mode == ProgrammingTrackSpaceConfig::POM_MODE) {
+      if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+          pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+        update_bits_decomposition();
+        return invoke_subflow_and_wait(
+            frontend_, STATE(cv_read_done),
+            ProgrammingTrackFrontendRequest::POM_WRITE_BYTE, pomAddressType_,
+            pomAddress_, be32toh(store_.cv), be32toh(store_.value));
+      }
+      return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
     }
-    return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
+    return finish_async_state(openlcb::Defs::ERROR_UNIMPLEMENTED);
   }
 
   Action cv_write_done() {
@@ -358,15 +360,17 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
           ProgrammingTrackFrontendRequest::DIRECT_READ_BYTE,
           be32toh(store_.cv));
     }
-    if ((pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-        pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) &&
-        mode == ProgrammingTrackSpaceConfig::POM_MODE) {
-      return invoke_subflow_and_wait(
-          frontend_, STATE(cv_read_done),
-          ProgrammingTrackFrontendRequest::POM_READ_BYTE, pomAddressType_,
-          pomAddress_, be32toh(store_.cv));
+    if (mode == ProgrammingTrackSpaceConfig::POM_MODE) {
+      if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
+          pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+        return invoke_subflow_and_wait(
+            frontend_, STATE(cv_read_done),
+            ProgrammingTrackFrontendRequest::POM_READ_BYTE, pomAddressType_,
+            pomAddress_, be32toh(store_.cv));
+      }
+      return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
     }
-    return finish_async_state(openlcb::Defs::ERROR_INVALID_ARGS);
+    return finish_async_state(openlcb::Defs::ERROR_UNIMPLEMENTED);
   }
 
   Action cv_read_done() {
