@@ -58,11 +58,62 @@ string I2A(const string& input) {
   return eventtohex(FindProtocolDefs::input_to_allocate(input));
 }
 
+string dcc_mode_to_string(DccMode mode) {
+  switch((unsigned)mode) {
+    case DCCMODE_DEFAULT:
+      return "Not Specified";
+    case DCCMODE_OLCBUSER:
+      return "OpenLCB";
+    case 0b10:
+      return "MFX/M4";
+    default:
+      break;
+  }
+  if ((mode & DCC_ANY_MASK) == DCC_ANY) {
+    string ret = "DCC";
+    switch (mode & DCC_SS_MASK) {
+      case DCC_14 & DCC_SS_MASK:
+        ret += " 14-speed";
+        break;
+      case DCC_28 & DCC_SS_MASK:
+        ret += " 28-speed";
+        break;
+      case DCC_128 & DCC_SS_MASK:
+        ret += " 128-speed";
+        break;
+    }
+    if (mode & DCC_LONG_ADDRESS) {
+      ret += " long address";
+    }
+    return ret;
+  }
+  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY) {
+    string ret = "Marklin-Motorola";
+    switch(mode & MARKLIN_V_MASK) {
+      case MARKLIN_OLD & MARKLIN_V_MASK:
+        ret += " I";
+        break;
+      case MARKLIN_NEW & MARKLIN_V_MASK:
+        ret += " II";
+        break;
+      case MARKLIN_TWOADDR & MARKLIN_V_MASK:
+        ret += " II w/two addresses";
+        break;
+    }
+    return ret;
+  }
+  return "n/a";
+}
+
 uint8_t match(const string& input, bool query, const string& name,
               unsigned address, DccMode mode) {
   auto event = query ? FindProtocolDefs::input_to_search(input)
                      : FindProtocolDefs::input_to_allocate(input);
-  return FindProtocolDefs::match_query_to_train(event, name, address, mode);
+  auto ret = FindProtocolDefs::match_query_to_train(event, name, address, mode);
+  LOG(INFO, "%s\t%016llX\t%u\t\"%s\"\t%s", ret ? "   match" : "no match",
+      (unsigned long long)event, address, name.c_str(),
+      dcc_mode_to_string(mode).c_str());
+  return ret;
 }
 
 TEST(AddressToQueryTest, simplexlate) {
@@ -119,8 +170,10 @@ TEST(MatchTest, testmatch) {
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("13", true, "FooBar777", 13, DCC_128));
 
-  EXPECT_EQ(F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("013", true, "FooBar777", 13, DCC_ANY));
+  EXPECT_EQ(F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,
+            match("013", true, "FooBar777", 13, DCC_DEFAULT_LONG_ADDRESS));
+  EXPECT_EQ(0,
+            match("013", true, "FooBar777", 13, DCC_28));
   EXPECT_EQ(0, // allocate will not match due to short vs long
             match("013", false, "FooBar777", 13, DCC_ANY));
 
@@ -146,6 +199,18 @@ TEST(MatchTest, longtoshortmatch) {
 
   // Another example in reverse: a short locomotive and a long address query.
   EXPECT_EQ(0, match("013", false, "13", 13, DCC_28));
+
+  // Search for short address should return a long address loco.
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("13", true, "FooBar777", 13, DCC_28_LONG_ADDRESS));
+  // Search for long address should not return a short address loco.
+  EXPECT_EQ(0, match("013", true, "FooBar777", 13, DCC_28));
+
+  // Search for short address should return a long address loco.
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("13", true, "013L", 13, DCC_28_LONG_ADDRESS));
+  // Search for long address should not return a short address loco.
+  EXPECT_EQ(0, match("013", true, "13S", 13, DCC_28));
 }
 
 TEST(MatchTest, marklinmatch) {
