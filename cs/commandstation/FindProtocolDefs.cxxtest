@@ -199,6 +199,12 @@ TEST(MatchTest, longtoshortmatch) {
 
   // Another example in reverse: a short locomotive and a long address query.
   EXPECT_EQ(0, match("013", false, "13", 13, DCC_28));
+
+  // Search for short address should return a long address loco.
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("13", true, "FooBar777", 13, DCC_28_LONG_ADDRESS));
+  // Search for long address should not return a short address loco.
+  EXPECT_EQ(0, match("013", true, "FooBar777", 13, DCC_28));
 }
 
 TEST(MatchTest, marklinmatch) {
