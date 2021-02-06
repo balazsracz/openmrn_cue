@@ -119,8 +119,10 @@ TEST(MatchTest, testmatch) {
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("13", true, "FooBar777", 13, DCC_128));
 
-  EXPECT_EQ(F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("013", true, "FooBar777", 13, DCC_ANY));
+  EXPECT_EQ(F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,
+            match("013", true, "FooBar777", 13, DCC_DEFAULT_LONG_ADDRESS));
+  EXPECT_EQ(0,
+            match("013", true, "FooBar777", 13, DCC_28));
   EXPECT_EQ(0, // allocate will not match due to short vs long
             match("013", false, "FooBar777", 13, DCC_ANY));
 
