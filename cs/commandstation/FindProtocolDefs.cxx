@@ -111,6 +111,10 @@ uint8_t attempt_match(const string& name, unsigned pos, openlcb::EventId event) 
 }
 #endif
 
+uint8_t attempt_name_match_term_pos(const string& name, openlcb::EventId event,
+                                    unsigned shift_start, unsigned shift_end,
+                                    unsigned pos);
+
 /// Check if a query term matched the name.
 /// @param name the train name
 /// @param event id the query event
@@ -123,9 +127,7 @@ uint8_t attempt_match(const string& name, unsigned pos, openlcb::EventId event) 
 uint8_t attempt_name_match_term(const string& name, openlcb::EventId event,
                                 unsigned shift_start, unsigned shift_end) {
   bool prev_is_digit = false;
-  unsigned shift_next = 0;
-  bool match_ok = false;
-  bool found_match = false;
+  uint8_t found_match = 0;
   for (unsigned pos = 0; pos < name.size(); ++pos) {
     if (!is_number(name[pos])) {
       prev_is_digit = false;
@@ -133,14 +135,35 @@ uint8_t attempt_name_match_term(const string& name, openlcb::EventId event,
     }
     if (!prev_is_digit) {
       // starting match from the beginning of the term
-      shift_next = shift_start;
-      match_ok = true;
+      found_match |=
+          attempt_name_match_term_pos(name, event, shift_start, shift_end, pos);
     }
     prev_is_digit = true;
-    uint8_t nibble = (event >> shift_next) & 0xf;
-    if (!match_ok || (name[pos] - '0') != nibble) {
-      match_ok = false;
+  }
+  return found_match;
+}
+
+/// Check if a query term matched the name at a given starting position.
+/// @param name the train name
+/// @param event id the query event
+/// @param shift_start a digit nibble in the query which to match first
+/// @param shift_end a digit nibble in the query this is the last digit of the
+/// query term
+/// @param pos a position within name where to start matching digits.
+/// @return 0 if there was no match, MATCH_ANY if there was a prefix match and
+/// the query was not EXACT_ONLY, or MATCH_ANY | EXACT if a set of digits in
+/// the name matched exactly on the query term.
+uint8_t attempt_name_match_term_pos(const string& name, openlcb::EventId event,
+                                    unsigned shift_start, unsigned shift_end,
+                                    unsigned pos) {
+  unsigned shift_next = shift_start;
+  for (; pos < name.size(); ++pos) {
+    if (!is_number(name[pos])) {
       continue;
+    }
+    uint8_t nibble = (event >> shift_next) & 0xf;
+    if ((name[pos] - '0') != nibble) {
+      return 0;
     }
     if (shift_next <= shift_end) {
       // completed match.
@@ -148,18 +171,16 @@ uint8_t attempt_name_match_term(const string& name, openlcb::EventId event,
         // exact match
         return FindProtocolDefs::EXACT | FindProtocolDefs::MATCH_ANY;
       } else if ((event & FindProtocolDefs::EXACT) == 0) {
-        found_match = true;
-        // This will skip all further digits until another non-digit to digit
-        // transition starts the match from the beginning.
-        match_ok = false;
+        return FindProtocolDefs::MATCH_ANY;
+      } else {
+        break;
       }
     } else {
       shift_next -= 4;
     }
   }
-  if (found_match) {
-    return FindProtocolDefs::MATCH_ANY;
-  }
+  // Now: we ran out of characters in name but did not run out of query
+  // nibbles. That's a no-match.
   return 0;
 }
 

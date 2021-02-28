@@ -291,6 +291,13 @@ TEST(NameMatchTest, match_helpers) {
   EXPECT_EQ(F::MATCH_ANY, attempt_name_match("FooBar135", 0x090099FFFFFF1300));
   EXPECT_EQ(0, attempt_name_match(
                    "FooBar135", 0x090099FFFFFF1300 | FindProtocolDefs::EXACT));
+
+  EXPECT_EQ(F::MATCH_ANY,
+            attempt_name_match("Re 474 014-5", 0x090099FF47401F00));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            attempt_name_match("Re 474 014-5", 0x090099FF47401400));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            attempt_name_match("Re 474 014-5", 0x090099FFF0145F00));
 }
 
 /// Contains all test vectors from the TrainSearchTN. These are duplicates of
@@ -301,16 +308,69 @@ TEST(MatchTest, test_vectors) {
   EXPECT_EQ(F::EXACT | F::MATCH_ANY,
             match("13", true, "FooBar13", 45, DCC_ANY));
   EXPECT_EQ(F::MATCH_ANY,
-            match("13", true, "FooBar135", 45, DCC_ANY));
+            match("13", true, "Foo135", 45, DCC_ANY));
   EXPECT_EQ(0, match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
-                           "FooBar135", 45, DCC_ANY));
+                           "Foo135", 45, DCC_ANY));
   EXPECT_EQ(F::EXACT | F::MATCH_ANY,
             match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
-                        "FooBar13 5", 45, DCC_ANY));
+                        "Foo13 5", 45, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            match_event(0x090099FFFFF13500 | FindProtocolDefs::EXACT,
+                        "Foo13 5", 45, DCC_ANY));
+  EXPECT_EQ(0,
+            match_event(0x090099FFFFF13500 | FindProtocolDefs::EXACT,
+                        "Foo13 51", 45, DCC_ANY));
+
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            match_event(0x090099FFFFF11300 | FindProtocolDefs::EXACT,
+                        "1 11 3", 45, DCC_ANY));
+  EXPECT_EQ(0,
+            match_event(0x090099FFFFFF1300,
+                        "1 11 3", 45, DCC_ANY));
+
+  printf("\n");
 
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("13", true, "FooBar777", 13, DCC_128));
+            match("13", true, "FooBar777", 13, DCC_ANY));
+  EXPECT_EQ(F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("13", true, "FooBar777", 135, DCC_ANY));
+  EXPECT_EQ(0, match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
+                           "FooBar777", 135, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match_event(0x090099FFFFF13500 | FindProtocolDefs::EXACT,
+                        "FooBar777", 135, DCC_ANY));
+  EXPECT_EQ(0, match_event(0x090099FFFFFF3500,
+                           "FooBar777", 135, DCC_ANY));
 
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT |
+                            FindProtocolDefs::ADDRESS_ONLY,
+                        "FooBar777", 13, DCC_ANY));
+  EXPECT_EQ(0, match_event(0x090099FFFFFF3500 | FindProtocolDefs::ADDRESS_ONLY,
+                           "FooBar35", 135, DCC_ANY));
+
+  printf("\n");
+
+  // Search for short address should return a long address loco.
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("53", true, "Foo777", 53, DCC_28_LONG_ADDRESS));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("53", true, "Foo777", 53, DCC_28));
+  // Search for long address should not return a short address loco.
+  EXPECT_EQ(0, match_event(0x090099FFFFFF530C, "Foo777", 53, DCC_28));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match_event(0x090099FFFFFF530C, "Foo777", 53, DCC_28_LONG_ADDRESS));
+  EXPECT_EQ(0, match_event(0x090099FFFFFF530C, "53S", 53, DCC_28));
+  EXPECT_EQ(0, match_event(0x090099FFFFFF532C, "53S", 53, DCC_28));
+
+  // In this test we have a dcc long address locomotive and then a short
+  // address allocate arrives. The match should fail.
+  EXPECT_EQ(0, match_event(0x090099FFFFFF53C0, "053L", 53, DCC_28_LONG_ADDRESS));
+  EXPECT_EQ(0, match_event(0x090099FFFFFF53E0, "053L", 53, DCC_28_LONG_ADDRESS));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match_event(0x090099FFFFFF53CC, "053L", 53, DCC_28_LONG_ADDRESS));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match_event(0x090099FFFFFF53EC, "053L", 53, DCC_28_LONG_ADDRESS));
 }
 
 }  // namespace

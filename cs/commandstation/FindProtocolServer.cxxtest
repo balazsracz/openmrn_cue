@@ -544,7 +544,7 @@ TEST_F(MatchNodeTest, multi_part_name) {
   // Another case
   EXPECT_EQ(MATCH_ANY | EXACT, check_match(0xFFF123, 0, "Re 4/4 123b", 555));
   // Just a partial name match here
-  EXPECT_EQ(MATCH_ANY, check_match(0xFFF123, 0, "Re 4/4 123b2", 555));
+  EXPECT_EQ(MATCH_ANY, check_match(0xFFF123, 0, "Re 4/4 1234", 555));
 
   // Also works for exact name match
   EXPECT_EQ(MATCH_ANY | EXACT,
@@ -552,13 +552,17 @@ TEST_F(MatchNodeTest, multi_part_name) {
   // Even works for multiple prefix matches
   EXPECT_EQ(MATCH_ANY | EXACT,
             check_match(0xFFF123, EXACT, "Re 12 1234 123", 1234));
-  // But the reverse is not an exact match.
-  EXPECT_FALSE(check_match(0xFFF123, EXACT, "Re 12 123 1234", 1234));
-  // Without exact we match on the address.
-  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+  // The reverse is also an exact match.
+  EXPECT_EQ(MATCH_ANY | EXACT,
+            check_match(0xFFF123, EXACT, "Re 12 123 1234", 1234));
+  // An exact name match is preferred to a partial address match.
+  EXPECT_EQ(MATCH_ANY | EXACT,
             check_match(0xFFF123, 0, "Re 12 123 1234", 1234));
+  // A partial address match is preferred over a partial name match.
+  EXPECT_EQ(MATCH_ANY | ADDRESS_ONLY,
+            check_match(0xFFF123, 0, "Re 12 1234", 1234));
   // It the address is wrong, we remain at the partial name match.
-  EXPECT_EQ(MATCH_ANY, check_match(0xFFF123, 0, "Re 12 123 1234", 555));
+  EXPECT_EQ(MATCH_ANY, check_match(0xFFF123, 0, "Re 12 1234", 555));
   // Doesn't help if we're looking for address matches only.
   EXPECT_FALSE(check_match(0xFFF123, ADDRESS_ONLY, "BR 260 123", 555));
 }
