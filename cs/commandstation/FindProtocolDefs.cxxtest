@@ -36,6 +36,11 @@
 #include "commandstation/FindProtocolDefs.hxx"
 
 namespace commandstation {
+
+uint8_t attempt_name_match_term(const string& name, openlcb::EventId event,
+                                unsigned shift_start, unsigned shift_end);
+uint8_t attempt_name_match(const string& name, openlcb::EventId event);
+
 namespace {
 
 string eventtohex(uint64_t event) { return StringPrintf("%016" PRIX64, event); }
@@ -109,6 +114,15 @@ uint8_t match(const string& input, bool query, const string& name,
               unsigned address, DccMode mode) {
   auto event = query ? FindProtocolDefs::input_to_search(input)
                      : FindProtocolDefs::input_to_allocate(input);
+  auto ret = FindProtocolDefs::match_query_to_train(event, name, address, mode);
+  LOG(INFO, "%s\t%016llX\t%u\t\"%s\"\t%s", ret ? "   match" : "no match",
+      (unsigned long long)event, address, name.c_str(),
+      dcc_mode_to_string(mode).c_str());
+  return ret;
+}
+
+uint8_t match_event(uint64_t event, const string& name,
+              unsigned address, DccMode mode) {
   auto ret = FindProtocolDefs::match_query_to_train(event, name, address, mode);
   LOG(INFO, "%s\t%016llX\t%u\t\"%s\"\t%s", ret ? "   match" : "no match",
       (unsigned long long)event, address, name.c_str(),
@@ -262,6 +276,41 @@ TEST(MatchTest, marklinmatch) {
 
   // Another example: a marklin-new loco and a DCC query.
   EXPECT_EQ(0, match("13S", false, "13M", 13, MARKLIN_NEW));
+}
+
+TEST(NameMatchTest, match_helpers) {
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            attempt_name_match_term("FooBar13", 0x090099FFFFFF1300, 12, 8));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            attempt_name_match("FooBar13", 0x090099FFFFFF1300));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            attempt_name_match("FooBar13xx", 0x090099FFFFFF1300));
+  EXPECT_EQ(
+      0, attempt_name_match(
+             "FooBar13", 0x090099FFFFFF1300 | FindProtocolDefs::ADDRESS_ONLY));
+  EXPECT_EQ(F::MATCH_ANY, attempt_name_match("FooBar135", 0x090099FFFFFF1300));
+  EXPECT_EQ(0, attempt_name_match(
+                   "FooBar135", 0x090099FFFFFF1300 | FindProtocolDefs::EXACT));
+}
+
+/// Contains all test vectors from the TrainSearchTN. These are duplicates of
+/// the tests above.
+TEST(MatchTest, test_vectors) {
+  EXPECT_EQ(0, match("13", true, "FooBar", 45, DCC_ANY));
+  EXPECT_EQ(0, match("13", true, "FooBar", 4513, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            match("13", true, "FooBar13", 45, DCC_ANY));
+  EXPECT_EQ(F::MATCH_ANY,
+            match("13", true, "FooBar135", 45, DCC_ANY));
+  EXPECT_EQ(0, match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
+                           "FooBar135", 45, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
+            match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
+                        "FooBar13 5", 45, DCC_ANY));
+
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("13", true, "FooBar777", 13, DCC_128));
+
 }
 
 }  // namespace

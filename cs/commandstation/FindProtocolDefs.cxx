@@ -51,9 +51,16 @@ uint8_t FindProtocolDefs::DEFAULT_MARKLIN_DRIVE_MODE = MARKLIN_NEW;
 /// DCC_ANY.
 uint8_t FindProtocolDefs::DEFAULT_DCC_DRIVE_MODE = DCC_128;
 
+#ifndef GTEST
 namespace {
+#endif
 /// @returns true for a character that is a digit.
 bool is_number(char c) { return ('0' <= c) && (c <= '9'); }
+
+/// @return true if the given nibble is a digit nibble (0 to 9)
+bool is_digit_nibble(unsigned nibble) {
+  return ((0 <= nibble) && (nibble <= 9));
+}
 
 /// @returns true if the user has any digits as a query.
 bool has_query(openlcb::EventId event) {
@@ -67,8 +74,9 @@ bool has_query(openlcb::EventId event) {
   return false;
 }
 
+#if 0
 /// @returns the same bitmask as match_query_to_node.
-uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
+uint8_t attempt_match(const string& name, unsigned pos, openlcb::EventId event) {
   int count_matches = 0;
   for (int shift = FindProtocolDefs::TRAIN_FIND_MASK - 4;
        shift >= FindProtocolDefs::TRAIN_FIND_MASK_LOW; shift -= 4) {
@@ -101,8 +109,100 @@ uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
     return FindProtocolDefs::EXACT | FindProtocolDefs::MATCH_ANY;
   }
 }
+#endif
 
-}  // namespace
+/// Check if a query term matched the name.
+/// @param name the train name
+/// @param event id the query event
+/// @param shift_start a digit nibble in the query which to match first
+/// @param shift_end a digit nibble in the query this is the last digit of the
+/// query term
+/// @return 0 if there was no match, MATCH_ANY if there was a prefix match and
+/// the query was not EXACT_ONLY, or MATCH_ANY | EXACT if a set of digits in
+/// the name matched exactly on the query term.
+uint8_t attempt_name_match_term(const string& name, openlcb::EventId event,
+                                unsigned shift_start, unsigned shift_end) {
+  bool prev_is_digit = false;
+  unsigned shift_next = 0;
+  bool match_ok = false;
+  bool found_match = false;
+  for (unsigned pos = 0; pos < name.size(); ++pos) {
+    if (!is_number(name[pos])) {
+      prev_is_digit = false;
+      continue;
+    }
+    if (!prev_is_digit) {
+      // starting match from the beginning of the term
+      shift_next = shift_start;
+      match_ok = true;
+    }
+    prev_is_digit = true;
+    uint8_t nibble = (event >> shift_next) & 0xf;
+    if (!match_ok || (name[pos] - '0') != nibble) {
+      match_ok = false;
+      continue;
+    }
+    if (shift_next <= shift_end) {
+      // completed match.
+      if (pos + 1 >= name.size() || !is_number(name[pos + 1])) {
+        // exact match
+        return FindProtocolDefs::EXACT | FindProtocolDefs::MATCH_ANY;
+      } else if ((event & FindProtocolDefs::EXACT) == 0) {
+        found_match = true;
+        // This will skip all further digits until another non-digit to digit
+        // transition starts the match from the beginning.
+        match_ok = false;
+      }
+    } else {
+      shift_next -= 4;
+    }
+  }
+  if (found_match) {
+    return FindProtocolDefs::MATCH_ANY;
+  }
+  return 0;
+}
+
+/// Checks if a query matched the name. Takes into account the ADDRESS_ONLY bit
+/// (returns 0 in this case) and also the EXACT bit.
+/// @param name the train name
+/// @param event the query event.
+/// @return 0, MATCH_ANY, or MATCH_ANY | EXACT
+uint8_t attempt_name_match(const string& name, openlcb::EventId event) {
+  if (event & FindProtocolDefs::ADDRESS_ONLY) {
+    return 0;
+  }
+  uint8_t best_match = 0xff;
+  // find sequences digit nibbles and iterate over them.
+  int shift = FindProtocolDefs::TRAIN_FIND_MASK - 4;
+  while (shift >= FindProtocolDefs::TRAIN_FIND_MASK_LOW) {
+    uint8_t nibble = (event >> shift) & 0xf;
+    if (is_digit_nibble(nibble)) {
+      // This is the start of a query term.
+      int shift_start = shift;
+      while (shift > FindProtocolDefs::TRAIN_FIND_MASK_LOW &&
+             is_digit_nibble((event >> (shift - 4)) & 0xf)) {
+        shift -= 4;
+      }
+      auto term_ret = attempt_name_match_term(name, event, shift_start, shift);
+      if (!term_ret) {
+        // we have a term that did not match.
+        return 0;
+      }
+      best_match &= term_ret;
+    }
+    shift -= 4;
+  }
+  if (best_match == 0xff) {
+    // There were no query terms.
+    return 0;
+  }
+  return best_match;
+}
+
+#ifndef GTEST
+}  // anonymous namespace
+#endif
 
 // static
 bool FindProtocolDefs::match_event_to_drive_mode(openlcb::EventId event,
@@ -240,42 +340,8 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     if ((event & EXACT) != 0) return 0;
     return MATCH_ANY;
   }
-  // Match against the train name string.
-  uint8_t first_name_match = 0xFF;
-  uint8_t best_name_match = 0;
   string name = train->get_train_name();
-  // Find the beginning of numeric components in the train name
-  unsigned pos = 0;
-  while (pos < name.size()) {
-    if (is_number(name[pos])) {
-      uint8_t current_match = attempt_match(name, pos, event);
-      if (first_name_match == 0xff) {
-        first_name_match = current_match;
-        best_name_match = current_match;
-      }
-      if ((!best_name_match && current_match) || (current_match & EXACT)) {
-        // We overwrite the best name match if there was no previous match, or
-        // if the current match is exact. This is somewhat questionable,
-        // because it will allow an exact match on the middle of the train name
-        // even though there may have been numbers before. However, this is
-        // arguably okay in case the train name is a model number and a cab
-        // number, and we're matching against the cab number, e.g.
-        // "Re 4/4 11239" which should be exact-matching the query 11239.
-        best_name_match = current_match;
-      }
-      // Skip through the sequence of numbers
-      while (pos < name.size() && is_number(name[pos])) {
-        ++pos;
-      }
-    } else {
-      // non number: skip
-      ++pos;
-    }
-  }
-  if (first_name_match == 0xff) {
-    // No numbers in the train name.
-    best_name_match = 0;
-  }
+  uint8_t best_name_match = attempt_name_match(name, event);
   if (((best_name_match & EXACT) == 0) && has_address_prefix_match &&
       ((event & EXACT) == 0)) {
     // We prefer a partial address match over a non-exact name match.  If
