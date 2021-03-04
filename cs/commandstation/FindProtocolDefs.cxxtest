@@ -303,74 +303,109 @@ TEST(NameMatchTest, match_helpers) {
 /// Contains all test vectors from the TrainSearchTN. These are duplicates of
 /// the tests above.
 TEST(MatchTest, test_vectors) {
+  LOG(INFO, "# Neither Name or Address matches here.");
   EXPECT_EQ(0, match("13", true, "FooBar", 45, DCC_ANY));
+  LOG(INFO, "# Address contains 13 but not as a prefix, therefore it does not match.");
   EXPECT_EQ(0, match("13", true, "FooBar", 4513, DCC_ANY));
+  LOG(INFO, "# Name contains a sequence of digits matching 13.");
   EXPECT_EQ(F::EXACT | F::MATCH_ANY,
             match("13", true, "FooBar13", 45, DCC_ANY));
+  LOG(INFO, "# Name contains a sequence of digits which has a prefix of 13.");
   EXPECT_EQ(F::MATCH_ANY,
             match("13", true, "Foo135", 45, DCC_ANY));
+  LOG(INFO, "# Exact match fails in the name.");
   EXPECT_EQ(0, match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
                            "Foo135", 45, DCC_ANY));
+  LOG(INFO, "# Exact match succeeds at the space separator.");
   EXPECT_EQ(F::EXACT | F::MATCH_ANY,
             match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
                         "Foo13 5", 45, DCC_ANY));
+  LOG(INFO, "# Name match jumps over spaces between the digits here.");
   EXPECT_EQ(F::EXACT | F::MATCH_ANY,
             match_event(0x090099FFFFF13500 | FindProtocolDefs::EXACT,
                         "Foo13 5", 45, DCC_ANY));
+  LOG(INFO, "# Not an exact match, because there is an extra digit after the match.");
   EXPECT_EQ(0,
             match_event(0x090099FFFFF13500 | FindProtocolDefs::EXACT,
                         "Foo13 51", 45, DCC_ANY));
 
+  LOG(INFO, "# Matches starting the term '11'");
   EXPECT_EQ(F::EXACT | F::MATCH_ANY,
             match_event(0x090099FFFFF11300 | FindProtocolDefs::EXACT,
                         "1 11 3", 45, DCC_ANY));
+  LOG(INFO, "# ");
   EXPECT_EQ(0,
             match_event(0x090099FFFFFF1300,
                         "1 11 3", 45, DCC_ANY));
 
   printf("\n");
 
+  LOG(INFO, "# Address matches here.");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("13", true, "FooBar777", 13, DCC_ANY));
+  LOG(INFO, "# Prefix match in the address.");
   EXPECT_EQ(F::ADDRESS_ONLY | F::MATCH_ANY,
             match("13", true, "FooBar777", 135, DCC_ANY));
+  LOG(INFO, "# Exact match requested, but only prefix match found.");
   EXPECT_EQ(0, match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT,
                            "FooBar777", 135, DCC_ANY));
+  LOG(INFO, "# ");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match_event(0x090099FFFFF13500 | FindProtocolDefs::EXACT,
                         "FooBar777", 135, DCC_ANY));
+  LOG(INFO, "# Not a prefix match.");
   EXPECT_EQ(0, match_event(0x090099FFFFFF3500,
                            "FooBar777", 135, DCC_ANY));
 
+  LOG(INFO, "# Address-only request and match in the address.");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match_event(0x090099FFFFFF1300 | FindProtocolDefs::EXACT |
                             FindProtocolDefs::ADDRESS_ONLY,
                         "FooBar777", 13, DCC_ANY));
+  LOG(INFO, "# Match is only in the Name, but was requested in the address.");
   EXPECT_EQ(0, match_event(0x090099FFFFFF3500 | FindProtocolDefs::ADDRESS_ONLY,
                            "FooBar35", 135, DCC_ANY));
 
   printf("\n");
 
   // Search for short address should return a long address loco.
+  LOG(INFO, "# ");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("53", true, "Foo777", 53, DCC_28_LONG_ADDRESS));
+  LOG(INFO, "# ");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match("53", true, "Foo777", 53, DCC_28));
   // Search for long address should not return a short address loco.
+  LOG(INFO, "# This match fails because the request specifies DCC long address, but the train has DCC short address.");
   EXPECT_EQ(0, match_event(0x090099FFFFFF530C, "Foo777", 53, DCC_28));
+  LOG(INFO, "# ");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match_event(0x090099FFFFFF530C, "Foo777", 53, DCC_28_LONG_ADDRESS));
+  LOG(INFO, "# ");
   EXPECT_EQ(0, match_event(0x090099FFFFFF530C, "53S", 53, DCC_28));
+  LOG(INFO, "# ");
   EXPECT_EQ(0, match_event(0x090099FFFFFF532C, "53S", 53, DCC_28));
 
   // In this test we have a dcc long address locomotive and then a short
   // address allocate arrives. The match should fail.
+  LOG(INFO, "# ");
   EXPECT_EQ(0, match_event(0x090099FFFFFF53C0, "053L", 53, DCC_28_LONG_ADDRESS));
+  LOG(INFO, "# ");
   EXPECT_EQ(0, match_event(0x090099FFFFFF53E0, "053L", 53, DCC_28_LONG_ADDRESS));
+  LOG(INFO, "# ");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match_event(0x090099FFFFFF53CC, "053L", 53, DCC_28_LONG_ADDRESS));
+  LOG(INFO, "# ");
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
             match_event(0x090099FFFFFF53EC, "053L", 53, DCC_28_LONG_ADDRESS));
+
+  // There are two query terms, therefore an address match should not be
+  // reported.
+  LOG(INFO, "# ");
+  EXPECT_EQ(0, match_event(0x090099FFFF1F1300,
+                           "Foo1", 13, DCC_ANY));
+
+  // The request specifies a Marklin-Motorola address, but the train is DCC.
 }
 
 }  // namespace
