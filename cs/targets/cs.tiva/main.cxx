@@ -235,11 +235,32 @@ HubDeviceNonBlock<dcc::RailcomHubFlow>* railcom_reader_flow;
 dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
-commandstation::TrackPowerBit on_off(stack.node(),
-                                     openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
-                                     openlcb::Defs::EMERGENCY_OFF_EVENT);
-openlcb::BitEventConsumer powerbit(&on_off);
 openlcb::TrainService traction_service(stack.iface());
+
+commandstation::TrackPowerState trackPowerState(stack.node(),
+    openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+    openlcb::Defs::EMERGENCY_OFF_EVENT,
+    openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT,
+    openlcb::Defs::EMERGENCY_STOP_EVENT);
+class TrackConsumer : public openlcb::BitEventConsumer
+{
+public:
+    TrackConsumer(openlcb::BitEventInterface* bit)
+        : openlcb::BitEventConsumer(bit)
+    {
+    }
+
+    /// Ignores "identified" events. The base class behavior is that these turn
+    /// the state on/off. We only want the event reports to turn the state
+    /// on/off.
+    void handle_producer_identified(const openlcb::EventRegistryEntry &entry,
+        openlcb::EventReport *event, BarrierNotifiable *done) override
+    {
+        done->notify();
+    }
+};
+TrackConsumer trackPowerConsumer{trackPowerState.get_power_bit()};
+TrackConsumer estopConsumer{trackPowerState.get_estop_bit()};
 
 TivaAccPowerOnOffBit<AccHwDefs> acc_on_off(stack.node(), BRACZ_LAYOUT | 0x0004, BRACZ_LAYOUT | 0x0005);
 openlcb::BitEventConsumer accpowerbit(&acc_on_off);
@@ -324,6 +345,11 @@ HubDeviceSelect<HubFlow>* usb_port;
  */
 int appl_main(int argc, char* argv[])
 {
+    DccHwDefs::Output::set_disable_reason(
+        DccOutput::DisableReason::INITIALIZATION_PENDING);
+    DccHwDefs::Output::set_disable_reason(
+        DccOutput::DisableReason::GLOBAL_EOFF);
+
     stack.check_version_and_factory_reset(cfg.seg().internal_config(), openlcb::CANONICAL_VERSION, false);
 
   //  mydisable();
@@ -364,13 +390,15 @@ int appl_main(int argc, char* argv[])
 
     stack.memory_config_handler()->registry()->insert(stack.node(), 0xA0, &automata_space);
 
+
 #ifdef STANDALONE
     // Start dcc output
-    enable_dcc();
-
+    DccHwDefs::Output::clear_disable_reason(
+        DccOutput::DisableReason::GLOBAL_EOFF);
 #else
     // Do not start dcc output.
-    disable_dcc();
+    DccHwDefs::Output::set_disable_reason(
+        DccOutput::DisableReason::GLOBAL_EOFF);
 #endif
 
     stack.loop_executor();
