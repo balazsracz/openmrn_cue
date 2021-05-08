@@ -155,15 +155,25 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   using StateFlowBase::call_immediately;
   using StateFlowBase::sleep_and_call;
 
+  /// @return the currently active output channel.
+  DccOutput *current_output()
+  {
+    return get_dcc_output(DccOutput::TRACK);
+  }
+  
   Action sample(uint32_t adc_value) OVERRIDE {
+    current_output()->clear_disable_output_for_reason(
+            DccOutput::DisableReason::INITIALIZATION_PENDING);
     if (adc_value > KILL_LIMIT) {
-      disable_dcc();
+      current_output()->disable_output_for_reason(
+          DccOutput::DisableReason::SHORTED);
       LOG(INFO, "kill value: %04" PRIx32, adc_value);
       return call_immediately(STATE(shorted));
     }
     if (adc_value > SHUTDOWN_LIMIT) {
       if (++num_overcurrent_tests_ >= 5 || adc_value > KILL_LIMIT) {
-        setshorted_dcc();
+        current_output()->disable_output_for_reason(
+            DccOutput::DisableReason::SHORTED);
         LOG(INFO, "%s value: %04" PRIx32,
             adc_value <= KILL_LIMIT ? "disable" : "kill", adc_value);
         ++num_disable_tries_;
@@ -222,7 +232,8 @@ class TivaShortDetectionModule : public ADCFlowBase<HW> {
   }
 
   Action retry_enable() {
-    enable_dcc();
+    current_output()->clear_disable_output_for_reason(
+            DccOutput::DisableReason::SHORTED);
     return call_immediately(STATE(start_timer));
   }
 
