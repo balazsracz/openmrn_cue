@@ -9,7 +9,7 @@ include hardware.mk
 ifeq ($(MISSING_DEPS),)
 
 #AUTOMATA=convention-logic
-AUTOMATA=bracz-layout2b-logic
+AUTOMATA=bracz-layout1i-logic
 #AUTOMATA=lcc-layout-logic
 #AUTOMATA=stbaker-logic
 
