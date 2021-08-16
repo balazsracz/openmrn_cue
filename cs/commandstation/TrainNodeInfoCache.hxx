@@ -40,6 +40,7 @@
 
 #include "commandstation/FindTrainNode.hxx"
 #include "openlcb/If.hxx"
+#include "openlcb/SimpleNodeInfo.hxx"
 #include "utils/format_utils.hxx"
 
 namespace commandstation {

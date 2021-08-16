@@ -245,4 +245,15 @@ size_t TrainDb::load_from_file(int fd, bool initial_load) {
   return cfg_.end_offset();
 }
 
+void TrainDbFactoryResetHelper::factory_reset(int fd) {
+  // Clears out all train entries with zeros.
+  char block[cfg_.entry<0>().size()];
+  memset(block, 0, sizeof(block));
+  for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
+    const auto &p = cfg_.entry(i);
+    lseek(fd, p.offset(), SEEK_SET);
+    ::write(fd, block, sizeof(block));
+  }
+}
+
 }  // namespace commandstation

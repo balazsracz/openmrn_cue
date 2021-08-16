@@ -180,17 +180,8 @@ public:
     return UPDATED;
   }
 
-  void factory_reset(int fd) override {
-    // Clears out all train entries with zeros.
-    char block[cfg_.entry<0>().size()];
-    memset(block, 0, sizeof(block));
-    for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
-      const auto& p = cfg_.entry(i);
-      lseek(fd, p.offset(), SEEK_SET);
-      ::write(fd, block, sizeof(block));
-    }
-  }
-
+  void factory_reset(int fd) override;
+  
  private:
   TrainDbConfig cfg_;
 };

@@ -40,13 +40,14 @@
 
 #include "commandstation/AllTrainNodesInterface.hxx"
 #include "commandstation/TrainDb.hxx"
-#include "openlcb/SimpleInfoProtocol.hxx"
+//#include "openlcb/SimpleInfoProtocol.hxx"
 
 namespace openlcb {
 class Node;
 class TrainService;
 class TrainImpl;
 class MemoryConfigHandler;
+class SimpleInfoFlow;
 }
 
 namespace commandstation {

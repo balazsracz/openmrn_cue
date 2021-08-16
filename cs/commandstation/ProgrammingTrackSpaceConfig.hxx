@@ -29,7 +29,7 @@
 #define _COMMANDSTATION_PROGRAMMINGTRACKSPACECONFIG_HXX_
 
 #include "openlcb/ConfigRepresentation.hxx"
-#include "openlcb/MemoryConfig.hxx"
+#include "openlcb/MemoryConfigDefs.hxx"
 
 namespace commandstation {
 
