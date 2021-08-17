@@ -272,10 +272,31 @@ class RailcomDebugFlow : public StateFlowBase {
 dcc::LocalTrackIf track_if(stack.service(), 2);
 commandstation::UpdateProcessor cs_loop(stack.service(), &track_if);
 PoolToQueueFlow<Buffer<dcc::Packet>> pool_translator(stack.service(), track_if.pool(), &cs_loop);
-commandstation::TrackPowerBit on_off(stack.node(),
-                              openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
-                              openlcb::Defs::EMERGENCY_OFF_EVENT);
-openlcb::BitEventConsumer powerbit(&on_off);
+commandstation::TrackPowerState trackPowerState(stack.node(),
+    openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+    openlcb::Defs::EMERGENCY_OFF_EVENT,
+    openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT,
+    openlcb::Defs::EMERGENCY_STOP_EVENT);
+class TrackConsumer : public openlcb::BitEventConsumer
+{
+public:
+    TrackConsumer(openlcb::BitEventInterface* bit)
+        : openlcb::BitEventConsumer(bit)
+    {
+    }
+
+    /// Ignores "identified" events. The base class behavior is that these turn
+    /// the state on/off. We only want the event reports to turn the state
+    /// on/off.
+    void handle_producer_identified(const openlcb::EventRegistryEntry &entry,
+        openlcb::EventReport *event, BarrierNotifiable *done) override
+    {
+        done->notify();
+    }
+};
+TrackConsumer trackPowerConsumer{trackPowerState.get_power_bit()};
+TrackConsumer estopConsumer{trackPowerState.get_estop_bit()};
+
 openlcb::TrainService traction_service(stack.iface());
 
 //dcc::Dcc28Train train_Am843(dcc::DccShortAddress(43));
@@ -320,7 +341,11 @@ commandstation::TrainDbFactoryResetHelper g_reset_helper(cfg.trains().all_trains
  */
 int appl_main(int argc, char* argv[])
 {
-  disable_dcc();
+    DccHwDefs::Output::set_disable_reason(
+        DccOutput::DisableReason::INITIALIZATION_PENDING);
+    DccHwDefs::Output::set_disable_reason(
+        DccOutput::DisableReason::GLOBAL_EOFF);
+
   //start_watchdog(5000);
   //  add_watchdog_reset_timer(500);
 
@@ -382,10 +407,12 @@ int appl_main(int argc, char* argv[])
 
 #ifdef STANDALONE
     // Start dcc output
-    enable_dcc();
+    DccHwDefs::Output::clear_disable_reason(
+        DccOutput::DisableReason::GLOBAL_EOFF);
 #else
     // Do not start dcc output.
-    disable_dcc();
+    DccHwDefs::Output::set_disable_reason(
+        DccOutput::DisableReason::GLOBAL_EOFF);
 #endif
 
     stack.loop_executor();
