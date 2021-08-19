@@ -42,7 +42,7 @@
 
 #include "executor/StateFlow.hxx"
 #include "dcc/Packet.hxx"
-#include "dcc/PacketFlowInterface.hxx"
+#include "dcc/TrackIf.hxx"
 #include "dcc/UpdateLoop.hxx"
 
 namespace dcc {
@@ -59,7 +59,7 @@ namespace commandstation {
 class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
                         private dcc::UpdateLoopBase {
  public:
-  UpdateProcessor(Service* service, dcc::PacketFlowInterface* track_send);
+  UpdateProcessor(Service* service, dcc::TrackIf* track_send);
   ~UpdateProcessor();
 
   /** Adds a new refresh source to the background refresh packets. */
@@ -120,7 +120,7 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
   Action entry() OVERRIDE;
 
   // Used by unittests to inject a packet processor mock.
-  void TEST_set_packet_processor(dcc::PacketFlowInterface* track_send) {
+  void TEST_set_packet_processor(dcc::TrackIf* track_send) {
     trackSend_ = track_send;
   }
 
@@ -139,7 +139,7 @@ class UpdateProcessor : public StateFlow<Buffer<dcc::Packet>, QList<1> >,
   bool has_exclusive() { return exclusiveIndex_ != NO_EXCLUSIVE; }
 
   /// Place where we forward the packets filled in.
-  dcc::PacketFlowInterface* trackSend_;
+  dcc::TrackIf* trackSend_;
 
   /// Holds the list of train nodes that have reported a change. We will always
   /// take a train node from this list first before starting background refresh.

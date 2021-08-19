@@ -162,7 +162,7 @@ class ProgrammingTrackFrontend
     : public CallableFlow<ProgrammingTrackFrontendRequest> {
  public:
   ProgrammingTrackFrontend(ProgrammingTrackBackend* backend,
-                           dcc::PacketFlowInterface* track,
+                           dcc::TrackIf* track,
                            dcc::RailcomHubFlow* railcom_hub)
       : CallableFlow<ProgrammingTrackFrontendRequest>(backend->service()),
         backend_(backend),
@@ -823,7 +823,7 @@ class ProgrammingTrackFrontend
   /// Backend flow for executing low-level programming track requests.
   ProgrammingTrackBackend* backend_;
   /// Track interface to send POM packets to.
-  dcc::PacketFlowInterface *track_;
+  dcc::TrackIf *track_;
   /// Hub where railcom feedback packets can come in.
   dcc::RailcomHubFlow *railcomHub_;
   /// Holding buffer for the next programming track packet to send.

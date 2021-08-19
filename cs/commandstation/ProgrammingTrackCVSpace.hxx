@@ -32,6 +32,7 @@
 #include "commandstation/ProgrammingTrackFrontend.hxx"
 #include "utils/ConfigUpdateListener.hxx"
 #include "openlcb/MemoryConfig.hxx"
+#include "openlcb/TractionDefs.hxx"
 
 namespace commandstation {
 
