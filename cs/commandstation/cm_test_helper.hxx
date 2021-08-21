@@ -6,7 +6,8 @@
 #include "openlcb/SimpleNodeInfoMockUserFile.hxx"
 #include "openlcb/ConfigUpdateFlow.hxx"
 #include "openlcb/DatagramCan.hxx"
-#include "dcc/PacketFlowInterface.hxx"
+#include "openlcb/MemoryConfig.hxx"
+#include "dcc/TrackIf.hxx"
 
 openlcb::MockSNIPUserFile snip_user_file("Default user name",
                                          "Default user description");
@@ -21,7 +22,7 @@ namespace commandstation {
 
 /// Fake track interface. Receives DCC packets from the packet update loop, and
 /// drops them on the floor.
-class DccPacketSink : public dcc::PacketFlowInterface {
+class DccPacketSink : public dcc::TrackIf {
  public:
   /// Virtual entry point for receiving the next packet.
   void send(Buffer<dcc::Packet>* b, unsigned prio) {

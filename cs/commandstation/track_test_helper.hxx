@@ -8,7 +8,7 @@
 
 using ::testing::ElementsAre;
 
-class MockPacketQueue : public dcc::PacketFlowInterface {
+class MockPacketQueue : public dcc::TrackIf {
  public:
   MOCK_METHOD1(arrived, void(const dcc::Packet&));
 
