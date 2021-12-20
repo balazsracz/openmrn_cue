@@ -36,7 +36,7 @@
 #define _CUSTOM_TRACKINTERFACE_HXX_
 
 #include "dcc/Packet.hxx"
-#include "dcc/PacketFlowInterface.hxx"
+#include "dcc/TrackIf.hxx"
 #include "dcc/UpdateLoop.hxx"
 #include "executor/StateFlow.hxx"
 #include "utils/Hub.hxx"
@@ -70,7 +70,7 @@ enum {
 
 class TrackPowerOnOffBit : public openlcb::BitEventInterface {
  public:
-  TrackPowerOnOffBit(uint64_t event_on, uint64_t event_off, dcc::PacketFlowInterface* track)
+  TrackPowerOnOffBit(uint64_t event_on, uint64_t event_off, dcc::TrackIf* track)
       : BitEventInterface(event_on, event_off), track_(track), state_(false) {}
 
   openlcb::EventState get_current_state() override {
@@ -90,7 +90,7 @@ class TrackPowerOnOffBit : public openlcb::BitEventInterface {
   }
 
  private:
-  dcc::PacketFlowInterface* track_;
+  dcc::TrackIf* track_;
   /// @TODO(balazs.racz): this state should be updated from the alive bit in
   /// the keepalive packets.
   bool state_;
@@ -118,7 +118,7 @@ class TrackIfReceive : public IncomingFrameFlow {
    * @param interface is the CAN bus port to listen on
    * @param packet_q is a flow that will get an empty packet whenever the
    * track processor is ready to receive the next outgoing packet. */
-  TrackIfReceive(CanIf* interface, dcc::PacketFlowInterface* packet_q);
+  TrackIfReceive(CanIf* interface, dcc::TrackIf* packet_q);
   ~TrackIfReceive();
 
   Action entry() OVERRIDE;
@@ -130,7 +130,7 @@ class TrackIfReceive : public IncomingFrameFlow {
   FixedPool pool_;
   /** @TODO(balazs.racz) replace this with a service keeping all objects. */
   CanIf* interface_;
-  dcc::PacketFlowInterface* packetQueue_;
+  dcc::TrackIf* packetQueue_;
 };
 
 }  // namespace bracz_custom

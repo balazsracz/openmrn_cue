@@ -2,10 +2,12 @@
   "name": "openmrn-cs-test",
   "version": "1.0.0",
   "dependencies": {
-    "serialport": "*"
+    "serialport": "^9.2.7"
   },
   "bin": "cs.js",
   "pkg": {
-      "assets": []
+      "assets": [
+          "./node_modules/@serialport/bindings/build/Release/bindings.node"
+      ]
   }
 }
