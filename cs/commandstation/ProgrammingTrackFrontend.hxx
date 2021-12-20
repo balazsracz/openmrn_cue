@@ -261,7 +261,7 @@ class ProgrammingTrackFrontend
     return invoke_subflow_and_wait(
         backend_, STATE(write_pkt_sent),
         ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
-        DEFAULT_WRITE_REPEATS);
+        (unsigned)DEFAULT_WRITE_REPEATS);
   }
 
   /// Turns off service mode and returns an unimplemented error.
