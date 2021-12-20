@@ -620,6 +620,7 @@ class ProgrammingTrackFrontend
     b->data()->add_dcc_pom_read1(request()->cvOffset_);
     b->data()->feedback_key = reinterpret_cast<uintptr_t>(this);
     b->data()->packet_header.rept_count = 3;
+    cvData_ = 0;
     railcomHub_->register_port(&railcomHandler_);
     seenRailcomBusy_ = 0;
     seenRailcomGarbage_ = 0;
