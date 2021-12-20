@@ -276,9 +276,13 @@ class RemoteFindTrainNode
                                 EventReport* event,
                                 BarrierNotifiable* done) override {
       AutoNotify an(done);
-
+      openlcb::Node* n = event->dst_node ? event->dst_node : parent_->node_;
+      if (n != parent_->node_) {
+        // Someone else is getting the global identify request.
+        return;
+      }
       event->event_write_helper<1>()->WriteAsync(
-          event->dst_node, openlcb::Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
+          parent_->node_, openlcb::Defs::MTI_CONSUMER_IDENTIFIED_RANGE,
           openlcb::WriteHelper::global(),
           openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
           done->new_child());
