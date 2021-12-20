@@ -261,7 +261,7 @@ class ProgrammingTrackFrontend
     return invoke_subflow_and_wait(
         backend_, STATE(write_pkt_sent),
         ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
-        DEFAULT_WRITE_REPEATS);
+        (unsigned)DEFAULT_WRITE_REPEATS);
   }
 
   /// Turns off service mode and returns an unimplemented error.
@@ -703,7 +703,9 @@ class ProgrammingTrackFrontend
           break;
         case dcc::RailcomPacket::ACK:
           if (new_status == ERROR_PENDING) {
-            new_status = ERROR_OK;
+            // Ack should not change the state machine of CV reads or
+            // writes. Both of those need to return explicitly with a
+            // MOB_POM.
           }
           break;
         case dcc::RailcomPacket::MOB_POM:
