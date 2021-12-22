@@ -704,7 +704,9 @@ class ProgrammingTrackFrontend
           break;
         case dcc::RailcomPacket::ACK:
           if (new_status == ERROR_PENDING) {
-            new_status = ERROR_OK;
+            // Ack should not change the state machine of CV reads or
+            // writes. Both of those need to return explicitly with a
+            // MOB_POM.
           }
           break;
         case dcc::RailcomPacket::MOB_POM:
