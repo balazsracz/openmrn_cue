@@ -147,7 +147,8 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
   Action finish() { return exit(); }
 
  private:
-  static const uint64_t FEEDBACK_EVENTID_BASE;
+  static constexpr uint64_t FEEDBACK_EVENTID_BASE =
+      (0x09ULL << 56) | openlcb::TractionDefs::NODE_ID_DCC;
   uint64_t address_to_eventid(unsigned channel, uint16_t address) {
     uint64_t ret = FEEDBACK_EVENTID_BASE;
     ret |= uint64_t(channel & 0xff) << 48;
@@ -164,9 +165,6 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
   dcc::RailcomBroadcastDecoder* channels_;
   BarrierNotifiable n_;
 };
-
-const uint64_t RailcomBroadcastFlow::FEEDBACK_EVENTID_BASE =
-    (0x09ULL << 56) | openlcb::TractionDefs::NODE_ID_DCC;
 
 #endif // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
 
