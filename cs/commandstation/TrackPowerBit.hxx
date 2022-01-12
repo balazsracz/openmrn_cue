@@ -32,6 +32,9 @@
  * @date 6 Feb 2016
  */
 
+#ifndef _COMMANDSTATION_TRACKPOWERBIT_HXX_
+#define _COMMANDSTATION_TRACKPOWERBIT_HXX_
+
 #include "dcc/DccOutput.hxx"
 #include "dcc/PacketSource.hxx"
 #include "dcc/UpdateLoop.hxx"
@@ -256,3 +259,5 @@ class TrackPowerState {
 };  // class TrackPowerState
 
 }  // namespace commandstation
+
+#endif // _COMMANDSTATION_TRACKPOWERBIT_HXX_
