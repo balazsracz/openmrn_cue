@@ -28,6 +28,8 @@
 #ifndef _COMMANDSTATION_PROGRAMMINGTRACKSPACECONFIG_HXX_
 #define _COMMANDSTATION_PROGRAMMINGTRACKSPACECONFIG_HXX_
 
+#include <cstddef>
+
 #include "openlcb/ConfigRepresentation.hxx"
 #include "openlcb/MemoryConfigDefs.hxx"
 

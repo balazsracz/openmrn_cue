@@ -31,6 +31,7 @@
 #include "executor/CallableFlow.hxx"
 #include "dcc/ProgrammingTrackBackend.hxx"
 #include "dcc/Defs.hxx"
+#include "dcc/RailcomHub.hxx"
 
 #ifdef LOGLEVEL
 #undef LOGLEVEL
