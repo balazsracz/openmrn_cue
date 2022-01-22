@@ -117,13 +117,22 @@ std::vector<string> device_paths;
 int upstream_port = 12021;
 const char *upstream_host = nullptr;
 bool print_packets = false;
+bool have_pgmtrack = false;
+/// If nonzero, we are sending heartbeat requests for all trains.
+unsigned heartbeat_sec = 0;
 
 void usage(const char *e) {
   fprintf(stderr,
-          "Usage: %s [-l] [-p port] [-d device_path] [-u upstream_host [-q "
+          "Usage: %s [-l] [-g] [-b heartbeat_secs] [-p port] [-d device_path] [-u upstream_host [-q "
           "upstream_port]]\n\n",
           e);
   fprintf(stderr, "Fake command station.\n\nArguments:\n");
+  fprintf(stderr,
+          "\t-l     Prints all CAN packets to the console.\n");
+  fprintf(stderr,
+          "\t-g     Simulates a programming track.\n");
+  fprintf(stderr,
+          "\t-b num     Sends out heartbeats to throttles every `num` seconds.\n");
   fprintf(stderr,
           "\t-p port     If specified, listens on this port number for "
           "GridConnect TCP connections.\n");
@@ -143,7 +152,7 @@ void usage(const char *e) {
 
 void parse_args(int argc, char *argv[]) {
   int opt;
-  while ((opt = getopt(argc, argv, "hp:u:q:d:lD")) >= 0) {
+  while ((opt = getopt(argc, argv, "hgp:u:q:d:lb:D")) >= 0) {
     switch (opt) {
       case 'h':
         usage(argv[0]);
@@ -153,6 +162,12 @@ void parse_args(int argc, char *argv[]) {
         break;
       case 'D':
         JSSerialPort::list_ports();
+        break;
+      case 'g':
+        have_pgmtrack = true;
+        break;
+      case 'b':
+        heartbeat_sec = atoi(optarg);
         break;
       case 'p':
         port = atoi(optarg);
@@ -194,10 +209,180 @@ commandstation::AllTrainNodes all_train_nodes(&train_db, &traction_service,
                                               stack.info_flow(),
                                               stack.memory_config_handler());
 
+/*
 dcc::RailcomHubFlow railcom_hub(stack.service());
 openlcb::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if,
                                      &railcom_hub,
                                      openlcb::MemoryConfigDefs::SPACE_DCC_CV);
+*/
+
+class ReinitImpl : public ::Timer {
+ public:
+  ReinitImpl() : ::Timer(stack.executor()->active_timers()) {
+    start(MSEC_TO_NSEC(100));
+  }
+
+  long long timeout() override {
+    if (needReinit_ && stack.node()->is_initialized()) {
+      needReinit_ = false;
+      stack.if_can()->send_global_alias_enquiry(stack.node());
+      // Sends out initialization completes. We could call
+      // stack.restart_stack() but we'd rather not throw away all
+      // the aliases because we typically have a lot of them.
+      new openlcb::ReinitAllNodes(stack.if_can());
+    }
+    return RESTART;
+  }
+
+  bool needReinit_{false};
+
+} reinitImpl;
+
+class HeartbeatTimer : public ::Timer {
+ public:
+  HeartbeatTimer() : ::Timer(stack.executor()->active_timers()) {
+  }
+
+  long long timeout() {
+    // iterates over all train nodes.
+    for (openlcb::Node *n = stack.iface()->first_local_node(); n;
+         n = stack.iface()->next_local_node(n->node_id())) {
+      if (!traction_service.is_known_train_node(n)) {
+        continue;
+      }
+      openlcb::TrainNode* tn = (openlcb::TrainNode*)n;
+      auto ctrl = tn->get_controller();
+      if (!ctrl.id && !ctrl.alias) {
+        // no controller
+        continue;
+      }
+      if (static_cast<int>(tn->train()->get_speed().mph() + 0.5) == 0) {
+        // not moving
+        continue;
+      }
+      // Sends heartbeat
+      openlcb::send_message(
+          n, openlcb::Defs::MTI_TRACTION_CONTROL_REPLY, ctrl,
+          openlcb::TractionDefs::heartbeat_request_payload(heartbeat_sec));
+    }
+    return RESTART;
+  }
+} heartbeatTimer_;
+
+void connect_callback() { reinitImpl.needReinit_ = true; }
+
+class FakePgmTrack : public openlcb::MemorySpace, private ::Timer {
+ public:
+  FakePgmTrack() : ::Timer(stack.executor()->active_timers()) {
+    /// Initializes storage with some random data.
+    for (unsigned i = 0; i < sizeof(storage_); i++) {
+      storage_[i] = ((i+1) % 100 + 100);
+    }
+    storage_[OFS_ERR] = 0;
+    storage_[OFS_ERR+1] = 0;
+    storage_[OFS_DELAY] = 1;
+    stack.memory_config_handler()->registry()->insert(
+        nullptr, openlcb::MemoryConfigDefs::SPACE_DCC_CV, this);
+  }
+
+  bool read_only() override { return false; }
+
+    /** @returns the largest valid address for this block.  A read of 1 from
+     *  this address should succeed in returning the last byte.
+     */
+  address_t max_address() override {
+    return 1023;
+  }
+
+  size_t write(address_t destination, const uint8_t *data, size_t len,
+               errorcode_t *error, Notifiable *again) override {
+    // Checks if we need to wait first.
+    if (!check_wait(destination, error, again)) {
+      return 0;
+    }
+    // Execute. We only write 1 byte at a time.
+    storage_[destination] = *data;
+    return 1;
+  }
+
+  size_t read(address_t source, uint8_t *dst, size_t len, errorcode_t *error,
+              Notifiable *again) override {
+    // Checks if we need to wait first.
+    if (!check_wait(source, error, again)) {
+      return 0;
+    }
+    // Execute. We only read 1 byte at a time.
+    *dst = storage_[source];
+    return 1;
+  }
+  
+ private:
+  /// Performs bounds check, performs wait and handling of stored error codes.
+  /// @return true if processing should continue, false to return.
+  bool check_wait(address_t destination, errorcode_t *error, Notifiable *again) {
+    if (destination >= sizeof(storage_)) {
+      *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
+      return false;
+    }
+    if (destination == OFS_ERR || destination == OFS_ERR + 1 ||
+        destination == OFS_DELAY) {
+      // These should be executed immediately.
+      return true;
+    }
+    // Load the error persisted.
+    auto err = openlcb::data_to_error(storage_ + OFS_ERR);    
+    if (!waiting_) {
+      waiting_ = true;
+      HASSERT(waitDone_ == nullptr);
+      waitDone_ = again;
+      *error = ERROR_AGAIN;
+      start(MSEC_TO_NSEC(delay_msec()));
+      return false;
+    } else if (err) {
+      // wait done but we have an error to return.
+      waiting_ = false;
+      *error = err;
+      return false;
+    } else {
+      // Wait done + success.
+      waiting_ = false;
+      return true;
+    }
+  }
+
+  /// Timer callback
+  long long timeout() override {
+    if (waitDone_) {
+      auto n = waitDone_;
+      waitDone_ = nullptr;
+      n->notify();
+    }
+    return NONE;
+  }
+
+  /// @return how much delay should we set for each operation.
+  unsigned delay_msec() { return storage_[OFS_DELAY] * 100; }
+
+  /// At this CV (0-based) there is an openlcb error that will get injected for
+  /// any operations. Two bytes, order is Hi, Lo.
+  static constexpr unsigned OFS_ERR = 1020-1;
+  /// At this CV (0-based) there is a number on how long each operation is
+  /// going to take. Unit is 100 msec.
+  static constexpr unsigned OFS_DELAY = 1022-1;
+  /// Backing store for CVs.
+  uint8_t storage_[1024];
+  /// Set to the notifiable that needs to be called after wait.
+  Notifiable* waitDone_ = nullptr;
+  /// True if we 
+  bool waiting_{false};
+};
+
+
+/// Instantiates the fake programming track object.
+void create_pgmtrack() {
+  new FakePgmTrack();
+  new openlcb::FixedEventProducer<0x090099FEFFFF0000U | 2>(stack.node());
+}
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -206,18 +391,24 @@ openlcb::TractionCvSpace traction_cv(stack.memory_config_handler(), &track_if,
  */
 int appl_main(int argc, char *argv[]) {
   parse_args(argc, argv);
+  if (have_pgmtrack) {
+    create_pgmtrack();
+  }
+  if (heartbeat_sec) {
+    heartbeatTimer_.start(SEC_TO_NSEC(heartbeat_sec));
+  }
   std::unique_ptr<JSTcpHub> hub;
   if (port >= 0) {
     hub.reset(new JSTcpHub(stack.can_hub(), port));
   }
   std::unique_ptr<JSTcpClient> client;
   if (upstream_host) {
-    client.reset(
-        new JSTcpClient(stack.can_hub(), upstream_host, upstream_port));
+    client.reset(new JSTcpClient(stack.can_hub(), upstream_host, upstream_port,
+                                 &connect_callback));
   }
   std::vector<std::unique_ptr<JSSerialPort>> devices;
   for (auto &d : device_paths) {
-    devices.emplace_back(new JSSerialPort(stack.can_hub(), d));
+    devices.emplace_back(new JSSerialPort(stack.can_hub(), d, &connect_callback));
   }
   if (print_packets) {
     stack.print_all_packets();
