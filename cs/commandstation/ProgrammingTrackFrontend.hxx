@@ -46,6 +46,7 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
   enum DirectReadByte { DIRECT_READ_BYTE };
   enum DirectReadBit { DIRECT_READ_BIT };
   enum PomWriteByte { POM_WRITE_BYTE };
+  enum PomWriteBit { POM_WRITE_BIT };
   enum PomReadByte { POM_READ_BYTE };
   enum PagedWriteByte { PAGED_WRITE_BYTE };
   enum PagedVerifyByte { PAGED_VERIFY_BYTE };
@@ -130,7 +131,24 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     value_ = value ? 1 : 0;
   }
 
-  /// Calues for the cmd_ argument.
+  /// Request to write a single bit pom mode.
+  /// @param addrtype defines whether short or long address.
+  /// @param dcc_address is the DCC address of the target locomotive.
+  /// @param cv_number is the 1-based CV number (as the user sees it).
+  /// @param bit is 0..7 for the bit to set
+  /// @param value what to set the bit to
+  void reset(PomWriteBit, dcc::TrainAddressType addrtype, uint32_t dcc_address, unsigned cv_number, uint8_t bit, bool value) {
+    reset_base();
+    cmd_ = Type::POM_WRITE_BIT;
+    addrType_ = addrtype;
+    dccAddress_ = dcc_address;
+    cvOffset_ = cv_number - 1;
+    bitOffset_ = bit;
+    value_ = value ? 1 : 0;
+  }
+
+  
+  /// Values for the cmd_ argument.
   enum class Type {
     DIRECT_WRITE_BYTE,
     DIRECT_WRITE_BIT,
@@ -138,6 +156,7 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     DIRECT_READ_BIT,
     POM_WRITE_BYTE,
     POM_READ_BYTE,
+    POM_WRITE_BIT,
     PAGED_WRITE_BYTE,
     PAGED_VERIFY_BYTE,
     PAGED_READ_BYTE
@@ -219,6 +238,7 @@ class ProgrammingTrackFrontend
       case RequestType::POM_WRITE_BYTE:
         numTry_ = 0;
         return call_immediately(STATE(pom_write_byte));
+      case RequestType::POM_WRITE_BIT:
       case RequestType::PAGED_READ_BYTE:
         // not implemented
         break;
