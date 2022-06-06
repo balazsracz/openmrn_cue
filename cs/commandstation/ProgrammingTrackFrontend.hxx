@@ -682,8 +682,11 @@ class ProgrammingTrackFrontend
 
   /// Invoked when the service mode exit timer is elapsed.
   Action exit_service_mode() {
-    inServiceMode_ = false;
     serviceModeTimer_.stop_wait();
+    if (!inServiceMode_) {
+      return return_ok();
+    }
+    inServiceMode_ = false;
     return invoke_subflow_and_wait(backend_, STATE(exit_service_mode_done),
                                    ProgrammingTrackRequest::EXIT_SERVICE_MODE);
   }
@@ -858,10 +861,8 @@ class ProgrammingTrackFrontend
       if (is_triggered()) {
         return NONE;
       }
-      auto* b = parent_->alloc();
-      b->data()->reset(ProgrammingTrackFrontendRequest::EXIT_SERVICE_MODE);
-      b->data()->done.reset(EmptyNotifiable::DefaultInstance());
-      parent_->send(b);
+      StateFlow::invoke_subflow_and_ignore_result(
+          parent_, ProgrammingTrackFrontendRequest::EXIT_SERVICE_MODE);
       return NONE;
     }
 
