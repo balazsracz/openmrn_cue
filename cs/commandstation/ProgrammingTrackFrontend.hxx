@@ -51,6 +51,7 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
   enum PagedWriteByte { PAGED_WRITE_BYTE };
   enum PagedVerifyByte { PAGED_VERIFY_BYTE };
   enum PagedReadByte { PAGED_READ_BYTE };
+  enum ExitServiceMode { EXIT_SERVICE_MODE };
 
   /// Request to write a byte sized CV in direct mode.
   /// @param cv_number is the 1-based CV number (as the user sees it).
@@ -147,7 +148,12 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     value_ = value ? 1 : 0;
   }
 
-  
+  /// Request to exit service mode (stop using the programming track).
+  void reset(ExitServiceMode) {
+    reset_base();
+    cmd_ = Type::EXIT_SERVICE_MODE;
+  }
+
   /// Values for the cmd_ argument.
   enum class Type {
     DIRECT_WRITE_BYTE,
@@ -159,7 +165,8 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     POM_WRITE_BIT,
     PAGED_WRITE_BYTE,
     PAGED_VERIFY_BYTE,
-    PAGED_READ_BYTE
+    PAGED_READ_BYTE,
+    EXIT_SERVICE_MODE
   };
 
   /// What is the instruction to do.
@@ -185,6 +192,7 @@ class ProgrammingTrackFrontend
                            dcc::TrackIf* track,
                            dcc::RailcomHubFlow* railcom_hub)
       : CallableFlow<ProgrammingTrackFrontendRequest>(backend->service()),
+        inServiceMode_(0),
         backend_(backend),
         track_(track),
         railcomHub_(railcom_hub) {}
@@ -242,11 +250,18 @@ class ProgrammingTrackFrontend
       case RequestType::PAGED_READ_BYTE:
         // not implemented
         break;
+      case RequestType::EXIT_SERVICE_MODE:
+        return call_immediately(STATE(exit_service_mode));
     }
     return return_with_error(ERROR_UNIMPLEMENTED_CMD);
   }
 
   Action enter_service_mode() {
+    if (inServiceMode_) {
+      // the timer has not elapsed yet.
+      return call_immediately(STATE(act_service_mode));
+    }
+    inServiceMode_ = true;
     return invoke_subflow_and_wait(backend_, STATE(send_initial_resets),
                                    ProgrammingTrackRequest::ENTER_SERVICE_MODE);
   }
@@ -259,6 +274,10 @@ class ProgrammingTrackFrontend
 
   Action enter_service_mode_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    return call_immediately(STATE(act_service_mode));
+  }
+
+  Action act_service_mode() {
     switch (request()->cmd_) {
       case RequestType::DIRECT_WRITE_BYTE:
         serviceModePacket_.set_dcc_svc_write_byte(request()->cvOffset_,
@@ -289,9 +308,7 @@ class ProgrammingTrackFrontend
   Action exit_unimplemented() {
     // Bail out as we have not written this code yet.
     request()->resultCode |= ERROR_UNIMPLEMENTED_CMD;
-    return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
   
   Action write_pkt_sent() {
@@ -361,9 +378,7 @@ class ProgrammingTrackFrontend
     } else {
       request()->resultCode |= ERROR_NO_LOCO;
     }
-    return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
 
   /// Root state of reading one byte using direct mode from the decoder.
@@ -430,9 +445,7 @@ class ProgrammingTrackFrontend
                                      ProgrammingTrackRequest::SEND_RESET,
                                      verifyCooldownReset_);
     }
-    return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
 
   Action cooldown_final_verify() {
@@ -443,9 +456,7 @@ class ProgrammingTrackFrontend
     } else {
       request()->resultCode |= ERROR_FAILED_VERIFY;
     }
-    return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
 
   /// Beignning of paged mode operation. Sends out the page preset
@@ -563,8 +574,7 @@ class ProgrammingTrackFrontend
     } else {
       request()->resultCode |= ERROR_NO_LOCO;
     }
-    return invoke_subflow_and_wait(backend_, STATE(return_response),
-                                   ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
 
   Action return_response() {
@@ -670,6 +680,26 @@ class ProgrammingTrackFrontend
     }
   }
 
+  /// Invoked when the service mode exit timer is elapsed.
+  Action exit_service_mode() {
+    inServiceMode_ = false;
+    serviceModeTimer_.stop_wait();
+    return invoke_subflow_and_wait(backend_, STATE(exit_service_mode_done),
+                                   ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+  }
+
+  Action exit_service_mode_done() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    return return_ok();
+  }
+
+  /// Invoked when an operation is done and we are ready to return. Handles the
+  /// service mode exit timer.
+  Action done_and_return() {
+    serviceModeTimer_.ping();
+    return return_with_error(request()->resultCode & (~OPERATION_PENDING));
+  }
+
   /// Handler class for railcom feedback messages.
   class RailcomHandler : public dcc::RailcomHubPortInterface {
    public:
@@ -762,7 +792,10 @@ class ProgrammingTrackFrontend
     timer_.trigger();
     railcomHub_->unregister_port(&railcomHandler_);
   }
-  
+
+  /// How long we should stay in service mode after a programming request.
+  static constexpr unsigned SERVICE_MODE_TIMER_SEC = 30;
+
  private:
   /// How many times by default we send out a programming track verify packet
   /// to get exactly one ack.
@@ -795,6 +828,49 @@ class ProgrammingTrackFrontend
   /// How many times we send out a reset packet after a hard reset (CV8=8).
   static constexpr unsigned DEFAULT_PAGED_HARD_RESET_REPEATS = 100;
 
+  class ServiceModeTimer : public ::Timer {
+   public:
+    ServiceModeTimer(ProgrammingTrackFrontend* parent)
+        : ::Timer(parent->service()->executor()->active_timers()),
+          parent_(parent) {}
+
+    /// Starts the timer, or restarts it if it is already running.
+    void ping() {
+      if (isRunning_) {
+        restart();
+      } else {
+        start(SEC_TO_NSEC(SERVICE_MODE_TIMER_SEC));
+        isRunning_ = true;
+      }
+    }
+
+    /// Stops the timer if it's running.
+    void stop_wait() {
+      if (isRunning_) {
+        trigger();
+        isRunning_ = false;
+      }
+    }
+    
+   private:
+    long long timeout() override {
+      isRunning_ = false;
+      if (is_triggered()) {
+        return NONE;
+      }
+      auto* b = parent_->alloc();
+      b->data()->reset(ProgrammingTrackFrontendRequest::EXIT_SERVICE_MODE);
+      b->data()->done.reset(EmptyNotifiable::DefaultInstance());
+      parent_->send(b);
+      return NONE;
+    }
+
+    /// True if the timer is running and not expired yet.
+    bool isRunning_{false};
+    /// Owning instance.
+    ProgrammingTrackFrontend* parent_;
+  } serviceModeTimer_{this};
+  
   /// Error codes used by the POM railcom readout.
   enum {
     ERROR_NOOP = 0,
@@ -839,6 +915,8 @@ class ProgrammingTrackFrontend
   uint8_t seenRailcomGarbage_ : 1;
   /// Register to use in paged mode. 0-based.
   uint8_t pagedRegister_ : 3;
+  /// True if we are in service mode.
+  uint8_t inServiceMode_ : 1;
 
   StateFlowTimer timer_{this};
   long long deadline_;  //< time when we should give up and return error.
