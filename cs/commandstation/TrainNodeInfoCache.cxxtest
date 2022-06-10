@@ -323,7 +323,7 @@ TEST_F(FindManyTrainTestBase, Scroll3) {
   EXPECT_EQ("TT 3006", get_results_map().begin()->second->name_);
   // there is some whitebox testing here to debug why the scrolling is broken
   // now.
-  EXPECT_EQ(0x060100000000ULL | 3006, get_clip_min());
+  EXPECT_EQ(0x06010000C000ULL | 3006, get_clip_min());
   EXPECT_EQ(6, get_result_struct().resultsClippedAtTop_);
   EXPECT_EQ(6, get_result_struct().newClippedAtTop_);
   EXPECT_EQ(16U, get_results_map().size());
@@ -543,7 +543,7 @@ TEST_F(FindManyTrainTestBase, ScrollToTest) {
   vector<openlcb::NodeID> ids;
   for (int i = 0; i < 25; ++i) {
     names.push_back(StringPrintf("TT %d", 3000 + i));
-    ids.push_back(0x060100000000ULL | (3000 + i));
+    ids.push_back(0x06010000C000ULL | (3000 + i));
   }
 
   // This is the result of the initial search.

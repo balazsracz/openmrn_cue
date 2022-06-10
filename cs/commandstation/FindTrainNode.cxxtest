@@ -197,7 +197,7 @@ TEST_F(RemoteFindTrainNodeTest, FindNonMatchingTrain) {
 TEST_F(RemoteFindTrainNodeTest, AllocateTrain) {
   auto b = invoke_flow(&remoteClient_, 234, FindProtocolDefs::ALLOCATE);
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x060100000000u + 234, b->data()->nodeId);
+  EXPECT_EQ(0x06010000C000u + 234, b->data()->nodeId);
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindExistingTrainCallback) {
