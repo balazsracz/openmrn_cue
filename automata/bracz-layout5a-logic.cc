@@ -493,6 +493,24 @@ StandardFixedTurnout Turnout_ZHW1(&brd, logic->Allocate("ZH.W1", 40),
                                   FixedTurnout::TURNOUT_THROWN);
 TurnoutWrap TZHW1(&Turnout_ZHW1.b, kPointToThrown);
 
+PhysicalSignal LBB1(&bd.InBrownGrey, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+
+PhysicalSignal LBA2(&b9.InGreenGreen, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
+
+StandardFixedTurnout Turnout_LBW1(&brd, logic->Allocate("LB.W1", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+TurnoutWrap TLBW1(&Turnout_LBW1.b, kClosedToPoint);
+
+StandardBlock Block_LBB1(&brd, &LBB1, logic, "LB.B1");
+StandardBlock Block_LBA2(&brd, &LBA2, logic, "LB.A2");
+
+StandardFixedTurnout Turnout_LBW2(&brd, logic->Allocate("LB.W2", 40),
+                                  FixedTurnout::TURNOUT_CLOSED);
+TurnoutWrap TLBW2(&Turnout_LBW2.b, kPointToClosed);
+
+
 
 StubBlock Stub_BSB1(&brd, &BSB1, nullptr, logic, "BS.B1");
 StubBlock Stub_BSB2(&brd, &BSB2, nullptr, logic, "BS.B2");
@@ -518,8 +536,13 @@ bool ignored1 = BindPairs({
 
 bool ignored2 = BindSequence(  //
     Stub_BSB1.entry(),         //
-    {&TBSW1, &TZHW1},          //
+    {&TBSW1, &TLBW2, &Block_LBA2, &TLBW1, &TZHW1},          //
     Stub_ZHA1.entry());
+
+bool ignored3 = BindSequence(      //
+    Turnout_LBW1.b.side_thrown(),  //
+    {&Block_LBB1},                 //
+    Turnout_LBW2.b.side_thrown());
 
 #if 0
 bool ignored4 = BindSequence(  //
@@ -746,23 +769,29 @@ uint64_t MMAddress(uint16_t addr) {
 }
 
 
-void IfZHW1Free(Automata::Op* op) {
+void IfZHEntry(Automata::Op* op) {
   IfNotPaused(op);
   op->IfReg0(op->parent()->ImportVariable(*Turnout_ZHW1.b.any_route()));
 }
-auto g_zh_w1_free = NewCallback(&IfZHW1Free);
+auto g_zh_entry_free = NewCallback(&IfZHEntry);
+
+void IfZHExit(Automata::Op* op) {
+  IfNotPaused(op);
+  IfNotShutdown(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_ZHW1.b.any_route()));
+}
+auto g_zh_exit_free = NewCallback(&IfZHExit);
 
 
 void IfBSW1Free(Automata::Op* op) {
   IfNotPaused(op);
-  IfNotShutdown(op);
   op->IfReg0(op->parent()->ImportVariable(*Turnout_BSW1.b.any_route()));
 }
 auto g_bs_w1_free = NewCallback(&IfBSW1Free);
 
 
-auto& Block_EntryToZH = Stub_BSB1.b_.rev_signal;
-auto& Block_EntryToBS = Stub_ZHA1.b_.rev_signal;
+auto& Block_EntryToZH = Block_LBA2;
+auto& Block_EntryToBS = Block_LBB1;
 
 class LayoutSchedule : public TrainSchedule {
  public:
@@ -783,7 +812,7 @@ class LayoutSchedule : public TrainSchedule {
 
   void RunStubZH1(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZH);
-    AddDirectBlockTransition(Block_EntryToZH, Stub_ZHA1, &g_zh_w1_free);
+    AddDirectBlockTransition(Block_EntryToZH, Stub_ZHA1, &g_zh_entry_free);
     StopAndReverseAtStub(Stub_ZHA1);
   }
 
@@ -973,7 +1002,10 @@ class CircleTrain : public LayoutSchedule {
 
   void RunTransition(Automata* aut) OVERRIDE {
     RunStubZH1(aut);
+    AddDirectBlockTransition(Stub_ZHA1.b_.rev_signal, Block_LBB1,
+                             &g_zh_exit_free);
     RunStubBS1(aut);
+    AddDirectBlockTransition(Stub_BSB1.b_.rev_signal, Block_LBA2, &g_bs_w1_free);
   }
 };
 
