@@ -2,12 +2,12 @@
 OBJS=system.o control-logic.o registry.o
 
 AUTS = rr-crossing.cpp logic-demo.cpp 
-OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout bracz-layout1i-logic.cout bracz-layout2b-logic.cout bracz-layout2a-logic.cout
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout bracz-layout1i-logic.cout bracz-layout2b-logic.cout bracz-layout2a-logic.cout bracz-layout5a-logic.cout
 BINS = $(AUTS:.cpp=)
 
 #DEFAULT_AUT = bracz-layout3h-logic
 #DEFAULT_AUT = bracz-layout2b-logic
-DEFAULT_AUT = bracz-layout2a-logic
+DEFAULT_AUT = bracz-layout5a-logic
 # DEFAULT_AUT = lcc-layout-logic
 TARGET_NODE = 0x05010101143F # cue.tiva
 
@@ -43,6 +43,9 @@ libautomata.a: $(OBJS)
 
 test-aut: $(OBJS) test-aut.o
 	$(CXX) $(CXXFLAGS) -o $@ test-aut.o $(OBJS) 
+
+bracz-layout5a-logic: $(OBJS) bracz-layout5a-logic.o # control-logic.hxx
+	$(CXX) $(CXXFLAGS) -o $@ bracz-layout5a-logic.o $(OBJS) 
 
 bracz-layout2a-logic: $(OBJS) bracz-layout2a-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ bracz-layout2a-logic.o $(OBJS) 
