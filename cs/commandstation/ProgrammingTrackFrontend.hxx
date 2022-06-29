@@ -738,9 +738,10 @@ class ProgrammingTrackFrontend
         railcom_debug(f).c_str());
     if (!f.ch2Size) {
       // Ignores this; leave in pending and maybe a later repeat reaches the
-      // decoder.
+      // decoder. We could return record_railcom_status(
+      // ERROR_NO_RAILCOM_CH2_DATA), but there is no meaningful handling of
+      // that status value and it would prevent retries from being processed.
       return;
-      //return record_railcom_status(ERROR_NO_RAILCOM_CH2_DATA);
     }
     dcc::parse_railcom_data(f, &interpretedResponse_);
     unsigned new_status = ERROR_PENDING;
