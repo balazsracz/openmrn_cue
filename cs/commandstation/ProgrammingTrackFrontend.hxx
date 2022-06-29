@@ -205,11 +205,13 @@ class ProgrammingTrackFrontend
     /// Error code when the locomotive is not responding to programming track
     /// requests. Usually dirty track or so.
     ERROR_NO_LOCO = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 1,
-    /// Re-triable error generated when the loco respons with conflicting
+    /// Re-triable error generated when the loco responds with conflicting
     /// information.
     ERROR_FAILED_VERIFY = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 2,
     /// We have not received any railcom response from the locomotive.
     ERROR_NO_RAILCOM = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 3,
+    /// Re-triable error when we have seen only invalid responses.
+    ERROR_INVALID_RESPONSE = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 4,
     /// Error code when something was invoked that is not implemented.
     ERROR_UNIMPLEMENTED_CMD = openlcb::Defs::ERROR_UNIMPLEMENTED_CMD,
     /// Error code when the request arguments are invalid.
@@ -622,7 +624,7 @@ class ProgrammingTrackFrontend
                                 STATE(pom_write_byte));
         }
         if (seenRailcomBusy_ || seenRailcomGarbage_) {
-          return return_with_error(ERROR_FAILED_VERIFY);
+          return return_with_error(ERROR_INVALID_RESPONSE);
         } else {
           return return_with_error(ERROR_NO_RAILCOM);
         }
@@ -674,7 +676,7 @@ class ProgrammingTrackFrontend
       return call_immediately(STATE(pom_read_byte));
     }
     if (seenRailcomBusy_ || seenRailcomGarbage_) {
-      return return_with_error(ERROR_FAILED_VERIFY);
+      return return_with_error(ERROR_INVALID_RESPONSE);
     } else {
       return return_with_error(ERROR_NO_RAILCOM);
     }
@@ -735,7 +737,11 @@ class ProgrammingTrackFrontend
     LOG(INFO, "CV railcom feedback ch=%d: %s", f.channel,
         railcom_debug(f).c_str());
     if (!f.ch2Size) {
-      return record_railcom_status(ERROR_NO_RAILCOM_CH2_DATA);
+      // Ignores this; leave in pending and maybe a later repeat reaches the
+      // decoder. We could return record_railcom_status(
+      // ERROR_NO_RAILCOM_CH2_DATA), but there is no meaningful handling of
+      // that status value and it would prevent retries from being processed.
+      return;
     }
     dcc::parse_railcom_data(f, &interpretedResponse_);
     unsigned new_status = ERROR_PENDING;
