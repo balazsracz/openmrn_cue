@@ -1,216 +1,125 @@
 ﻿/**
-* @page cue_start Cue Node Getting Started Guide
-*
-* @section tableofcontents Table of Contents
-* - @ref linux
-* - @ref openmrn_cue_location
-* - @ref targets
-*   - @ref devkit
-* - @ref logicblock
-* - @ref addcb
-* - @ref variable
-* - @ref usecases
-*   - @ref turnface
-*   - @ref turntrail
-*
-* @section linux Linux
-* This section describes how to use Linux as a development and compiling 
-* environment for the OpenMRN Cue (aka Logic Node)  application. Before 
-* you begin, a couple of pointers on packages you may want to have before 
-* you begin the procedure, in *addition* to the packages for OpenMRN compliaton:
-*
-*
-* -# Bison (version 3.1)
-* **NOTE:** Potentially your distro's packages will not be this version. You may have to download and compile from source
-* -# flex
- *
- * **Note** Use Oracle’s JRE instead of the OpenJDK’s offering if you want to use JMRI or STM32CubeMX.
- *
- * Use your package manager for the distro that you are running to verify they
- * exist on your system, or install them so you are ready.
- *
- * @subsection openmrn_cue_location OpenMRN Cue Location
- * The build system for OpenMRN Cue is quite intelligent, following the OpenMRN codebase.
- *  You will need to have both OpenMRN and OpenMRN-Cue git repositories downloaded and accessible. 
- * It is  designed to find the OpenMRN source tree in one of three separate locations in the following order:
- *
- * The Cue software is expected at:
- * -# ~/openmrn-cue
- * 
- * OpenMRN software is expected at:
- * -# OPENMRNPATH environment variable
- * -# /opt/openmrn
- * -# ~/openmrn
- *
- * Sometimes it is useful to use a symbolic link to point one of these paths
- * to an alternate OpenMRN source tree.
- *
- * @subsection targets Targets
- * Currently, the supported targets for the Cue OpenMRN code are the Nucleo 303RE and Nucleo 767ZI boards.
- * These boards are assumed to be using the DevKit base board to provide power and CAN bus connectivity.
- * If you have an OpenMRN reposority that is compiling the mainline OpenMRN code,
- * you should have the STM libraries needed. Please note that the 767ZI target is new to OpenMRN
- * and you may need to download and add the library for the F7 family of hardware.
- * 
- * If you follow the getting started documentation for standard OpenMRN, you can use the same procedure 
- * to find and download the F7 library, and creating the same symbolic links as you did for the
- * F3 or F0 family.
- * 
- * @subsubsection DevKit Hardware Note
- * It is possible to install the 767 board onto the DevKit board.  As the 767 board is significantly 
- * larger than the F303RE board, it will overhang across the area used for the servo headers JP1 and JP2. 
- * We recommend building a DevKit with only the CAN and power sections built to be used for Logic Nodes. _todo
- * insert picture here_
- *
- *
- *
- * @subsection devkit DevKit and Nucleo for Cue
- * You will want to compile the application at openmrn_cue/cs/targets/logic.nucleo-xxx, where xxx is your 
- * appropriate target.
- * As portions of the code are self describing as part of the complilation process, you will need to run
- * the make command multiple times to fix this "chicken and egg" problem.
- *
- * @code
- * openmrn_cue/cs/targets/logic.nucleo-303re$ make -k
- *
- * @endcode
- * This will run and ignore any errors. You should get a single error that the AST.hxx file is missing
- * one of its includes, _location.yy_.
- * If you get back multiple errors, note them to fix. Common problems and fixes are listed in the next section.
- *
- * @code
- * openmrn_cue/cs/targets/logic.nucleo-303re$ make
- *
- * @endcode
- * 
- * This compliation attempt should complete without __any__ errors.
- * Assuming it does, you will get a binary ELF file that you can move into a binary for the Nucleo 
- * board via objcopy.
- *
- *
- * @subsubsection tscompile Troubleshooting the Compliation Process
- * Errors that you might receive and their suggested solutions is as follows:
- *
- * Error | Solution
- * ----- | --------
- * Bison error about error handling | Please check your bison version, you need Bison 3.1. Currently, Ubuntu has either 3.0 or 3.3 packaged. Neither one works. You will need to download bison from GNU and compile from source.
- * Flex error | you need flex
- * location.yy not found from include statement in AST.hxx | Expected on first compile. Second compile should not have this problem. 
- *
- * 
- *
- * @subsubsection nodeid A Word about NodeIDs
- * **Please note that the code from OpenMRN Cue that you cloned down with git has a NodeID set inside it that does not conform to the standard as it, according to the letter of the law, belongs to the OpenLCB working group. Please update the NodeID before your first compile.**
- * **If you didn't change it before your first compile, change it now, recompile, and then factory reset the board via a CDI change to also update the EventIDs.* *
- *
- * @subsection logicblock Logic Blocks for ABS
- * The premade logic blocks can be found at https://sites.google.com/site/balazsracz/rr/logic_text
- * 
- * Note that there are different logic blocks per scenario. At this time, there are logic blocks for 
- * single blocks, single blocks facing a turnout, and single blocks trailing a turnout. The signals to be
- * used are search light type signals, where a single head has a single lens that can display red, yellow,
- * or red. We assume that the searchlight signal is a bicolor LED where turning on both the Red and Green will
- * give you a yellow light. If you are using tricolor LEDs in your searchlights, this red+green=yellow paradigm
- * will not work correctly.
- * **3 light CPL signals and other scenario code blocks are currently under development.**
- *
- *
- * @subsection variable Variables
- * There are variables used to determine which events should be produced or consumed by the cue
- * node. The following chart will define the variables and their use.
- *
-=======
-*
-* **Note** You may need to use Oracle’s JRE instead of the OpenJDK’s offering if you want to use JMRI or STM32CubeMX. As of this writing (June 2020), OpenJDK 11.0.7 on Ubuntu works with JMRI.
-*
-* Use your package manager for the distro that you are running to verify these 
-* packages exist on your system, or install them so you are ready.
-*
-* @subsection openmrn_cue_location OpenMRN Cue Location
-* The build system for OpenMRN Cue is quite intelligent, following the OpenMRN codebase.
-*  You will need to have both OpenMRN and OpenMRN-Cue git repositories downloaded and accessible. 
-* It is  designed to find the OpenMRN source tree in one of three separate locations in the following order:
-*
-* The Cue software is expected at:
-* -# ~/openmrn-cue
-* 
-* OpenMRN software is expected at:
-* -# OPENMRNPATH environment variable
-* -# /opt/openmrn
-* -# ~/openmrn
-*
-* Sometimes it is useful to use a symbolic link to point one of these paths
-* to an alternate OpenMRN source tree.
-*
-* @subsection targets Targets
-* Currently, the supported targets for the Cue OpenMRN code are the Nucleo 303RE and Nucleo 767ZI boards.
-* These boards are assumed to be using the DevKit base board to provide power and CAN bus connectivity.
-* 
-* _ToDo: Link to minimal DevKit hardware build for Logic Node.
-* _ToDo2: Instructions on minimal hardware build.
-*
-*
-* If you have an OpenMRN reposority that is compiling the mainline OpenMRN code,
-* you should have the STM libraries needed. Please note that the 767ZI target is new to OpenMRN
-* and you may need to download and add the library for the F7 family of hardware.
-* 
-* If you follow the getting started documentation for standard OpenMRN, you can use the same procedure 
-* to find and download the F7 library, and creating the same symbolic links as you did for the
-* F3 or F0 family.
-*
-* 
-*
-* @subsection devkit DevKit and Nucleo for Cue
-* You will want to compile the application at openmrn_cue/cs/targets/logic.nucleo-xxx, where xxx is your 
-* appropriate target.
-* As portions of the code are self describing as part of the complilation process, you will need to run
-* the make command multiple times to fix this "chicken and egg" problem.
-*
-* @code
-* openmrn_cue/cs/targets/logic.nucleo-303re$ make -k
-*
-* @endcode
-* This will run and ignore any errors. You should get a single error that the AST.hxx file is missing
-* one of its includes, _location.yy_.
-* If you get back multiple errors, note them to fix. Common problems and fixes are listed in the next section.
-*
-* @code
-* openmrn_cue/cs/targets/logic.nucleo-303re$ make
-*
-* @endcode
-* 
-* This compliation attempt should complete without __any__ errors.
-* Assuming it does, you will get a binary ELF file that you can move into a binary for the Nucleo 
-* board via objcopy.
-*
-*
-* @subsubsection tscompile Troubleshooting the Compliation Process
-* Errors that you might receive and their suggested solutions is as follows:
-*
-* Error | Solution
-* ----- | --------
-* Bison error about error handling | Please check your bison version, you need Bison 3.1. Currently, Ubuntu has either 3.0 or 3.3 packaged. Neither one works. You will need to download bison from GNU and compile from source.
-* Flex error | you need flex
-* location.yy not found from include statement in AST.hxx | Expected on first compile. Second compile should not have this problem. 
-*
-* 
-*
-* @subsubsection nodeid A Word about NodeIDs
-* **Please note that the code from OpenMRN Cue that you cloned down with git has a NodeID set inside it that does not conform to the standard as it, according to the letter of the law, belongs to the OpenLCB working group. You will want to change it and then factory reset the board via a CDI change to also update the EventIDs.**
-*
-* @subsection logicblock Logic Blocks for ABS
-* The premade logic blocks can be found at https://sites.google.com/site/balazsracz/rr/logic_text
-* 
-* Note that there are different logic blocks per scenario. At this time, there are logic blocks for 
-* single blocks, single blocks facing a turnout, and single blocks trailing a turnout. Using
-* search light type signals. 3 light CPL signals and other scenario code blocks are
-* currently under development.
-*
-*
-* @subsection variable Variables
-* There are variables used to determine which events should be produced or consumed by the cue
-* node. The following chart will define the variables and their use.
-*
+@page cue_start Cue Node Getting Started Guide
+
+@section tableofcontents Table of Contents
+- @ref linux
+  - @ref openmrn_cue_location
+- @ref targets
+  - @ref devkit
+- @ref logicblock
+- @ref addcb
+- @ref variable
+- @ref usecases
+  - @ref turnface
+  - @ref turntrail
+
+@section linux Linux
+This section describes how to use Linux as a development and compiling environment for the OpenMRN Cue (aka Logic Node)  application. Before you begin, a couple of pointers on packages you may want to have before you begin the procedure, in *addition* to the packages for OpenMRN compliaton:
+
+
+-# Bison (version 3.1)
+**NOTE:** Potentially your distro's packages will not be this version. You may have to download and compile from source
+-# flex
+ 
+**Note** Use Oracle’s JRE instead of the OpenJDK’s offering if you want to use JMRI or STM32CubeMX.
+ 
+Use your package manager for the distro that you are running to verify they exist on your system, or install them so you are ready.
+ 
+@subsection openmrn_cue_location OpenMRN Cue Location
+ The build system for OpenMRN Cue is quite intelligent, following the OpenMRN codebase.
+ You will need to have both OpenMRN and OpenMRN-Cue git repositories downloaded and accessible. 
+ It is  designed to find the OpenMRN source tree in one of three separate locations in the following order:
+ 
+ The Cue software is expected at:
+  -# ~/openmrn-cue
+  
+ OpenMRN software is expected at:
+  -# OPENMRNPATH environment variable
+  -# /opt/openmrn
+  -# ~/openmrn
+ 
+ Sometimes it is useful to use a symbolic link to point one of these paths to an alternate OpenMRN source tree.
+ 
+@section targets Targets
+  Currently, the supported targets for the Cue OpenMRN code are the Nucleo 303RE and Nucleo 767ZI boards.
+  These boards are assumed to be using the DevKit base board to provide power and CAN bus connectivity.
+  
+ _ToDo: Link to minimal DevKit hardware build for Logic Node.
+ _ToDo2: Instructions on minimal hardware build.
+
+  If you have an OpenMRN reposority that is compiling the mainline OpenMRN code,
+  you should have the STM libraries needed. Please note that the 767ZI target is new to OpenMRN
+  and you may need to download and add the library for the F7 family of hardware.
+  
+  If you follow the getting started documentation for standard OpenMRN, you can use the same procedure 
+  to find and download the F7 library, and creating the same symbolic links as you did for the
+  F3 or F0 family.
+  
+  @subsection targethwnote DevKit Hardware Note
+  It is possible to install the 767 board onto the DevKit board.  As the 767 board is significantly 
+  larger than the F303RE board, it will overhang across the area used for the servo headers JP1 and JP2. 
+  We recommend building a DevKit with only the CAN and power sections built to be used for Logic Nodes. 
+
+_todo insert picture here_
+ 
+ 
+ 
+  @subsection devkit DevKit and Nucleo for Cue
+  You will want to compile the application at openmrn_cue/cs/targets/logic.nucleo-xxx, where xxx is your 
+  appropriate target.
+  As portions of the code are self describing as part of the complilation process, you will need to run
+  the make command multiple times to fix this "chicken and egg" problem.
+ 
+  @code
+  openmrn_cue/cs/targets/logic.nucleo-303re$ make -k
+ 
+  @endcode
+  
+  This will run and ignore any errors. You should get a single error that the AST.hxx file is missing
+  one of its includes, _location.yy_.
+  If you get back multiple errors, note them to fix. Common problems and fixes are listed in the next section.
+ 
+  @code
+  openmrn_cue/cs/targets/logic.nucleo-303re$ make
+ 
+  @endcode
+  
+  This compliation attempt should complete without __any__ errors.
+  Assuming it does, you will get a binary ELF file that you can move into a binary for the Nucleo 
+  board via objcopy.
+ 
+ 
+  @subsubsection tscompile Troubleshooting the Compliation Process
+  Errors that you might receive and their suggested solutions is as follows:
+ 
+  Error | Solution
+  ----- | --------
+  Bison error about error handling | Please check your bison version, you need Bison 3.1. Currently, Ubuntu has either 3.0 or 3.3 packaged. Neither one works. You will need to download bison from GNU and compile from source.
+  Flex error | you need flex
+  location.yy not found from include statement in AST.hxx | Expected on first compile. Second compile should not have this problem. 
+ 
+  
+ 
+@subsubsection nodeid A Word about NodeIDs
+  **Please note that the code from OpenMRN Cue that you cloned down with git has a NodeID set inside it that does not conform to the standard as it, according to the letter of the law, belongs to the OpenLCB working group. Please update the NodeID before your first compile.**
+  **If you didn't change it before your first compile, change it now, recompile, and then factory reset the board via a CDI change to also update the EventIDs.* *
+ 
+@section logicblock Logic Blocks for ABS
+  The premade logic blocks can be found at https://sites.google.com/site/balazsracz/rr/logic_text
+  
+  Note that there are different logic blocks per scenario. At this time, there are logic blocks for 
+  single blocks, single blocks facing a turnout, and single blocks trailing a turnout. The signals to be
+  used are search light type signals, where a single head has a single lens that can display red, yellow,
+  or red. We assume that the searchlight signal is a bicolor LED where turning on both the Red and Green will
+  give you a yellow light. If you are using tricolor LEDs in your searchlights, this red+green=yellow paradigm
+  will not work correctly.
+  **3 light CPL signals and other scenario code blocks are currently under development.**
+ 
+ 
+ @subsection variable Variables
+ There are variables used to determine which events should be produced or consumed by the cue
+ node. The following chart will define the variables and their use.
+
   Variable Name | Event ID Source | Type of Event
    ------------- | --------------- | -------------
   red_light true| Block Signal Stop Aspect | Activation
@@ -219,65 +128,65 @@
 green_light false | Block Signal Clear Aspect | Inactivation
 Next_block true Unoccupied| occu block that signal protects | Inactivation
 
- *
- *
- * @subsection addcb Adding Code Blocks to Cue
- * To add any code block to Cue, select a block tab. Add a name and select the drop down to "Running". Then, copy the code
- * block into the "Program Text" text box. 
- * @image html LogicNodeProgramBox.png
- * 
- * Once copied, click the save changes button and then use the "More" button and select "Update Complete".
- * @image html LogicUpdateComplete.png
- *
- * It will take at least a few seconds for the code to get copied to the Node from JMRI and then for the Node to compile and activate that copied code.
- * Inside the "Status of Program" text box, you can potentially receive a few different return messages.
- *
- * @image html LogicCompileBox.png
- * 
- * Compile OK == Ready for further work
- * Compile OK. Disabled == Check the status drop down to make sure it is enabled. If moving to enable doesn’t seem to take effect after a “Write” command, reboot the logic node.
- * If Okay; hit “Refresh All” and wait. 
- *
- * Once everything redraws inside JMRI, you will note the variable tabs have been renamed:
- * @image html LogicNode.png
- * 
- *
- *
- * @subsection usecases Using Cue Node
- * @subsubsection block Protected Block
- * Protecting a block without any turnouts is easy. You will want to copy and paste the ABS main signal logic code from
- * the logic text website.
- *
- * Once in and compiled, you will want to insert the appropriate EventIDs for each variable. Save and update complete when done.
- * To test, put a detected car or loco in the protected block. The signal should display a red aspect. Once removed, you should get a green aspect,
- * unless you have the track circuit is inactive (meaning something is in that block. Remember, signal systems are designed to be "fail-safe" so in the case
- * of a power loss, signals drop to red, the most restrictive aspect. 
- *
- *
- * @subsubsection turnface Protected Turnout Facing Points
- * This section will describe the configuration when you have a signal with 2 heads, facing
- * the same direction the points are pointing, giving speed and/or routing information for traffic to 
- * move over the tunouts. 
- * We expect this signal is protecting two routes, either straight through the turnout (position closed) or diverging
- * through the turnout (position thrown).
- * We assume the top head is for the mainline, or closed position route, and the lower head is
- * for the thrown, or diverging route.
- *
- * Use the ABS main signal with two heads logic block. As before, once in and compiled, don't forget update complete.
- * Note that you have two sets of variables to fill in, since we have 2 blocks ahead of our direction of travel and could use either one
- * and our signal will indicate both block statuses to use.
- *
- *
- * @subsubsection turntrail Protected Turnout Trailing Points
- * This logic is for an ABS block signal that is facing (or behind) a turnout. In other words, the points must be set for your direction of
- * travel so that you may proceed. This logic block can also be used for a grade crossing.
- * 
- * As before, once the logic block is in and you receive a compile OK message, use update complete. After event IDs are changed as appropiate, don't forget
- * update complete.
- *
- * To test, when the turnout is against you, your signal should be Red. If the turnout is set for you, but the block is occupied, your signal should be red.
- * If the block is empty and the turnout is set for you, but the following block is occupied, your signal should be yellow. If the turnout is correct and the next 
- * block is empty as well, you should receieve a green aspect.
- * 
- *
- */
+ 
+ 
+  @subsection addcb Adding Code Blocks to Cue
+  To add any code block to Cue, select a block tab. Add a name and select the drop down to "Running". Then, copy the code
+  block into the "Program Text" text box. 
+  @image html LogicNodeProgramBox.png
+  
+  Once copied, click the save changes button and then use the "More" button and select "Update Complete".
+  @image html LogicUpdateComplete.png
+ 
+  It will take at least a few seconds for the code to get copied to the Node from JMRI and then for the Node to compile and activate that copied code.
+  Inside the "Status of Program" text box, you can potentially receive a few different return messages.
+ 
+  @image html LogicCompileBox.png
+  
+  Compile OK == Ready for further work
+  Compile OK. Disabled == Check the status drop down to make sure it is enabled. If moving to enable doesn’t seem to take effect after a “Write” command, reboot the logic node.
+  If Okay; hit “Refresh All” and wait. 
+ 
+  Once everything redraws inside JMRI, you will note the variable tabs have been renamed:
+  @image html LogicNode.png
+  
+ 
+ 
+  @subsection usecases Using Cue Node
+  @subsubsection block Protected Block
+  Protecting a block without any turnouts is easy. You will want to copy and paste the ABS main signal logic code from
+  the logic text website.
+ 
+Once in and compiled, you will want to insert the appropriate EventIDs for each variable. Save and update complete when done.
+To test, put a detected car or loco in the protected block. The signal should display a red aspect. Once removed, you should get a green aspect,
+  unless you have the track circuit is inactive (meaning something is in that block. Remember, signal systems are designed to be "fail-safe" so in the case
+  of a power loss, signals drop to red, the most restrictive aspect. 
+ 
+ 
+  @subsubsection turnface Protected Turnout Facing Points
+  This section will describe the configuration when you have a signal with 2 heads, facing
+  the same direction the points are pointing, giving speed and/or routing information for traffic to 
+  move over the tunouts. 
+  We expect this signal is protecting two routes, either straight through the turnout (position closed) or diverging
+  through the turnout (position thrown).
+  We assume the top head is for the mainline, or closed position route, and the lower head is
+  for the thrown, or diverging route.
+ 
+  Use the ABS main signal with two heads logic block. As before, once in and compiled, don't forget update complete.
+  Note that you have two sets of variables to fill in, since we have 2 blocks ahead of our direction of travel and could use either one
+  and our signal will indicate both block statuses to use.
+ 
+ 
+  @subsubsection turntrail Protected Turnout Trailing Points
+  This logic is for an ABS block signal that is facing (or behind) a turnout. In other words, the points must be set for your direction of
+  travel so that you may proceed. This logic block can also be used for a grade crossing.
+  
+  As before, once the logic block is in and you receive a compile OK message, use update complete. After event IDs are changed as appropiate, don't forget
+  update complete.
+ 
+  To test, when the turnout is against you, your signal should be Red. If the turnout is set for you, but the block is occupied, your signal should be red.
+  If the block is empty and the turnout is set for you, but the following block is occupied, your signal should be yellow. If the turnout is correct and the next 
+  block is empty as well, you should receieve a green aspect.
+  
+ 
+**/
