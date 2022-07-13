@@ -136,12 +136,10 @@ class DccTrainDbEntry : public TrainDbEntry {
 struct AllTrainNodes::Impl {
  public:
   ~Impl() {
-    delete eventHandler_;
     delete node_;
     delete train_;
   }
   int id;
-  openlcb::SimpleEventHandler* eventHandler_ = nullptr;
   openlcb::Node* node_ = nullptr;
   openlcb::TrainImpl* train_ = nullptr;
 };
@@ -170,13 +168,15 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::NodeID node_id) {
 }
 
 /// Returns a traindb entry or nullptr if the id is too high.
-std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(int id) {
+std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(
+    size_t id, Notifiable* done) {
+  done->notify();
   return db_->get_entry(id);
 }
 
 /// Returns a node id or 0 if the id is not known to be a train.
-openlcb::NodeID AllTrainNodes::get_train_node_id(int id) {
-  if (id >= (int)trains_.size()) return 0;
+openlcb::NodeID AllTrainNodes::get_train_node_id(size_t id) {
+  if (id >= trains_.size()) return 0;
   if (trains_[id]->node_) {
     return trains_[id]->node_->node_id();
   }
@@ -187,7 +187,7 @@ class AllTrainNodes::TrainSnipHandler
     : public openlcb::IncomingMessageStateFlow {
  public:
   TrainSnipHandler(AllTrainNodes* parent, openlcb::SimpleInfoFlow* info_flow)
-      : IncomingMessageStateFlow(parent->tractionService_->iface()),
+      : IncomingMessageStateFlow(parent->train_service()->iface()),
         parent_(parent),
         responseFlow_(info_flow) {
     iface()->dispatcher()->register_handler(
@@ -207,7 +207,7 @@ class AllTrainNodes::TrainSnipHandler
 
   Action send_response_request() {
     auto* b = get_allocation_result(responseFlow_);
-    auto entry = parent_->get_traindb_entry(impl_->id);
+    auto entry = parent_->db_->get_entry(impl_->id);
     if (entry.get()) {
       snipName_ = entry->get_train_name();
     } else {
@@ -252,7 +252,7 @@ class AllTrainNodes::TrainPipHandler
     : public openlcb::IncomingMessageStateFlow {
  public:
   TrainPipHandler(AllTrainNodes* parent)
-      : IncomingMessageStateFlow(parent->tractionService_->iface()),
+      : IncomingMessageStateFlow(parent->train_service()->iface()),
         parent_(parent) {
     iface()->dispatcher()->register_handler(
         this, openlcb::Defs::MTI_PROTOCOL_SUPPORT_INQUIRY,
@@ -347,7 +347,7 @@ class AllTrainNodes::TrainFDISpace : public openlcb::MemorySpace {
 
  private:
   void reset_file() {
-    auto e = parent_->get_traindb_entry(impl_->id);
+    auto e = parent_->db_->get_entry(impl_->id);
     e->start_read_functions();
     gen_.reset(std::move(e));
   }
@@ -470,8 +470,8 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
                              openlcb::TrainService* traction_service,
                              openlcb::SimpleInfoFlow* info_flow,
                              openlcb::MemoryConfigHandler* memory_config)
-    : db_(db),
-      tractionService_(traction_service),
+    : AllTrainNodesInterface(traction_service),
+      db_(db),
       memoryConfigService_(memory_config),
       snipHandler_(new TrainSnipHandler(this, info_flow)),
       pipHandler_(new TrainPipHandler(this)) {
@@ -530,6 +530,35 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
                                                 int address) {
   Impl* impl = new Impl;
   impl->id = train_id;
+#ifdef __EMSCRIPTEN__
+  switch (mode) {
+    case MARKLIN_OLD:
+    case MARKLIN_DEFAULT:
+    case MARKLIN_NEW:
+    case MARKLIN_TWOADDR:
+      impl->train_ =
+          new openlcb::LoggingTrain(address, dcc::TrainAddressType::MM);
+      break;
+    case DCC_14:      
+    case DCC_14_LONG_ADDRESS:      
+    case DCC_28:
+    case DCC_28_LONG_ADDRESS:
+    case DCC_128:
+    case DCC_128_LONG_ADDRESS:
+      if ((mode & DCC_LONG_ADDRESS) || address >= 128) {
+        impl->train_ =
+            new openlcb::LoggingTrain(address, dcc::TrainAddressType::DCC_LONG_ADDRESS);
+      } else {
+        impl->train_ =
+            new openlcb::LoggingTrain(address, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+      }
+      break;
+    default:
+      impl->train_ = new openlcb::LoggingTrain(
+          address, dcc::TrainAddressType::DCC_LONG_ADDRESS);
+      break;
+    };
+#else  
   switch (mode) {
     case MARKLIN_OLD: {
       impl->train_ = new dcc::MMOldTrain(dcc::MMAddress(address));
@@ -573,13 +602,10 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
       impl->train_ = nullptr;
       LOG_ERROR("Unhandled train drive mode.");
   }
+#endif  
   if (impl->train_) {
     trains_.push_back(impl);
-    impl->node_ =
-        new openlcb::TrainNodeForProxy(tractionService_, impl->train_);
-    impl->eventHandler_ =
-        new openlcb::FixedEventProducer<openlcb::TractionDefs::IS_TRAIN_EVENT>(
-            impl->node_);
+    impl->node_ = new openlcb::TrainNodeForProxy(train_service(), impl->train_);
     return impl;
   } else {
     delete impl;
@@ -587,7 +613,8 @@ AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
   }
 }
 
-openlcb::NodeID AllTrainNodes::allocate_node(DccMode drive_type, int address) {
+openlcb::NodeID AllTrainNodes::allocate_node(DccMode drive_type,
+                                             unsigned address) {
   Impl* impl = create_impl(-1, drive_type, address);
   if (!impl) return 0; // failed.
   impl->id = db_->add_dynamic_entry(new DccTrainDbEntry(address, drive_type));

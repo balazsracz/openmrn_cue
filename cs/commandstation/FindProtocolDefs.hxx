@@ -90,6 +90,15 @@ struct FindProtocolDefs {
     return (event >> TRAIN_FIND_MASK) == (TRAIN_FIND_BASE >> TRAIN_FIND_MASK);
   }
 
+  /// Compares an incoming search query's drive mode bits to an actual drive
+  /// mode of a locomotive. Decides whether they match using tri-state logic,
+  /// i.e. taking into account "no restriction" queries.
+  /// @param event the incoming query
+  /// @param mode the drive mode of a locomotive
+  /// @return true if this locomotive matches the restrictions in the query
+  /// (true if there were no restrictions in the query).
+  static bool match_event_to_drive_mode(openlcb::EventId event, DccMode mode);
+  
   /** Compares an incoming search query to a given train node. Returns 0 for a
       no-match. Returns a bitfield of match types for a match. valid bits are
       MATCH_ANY (always set), ADDRESS_ONLY (set when the match occurred in the
@@ -129,6 +138,21 @@ struct FindProtocolDefs {
    * DCC_LONG_ADDRESS.
    */
   static openlcb::EventId address_to_query(unsigned address, bool exact, DccMode mode);
+
+  /** Translates an address as punched in by a (dumb) throttle to a query to
+   * issue on the OpenLCB bus as a find protocol request. This method ensures
+   * that the allocate bit is set so that if the address (node) does not yet
+   * exist, it may be created.
+   *
+   * @param address is the numeric value that the user typed.
+   * @param exact should be true if only exact matches shall be retrieved.
+   * @param mode should be set most of the time to OLCBUSER to specify that we
+   * don't care about the address type, but can also be set to
+   * DCC_LONG_ADDRESS.
+   */
+  static openlcb::EventId address_to_allocate(unsigned address, bool exact, DccMode mode) {
+    return address_to_query(address, exact, mode) | ALLOCATE;
+  }
 
   /** Translates a sequence of input digits punched in by a throttle to a query
    * to issue on the OpenLCB bus as a find protocol request.

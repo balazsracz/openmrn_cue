@@ -49,10 +49,10 @@ class PtrTrainDbEntry : public TrainDbEntry {
   void start_read_functions() override { init(); }
 
  protected:
-  /** Child classes must call tis once after creation. */
+  /** Child classes must call this once after creation. */
   void init() {
     maxFn_ = 0;
-    for (int i = 0; i < DCC_MAX_FN; ++i) {
+    for (unsigned i = 0; i < DCC_MAX_FN; ++i) {
       if (entry()->function_labels[i] != FN_NONEXISTANT) {
         maxFn_ = i + 1;
       }
@@ -243,6 +243,17 @@ size_t TrainDb::load_from_file(int fd, bool initial_load) {
     }
   }
   return cfg_.end_offset();
+}
+
+void TrainDbFactoryResetHelper::factory_reset(int fd) {
+  // Clears out all train entries with zeros.
+  char block[cfg_.entry<0>().size()];
+  memset(block, 0, sizeof(block));
+  for (unsigned i = 0; i < cfg_.num_repeats(); ++i) {
+    const auto &p = cfg_.entry(i);
+    lseek(fd, p.offset(), SEEK_SET);
+    ::write(fd, block, sizeof(block));
+  }
 }
 
 }  // namespace commandstation

@@ -35,8 +35,8 @@
 #ifndef _COMMANDSTATION_FINDPROTOCOLSERVER_HXX_
 #define _COMMANDSTATION_FINDPROTOCOLSERVER_HXX_
 
+#include "commandstation/AllTrainNodesInterface.hxx"
 #include "commandstation/FindProtocolDefs.hxx"
-#include "commandstation/AllTrainNodes.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 #include "openlcb/TractionTrain.hxx"
 
@@ -44,10 +44,13 @@ namespace commandstation {
 
 class FindProtocolServer : public openlcb::SimpleEventHandler {
  public:
-  FindProtocolServer(AllTrainNodes *nodes) : parent_(nodes) {
+  FindProtocolServer(AllTrainNodesInterface *nodes) : nodes_(nodes) {
     openlcb::EventRegistry::instance()->register_handler(
-        EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE),
+        EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE,
+                           USER_ARG_FIND),
         FindProtocolDefs::TRAIN_FIND_MASK);
+    openlcb::EventRegistry::instance()->register_handler(
+        EventRegistryEntry(this, IS_TRAIN_EVENT, USER_ARG_ISTRAIN), 0);
   }
 
   ~FindProtocolServer() {
@@ -61,24 +64,33 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
 
     if (event && event->dst_node) {
       // Identify addressed
-      auto *impl = parent_->find_node(event->dst_node);
-      if (!impl) return;
+      if (!service()->is_known_train_node(event->dst_node)) {
+        return;
+      }
       static_assert(((FindProtocolDefs::TRAIN_FIND_BASE >>
                       FindProtocolDefs::TRAIN_FIND_MASK) &
                      1) == 1,
                     "The lowermost bit of the TRAIN_FIND_BASE must be 1 or "
                     "else the event produced range encoding must be updated.");
-      event->event_write_helper<1>()->WriteAsync(
-          event->dst_node, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-          openlcb::WriteHelper::global(),
-          openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
-          done->new_child());
+      if (registry_entry.user_arg == USER_ARG_FIND) {
+        event->event_write_helper<1>()->WriteAsync(
+            event->dst_node, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+            openlcb::WriteHelper::global(),
+            openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE),
+            done->new_child());
+      } else if (registry_entry.user_arg == USER_ARG_ISTRAIN) {
+        event->event_write_helper<1>()->WriteAsync(
+            event->dst_node, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_UNKNOWN,
+            openlcb::WriteHelper::global(),
+            openlcb::eventid_to_buffer(IS_TRAIN_EVENT), done->new_child());
+      }
     } else {
       // Identify global
-
-      if (pendingGlobalIdentify_) {
+      if (pendingGlobalIdentify_ ||
+          registry_entry.user_arg == USER_ARG_ISTRAIN) {
         // We have not started processing the global identify yet. Swallow this
-        // one.
+        // one. We only need one global identify call, so we skip the ISTRAIN
+        // registrations.
         return;
       }
       // We do a synchronous alloc here but there isn't a much better choice.
@@ -105,6 +117,9 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     //
     // b->set_done(done->new_child());
     b->data()->reset(event->event);
+    if (event->event == IS_TRAIN_EVENT) {
+      pendingIsTrain_ = true;
+    }
     flow_.send(b);
   };
 
@@ -116,6 +131,9 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     // Send this in the event_ field if there is a global identify
     // pending. This is not a valid EventID, because the upper byte is 0.
     REQUEST_GLOBAL_IDENTIFY = 0x0001000000000000U,
+    IS_TRAIN_EVENT = openlcb::TractionDefs::IS_TRAIN_EVENT,
+    USER_ARG_FIND = 1,
+    USER_ARG_ISTRAIN = 2,
   };
   struct Request {
     void reset(openlcb::EventId event) { event_ = event; }
@@ -125,17 +143,27 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
   class FindProtocolFlow : public StateFlow<Buffer<Request>, QList<1> > {
    public:
     FindProtocolFlow(FindProtocolServer *parent)
-        : StateFlow(parent->parent_->tractionService_), parent_(parent) {}
+        : StateFlow(parent->service()), parent_(parent) {}
 
     Action entry() override {
       eventId_ = message()->data()->event_;
       release();
       if (eventId_ == REQUEST_GLOBAL_IDENTIFY) {
+        isGlobal_ = true;
         if (!parent_->pendingGlobalIdentify_) {
           // Duplicate global identify, or the previous one was already handled.
           return exit();
         }
         parent_->pendingGlobalIdentify_ = false;
+      } else if (eventId_ == IS_TRAIN_EVENT) {
+        isGlobal_ = true;
+        if (!parent_->pendingIsTrain_) {
+          // Duplicate is_train, or the previous one was already handled.
+          return exit();
+        }
+        parent_->pendingIsTrain_ = false;
+      } else {
+        isGlobal_ = false;
       }
       nextTrainId_ = 0;
       hasMatches_ = false;
@@ -146,46 +174,75 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       if (nextTrainId_ >= nodes()->size()) {
         return call_immediately(STATE(iteration_done));
       }
-      if (eventId_ == REQUEST_GLOBAL_IDENTIFY) {
-        if (parent_->pendingGlobalIdentify_) {
+      if (isGlobal_) {
+        if (eventId_ == REQUEST_GLOBAL_IDENTIFY &&
+            parent_->pendingGlobalIdentify_) {
           // Another notification arrived. Start iteration from 0.
           nextTrainId_ = 0;
           parent_->pendingGlobalIdentify_ = false;
           return again();
         }
-        return allocate_and_call(
-            nodes()->tractionService_->iface()->global_message_write_flow(),
-            STATE(send_response));
+        if (eventId_ == IS_TRAIN_EVENT &&
+            parent_->pendingIsTrain_) {
+          // Another notification arrived. Start iteration from 0.
+          nextTrainId_ = 0;
+          parent_->pendingIsTrain_ = false;
+          return again();
+        }
+        return allocate_and_call(iface()->global_message_write_flow(),
+                                 STATE(send_response));
       }
-      auto db_entry = nodes()->get_traindb_entry(nextTrainId_);
+      return call_immediately(STATE(try_traindb_lookup));
+    }
+
+    /// This state attempts to look up the entry in the train database, and
+    /// performs asynchronous waits and re-tries according to the contract of
+    /// AllTrainNodesInterface.
+    Action try_traindb_lookup() {
+      bn_.reset(this);
+      bn_.new_child();
+      auto db_entry = nodes()->get_traindb_entry(nextTrainId_, &bn_);
+      if (!bn_.abort_if_almost_done()) {
+        bn_.notify();
+        // Repeats this state after the notification arrives.
+        return wait();
+      }
+      // Call completed inline.
       if (!db_entry) return call_immediately(STATE(next_iterate));
       if (FindProtocolDefs::match_query_to_node(eventId_, db_entry.get())) {
         hasMatches_ = true;
-        return allocate_and_call(
-            nodes()->tractionService_->iface()->global_message_write_flow(),
-            STATE(send_response));
+        return allocate_and_call(iface()->global_message_write_flow(),
+                                 STATE(send_response));
       }
       return yield_and_call(STATE(next_iterate));
     }
 
     Action send_response() {
-      auto *b = get_allocation_result(
-          nodes()->tractionService_->iface()->global_message_write_flow());
+      auto *b = get_allocation_result(iface()->global_message_write_flow());
       b->set_done(bn_.reset(this));
       if (eventId_ == REQUEST_GLOBAL_IDENTIFY) {
+        auto node_id = nodes()->get_train_node_id(nextTrainId_);
         b->data()->reset(
-            openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-            nodes()->get_train_node_id(nextTrainId_),
+            openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE, node_id,
             openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE));
+        // send is_train event too.
+        auto *bb = iface()->global_message_write_flow()->alloc();
+        bb->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_UNKNOWN,
+                          node_id, openlcb::eventid_to_buffer(IS_TRAIN_EVENT));
+        bb->set_done(bn_.new_child());
+        bb->data()->set_flag_dst(openlcb::GenMessage::WAIT_FOR_LOCAL_LOOPBACK);
+        iface()->global_message_write_flow()->send(bb);
+      } else if (eventId_ == IS_TRAIN_EVENT) {
+        b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_UNKNOWN,
+                         nodes()->get_train_node_id(nextTrainId_),
+                         openlcb::eventid_to_buffer(eventId_));
       } else {
         b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
                          nodes()->get_train_node_id(nextTrainId_),
                          openlcb::eventid_to_buffer(eventId_));
       }
       b->data()->set_flag_dst(openlcb::GenMessage::WAIT_FOR_LOCAL_LOOPBACK);
-      parent_->parent_->tractionService_->iface()
-          ->global_message_write_flow()
-          ->send(b);
+      iface()->global_message_write_flow()->send(b);
 
       return wait_and_call(STATE(next_iterate));
     }
@@ -196,7 +253,8 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     }
 
     Action iteration_done() {
-      if (!hasMatches_ && (eventId_ & FindProtocolDefs::ALLOCATE)) {
+      if (!hasMatches_ && !isGlobal_ &&
+          (eventId_ & FindProtocolDefs::ALLOCATE)) {
         // TODO: we should wait some time, maybe 200 msec for any responses
         // from other nodes, possibly a deadrail train node, before we actually
         // allocate a new train node.
@@ -213,11 +271,10 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       return exit();
     }
 
-    /// Yields until the new node is initiaqlized and we are allowed to send
+    /// Yields until the new node is initialized and we are allowed to send
     /// traffic out from it.
     Action wait_for_new_node() {
-      openlcb::Node *n =
-          nodes()->tractionService_->iface()->lookup_local_node(newNodeId_);
+      openlcb::Node *n = iface()->lookup_local_node(newNodeId_);
       HASSERT(n);
       if (n->is_initialized()) {
         return call_immediately(STATE(new_node_reply));
@@ -227,24 +284,22 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     }
 
     Action new_node_reply() {
-      return allocate_and_call(
-          nodes()->tractionService_->iface()->global_message_write_flow(),
-          STATE(send_new_node_response));
+      return allocate_and_call(iface()->global_message_write_flow(),
+                               STATE(send_new_node_response));
     }
 
     Action send_new_node_response() {
-      auto *b = get_allocation_result(
-          nodes()->tractionService_->iface()->global_message_write_flow());
+      auto *b = get_allocation_result(iface()->global_message_write_flow());
       b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID, newNodeId_,
                        openlcb::eventid_to_buffer(eventId_));
-      parent_->parent_->tractionService_->iface()
-          ->global_message_write_flow()
-          ->send(b);
+      iface()->global_message_write_flow()->send(b);
       return exit();
     }
 
    private:
-    AllTrainNodes *nodes() { return parent_->parent_; }
+    AllTrainNodesInterface *nodes() { return parent_->nodes(); }
+
+    openlcb::If *iface() { return parent_->iface(); }
 
     openlcb::EventId eventId_;
     union {
@@ -252,18 +307,33 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       openlcb::NodeID newNodeId_;
     };
     BarrierNotifiable bn_;
-    bool hasMatches_;
+    /// True if we found any matches during the iteration.
+    bool hasMatches_ : 1;
+    /// True if the current iteration has to touch every node.
+    bool isGlobal_ : 1;
     FindProtocolServer *parent_;
     StateFlowTimer timer_{this};
   };
 
-  AllTrainNodes *parent_;
+  /// @return the openlcb interface to which the train nodes (and the traction
+  /// service) are bound.
+  openlcb::If *iface() { return service()->iface(); }
 
+  /// @return the openlcb Traction Service.
+  openlcb::TrainService *service() { return nodes()->train_service(); }
+
+  /// @return the AllTrainNodes instance.
+  AllTrainNodesInterface *nodes() { return nodes_; }
+
+  /// Pointer to the AllTrainNodes instance. Externally owned.
+  AllTrainNodesInterface *nodes_;
   /// Set to true when a global identify message is received. When a global
   /// identify starts processing, it shall be set to false. If a global
   /// identify request arrives with no pendingGlobalIdentify_, that is a
   /// duplicate request that can be ignored.
-  bool pendingGlobalIdentify_{false};
+  uint8_t pendingGlobalIdentify_{false};
+  /// Same as pendingGlobalIdentify_ for the IS_TRAIN event producer.
+  uint8_t pendingIsTrain_{false};
 
   FindProtocolFlow flow_{this};
 };

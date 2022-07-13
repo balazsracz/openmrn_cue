@@ -32,6 +32,8 @@
  * @date 5 Jun 2015
  */
 
+#define _DEFAULT_SOURCE // for usleep
+
 #include <functional>
 
 #include "os/os.h"
@@ -59,7 +61,19 @@
 
 #include "freertos_drivers/ti/TivaCpuLoad.hxx"
 #include "utils/CpuDisplay.hxx"
+#include "utils/stdio_logging.h"
 
+
+
+extern TivaDAC<DACDefs> dac;
+
+OVERRIDE_CONST(main_thread_stack_size, 2500);
+extern const openlcb::NodeID __application_node_id;
+openlcb::SimpleCanStack stack(__application_node_id);
+
+
+/// Set this to 1 to display the CPU load using the RGB led (green/yellow/red).
+#if 0
 
 TivaCpuLoad<TivaCpuLoadDefHw> load_monitor;
 
@@ -70,14 +84,13 @@ void timer4a_interrupt_handler(void)
 }
 }
 
-
-extern TivaDAC<DACDefs> dac;
-
-OVERRIDE_CONST(main_thread_stack_size, 2500);
-extern const openlcb::NodeID __application_node_id;
-openlcb::SimpleCanStack stack(__application_node_id);
-
 CpuDisplay load_display(stack.service(), LED_RED_Pin::instance(), LED_GREEN_Pin::instance());
+
+using HaveDccSignalPin = DummyPin;
+
+#else
+using HaveDccSignalPin = LED_GREEN_Pin;
+#endif
 
 dcc::RailcomHubFlow railcom_hub(stack.service());
 
@@ -88,7 +101,7 @@ extern const char* const openlcb::SNIP_DYNAMIC_FILENAME =
     openlcb::CONFIG_FILENAME;
 extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
-static_assert(openlcb::CONFIG_FILE_SIZE <= 1024, "Need to adjust eeprom size");
+static_assert(openlcb::CONFIG_FILE_SIZE <= 1524, "Need to adjust eeprom size");
 
 typedef BLINKER_Pin LED_RED_Pin;
 
@@ -296,12 +309,114 @@ void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
   out->divide = div;
 }
 
+// Enable this if you want all DCC packets to be printed to the debug USB.
+#if 0
+
+#include "dcc/DccDebug.hxx"
+#include "utils/StringPrintf.hxx"
+#include "utils/FdUtils.hxx"
+
+#define HAVE_DECODER_THREAD
+
+class DecoderThread : public OSThread
+{
+public:
+    DecoderThread()
+    {
+    }
+
+    void *entry() override
+    {
+        setblink(0);
+        int fd = ::open("/dev/nrz0", O_RDONLY);
+        HASSERT(fd >= 0);
+        // int wfd = ::open("/dev/serUSB0", O_RDWR);
+        int wfd = ::open("/dev/ser0", O_RDWR);
+        HASSERT(wfd >= 0);
+        string msg = "Hello worlddd!";
+        ::write(wfd, msg.data(), msg.size());
+
+        int cnt = 0;
+        while (1)
+        {
+            DCCPacket packet_data;
+            int sret = ::read(fd, &packet_data, sizeof(packet_data));
+            HASSERT(sret == sizeof(packet_data));
+#if 1
+            long long t = os_get_time_monotonic();
+            string txt = StringPrintf("\n%02d.%06d %04d ",
+                (unsigned)((t / 1000000000) % 100),
+                (unsigned)((t / 1000) % 1000000), cnt % 10000);
+            ::write(wfd, txt.data(), txt.size());
+            txt = dcc::packet_to_string(packet_data);
+            FdUtils::repeated_write(wfd, txt.data(), txt.size());
+            //::write(wfd, txt.data(), txt.size());
+            // we purposefully do not check the return value, because if there
+            // was not enough space in the serial write buffer, we need to throw
+            // away data.
+#endif
+            ++cnt;
+            resetblink((cnt >> 3) & 1);
+        }
+    }
+
+} dcc_test_thread;
+
+#endif
+
+bracz_custom::DetectorPort* pports = nullptr;
+
+class WatchForDccSignal : public StateFlowBase {
+ public:
+  WatchForDccSignal() : StateFlowBase(stack.service()) {
+    start_flow(STATE(sleep_signal));
+  }
+
+ private:
+  Action sleep_signal() {
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(5), STATE(evaluate));
+  }
+
+  Action evaluate() {
+    unsigned current_sample_count = DCCDecode::sampleCount_;
+    if (current_sample_count >= lastSampleCount_) {
+      unsigned diff = current_sample_count - lastSampleCount_;
+      constexpr auto num_channel = cfg.seg().detectors().num_repeats();
+      if (diff >= SAMPLE_THRESHOLD) {
+        HaveDccSignalPin::set(true);
+        for (unsigned i = 0; i < num_channel; ++i) {
+          pports[i].set_have_dcc_signal(true);
+        }
+      } else {
+        for (unsigned i = 0; i < num_channel; ++i) {
+          pports[i].set_have_dcc_signal(false);
+        }
+        HaveDccSignalPin::set(false);
+      }
+    }
+
+    lastSampleCount_ = current_sample_count;
+    return call_immediately(STATE(sleep_signal));
+  }
+
+  /// How many samples we should be seeing in a sleep period in order to know
+  /// that DCC signal is active. A sleep period is 5 msec, of which we can have
+  /// 1.5 msec as marklin preamble then 272 usec per bit, which gives 25 cap
+  /// events. This won't work for zero stretching DCC though.
+  static constexpr unsigned SAMPLE_THRESHOLD = 20;
+  /// last seen value of the counter of all samples of the DCC signal.
+  unsigned lastSampleCount_{0};
+  StateFlowTimer timer_{this};
+} g_wait_for_dcc_signal;
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
  * @return 0, should never return
  */
 int appl_main(int argc, char* argv[]) {
+  LOG(ALWAYS, "hello world");
+  
   LED_BLUE_Pin::set(false);
   stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
   int fd = ::open(openlcb::CONFIG_FILENAME, O_RDWR);
@@ -321,7 +436,7 @@ int appl_main(int argc, char* argv[]) {
       cfg.seg().current().overcurrent().count_total().read(fd),
       cfg.seg().current().overcurrent().min_active().read(fd)};
 
-  static bracz_custom::DetectorOptions opts(cfg.seg().detector_options());
+  static bracz_custom::DetectorOptions opts(cfg.seg().detector_options(), 6);
   
   static bracz_custom::DetectorPort ports[6] = {
       {stack.node(), 0, fd, cfg.seg().detectors().entry<0>(), opts},
@@ -332,12 +447,12 @@ int appl_main(int argc, char* argv[]) {
       {stack.node(), 5, fd, cfg.seg().detectors().entry<5>(), opts},
   };
 
-  bracz_custom::DetectorPort* pports = ports;
+  pports = ports;
 
   auto occupancy_proxy =
-      [pports](unsigned ch, bool value) { pports[ch].set_occupancy(value); };
+      [](unsigned ch, bool value) { pports[ch].set_occupancy(value); };
   auto overcurrent_proxy =
-      [pports](unsigned ch, bool value) { pports[ch].set_overcurrent(value); };
+      [](unsigned ch, bool value) { pports[ch].set_overcurrent(value); };
 
   static RailcomOccupancyDecoder<CountingDebouncer> occ_decoder(
       0xff, 6, occupancy_proxy, occupancy_debouncer_opts);
@@ -357,13 +472,22 @@ int appl_main(int argc, char* argv[]) {
 
   *stat_led_ptr() = 0;
 
-  // we need to enable the dcc receiving driver.
-  ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
   HubDeviceNonBlock<dcc::RailcomHubFlow> railcom_port(&railcom_hub,
                                                       "/dev/railcom");
-  // occupancy info will be proxied by the broadcast decoder
-  // railcom_hub.register_port(&occupancy_report);
-  //openlcb::RailcomToOpenLCBDebugProxy debugproxy(&railcom_hub, stack.node(), nullptr);
+  // we need to enable the dcc receiving driver, but only AFTER the railcom
+  // driver was opened.
+  ::open("/dev/nrz0", O_NONBLOCK | O_RDONLY);
+#ifdef HAVE_DECODER_THREAD
+  dcc_test_thread.start("dcc_printer", 0, 2048);
+#endif  
+
+  DCC_IN_Pin::set_hw();
+
+  // Uncomment this line to print all railcom packets to the LCC bus using a
+  // non-standard message. This is a lot of traffic, so only useful for
+  // debugging.
+  //
+  // openlcb::RailcomToOpenLCBDebugProxy debugproxy(&railcom_hub, stack.node(), nullptr);
 
   stack.loop_executor();
   return 0;

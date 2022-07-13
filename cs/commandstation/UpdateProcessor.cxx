@@ -38,7 +38,7 @@
 
 #include "utils/constants.hxx"
 #include "dcc/PacketSource.hxx"
-#include "dcc/PacketFlowInterface.hxx"
+#include "dcc/TrackIf.hxx"
 
 namespace commandstation {
 
@@ -56,7 +56,7 @@ struct PriorityUpdate {
 };
 
 UpdateProcessor::UpdateProcessor(Service* service,
-                                 dcc::PacketFlowInterface* track_send)
+                                 dcc::TrackIf* track_send)
     : StateFlow<Buffer<dcc::Packet>, QList<1> >(service),
       trackSend_(track_send),
       nextRefreshIndex_(0),

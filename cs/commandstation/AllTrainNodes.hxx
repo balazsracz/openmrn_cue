@@ -38,20 +38,22 @@
 #include <memory>
 #include <vector>
 
-#include "openlcb/SimpleInfoProtocol.hxx"
+#include "commandstation/AllTrainNodesInterface.hxx"
 #include "commandstation/TrainDb.hxx"
+//#include "openlcb/SimpleInfoProtocol.hxx"
 
 namespace openlcb {
 class Node;
 class TrainService;
 class TrainImpl;
 class MemoryConfigHandler;
+class SimpleInfoFlow;
 }
 
 namespace commandstation {
 class FindProtocolServer;
 
-class AllTrainNodes {
+class AllTrainNodes : public AllTrainNodesInterface {
  public:
   AllTrainNodes(TrainDb* db, openlcb::TrainService* traction_service,
                 openlcb::SimpleInfoFlow* info_flow,
@@ -62,18 +64,19 @@ class AllTrainNodes {
   openlcb::TrainImpl* get_train_impl(int id);
 
   /// Returns a traindb entry or nullptr if the id is too high.
-  std::shared_ptr<TrainDbEntry> get_traindb_entry(int id);
+  std::shared_ptr<TrainDbEntry> get_traindb_entry(size_t id,
+                                                  Notifiable* done) override;
 
   /// Returns a node id or 0 if the id is not known to be a train.
-  openlcb::NodeID get_train_node_id(int id);
+  openlcb::NodeID get_train_node_id(size_t id) override;
 
   /// Creates a new train node based on the given address and drive mode.
   /// @param drive_type describes what kind of train node this should be
   /// @param address is the hardware (legacy) address
   /// @return 0 if the allocation fails (invalid arguments)
-  openlcb::NodeID allocate_node(DccMode drive_type, int address);
+  openlcb::NodeID allocate_node(DccMode drive_type, unsigned address) override;
 
-  size_t size() { return trains_.size(); }
+  size_t size() override { return trains_.size(); }
 
   // For testing.
   bool find_flow_is_idle();
@@ -98,7 +101,6 @@ class AllTrainNodes {
 
   // Externally owned.
   TrainDb* db_;
-  openlcb::TrainService* tractionService_;
   openlcb::MemoryConfigHandler* memoryConfigService_;
 
   /// All train nodes that we know about.

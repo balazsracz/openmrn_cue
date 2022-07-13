@@ -26,7 +26,7 @@ os_mutex_t dcc_mutex;
 
 
 void CANQueue_SendPacket_back(const uint8_t* packet, can_opts_t opts) {
-    struct can_frame frame = {0,};
+    struct can_frame frame = {};
     const uint8_t* data = packet;
     if (opts & (O_SKIP_TWO_BYTES)) data += 2;
     bracz_custom::mcp_to_frame(data, &frame);

@@ -1054,7 +1054,7 @@ void MagnetAutomataFinal(Automata* aut) {
 }
 
 MagnetCommandAutomata::MagnetCommandAutomata(Board* brd, const AllocatorPtr& parent_alloc)
-    : alloc_(parent_alloc->Allocate("magnets", 64)), aut_("magnets", brd, this) {
+    : alloc_(parent_alloc->Allocate("magnets", 128)), aut_("magnets", brd, this) {
   //AddAutomataPlugin(1, NewCallbackPtr(this, &FixedTurnout::FixTurnoutState));
   AddAutomataPlugin(100, NewCallbackPtr(&MagnetAutomataFinal));
 }

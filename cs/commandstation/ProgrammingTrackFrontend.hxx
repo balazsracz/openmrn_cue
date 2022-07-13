@@ -31,6 +31,7 @@
 #include "executor/CallableFlow.hxx"
 #include "dcc/ProgrammingTrackBackend.hxx"
 #include "dcc/Defs.hxx"
+#include "dcc/RailcomHub.hxx"
 
 #ifdef LOGLEVEL
 #undef LOGLEVEL
@@ -45,7 +46,12 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
   enum DirectReadByte { DIRECT_READ_BYTE };
   enum DirectReadBit { DIRECT_READ_BIT };
   enum PomWriteByte { POM_WRITE_BYTE };
+  enum PomWriteBit { POM_WRITE_BIT };
   enum PomReadByte { POM_READ_BYTE };
+  enum PagedWriteByte { PAGED_WRITE_BYTE };
+  enum PagedVerifyByte { PAGED_VERIFY_BYTE };
+  enum PagedReadByte { PAGED_READ_BYTE };
+  enum ExitServiceMode { EXIT_SERVICE_MODE };
 
   /// Request to write a byte sized CV in direct mode.
   /// @param cv_number is the 1-based CV number (as the user sees it).
@@ -67,6 +73,27 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     cmd_ = Type::POM_WRITE_BYTE;
     addrType_ = addrtype;
     dccAddress_ = dcc_address;
+    cvOffset_ = cv_number - 1;
+    value_ = value;
+  }
+
+  /// Request to write a byte sized CV in paged mode.
+  /// @param cv_number is the 1-based CV number (as the user sees it).
+  /// @param value is the value to set the CV to.
+  void reset(PagedWriteByte, unsigned cv_number, uint8_t value) {
+    reset_base();
+    cmd_ = Type::PAGED_WRITE_BYTE;
+    cvOffset_ = cv_number - 1;
+    value_ = value;
+  }
+
+  /// Request to verify a byte sized CV in paged mode. Returns OK if the verify
+  /// succeeds, and ERROR_FAILED_VERIFY if the verification does not succeed.
+  /// @param cv_number is the 1-based CV number (as the user sees it).
+  /// @param value is the value to check that the CV matches.
+  void reset(PagedVerifyByte, unsigned cv_number, uint8_t value) {
+    reset_base();
+    cmd_ = Type::PAGED_VERIFY_BYTE;
     cvOffset_ = cv_number - 1;
     value_ = value;
   }
@@ -105,14 +132,41 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
     value_ = value ? 1 : 0;
   }
 
-  /// Calues for the cmd_ argument.
+  /// Request to write a single bit pom mode.
+  /// @param addrtype defines whether short or long address.
+  /// @param dcc_address is the DCC address of the target locomotive.
+  /// @param cv_number is the 1-based CV number (as the user sees it).
+  /// @param bit is 0..7 for the bit to set
+  /// @param value what to set the bit to
+  void reset(PomWriteBit, dcc::TrainAddressType addrtype, uint32_t dcc_address, unsigned cv_number, uint8_t bit, bool value) {
+    reset_base();
+    cmd_ = Type::POM_WRITE_BIT;
+    addrType_ = addrtype;
+    dccAddress_ = dcc_address;
+    cvOffset_ = cv_number - 1;
+    bitOffset_ = bit;
+    value_ = value ? 1 : 0;
+  }
+
+  /// Request to exit service mode (stop using the programming track).
+  void reset(ExitServiceMode) {
+    reset_base();
+    cmd_ = Type::EXIT_SERVICE_MODE;
+  }
+
+  /// Values for the cmd_ argument.
   enum class Type {
     DIRECT_WRITE_BYTE,
     DIRECT_WRITE_BIT,
     DIRECT_READ_BYTE,
     DIRECT_READ_BIT,
     POM_WRITE_BYTE,
-    POM_READ_BYTE
+    POM_READ_BYTE,
+    POM_WRITE_BIT,
+    PAGED_WRITE_BYTE,
+    PAGED_VERIFY_BYTE,
+    PAGED_READ_BYTE,
+    EXIT_SERVICE_MODE
   };
 
   /// What is the instruction to do.
@@ -135,9 +189,10 @@ class ProgrammingTrackFrontend
     : public CallableFlow<ProgrammingTrackFrontendRequest> {
  public:
   ProgrammingTrackFrontend(ProgrammingTrackBackend* backend,
-                           dcc::PacketFlowInterface* track,
+                           dcc::TrackIf* track,
                            dcc::RailcomHubFlow* railcom_hub)
       : CallableFlow<ProgrammingTrackFrontendRequest>(backend->service()),
+        inServiceMode_(0),
         backend_(backend),
         track_(track),
         railcomHub_(railcom_hub) {}
@@ -150,11 +205,13 @@ class ProgrammingTrackFrontend
     /// Error code when the locomotive is not responding to programming track
     /// requests. Usually dirty track or so.
     ERROR_NO_LOCO = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 1,
-    /// Re-triable error generated when the loco respons with conflicting
+    /// Re-triable error generated when the loco responds with conflicting
     /// information.
     ERROR_FAILED_VERIFY = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 2,
     /// We have not received any railcom response from the locomotive.
     ERROR_NO_RAILCOM = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 3,
+    /// Re-triable error when we have seen only invalid responses.
+    ERROR_INVALID_RESPONSE = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 4,
     /// Error code when something was invoked that is not implemented.
     ERROR_UNIMPLEMENTED_CMD = openlcb::Defs::ERROR_UNIMPLEMENTED_CMD,
     /// Error code when the request arguments are invalid.
@@ -182,6 +239,8 @@ class ProgrammingTrackFrontend
       case RequestType::DIRECT_WRITE_BIT:
       case RequestType::DIRECT_READ_BYTE:
       case RequestType::DIRECT_READ_BIT:
+      case RequestType::PAGED_WRITE_BYTE:
+      case RequestType::PAGED_VERIFY_BYTE:
         return call_immediately(STATE(enter_service_mode));
       case RequestType::POM_READ_BYTE:
         numTry_ = 0;
@@ -189,11 +248,22 @@ class ProgrammingTrackFrontend
       case RequestType::POM_WRITE_BYTE:
         numTry_ = 0;
         return call_immediately(STATE(pom_write_byte));
+      case RequestType::POM_WRITE_BIT:
+      case RequestType::PAGED_READ_BYTE:
+        // not implemented
+        break;
+      case RequestType::EXIT_SERVICE_MODE:
+        return call_immediately(STATE(exit_service_mode));
     }
     return return_with_error(ERROR_UNIMPLEMENTED_CMD);
   }
 
   Action enter_service_mode() {
+    if (inServiceMode_) {
+      // the timer has not elapsed yet.
+      return call_immediately(STATE(act_service_mode));
+    }
+    inServiceMode_ = true;
     return invoke_subflow_and_wait(backend_, STATE(send_initial_resets),
                                    ProgrammingTrackRequest::ENTER_SERVICE_MODE);
   }
@@ -206,6 +276,10 @@ class ProgrammingTrackFrontend
 
   Action enter_service_mode_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    return call_immediately(STATE(act_service_mode));
+  }
+
+  Action act_service_mode() {
     switch (request()->cmd_) {
       case RequestType::DIRECT_WRITE_BYTE:
         serviceModePacket_.set_dcc_svc_write_byte(request()->cvOffset_,
@@ -218,6 +292,9 @@ class ProgrammingTrackFrontend
         break;
       case RequestType::DIRECT_READ_BYTE:
         return call_immediately(STATE(direct_read_byte));
+      case RequestType::PAGED_WRITE_BYTE:
+      case RequestType::PAGED_VERIFY_BYTE:
+        return call_immediately(STATE(send_page_preset));
       default:
         return exit_unimplemented();
     }
@@ -226,16 +303,14 @@ class ProgrammingTrackFrontend
     return invoke_subflow_and_wait(
         backend_, STATE(write_pkt_sent),
         ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
-        DEFAULT_WRITE_REPEATS);
+        (unsigned)DEFAULT_WRITE_REPEATS);
   }
 
   /// Turns off service mode and returns an unimplemented error.
   Action exit_unimplemented() {
     // Bail out as we have not written this code yet.
     request()->resultCode |= ERROR_UNIMPLEMENTED_CMD;
-    return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
   
   Action write_pkt_sent() {
@@ -305,9 +380,7 @@ class ProgrammingTrackFrontend
     } else {
       request()->resultCode |= ERROR_NO_LOCO;
     }
-    return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
 
   /// Root state of reading one byte using direct mode from the decoder.
@@ -374,9 +447,7 @@ class ProgrammingTrackFrontend
                                      ProgrammingTrackRequest::SEND_RESET,
                                      verifyCooldownReset_);
     }
-    return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+    return done_and_return();
   }
 
   Action cooldown_final_verify() {
@@ -387,9 +458,125 @@ class ProgrammingTrackFrontend
     } else {
       request()->resultCode |= ERROR_FAILED_VERIFY;
     }
+    return done_and_return();
+  }
+
+  /// Beignning of paged mode operation. Sends out the page preset
+  /// instructions.
+  Action send_page_preset() {
+    unsigned page = (request()->cvOffset_ / 4 + 1) & 0xFF;
+    // cvOffset_ and pagedRegister_ are both zero based.
+    pagedRegister_ = request()->cvOffset_ & 3;
+    // In order to make paged and register mode be compatible, we special case
+    // some CV numbers.
+    switch (request()->cvOffset_) {
+      case 6:  // cv7
+      case 7:  // cv8
+        page = 1;
+        pagedRegister_ = request()->cvOffset_;
+        break;
+      case 28:  // cv29=basic configuration register, available at reg 0b100.
+        page = 1;
+        pagedRegister_ = 4;
+        break;
+    }
+    serviceModePacket_.set_dcc_svc_paged_set_page(page);
+    foundAck_ = 0;
+    hasWriteAck_ = 0;
+    static constexpr bool kTerminateOnAck = true;
     return invoke_subflow_and_wait(
-        backend_, STATE(return_response),
-        ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+        backend_, STATE(send_paged_command),
+        ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
+        (unsigned)DEFAULT_PAGED_PAGESET_REPEATS, kTerminateOnAck);
+  }
+
+  Action send_pageset_cooldown() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    LOG(INFO, "page preset ack %u", b->data()->hasAck_);
+    return invoke_subflow_and_wait(backend_, STATE(send_paged_command),
+                                   ProgrammingTrackRequest::SEND_RESET,
+                                   (unsigned)DEFAULT_PAGED_COOLDOWN_REPEATS);
+  }
+
+  Action send_paged_command() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    LOG(INFO, "page preset ack2 %u", b->data()->hasAck_);
+    static constexpr bool kTerminateOnAck = true;
+    switch (request()->cmd_) {
+      case RequestType::PAGED_WRITE_BYTE:
+        serviceModePacket_.set_dcc_svc_paged_write_reg(pagedRegister_,
+                                                       request()->value_);
+        return invoke_subflow_and_wait(
+            backend_, STATE(paged_write_done),
+            ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET,
+            serviceModePacket_, (unsigned)DEFAULT_PAGED_WRITE_REPEATS,
+            kTerminateOnAck);
+      case RequestType::PAGED_VERIFY_BYTE:
+        serviceModePacket_.set_dcc_svc_paged_verify_reg(pagedRegister_,
+                                                        request()->value_);
+        return invoke_subflow_and_wait(
+            backend_, STATE(check_final_byte),
+            ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET,
+            serviceModePacket_, (unsigned)DEFAULT_PAGED_VERIFY_REPEATS,
+            kTerminateOnAck);
+      default:
+        return exit_unimplemented();
+    }
+  }
+
+  /// Called after having sent the up to 5 write repeats or an ack is seen.
+  Action paged_write_done() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    unsigned repeats = DEFAULT_PAGED_COOLDOWN_REPEATS;
+    if (request()->cvOffset_ == 0) {
+      repeats = DEFAULT_PAGED_ADDRESS_COOLDOWN_REPEATS;
+    }
+    return invoke_subflow_and_wait(backend_, STATE(paged_write_cooldown_done),
+                                   ProgrammingTrackRequest::SEND_RESET,
+                                   repeats);
+  }
+
+  /// After the write cooldown reset packets are sent out. Saves the ack bits
+  /// and send out some verify packets.
+  Action paged_write_cooldown_done() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    hasWriteAck_ = foundAck_;
+    foundAck_ = 0;
+    if (request()->cvOffset_ == 7 && request()->value_ == 8) {
+      // Decoder hard reset. We give a lot of time to reset eeprom instead of
+      // verifying.
+      return invoke_subflow_and_wait(
+          backend_, STATE(paged_hard_reset_exit),
+          ProgrammingTrackRequest::SEND_RESET,
+          (unsigned)DEFAULT_PAGED_HARD_RESET_REPEATS);
+    }
+    serviceModePacket_.set_dcc_svc_paged_verify_reg(pagedRegister_,
+                                                    request()->value_);
+    static constexpr bool kTerminateOnAck = true;
+    return invoke_subflow_and_wait(
+        backend_, STATE(write_verify_cooldown_done),
+        ProgrammingTrackRequest::SEND_PROGRAMMING_PACKET, serviceModePacket_,
+        (unsigned)DEFAULT_PAGED_VERIFY_REPEATS, kTerminateOnAck);
+  }
+
+  /// Called after the hard reset cooldown. Exits service mode.
+  Action paged_hard_reset_exit() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasAck_) {
+      foundAck_ = 1;
+    }
+    if (foundAck_ || hasWriteAck_) {
+      request()->resultCode |= ERROR_CODE_OK;
+    } else {
+      request()->resultCode |= ERROR_NO_LOCO;
+    }
+    return done_and_return();
   }
 
   Action return_response() {
@@ -437,7 +624,7 @@ class ProgrammingTrackFrontend
                                 STATE(pom_write_byte));
         }
         if (seenRailcomBusy_ || seenRailcomGarbage_) {
-          return return_with_error(ERROR_FAILED_VERIFY);
+          return return_with_error(ERROR_INVALID_RESPONSE);
         } else {
           return return_with_error(ERROR_NO_RAILCOM);
         }
@@ -466,6 +653,7 @@ class ProgrammingTrackFrontend
     b->data()->add_dcc_pom_read1(request()->cvOffset_);
     b->data()->feedback_key = reinterpret_cast<uintptr_t>(this);
     b->data()->packet_header.rept_count = 3;
+    cvData_ = 0;
     railcomHub_->register_port(&railcomHandler_);
     seenRailcomBusy_ = 0;
     seenRailcomGarbage_ = 0;
@@ -488,10 +676,33 @@ class ProgrammingTrackFrontend
       return call_immediately(STATE(pom_read_byte));
     }
     if (seenRailcomBusy_ || seenRailcomGarbage_) {
-      return return_with_error(ERROR_FAILED_VERIFY);
+      return return_with_error(ERROR_INVALID_RESPONSE);
     } else {
       return return_with_error(ERROR_NO_RAILCOM);
     }
+  }
+
+  /// Invoked when the service mode exit timer is elapsed.
+  Action exit_service_mode() {
+    serviceModeTimer_.stop_wait();
+    if (!inServiceMode_) {
+      return return_ok();
+    }
+    inServiceMode_ = false;
+    return invoke_subflow_and_wait(backend_, STATE(exit_service_mode_done),
+                                   ProgrammingTrackRequest::EXIT_SERVICE_MODE);
+  }
+
+  Action exit_service_mode_done() {
+    auto b = get_buffer_deleter(full_allocation_result(backend_));
+    return return_ok();
+  }
+
+  /// Invoked when an operation is done and we are ready to return. Handles the
+  /// service mode exit timer.
+  Action done_and_return() {
+    serviceModeTimer_.ping();
+    return return_with_error(request()->resultCode & (~OPERATION_PENDING));
   }
 
   /// Handler class for railcom feedback messages.
@@ -526,7 +737,11 @@ class ProgrammingTrackFrontend
     LOG(INFO, "CV railcom feedback ch=%d: %s", f.channel,
         railcom_debug(f).c_str());
     if (!f.ch2Size) {
-      return record_railcom_status(ERROR_NO_RAILCOM_CH2_DATA);
+      // Ignores this; leave in pending and maybe a later repeat reaches the
+      // decoder. We could return record_railcom_status(
+      // ERROR_NO_RAILCOM_CH2_DATA), but there is no meaningful handling of
+      // that status value and it would prevent retries from being processed.
+      return;
     }
     dcc::parse_railcom_data(f, &interpretedResponse_);
     unsigned new_status = ERROR_PENDING;
@@ -549,7 +764,9 @@ class ProgrammingTrackFrontend
           break;
         case dcc::RailcomPacket::ACK:
           if (new_status == ERROR_PENDING) {
-            new_status = ERROR_OK;
+            // Ack should not change the state machine of CV reads or
+            // writes. Both of those need to return explicitly with a
+            // MOB_POM.
           }
           break;
         case dcc::RailcomPacket::MOB_POM:
@@ -584,7 +801,10 @@ class ProgrammingTrackFrontend
     timer_.trigger();
     railcomHub_->unregister_port(&railcomHandler_);
   }
-  
+
+  /// How long we should stay in service mode after a programming request.
+  static constexpr unsigned SERVICE_MODE_TIMER_SEC = 30;
+
  private:
   /// How many times by default we send out a programming track verify packet
   /// to get exactly one ack.
@@ -602,6 +822,62 @@ class ProgrammingTrackFrontend
   /// in railcom.
   static constexpr unsigned DEFAULT_POM_READ_RETRIES = 3;
 
+  /// How many times we send out a paged mode page-set packet.
+  static constexpr unsigned DEFAULT_PAGED_PAGESET_REPEATS = 5;
+  /// How many times we send out a paged mode write packet.
+  static constexpr unsigned DEFAULT_PAGED_WRITE_REPEATS = 5;
+  /// How many times we send out a paged mode verify packet. This includes a
+  /// cooldown.
+  static constexpr unsigned DEFAULT_PAGED_VERIFY_REPEATS = 11;
+  /// How many times we send out a reset packet after a write or page-set
+  /// operation.
+  static constexpr unsigned DEFAULT_PAGED_COOLDOWN_REPEATS = 5;
+  /// How many times we send out a reset packet after an address write.
+  static constexpr unsigned DEFAULT_PAGED_ADDRESS_COOLDOWN_REPEATS = 10;
+  /// How many times we send out a reset packet after a hard reset (CV8=8).
+  static constexpr unsigned DEFAULT_PAGED_HARD_RESET_REPEATS = 100;
+
+  class ServiceModeTimer : public ::Timer {
+   public:
+    ServiceModeTimer(ProgrammingTrackFrontend* parent)
+        : ::Timer(parent->service()->executor()->active_timers()),
+          parent_(parent) {}
+
+    /// Starts the timer, or restarts it if it is already running.
+    void ping() {
+      if (isRunning_) {
+        restart();
+      } else {
+        start(SEC_TO_NSEC(SERVICE_MODE_TIMER_SEC));
+        isRunning_ = true;
+      }
+    }
+
+    /// Stops the timer if it's running.
+    void stop_wait() {
+      if (isRunning_) {
+        trigger();
+        isRunning_ = false;
+      }
+    }
+    
+   private:
+    long long timeout() override {
+      isRunning_ = false;
+      if (is_triggered()) {
+        return NONE;
+      }
+      StateFlow::invoke_subflow_and_ignore_result(
+          parent_, ProgrammingTrackFrontendRequest::EXIT_SERVICE_MODE);
+      return NONE;
+    }
+
+    /// True if the timer is running and not expired yet.
+    bool isRunning_{false};
+    /// Owning instance.
+    ProgrammingTrackFrontend* parent_;
+  } serviceModeTimer_{this};
+  
   /// Error codes used by the POM railcom readout.
   enum {
     ERROR_NOOP = 0,
@@ -644,7 +920,11 @@ class ProgrammingTrackFrontend
   uint8_t seenRailcomBusy_ : 1;
   /// 1 if we have seen any unknown or garbage data from railcom.
   uint8_t seenRailcomGarbage_ : 1;
-  
+  /// Register to use in paged mode. 0-based.
+  uint8_t pagedRegister_ : 3;
+  /// True if we are in service mode.
+  uint8_t inServiceMode_ : 1;
+
   StateFlowTimer timer_{this};
   long long deadline_;  //< time when we should give up and return error.
   vector<dcc::RailcomPacket> interpretedResponse_;
@@ -652,7 +932,7 @@ class ProgrammingTrackFrontend
   /// Backend flow for executing low-level programming track requests.
   ProgrammingTrackBackend* backend_;
   /// Track interface to send POM packets to.
-  dcc::PacketFlowInterface *track_;
+  dcc::TrackIf *track_;
   /// Hub where railcom feedback packets can come in.
   dcc::RailcomHubFlow *railcomHub_;
   /// Holding buffer for the next programming track packet to send.

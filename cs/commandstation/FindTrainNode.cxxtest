@@ -7,6 +7,7 @@
 
 #include "commandstation/ExternalTrainDbEntry.hxx"
 #include "commandstation/FindProtocolServer.hxx"
+#include "openlcb/CanDefs.hxx"
 
 using ::testing::InvokeWithoutArgs;
 
@@ -56,13 +57,13 @@ class FindTrainNodeTest : public TrainDbTest {
   FindTrainNode findFlow_{node_, &db_, &allTrainNodes_};
 
   openlcb::TrainNodeWithId olcbTrain_{&trainService_, &m1_, 0x0501010118DD};
-  ExternalTrainDbEntry dbEntry_{"Deadrail 415", 415, DCCMODE_FAKE_DRIVE};
+  ExternalTrainDbEntry dbEntry_{"Deadrail 415", 415, DCCMODE_OLCBUSER};
   SingleNodeFindProtocolServer findProtocolServer_{&olcbTrain_, &dbEntry_};  
 };
 
 TEST_F(FindTrainNodeTest, CreateDestroy) { wait(); }
 
-TEST_F(FindTrainNodeTest, FindLocalTrain) { 
+TEST_F(FindTrainNodeTest, DISABLED_FindLocalTrain) { 
   wait();
   auto b = invoke_flow(&findFlow_, (DccMode)0, 51);
 
@@ -70,7 +71,7 @@ TEST_F(FindTrainNodeTest, FindLocalTrain) {
   EXPECT_EQ(0x060100000000u | 51u, b->data()->nodeId);
 }
 
-TEST_F(FindTrainNodeTest, FindLocalTrainLong) { 
+TEST_F(FindTrainNodeTest, DISABLED_FindLocalTrainLong) { 
   /// @todo (balazs.racz) remove FindTrainNode class and it's tests. These
   /// tests do no longer represent realistic usage of this class, but there are
   /// no production usage dependencies on it anyway. RemoteFindTrainFlow
@@ -81,7 +82,7 @@ TEST_F(FindTrainNodeTest, FindLocalTrainLong) {
   EXPECT_EQ(0x06010000C000u | 2u, b->data()->nodeId);
 }
 
-TEST_F(FindTrainNodeTest, FindLocalTrainLong2) { 
+TEST_F(FindTrainNodeTest, DISABLED_FindLocalTrainLong2) { 
   auto b = invoke_flow(&findFlow_, (DccMode) 0, 350);
 
   EXPECT_EQ(0, b->data()->resultCode);
@@ -131,20 +132,6 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
  protected:
   RemoteFindTrainNodeTest() {
     secondIf_.add_addressed_message_support();
-    // Adds one alias buffer to the alias allocation flow.
-    auto* b = secondIf_.alias_allocator()->alloc();
-
-
-    b->data()->reset();
-    b->data()->alias = 0x922;
-    b->data()->state = openlcb::AliasInfo::STATE_RESERVED;
-    b->data()->do_not_reallocate();
-    run_x([this, b]() {
-      secondIf_.local_aliases()->add(
-          openlcb::AliasCache::RESERVED_ALIAS_NODE_ID, b->data()->alias);
-    });
-    secondIf_.alias_allocator()->reserved_aliases()->insert(b);
-
     wait();
     print_all_packets();
   }
@@ -156,6 +143,9 @@ class RemoteFindTrainNodeTest : public FindTrainNodeTest {
   const uint64_t SECOND_NODE_ID = openlcb::TEST_NODE_ID + 256;
   openlcb::IfCan secondIf_{&g_executor, &can_hub0, 10, 10, 5};
   openlcb::AddAliasAllocator secAdd{SECOND_NODE_ID, &secondIf_};
+  RunInConstructOnMain aliasCreate_{[this]() {
+    secondIf_.alias_allocator()->TEST_add_allocated_alias(0x922);
+  }};
   openlcb::DefaultNode secondNode_{&secondIf_, SECOND_NODE_ID};
 
   RemoteFindTrainNode remoteClient_{&secondNode_};
@@ -199,7 +189,7 @@ TEST_F(RemoteFindTrainNodeTest, FindRemoteTrainWithAddressLookup) {
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindNonMatchingTrain) {
-  auto b = invoke_flow(&remoteClient_, 234, true, DCCMODE_OLCBUSER);
+  auto b = invoke_flow(&remoteClient_, 234, true, DCCMODE_DEFAULT);
   EXPECT_EQ(openlcb::Defs::ERROR_OPENMRN_NOT_FOUND, b->data()->resultCode);
   EXPECT_EQ(0u, b->data()->nodeId);
 }
@@ -207,7 +197,7 @@ TEST_F(RemoteFindTrainNodeTest, FindNonMatchingTrain) {
 TEST_F(RemoteFindTrainNodeTest, AllocateTrain) {
   auto b = invoke_flow(&remoteClient_, 234, FindProtocolDefs::ALLOCATE);
   EXPECT_EQ(0, b->data()->resultCode);
-  EXPECT_EQ(0x060100000000u + 234, b->data()->nodeId);
+  EXPECT_EQ(0x06010000C000u + 234, b->data()->nodeId);
 }
 
 TEST_F(RemoteFindTrainNodeTest, FindExistingTrainCallback) {
@@ -228,7 +218,7 @@ TEST_F(RemoteFindTrainNodeTest, FindTwoTrainCallback) {
   RemoteFindTrainNodeRequest::ResultFn rf =
       std::bind(&FindResponse::response, &responseMock_, std::placeholders::_1,
                 std::placeholders::_2);
-  auto b = invoke_flow(&remoteClient_, 2, false, DCCMODE_OLCBUSER, rf);
+  auto b = invoke_flow(&remoteClient_, 2, false, DCCMODE_DEFAULT, rf);
   EXPECT_EQ(0, b->data()->resultCode);
   EXPECT_EQ(0u, b->data()->nodeId);
 }

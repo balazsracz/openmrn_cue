@@ -3,10 +3,13 @@ SUBDIRS ?= \
 	  custom \
 	  commandstation \
 	  mobilestation \
-	  logic \
 
 
 ifeq ($(strip $(TARGET)),linux.x86)
 SUBDIRS += automata server
 SYSLIBRARIESEXTRA += -lprotobuf
+endif
+
+ifeq ($(EXECUTABLE),logic)
+SUBDIRS += logic
 endif

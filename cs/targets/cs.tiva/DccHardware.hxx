@@ -42,6 +42,7 @@
 #include "DummyGPIO.hxx"
 #include "hardware.hxx"
 #include "src/cs_config.h"
+#include "dcc/DccOutput.hxx"
 
 struct RailcomDefs
 {
@@ -72,6 +73,7 @@ struct RailcomDefs
     static void disable_measurement() {}
 
     static bool need_ch1_cutout() { return false; }
+    static void middle_cutout_hook() {}
 
     static uint8_t get_feedback_channel() {
         return 0xff;
@@ -104,7 +106,22 @@ struct DccHwDefs {
   /// interrupt number of the interval timer
   static const unsigned long INTERVAL_INTERRUPT = INT_TIMER0A;
 
-  using BOOSTER_ENABLE_Pin = DummyPin;
+  static void set_booster_enabled() {
+    PIN_H::set_hw();
+    PIN_L::set_hw();
+  }
+
+  static void set_booster_disabled() {
+    PIN_H::set(PIN_H_INVERT);
+    PIN_H::set_output();
+    PIN_H::set(PIN_H_INVERT);
+
+    PIN_L::set(PIN_L_INVERT);
+    PIN_L::set_output();
+    PIN_L::set(PIN_L_INVERT);
+
+    RAILCOM_TRIGGER_Pin::set(RAILCOM_TRIGGER_INVERT);
+  }
   
   /** These timer blocks will be synchronized once per packet, when the
    *  deadband delay is set up. */
@@ -131,6 +148,9 @@ struct DccHwDefs {
   /** @returns the number of preamble bits to send (in addition to the end of
    *  packet '1' bit) */
   static int dcc_preamble_count() { return 16; }
+
+  /** @return whether we need the half-zero after the railcom cutout. */
+  static bool generate_railcom_halfzero() { return true; }
 
   static void flip_led() {
     io::TrackPktLed::toggle();
@@ -173,6 +193,35 @@ struct DccHwDefs {
   static const auto RAILCOM_UART_BASE = UART6_BASE;
   static const auto RAILCOM_UART_PERIPH = SYSCTL_PERIPH_UART6;
   using RAILCOM_UARTPIN = ::RAILCOM_CH1_Pin;
+
+  // Constants tuning railcom cutout window
+  static const int RAILCOM_CUTOUT_START_DELTA_USEC = 0;
+  static const int RAILCOM_CUTOUT_MID_DELTA_USEC = 0;
+  static const int RAILCOM_CUTOUT_END_DELTA_USEC = 0;
+  static const int RAILCOM_CUTOUT_POST_DELTA_USEC = 0;
+
+  static_assert(RAILCOM_TRIGGER_INVERT == true,
+                "fix railcom enable pin inversion");
+  using RAILCOM_ENABLE_Pin = InvertedGpio<RAILCOM_TRIGGER_Pin>;
+
+  struct BOOSTER_ENABLE_Pin {
+   public:
+    static void hw_init() {
+    }
+    static void set(bool on) {
+      if (on) {
+        set_booster_enabled();
+      } else {
+        set_booster_disabled();
+      }
+    }
+  };
+  
+  using Output1 = DccOutputHwReal<1, BOOSTER_ENABLE_Pin, RAILCOM_ENABLE_Pin, 1,
+                                  RAILCOM_TRIGGER_DELAY_USEC, 0>;
+  using Output2 = DccOutputHwDummy<2>;
+  using Output3 = DccOutputHwDummy<3>;
+  using Output = Output1;
 };
 
 

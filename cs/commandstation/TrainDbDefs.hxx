@@ -40,7 +40,7 @@
 
 namespace commandstation {
 
-#define DCC_MAX_FN 29
+static constexpr unsigned DCC_MAX_FN = 29;
 
 
 enum Symbols {
@@ -140,6 +140,9 @@ enum DccMode {
   /// Mask for testing whether the protocol is a Markin-Motorola protocol
   /// variant.
   MARKLIN_ANY_MASK = 0b11100,
+  /// Mask for the Marklin protocol version speed step setting.
+  MARKLIN_V_MASK = 0b00011,
+  
   /// Acquisition for a Marklin locomotive with default setting.
   MARKLIN_DEFAULT = MARKLIN_ANY,
   /// Force MM protocol version 1 (F0 only).
@@ -161,6 +164,8 @@ enum DccMode {
   DCC_DEFAULT = DCC_ANY,
   /// Force long address for DCC. If clear, uses default address type by number.
   DCC_LONG_ADDRESS = 0b00100,
+  /// Force long address for DCC with DEFAULT/ANY speed step mode.
+  DCC_DEFAULT_LONG_ADDRESS = DCC_DEFAULT | DCC_LONG_ADDRESS,
   /// Mask for the DCC speed step setting.
   DCC_SS_MASK = 0b00011,
   /// Unpecified / default speed step setting.
@@ -182,6 +187,14 @@ enum DccMode {
   DCCMODE_PROTOCOL_MASK = 0b11111,
 };
 
+/// Converts a DccMode bit mask and a legacy address into a TrainAddressType
+/// enum.
+/// @param mode the legacy drive mode (e.g. from a TrainDb entry or from a search query)
+/// @param address is the legacy address.
+/// @return an enum value which together with the address uniquely represents
+/// an addressable entity on the track. May return UNSPECIFIED if DccMode ==
+/// DCCMODE_DEFAULT (usually a query did not specify any restriction) or
+/// UNSUPPORTED if we did not recognize the code in the DccMode bitfield.
 inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
                                                       uint32_t address) {
   if (mode == DCCMODE_DEFAULT) {
@@ -198,6 +211,27 @@ inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
   }
   LOG(INFO, "Unsupported drive mode %d (0x%02x)", mode, mode);
   return dcc::TrainAddressType::UNSUPPORTED;
+}
+
+/// Converts a DccMode bit mask down to a protocol enumeration, i.e. DCC,
+/// Marklin or OpenLCB.
+/// @param mode the detailed mode bit field.
+/// @return a stripped down mode bit field which does not specify any details
+/// about the protocol variant.
+inline DccMode dcc_mode_to_protocol(DccMode mode) {
+  if (mode == DCCMODE_DEFAULT ||
+      mode == DCCMODE_OLCBUSER) {
+    return mode;
+  }
+  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY) {
+    return MARKLIN_ANY;
+  }
+  if ((mode & DCC_ANY_MASK) == DCC_ANY) {
+    return DCC_ANY;
+  }
+  LOG(INFO, "Unknown DCC Mode %d", (int)mode);
+  // We return the value unchanged.
+  return mode;
 }
 
 } // namespace commandstation

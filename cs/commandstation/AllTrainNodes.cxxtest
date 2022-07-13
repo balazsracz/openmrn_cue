@@ -35,13 +35,9 @@
 #include "commandstation/cm_test_helper.hxx"
 #include "utils/format_utils.hxx"
 #include "commandstation/UpdateProcessor.hxx"
+#include "commandstation/FindProtocolDefs.hxx"
 
 namespace commandstation {
-
-// These components of the command station are needed in order to instantiate
-// real dcc train impl objects.
-DccPacketSink g_hardware;
-UpdateProcessor g_update_processor{&g_service, &g_hardware};
 
 TEST_F(AllTrainNodesTest, CreateDestroy) {}
 
@@ -58,8 +54,8 @@ TEST_F(AllTrainNodesTest, CreateNode) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(183, db_entry->get_legacy_address());
   EXPECT_EQ(string("183"), db_entry->get_train_name());
 }
@@ -71,8 +67,8 @@ TEST_F(AllTrainNodesTest, CreateNodeShort) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(18, db_entry->get_legacy_address());
   EXPECT_EQ(string("18S"), db_entry->get_train_name());
 }
@@ -84,8 +80,8 @@ TEST_F(AllTrainNodesTest, CreateNodeLong) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(18, db_entry->get_legacy_address());
   EXPECT_EQ(string("018L"), db_entry->get_train_name());
 }
@@ -97,8 +93,8 @@ TEST_F(AllTrainNodesTest, CreateNodeMarklin) {
   send_packet_and_expect_response(":X19828123N0443;",
                                   ":X19668443N0123D41E00000000;");
   wait();
-  auto* db_entry = trainNodes_->get_traindb_entry(3).get();
-  ASSERT_TRUE(db_entry);
+  auto db_entry = get_traindb_entry(3);
+  ASSERT_TRUE((bool)db_entry);
   EXPECT_EQ(13, db_entry->get_legacy_address());
   EXPECT_EQ(string("13M"), db_entry->get_train_name());
 }
@@ -111,5 +107,130 @@ TEST(bufferrender, T183) {
 }
 
 // TODO: add test for retrieving via memory config protocol.
+TEST_F(StoredTrainNodesTest, create) {}
+
+TEST_F(StoredTrainNodesTest, start) {
+  start();
+}
+
+// Regression test for #132
+TEST_F(StoredTrainNodesTest, create_with_train_search_6) {
+  cfg_.entry<0>().address().write(configFile_.fd(), 53);
+  cfg_.entry<0>().mode().write(configFile_.fd(), DCC_128);
+  cfg_.entry<0>().name().write(configFile_.fd(), "Am 111 222-7");
+
+  expect_train_start(0x443, 53, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  start();
+
+  clear_expect(true); // strict
+  expect_packet(":X19544443N090099FFFFFFF700;");
+  send_packet(  ":X19914123N090099FFFFFFF700;");
+  wait();
+  clear_expect(true); // strict
+
+  expect_train_start(0x444, 6, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544444N090099FFFFFFF6E0;");
+  send_packet(  ":X19914471N090099FFFFFFF6E0;");
+  twait();
+  clear_expect(true); // strict
+}
+
+// Regression test for #132
+TEST_F(StoredTrainNodesTest, create_with_train_search_7) {
+  cfg_.entry<0>().address().write(configFile_.fd(), 53);
+  cfg_.entry<0>().mode().write(configFile_.fd(), DCC_128);
+  cfg_.entry<0>().name().write(configFile_.fd(), "Am 111 222-7");
+
+  expect_train_start(0x443, 53, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  start();
+
+  auto db_entry = get_traindb_entry(trainNodes_->size() - 1);
+  
+  clear_expect(true); // strict
+  expect_packet(":X19544443N090099FFFFFFF700;");
+  send_packet(  ":X19914123N090099FFFFFFF700;");
+  wait();
+  clear_expect(true); // strict
+
+  expect_train_start(0x444, 7, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544444N090099FFFFFFF7E0;");
+  send_packet(  ":X19914471N090099FFFFFFF7E0;");
+  twait();
+  clear_expect(true); // strict
+
+  EXPECT_EQ("Am 111 222-7", db_entry->get_train_name());
+  EXPECT_EQ(53, db_entry->get_legacy_address());
+  EXPECT_EQ(DCC_128, db_entry->get_legacy_drive_mode());
+
+  EXPECT_TRUE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF700, db_entry.get()));
+  EXPECT_FALSE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF7E0, db_entry.get()));
+  EXPECT_TRUE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF7C0, db_entry.get()));
+
+  
+  db_entry = get_traindb_entry(0);
+
+  EXPECT_EQ("Am 843 093-6", db_entry->get_train_name());
+  EXPECT_EQ(43, db_entry->get_legacy_address());
+  EXPECT_EQ(DCC_128_LONG_ADDRESS, db_entry->get_legacy_drive_mode());
+
+  EXPECT_TRUE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF600, db_entry.get()));
+  EXPECT_TRUE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF6C0, db_entry.get()));
+  EXPECT_FALSE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF6E0, db_entry.get()));
+}
+
+// Regression test for #132
+TEST_F(StoredTrainNodesTest, create_with_train_search_7_alt) {
+  cfg_.entry<0>().address().write(configFile_.fd(), 53);
+  cfg_.entry<0>().mode().write(configFile_.fd(), DCC_128);
+  cfg_.entry<0>().name().write(configFile_.fd(), "Am 111 222-7");
+
+  expect_train_start(0x443, 53, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  start();
+
+  auto db_entry = get_traindb_entry(trainNodes_->size() - 1);
+  
+  clear_expect(true); // strict
+  expect_packet(":X19544443N090099FFFFFFF700;");
+  send_packet(  ":X19914123N090099FFFFFFF700;");
+  wait();
+  clear_expect(true); // strict
+
+  expect_train_start(0x444, 7, dcc::TrainAddressType::DCC_SHORT_ADDRESS);
+  expect_packet(":X19544444N090099FFFFFFF7E0;");
+  send_packet(  ":X19914471N090099FFFFFFF7E0;");
+  twait();
+  clear_expect(true); // strict
+
+  EXPECT_EQ("Am 111 222-7", db_entry->get_train_name());
+  EXPECT_EQ(53, db_entry->get_legacy_address());
+  EXPECT_EQ(DCC_128, db_entry->get_legacy_drive_mode());
+
+  EXPECT_TRUE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF700, db_entry.get()));
+  EXPECT_EQ(0, 
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF7E0, db_entry.get()));
+  EXPECT_TRUE( 
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF7C0, db_entry.get()));
+
+  
+  db_entry = get_traindb_entry(0);
+
+  EXPECT_EQ("Am 843 093-6", db_entry->get_train_name());
+  EXPECT_EQ(43, db_entry->get_legacy_address());
+  EXPECT_EQ(DCC_128_LONG_ADDRESS, db_entry->get_legacy_drive_mode());
+
+  EXPECT_TRUE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF600, db_entry.get()));
+  EXPECT_TRUE(
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF6C0, db_entry.get()));
+  EXPECT_EQ(0,
+      FindProtocolDefs::match_query_to_node(0x090099FFFFFFF6E0, db_entry.get()));
+}
 
 }  // namespace commandstation
