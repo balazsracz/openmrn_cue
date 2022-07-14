@@ -47,6 +47,7 @@ Use your package manager for the distro that you are running to verify they exis
  _ToDo: Link to minimal DevKit hardware build for Logic Node.
  _ToDo2: Instructions on minimal hardware build.
 
+
   If you have an OpenMRN reposority that is compiling the mainline OpenMRN code,
   you should have the STM libraries needed. Please note that the 767ZI target is new to OpenMRN
   and you may need to download and add the library for the F7 family of hardware.
@@ -60,8 +61,10 @@ Use your package manager for the distro that you are running to verify they exis
   larger than the F303RE board, it will overhang across the area used for the servo headers JP1 and JP2. 
   We recommend building a DevKit with only the CAN and power sections built to be used for Logic Nodes. 
 
-_todo insert picture here_
- 
+  @image html DevKitNucleoCANPower.png
+  @image html F727TopViewinNucleo.png
+  @image html F727SideViewinNucleo.png
+  @image html F727PinViewinNucleo.png
  
  
   @subsection devkit DevKit and Nucleo for Cue
