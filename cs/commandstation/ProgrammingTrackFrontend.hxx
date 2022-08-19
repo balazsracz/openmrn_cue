@@ -188,10 +188,17 @@ struct ProgrammingTrackFrontendRequest : public CallableFlowRequestBase {
 class ProgrammingTrackFrontend
     : public CallableFlow<ProgrammingTrackFrontendRequest> {
  public:
+  /// Constructor
+  ///
+  /// @param backend The programming track backend, or nullptr if we only have
+  /// to support POM programming.
+  /// @param track the DCC driver's track interface objects. POM packets will
+  /// be injected here.
+  /// @param railcom_hub hub for listening to railcom feedback from.
   ProgrammingTrackFrontend(ProgrammingTrackBackend* backend,
                            dcc::TrackIf* track,
                            dcc::RailcomHubFlow* railcom_hub)
-      : CallableFlow<ProgrammingTrackFrontendRequest>(backend->service()),
+      : CallableFlow<ProgrammingTrackFrontendRequest>(railcom_hub->service()),
         inServiceMode_(0),
         backend_(backend),
         track_(track),
@@ -216,6 +223,8 @@ class ProgrammingTrackFrontend
     ERROR_UNIMPLEMENTED_CMD = openlcb::Defs::ERROR_UNIMPLEMENTED_CMD,
     /// Error code when the request arguments are invalid.
     ERROR_INVALID_ARGS = openlcb::Defs::ERROR_INVALID_ARGS,
+    /// Error returned when the programming track is disabled by config.
+    ERROR_PGMTRACK_DISABLED = openlcb::Defs::ERROR_SRC_NOT_PERMITTED | 1,
     /// cleared when done is called.
     OPERATION_PENDING = openlcb::DatagramClient::OPERATION_PENDING,
   };
@@ -262,6 +271,9 @@ class ProgrammingTrackFrontend
     if (inServiceMode_) {
       // the timer has not elapsed yet.
       return call_immediately(STATE(act_service_mode));
+    }
+    if (!backend_) {
+      return return_with_error(ERROR_PGMTRACK_DISABLED);
     }
     inServiceMode_ = true;
     return invoke_subflow_and_wait(backend_, STATE(send_initial_resets),
@@ -689,6 +701,9 @@ class ProgrammingTrackFrontend
       return return_ok();
     }
     inServiceMode_ = false;
+    if (!backend_) {
+      return return_ok();
+    }
     return invoke_subflow_and_wait(backend_, STATE(exit_service_mode_done),
                                    ProgrammingTrackRequest::EXIT_SERVICE_MODE);
   }

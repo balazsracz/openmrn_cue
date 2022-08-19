@@ -41,14 +41,15 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
                                 public StateFlowBase {
  public:
   static constexpr unsigned MAX_CV = 1023;
-  
+
   ProgrammingTrackCVSpace(openlcb::MemoryConfigHandler* parent,
                           ProgrammingTrackFrontend* frontend,
                           openlcb::Node* node)
       : StateFlowBase(parent->service()),
         parent_(parent),
         frontend_(frontend),
-        node_(node) {
+        node_(node),
+        enableServiceMode_(1) {
     parent_->registry()->insert(nullptr, SPACE_ID, this);
     memset(&store_, 0, sizeof(store_));
   }
@@ -57,6 +58,12 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     parent_->registry()->erase(nullptr, SPACE_ID, this);
   }
 
+  /// @param enable if true, service mode operations are allowed; if false,
+  /// they are rejected.
+  void set_enable_service_mode(bool enable) {
+    enableServiceMode_ = enable;
+  }
+  
   /// @returns whether the memory space does not accept writes.
   bool read_only() override
   {
@@ -73,6 +80,7 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
         return false;
     }
     if (node == node_) {
+      if (!enableServiceMode_) return false;
       pomAddressType_ = dcc::TrainAddressType::UNSPECIFIED;
       return true;
     }
@@ -233,6 +241,12 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
         return false;
     }
     *address &= 0xFFFFFFu;
+    if (!enableServiceMode_ &&
+        store_.mode != htobe32(ProgrammingTrackSpaceConfig::POM_MODE)) {
+      store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
+      *error = ProgrammingTrackFrontend::ERROR_PGMTRACK_DISABLED;
+      return false;
+    }
     return true;
   }
 
@@ -478,6 +492,9 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
   bool bitOperation_ : 1;
   /// If this is a bit operation, which bit are we targeting (0-7).
   uint8_t bitNum_ : 3;
+  /// If 1 we allow service mode operations, if 0 we reject (or don't listen
+  /// to) them.
+  bool enableServiceMode_ : 1;
 };
 
 }  // namespace commandstation
