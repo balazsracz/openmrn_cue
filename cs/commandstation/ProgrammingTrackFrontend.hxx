@@ -282,8 +282,15 @@ class ProgrammingTrackFrontend
 
   Action send_initial_resets() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    // RCN-216 needs 25 reset packets at startup of service mode. In reality
+    // this will make us send more than 25, because there is usually 6 or 7
+    // additional reset packets in the queue when we get back the control from
+    // the backend.
+    //
+    // When we have always-on program track, these initial resets are sent out
+    // only once. Later operations are started immediately.
     return invoke_subflow_and_wait(backend_, STATE(enter_service_mode_done),
-                                   ProgrammingTrackRequest::SEND_RESET, 15);
+                                   ProgrammingTrackRequest::SEND_RESET, 25);
   }
 
   Action enter_service_mode_done() {
