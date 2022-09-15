@@ -39,19 +39,19 @@ const struct const_traindb_entry_t const_lokdb[] = {
     // 0
     {43,
      {
-      LIGHT, TELEX, FNT11, ABV, 0xff,
+      HEADLIGHT, UNCOUPLE, FN_NONEXISTANT, MOMENTUM, 0xff,
      },
      "Am 843 093-6",
      DCC_128_LONG_ADDRESS},
     {22,
      {
-      LIGHT, FNT11, ABV, 0xff,
+      HEADLIGHT, FN_NONEXISTANT, MOMENTUM, 0xff,
      },
      "RE 460 TSR",
      DCC_128_LONG_ADDRESS},  // todo: there is no beamer here // LD-32 decoder
     {465,
      {
-      LIGHT, SPEECH, 0xff,
+      HEADLIGHT, ANNOUNCE, 0xff,
      },
      "Jim's steam",
      DCC_128_LONG_ADDRESS},
