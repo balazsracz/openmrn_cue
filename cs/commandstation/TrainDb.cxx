@@ -131,7 +131,7 @@ class FileTrainDbEntry : public TrainDbEntry {
   /** Retrieves the label assigned to a given function, or FN_NONEXISTANT if
       the function does not exist. */
   unsigned get_function_label(unsigned fn_id) override {
-    if (fn_id == 0) return LIGHT;
+    if (fn_id == 0) return HEADLIGHT;
     if (fn_id >= maxFn_) return FN_NONEXISTANT;
     fn_id--;
     if (fn_id >= cdiEntry_.functions().all_functions().num_repeats()) return FN_NONEXISTANT;

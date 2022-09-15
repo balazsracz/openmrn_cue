@@ -73,7 +73,7 @@ class DccTrainDbEntry : public TrainDbEntry {
     if (is_dcc_mode()) {
       switch (fn_id) {
         case 0:
-          return LIGHT;
+          return HEADLIGHT;
         case 1:
           return BELL;
         case 2:
@@ -84,9 +84,9 @@ class DccTrainDbEntry : public TrainDbEntry {
     } else {
       switch (fn_id) {
         case 0:
-          return LIGHT;
+          return HEADLIGHT;
         case 4:
-          return ABV;
+          return MOMENTUM;
         default:
           return FN_UNKNOWN;
       }
