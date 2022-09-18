@@ -44,29 +44,29 @@ static constexpr unsigned DCC_MAX_FN = 29;
 
 
 enum Symbols {
-  FN_NONEXISTANT = 0,
-  LIGHT = 1,
-  BEAMER = 2,
-  BELL = 3,
-  HORN = 128 + 4,
-  SHUNT = 5,
-  PANTO = 6,
-  SMOKE = 7,
-  ABV = 8,
-  WHISTLE = 128 + 9,
-  SOUND = 10,
-  FNT11 = 11,
-  SPEECH = 128 + 12,
-  ENGINE = 13,
-  LIGHT1 = 14,
-  LIGHT2 = 15,
-  TELEX = 128 + 17,
-  FN_UNKNOWN = 127,
   MOMENTARY = 128,
-  FNP = 139,
-  SOUNDP = 141,
   // Empty eeprom will have these bytes.
   FN_UNINITIALIZED = 255,
+  
+  FN_NONEXISTANT = 0,
+  HEADLIGHT = 1,
+  ENGINE = 4,
+  ANNOUNCE = 6 | MOMENTARY,
+  SHUNTING_MODE = 7,
+  MOMENTUM = 8,
+  SMOKE = 10,
+  PANTOGRAPH = 11,
+  FAR_LIGHT = 12,
+  BELL = 13,
+  HORN = 14 | MOMENTARY,
+  WHISTLE = 15 | MOMENTARY,
+  LIGHT = 74,
+  UNCOUPLE = 9 | MOMENTARY,
+  FN_UNKNOWN = 127,
+
+  FNP = 139,
+  SOUNDP = 141,
+
 };
 
 // Use cases we need to support:

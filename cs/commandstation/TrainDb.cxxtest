@@ -18,9 +18,9 @@ namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
   // 0
-  { 2 , { LIGHT, 0, HORN, SPEECH, ABV, },
+  { 2 , { HEADLIGHT, 0, HORN, ANNOUNCE, MOMENTUM, },
     "ICE 2", DCC_128 }, // todo: check fnbits
-  { 51, { LIGHT, TELEX, SHUNT, ABV, },
+  { 51, { HEADLIGHT, UNCOUPLE, SHUNTING_MODE, MOMENTUM, },
     "BR 260417", DCC_28 },  // ESU LokPilot 3.0
   { 0, {0,}, "", 0},
   //  { 0, {0, }, {0,}, "", 0},
@@ -57,11 +57,11 @@ TEST(TrainDbTest, name) {
 TEST(TrainDbTest, fntype) {
   TrainDb db;
   ASSERT_TRUE(db.is_train_id_known(0));
-  EXPECT_EQ(LIGHT, db.get_entry(0)->get_function_label(0));
+  EXPECT_EQ(HEADLIGHT, db.get_entry(0)->get_function_label(0));
   EXPECT_EQ(FN_NONEXISTANT, db.get_entry(0)->get_function_label(1));
   EXPECT_EQ(HORN, db.get_entry(0)->get_function_label(2));
-  EXPECT_EQ(SPEECH, db.get_entry(0)->get_function_label(3));
-  EXPECT_EQ(ABV, db.get_entry(0)->get_function_label(4));
+  EXPECT_EQ(ANNOUNCE, db.get_entry(0)->get_function_label(3));
+  EXPECT_EQ(MOMENTUM, db.get_entry(0)->get_function_label(4));
   EXPECT_EQ(4, db.get_entry(0)->get_max_fn());
   EXPECT_EQ(FN_NONEXISTANT, db.get_entry(0)->get_function_label(5));
   EXPECT_EQ(FN_NONEXISTANT, db.get_entry(0)->get_function_label(6));

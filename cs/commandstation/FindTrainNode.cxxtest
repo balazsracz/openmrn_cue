@@ -17,19 +17,19 @@ const struct const_traindb_entry_t const_lokdb[] = {
     // 0
     {51,
      {
-      LIGHT, TELEX, SHUNT, ABV, 0xff,
+      HEADLIGHT, UNCOUPLE, SHUNTING_MODE, MOMENTUM, 0xff,
      },
      "BR 260417",
      DCC_28},  // ESU LokPilot 3.0
     {2,
      {
-      LIGHT, HORN, SPEECH, ABV, 0xff,
+      HEADLIGHT, HORN, ANNOUNCE, MOMENTUM, 0xff,
      },
      "ICE 2",
      DCC_28 | DCC_LONG_ADDRESS},  // todo: check fnbits
     {350,
      {
-      LIGHT, HORN, SPEECH, ABV, 0xff,
+      HEADLIGHT, HORN, ANNOUNCE, MOMENTUM, 0xff,
      },
      "Test350",
      DCC_128},  // todo: check fnbits

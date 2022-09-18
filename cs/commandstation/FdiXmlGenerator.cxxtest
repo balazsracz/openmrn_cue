@@ -39,12 +39,12 @@ namespace commandstation {
 
 
 const struct const_traindb_entry_t const_lokdb[] = {
-  { 51, { LIGHT, TELEX, HORN, SHUNT, ABV, 0, 0x3e, },
+  { 51, { HEADLIGHT, UNCOUPLE, HORN, SHUNTING_MODE, MOMENTUM, 0, 0x3e, },
     "BR 260417", DCC_28 },
-  { 50, { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_128 },
+  { 50, { HEADLIGHT, ENGINE, HORN, ANNOUNCE, ANNOUNCE, ANNOUNCE, ANNOUNCE, LIGHT, FNP, MOMENTUM, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_128 },
   { 22, {  },
     "Fooo", DCC_128 },
-  { 22, { LIGHT, 0xff, 0xff, LIGHT },
+  { 22, { HEADLIGHT, 0xff, 0xff, HEADLIGHT },
     "RE 460 TSR", DCC_128 },
 };
 
@@ -62,14 +62,13 @@ TEST(FdiDataTest, FunctionLabelTest) {
   }
 
   EXPECT_FUNCTION(nullptr, 37);
-  EXPECT_FUNCTION(nullptr, FNT11);
   EXPECT_FUNCTION("Bell", BELL);
   EXPECT_FUNCTION("Horn", HORN);
   EXPECT_FUNCTION("Horn", HORN & 0x7f);
   EXPECT_FUNCTION("Horn", HORN | MOMENTARY);
   EXPECT_FUNCTION("Engine", ENGINE);
-  EXPECT_FUNCTION("Pantgr", PANTO);
-  EXPECT_FUNCTION("Coupler", TELEX);
+  EXPECT_FUNCTION("Pantograph", PANTOGRAPH);
+  EXPECT_FUNCTION("Uncouple", UNCOUPLE);
 
 #undef EXPECT_FUNCTION
 }
@@ -102,11 +101,11 @@ R"(<?xml version='1.0' encoding='UTF-8'?>
 <fdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/trunk/prototypes/xml/schema/fdi.xsd'>
 <segment space='249'><group><name/>
 <function size='1' kind='binary'>
-<name>Light</name>
+<name>Headlight</name>
 <number>0</number>
 </function>
 <function size='1' kind='binary'>
-<name>Light</name>
+<name>Headlight</name>
 <number>3</number>
 </function>
 </group></segment></fdi>)";
@@ -147,11 +146,11 @@ R"(<?xml version='1.0' encoding='UTF-8'?>
 <fdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/trunk/prototypes/xml/schema/fdi.xsd'>
 <segment space='249'><group><name/>
 <function size='1' kind='binary'>
-<name>Light</name>
+<name>Headlight</name>
 <number>0</number>
 </function>
 <function size='1' kind='momentary'>
-<name>Coupler</name>
+<name>Uncouple</name>
 <number>1</number>
 </function>
 <function size='1' kind='momentary'>
@@ -159,11 +158,11 @@ R"(<?xml version='1.0' encoding='UTF-8'?>
 <number>2</number>
 </function>
 <function size='1' kind='binary'>
-<name>Shunt</name>
+<name>Shunting Mode</name>
 <number>3</number>
 </function>
 <function size='1' kind='binary'>
-<name>Mom off</name>
+<name>Momentum</name>
 <number>4</number>
 </function>
 <function size='1' kind='binary'>
