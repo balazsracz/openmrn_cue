@@ -219,6 +219,8 @@ class ProgrammingTrackFrontend
     ERROR_NO_RAILCOM = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 3,
     /// Re-triable error when we have seen only invalid responses.
     ERROR_INVALID_RESPONSE = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 4,
+    /// Program track experienced a short circuit condition. Re-triable.
+    ERROR_PGM_SHORT = openlcb::Defs::ERROR_OPENLCB_TIMEOUT | 5,
     /// Error code when something was invoked that is not implemented.
     ERROR_UNIMPLEMENTED_CMD = openlcb::Defs::ERROR_UNIMPLEMENTED_CMD,
     /// Error code when the request arguments are invalid.
@@ -282,6 +284,7 @@ class ProgrammingTrackFrontend
 
   Action send_initial_resets() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     // RCN-216 needs 25 reset packets at startup of service mode. In reality
     // this will make us send more than 25, because there is usually 6 or 7
     // additional reset packets in the queue when we get back the control from
@@ -295,6 +298,7 @@ class ProgrammingTrackFrontend
 
   Action enter_service_mode_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     return call_immediately(STATE(act_service_mode));
   }
 
@@ -334,6 +338,7 @@ class ProgrammingTrackFrontend
   
   Action write_pkt_sent() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       foundAck_ = 1;
     }
@@ -348,6 +353,7 @@ class ProgrammingTrackFrontend
 
   Action write_cooldown_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       foundAck_ = 1;
     }
@@ -375,6 +381,7 @@ class ProgrammingTrackFrontend
 
   Action write_verify_cooldown() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       foundAck_ = 1;
     }
@@ -385,6 +392,7 @@ class ProgrammingTrackFrontend
 
   Action write_verify_cooldown_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       foundAck_ = 1;
     }
@@ -424,6 +432,7 @@ class ProgrammingTrackFrontend
   Action check_next_bit_one() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     LOG(INFO, "bit %d verify ack %u", nextBitToRead_, b->data()->hasAck_);
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       confirmedOnes_ |= (1<<nextBitToRead_);
     }
@@ -435,6 +444,7 @@ class ProgrammingTrackFrontend
   Action cooldown_next_bit_one() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     LOG(INFO, "bit %d cooldown ack %u", nextBitToRead_, b->data()->hasAck_);
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       confirmedOnes_ |= (1<<nextBitToRead_);
     }
@@ -458,6 +468,7 @@ class ProgrammingTrackFrontend
   Action check_final_byte() {
     auto b = get_buffer_deleter(full_allocation_result(backend_)); 
     LOG(INFO, "read verify ack %u", b->data()->hasAck_);
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       request()->resultCode |= ERROR_CODE_OK;
     } else {
@@ -472,6 +483,7 @@ class ProgrammingTrackFrontend
   Action cooldown_final_verify() {
     auto b = get_buffer_deleter(full_allocation_result(backend_)); 
     LOG(INFO, "read verify cooldown ack %u", b->data()->hasAck_);
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       request()->resultCode |= ERROR_CODE_OK;
     } else {
@@ -512,6 +524,7 @@ class ProgrammingTrackFrontend
   Action send_pageset_cooldown() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     LOG(INFO, "page preset ack %u", b->data()->hasAck_);
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     return invoke_subflow_and_wait(backend_, STATE(send_paged_command),
                                    ProgrammingTrackRequest::SEND_RESET,
                                    (unsigned)DEFAULT_PAGED_COOLDOWN_REPEATS);
@@ -520,6 +533,7 @@ class ProgrammingTrackFrontend
   Action send_paged_command() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     LOG(INFO, "page preset ack2 %u", b->data()->hasAck_);
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     static constexpr bool kTerminateOnAck = true;
     switch (request()->cmd_) {
       case RequestType::PAGED_WRITE_BYTE:
@@ -546,6 +560,7 @@ class ProgrammingTrackFrontend
   /// Called after having sent the up to 5 write repeats or an ack is seen.
   Action paged_write_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       foundAck_ = 1;
     }
@@ -562,6 +577,7 @@ class ProgrammingTrackFrontend
   /// and send out some verify packets.
   Action paged_write_cooldown_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       foundAck_ = 1;
     }
@@ -587,6 +603,7 @@ class ProgrammingTrackFrontend
   /// Called after the hard reset cooldown. Exits service mode.
   Action paged_hard_reset_exit() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
+    if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
     if (b->data()->hasAck_) {
       foundAck_ = 1;
     }
@@ -596,11 +613,6 @@ class ProgrammingTrackFrontend
       request()->resultCode |= ERROR_NO_LOCO;
     }
     return done_and_return();
-  }
-
-  Action return_response() {
-    auto b = get_buffer_deleter(full_allocation_result(backend_));
-    return return_with_error(request()->resultCode & (~OPERATION_PENDING));
   }
 
   Action pom_write_byte() {
@@ -718,6 +730,14 @@ class ProgrammingTrackFrontend
   Action exit_service_mode_done() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     return return_ok();
+  }
+
+  /// Called when one of the backend calls returns with a short circuit
+  /// detected.
+  Action pgm_short() {
+    StateFlow::invoke_subflow_and_ignore_result(
+        this, ProgrammingTrackFrontendRequest::EXIT_SERVICE_MODE);
+    return return_with_error(ERROR_PGM_SHORT);
   }
 
   /// Invoked when an operation is done and we are ready to return. Handles the
