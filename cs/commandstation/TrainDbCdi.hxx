@@ -59,6 +59,7 @@ static const char FNDISPLAY_MAP[] =
     "<relation><property>6</property><value>Announce</value></relation>"
     "<relation><property>7</property><value>Shunting Mode</value></relation>"
     "<relation><property>8</property><value>Momentum</value></relation>"
+    "<relation><property>9</property><value>Uncouple</value></relation>"
     "<relation><property>10</property><value>Smoke</value></relation>"
     "<relation><property>11</property><value>Pantograph</value></relation>"
     "<relation><property>12</property><value>Far Light</value></relation>"
@@ -66,7 +67,6 @@ static const char FNDISPLAY_MAP[] =
     "<relation><property>14</property><value>Horn</value></relation>"
     "<relation><property>15</property><value>Whistle</value></relation>"
     "<relation><property>74</property><value>Light</value></relation>"
-    "<relation><property>123</property><value>Uncouple</value></relation>"
     "<relation><property>255</property><value>Unavailable_</value></relation>";
 
 CDI_GROUP(TrainDbCdiFunctionGroup, Name("Functions"),
