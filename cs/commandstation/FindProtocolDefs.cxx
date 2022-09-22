@@ -311,7 +311,9 @@ openlcb::EventId FindProtocolDefs::input_to_event(const string& input) {
   }
   event |= uint64_t(qry & 0xFFFFFF) << TRAIN_FIND_MASK_LOW;
   unsigned flags = 0;
-  if ((input[0] == '0') || (input.back() == 'L')) {
+  if (input.size() > 2 && input[0] == '0' && input[1] == '0') {
+    flags |= MARKLIN_NEW;
+  } else if ((input[0] == '0') || (input.back() == 'L')) {
     flags |= commandstation::DCC_ANY | commandstation::DCC_LONG_ADDRESS;
   } else if (input.back() == 'M') {
     flags |= MARKLIN_NEW;
