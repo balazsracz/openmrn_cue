@@ -516,7 +516,7 @@ StubBlock Stub_BSB1(&brd, &BSB1, nullptr, logic, "BS.B1");
 StubBlock Stub_BSB2(&brd, &BSB2, nullptr, logic, "BS.B2");
 
 StandardFixedTurnout Turnout_BSW1(&brd, logic->Allocate("BS.W1", 40),
-                                  FixedTurnout::TURNOUT_THROWN);
+                                  FixedTurnout::TURNOUT_CLOSED);
 TurnoutWrap TBSW1(&Turnout_BSW1.b, kThrownToPoint);
 
 
@@ -816,10 +816,10 @@ class LayoutSchedule : public TrainSchedule {
     StopAndReverseAtStub(Stub_ZHA1);
   }
 
-  void RunStubBS1(Automata* aut) {
+  void RunStubBS2(Automata* aut) {
     WithRouteLock l(this, &route_lock_BS);
-    AddDirectBlockTransition(Block_EntryToBS, Stub_BSB1, &g_bs_w1_free);
-    StopAndReverseAtStub(Stub_BSB1);
+    AddDirectBlockTransition(Block_EntryToBS, Stub_BSB2, &g_bs_w1_free);
+    StopAndReverseAtStub(Stub_BSB2);
   }
   
 #if 0
@@ -1004,8 +1004,8 @@ class CircleTrain : public LayoutSchedule {
     RunStubZH1(aut);
     AddDirectBlockTransition(Stub_ZHA1.b_.rev_signal, Block_LBB1,
                              &g_zh_exit_free);
-    RunStubBS1(aut);
-    AddDirectBlockTransition(Stub_BSB1.b_.rev_signal, Block_LBA2, &g_bs_w1_free);
+    RunStubBS2(aut);
+    AddDirectBlockTransition(Stub_BSB2.b_.rev_signal, Block_LBA2, &g_bs_w1_free);
   }
 };
 
@@ -1084,6 +1084,7 @@ FreightTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 #endif
 
 CircleTrain train_re465("Re465", DccShortAddress(47), 25);
+CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 
 
 int main(int argc, char** argv) {
