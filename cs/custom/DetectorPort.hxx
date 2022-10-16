@@ -115,6 +115,7 @@ class DetectorOptions : public DefaultConfigUpdateListener {
 /// - add readout of event IDs from config
 /// - add config itself
 /// - register the event IDs
+/// - add config update listener for the event IDs, handle update configuration.
 class DetectorPort : public StateFlowBase {
  public:
   DetectorPort(openlcb::Node* node, uint8_t channel, int config_fd,
