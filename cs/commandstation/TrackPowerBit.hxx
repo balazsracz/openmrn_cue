@@ -91,6 +91,13 @@ class TrackPowerState {
   /// @param done will be called after 20 estop packets are sent, if not
   /// nullptr.
   void register_source(std::function<void()> done) {
+    if (!dcc::UpdateLoopBase::exists()) {
+      // No packet loop.
+      if (done) {
+        done();
+      }
+      return;
+    }
     if (!estopSource_.isRegistered_) {
       estopSource_.isRegistered_ = true;
       packet_processor_add_refresh_source(&estopSource_,
@@ -108,6 +115,10 @@ class TrackPowerState {
     if (!estopSource_.isRegistered_) {
       return;
     }
+    if (!dcc::UpdateLoopBase::exists()) {
+      // No packet loop.
+      return;
+    }    
     if (estopSource_.isEOff_ == 0 && estopSource_.isEStop_ == 0) {
       packet_processor_remove_refresh_source(&estopSource_);
       estopSource_.isRegistered_ = false;
