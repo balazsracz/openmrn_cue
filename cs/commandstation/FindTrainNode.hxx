@@ -78,7 +78,7 @@ struct RemoteFindTrainNodeRequest {
     nodeId = 0;
     if (FindProtocolDefs::is_find_event(event_id) &&
         (event_id & FindProtocolDefs::ALLOCATE)) {
-      resultCode = TIMEOUT_SPECIFIED | 800;
+      resultCode = TIMEOUT_SPECIFIED | 3000;
     }
     resultCallback = std::move(res);
   }
