@@ -54,7 +54,7 @@ struct FindProtocolDefs {
     TRAIN_FIND_MASK = 32,
     // Where does the command byte start.
     TRAIN_FIND_MASK_LOW = 8,
-    
+
     ALLOCATE = 0x80,
     // SEARCH = 0x00,
 
@@ -65,7 +65,7 @@ struct FindProtocolDefs {
     // ADDRESS_NAME_CABNUMBER = 0x00
 
     // Bits 0-4 are a DccMode enum.
-    
+
     // Match response information. This bit is not used in the network
     // protocol. The bit will be set in the matched result, while cleared for a
     // no-match.
@@ -101,7 +101,7 @@ struct FindProtocolDefs {
   /// would return.
   static constexpr uint32_t QUERY_SHIFTED_MASK =  //
       ((1ULL << TRAIN_FIND_MASK) - 1) >> (TRAIN_FIND_MASK_LOW + 4);
-  
+
   /// Compares an incoming search query's drive mode bits to an actual drive
   /// mode of a locomotive. Decides whether they match using tri-state logic,
   /// i.e. taking into account "no restriction" queries.

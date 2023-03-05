@@ -37,9 +37,9 @@
 
 #include "commandstation/AllTrainNodesInterface.hxx"
 #include "commandstation/FindProtocolDefs.hxx"
+#include "openlcb/Defs.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 #include "openlcb/TractionTrain.hxx"
-#include "openlcb/Defs.hxx"
 
 extern uint32_t spiffsReadCount;
 
@@ -153,11 +153,11 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
   class FindProtocolFlow : public StateFlow<Buffer<Request>, QList<1> > {
    public:
     using Base = StateFlow<Buffer<Request>, QList<1> >;
-    
+
     FindProtocolFlow(FindProtocolServer *parent)
         : StateFlow(parent->service()), parent_(parent) {}
 
-    void send(Buffer<Request>* msg, unsigned prio = 0) override {
+    void send(Buffer<Request> *msg, unsigned prio = 0) override {
       if (message() != nullptr &&
           is_followup_request(*message()->data(), *msg->data())) {
         // We are processing a request from the same source node. We cancel
@@ -232,8 +232,8 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       nextTrainId_ = 0;
       hasMatches_ = false;
       unsigned tm_usec = (os_get_time_monotonic() / 1000) % 100000000;
-      LOG(LATENCYDEBUG, "%02d.%06d train search iterate start", tm_usec / 1000000,
-          tm_usec % 1000000);
+      LOG(LATENCYDEBUG, "%02d.%06d train search iterate start",
+          tm_usec / 1000000, tm_usec % 1000000);
       return call_immediately(STATE(iterate));
     }
 
@@ -278,7 +278,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       uint32_t counter = 0;
 #ifndef GTEST
       counter = spiffsReadCount;
-#endif      
+#endif
       if (!bn_.abort_if_almost_done()) {
         bn_.notify();
         last_read = counter;
@@ -338,8 +338,8 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
 
     Action iteration_done() {
       unsigned tm_usec = (os_get_time_monotonic() / 1000) % 100000000;
-      LOG(LATENCYDEBUG, "%02d.%06d train search iterate done", tm_usec / 1000000,
-          tm_usec % 1000000);
+      LOG(LATENCYDEBUG, "%02d.%06d train search iterate done",
+          tm_usec / 1000000, tm_usec % 1000000);
       if (!hasMatches_ && !isGlobal_ &&
           (eventId_ & FindProtocolDefs::ALLOCATE)) {
         // TODO: we should wait some time, maybe 200 msec for any responses

@@ -133,8 +133,8 @@ TEST_F(FindProtocolTest, RaceToQuery) {
 TEST_F(FindProtocolTest, DupElimination) {
   // This test checks sending repeated queries from the same throttle. These
   // are optimized.
-  
-  clear_expect(true); // strict
+
+  clear_expect(true);  // strict
   // Put in expectations
   expect_packet(":X19544440N090099FFFFFFF400;").Times(2);
   expect_packet(":X19544441N090099FFFFFFF400;").Times(1);
