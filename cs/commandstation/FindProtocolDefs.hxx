@@ -84,12 +84,15 @@ struct FindProtocolDefs {
     NIBBLE_HASH = 0xb,
   };
 
+  /// Determines whether a given event ID is part ofthe find protocol or not.
   /// @param event is an openlcb event ID
   /// @return true if that event ID belong to the find protocol event range.
   static bool is_find_event(openlcb::EventId event) {
     return (event >> TRAIN_FIND_MASK) == (TRAIN_FIND_BASE >> TRAIN_FIND_MASK);
   }
 
+  /// Retrieves the user-entered digits (in BCD format) from a find protocol
+  /// event.
   /// @param event is an event ID for which is_find_event is true.
   /// @return only the user-entered digits part of the query (6 nibbles, right
   /// aligned).
