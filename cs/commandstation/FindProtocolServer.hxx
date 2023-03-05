@@ -37,8 +37,14 @@
 
 #include "commandstation/AllTrainNodesInterface.hxx"
 #include "commandstation/FindProtocolDefs.hxx"
+#include "openlcb/Defs.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 #include "openlcb/TractionTrain.hxx"
+
+extern uint32_t spiffsReadCount;
+
+/// A loglevel to output the latency debugging commands.
+#define LATENCYDEBUG VERBOSE
 
 namespace commandstation {
 
@@ -98,7 +104,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       // Can't do this -- see handleidentifyproducer.
       // b->set_done(done->new_child());
       pendingGlobalIdentify_ = true;
-      b->data()->reset(REQUEST_GLOBAL_IDENTIFY);
+      b->data()->reset(REQUEST_GLOBAL_IDENTIFY, event->src_node);
       flow_.send(b);
     }
   }
@@ -116,7 +122,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     // looped back.
     //
     // b->set_done(done->new_child());
-    b->data()->reset(event->event);
+    b->data()->reset(event->event, event->src_node);
     if (event->event == IS_TRAIN_EVENT) {
       pendingIsTrain_ = true;
     }
@@ -136,30 +142,88 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     USER_ARG_ISTRAIN = 2,
   };
   struct Request {
-    void reset(openlcb::EventId event) { event_ = event; }
+    void reset(openlcb::EventId event, openlcb::NodeHandle src) {
+      event_ = event;
+      src_ = src;
+    }
     EventId event_;
+    openlcb::NodeHandle src_;
   };
 
   class FindProtocolFlow : public StateFlow<Buffer<Request>, QList<1> > {
    public:
+    using Base = StateFlow<Buffer<Request>, QList<1> >;
+
     FindProtocolFlow(FindProtocolServer *parent)
         : StateFlow(parent->service()), parent_(parent) {}
 
+    void send(Buffer<Request> *msg, unsigned prio = 0) override {
+      if (message() != nullptr &&
+          is_followup_request(*message()->data(), *msg->data())) {
+        // We are processing a request from the same source node. We cancel
+        // iterating on the current request to save time.
+        cancelIteration_ = true;
+      }
+      Base::send(msg, prio);
+    }
+
+    /// Checks if a new incoming request should invalidate an existing request
+    /// already being processed. This is a heuristic.
+    ///
+    /// @param current currently processed request.
+    /// @param next new incoming request
+    ///
+    /// @return true if the currently processed request is superseded by the
+    /// new request.
+    ///
+    bool is_followup_request(const Request &current, const Request &next) {
+      if (!iface()->matching_node(current.src_, next.src_)) {
+        // Different node sending the request.
+        return false;
+      }
+      if ((current.event_ & FindProtocolDefs::ALLOCATE) != 0) {
+        // Never cancel an allocate.
+        return false;
+      }
+      if (current.event_ == next.event_) {
+        // Same -- restart is a good outcome.
+        return true;
+      }
+      // Not sure how to compare non-find event IDs.
+      if (!FindProtocolDefs::is_find_event(current.event_)) {
+        return false;
+      }
+      if (!FindProtocolDefs::is_find_event(next.event_)) {
+        return false;
+      }
+      auto q_current = FindProtocolDefs::get_query_part(current.event_);
+      auto q_next = FindProtocolDefs::get_query_part(next.event_);
+      if ((q_next >> 4) == (q_current & FindProtocolDefs::QUERY_SHIFTED_MASK)) {
+        // Added a digit.
+        return true;
+      }
+      if ((q_current >> 4) == (q_next & FindProtocolDefs::QUERY_SHIFTED_MASK)) {
+        // Backspaced.
+        return true;
+      }
+      return false;
+    }
+
     Action entry() override {
       eventId_ = message()->data()->event_;
-      release();
+      cancelIteration_ = false;
       if (eventId_ == REQUEST_GLOBAL_IDENTIFY) {
         isGlobal_ = true;
         if (!parent_->pendingGlobalIdentify_) {
           // Duplicate global identify, or the previous one was already handled.
-          return exit();
+          return release_and_exit();
         }
         parent_->pendingGlobalIdentify_ = false;
       } else if (eventId_ == IS_TRAIN_EVENT) {
         isGlobal_ = true;
         if (!parent_->pendingIsTrain_) {
           // Duplicate is_train, or the previous one was already handled.
-          return exit();
+          return release_and_exit();
         }
         parent_->pendingIsTrain_ = false;
       } else {
@@ -167,11 +231,18 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       }
       nextTrainId_ = 0;
       hasMatches_ = false;
+      unsigned tm_usec = (os_get_time_monotonic() / 1000) % 100000000;
+      LOG(LATENCYDEBUG, "%02d.%06d train search iterate start",
+          tm_usec / 1000000, tm_usec % 1000000);
       return call_immediately(STATE(iterate));
     }
 
     Action iterate() {
       if (nextTrainId_ >= nodes()->size()) {
+        return call_immediately(STATE(iteration_done));
+      }
+      if (cancelIteration_) {
+        LOG(LATENCYDEBUG, "search iteration cancelled");
         return call_immediately(STATE(iteration_done));
       }
       if (isGlobal_) {
@@ -201,13 +272,26 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     Action try_traindb_lookup() {
       bn_.reset(this);
       bn_.new_child();
+      static uint32_t last_read = 0;
       auto db_entry = nodes()->get_traindb_entry(nextTrainId_, &bn_);
+      unsigned tm_usec = (os_get_time_monotonic() / 1000) % 100000000;
+      uint32_t counter = 0;
+#ifndef GTEST
+      counter = spiffsReadCount;
+#endif
       if (!bn_.abort_if_almost_done()) {
         bn_.notify();
+        last_read = counter;
+        LOG(LATENCYDEBUG, "%02d.%06d lookup %d wait", tm_usec / 1000000,
+            tm_usec % 1000000, nextTrainId_);
         // Repeats this state after the notification arrives.
         return wait();
       }
       // Call completed inline.
+      // How many spiffs read operations were executed.
+      uint32_t cnt = counter - last_read;
+      LOG(LATENCYDEBUG, "%02d.%06d lookup %d done %" PRIu32, tm_usec / 1000000,
+          tm_usec % 1000000, nextTrainId_, cnt);
       if (!db_entry) return call_immediately(STATE(next_iterate));
       if (FindProtocolDefs::match_query_to_node(eventId_, db_entry.get())) {
         hasMatches_ = true;
@@ -253,6 +337,9 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     }
 
     Action iteration_done() {
+      unsigned tm_usec = (os_get_time_monotonic() / 1000) % 100000000;
+      LOG(LATENCYDEBUG, "%02d.%06d train search iterate done",
+          tm_usec / 1000000, tm_usec % 1000000);
       if (!hasMatches_ && !isGlobal_ &&
           (eventId_ & FindProtocolDefs::ALLOCATE)) {
         // TODO: we should wait some time, maybe 200 msec for any responses
@@ -264,11 +351,11 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
         if (!newNodeId_) {
           LOG(WARNING, "Decided to allocate node but failed. type=%d addr=%d",
               (int)mode, (int)address);
-          return exit();
+          return release_and_exit();
         }
         return call_immediately(STATE(wait_for_new_node));
       }
-      return exit();
+      return release_and_exit();
     }
 
     /// Yields until the new node is initialized and we are allowed to send
@@ -293,7 +380,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID, newNodeId_,
                        openlcb::eventid_to_buffer(eventId_));
       iface()->global_message_write_flow()->send(b);
-      return exit();
+      return release_and_exit();
     }
 
    private:
@@ -311,6 +398,9 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     bool hasMatches_ : 1;
     /// True if the current iteration has to touch every node.
     bool isGlobal_ : 1;
+    /// A new request from the same node has arrived, let's cancel the current
+    /// one.
+    bool cancelIteration_ : 1;
     FindProtocolServer *parent_;
     StateFlowTimer timer_{this};
   };

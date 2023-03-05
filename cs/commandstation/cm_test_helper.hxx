@@ -14,6 +14,8 @@ openlcb::MockSNIPUserFile snip_user_file("Default user name",
 const char* const openlcb::SNIP_DYNAMIC_FILENAME =
     openlcb::MockSNIPUserFile::snip_user_file_path;
 
+unsigned spiffsReadCount = 0;
+
 namespace openlcb {
 extern Pool* const g_incoming_datagram_allocator = init_main_buffer_pool();
 }

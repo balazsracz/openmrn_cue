@@ -65,7 +65,7 @@ struct FindProtocolDefs {
     // ADDRESS_NAME_CABNUMBER = 0x00
 
     // Bits 0-4 are a DccMode enum.
-    
+
     // Match response information. This bit is not used in the network
     // protocol. The bit will be set in the matched result, while cleared for a
     // no-match.
@@ -84,11 +84,26 @@ struct FindProtocolDefs {
     NIBBLE_HASH = 0xb,
   };
 
+  /// Determines whether a given event ID is part ofthe find protocol or not.
   /// @param event is an openlcb event ID
   /// @return true if that event ID belong to the find protocol event range.
   static bool is_find_event(openlcb::EventId event) {
     return (event >> TRAIN_FIND_MASK) == (TRAIN_FIND_BASE >> TRAIN_FIND_MASK);
   }
+
+  /// Retrieves the user-entered digits (in BCD format) from a find protocol
+  /// event.
+  /// @param event is an event ID for which is_find_event is true.
+  /// @return only the user-entered digits part of the query (6 nibbles, right
+  /// aligned).
+  static uint32_t get_query_part(openlcb::EventId event) {
+    return (event & ((1ULL << TRAIN_FIND_MASK) - 1)) >> TRAIN_FIND_MASK_LOW;
+  }
+
+  /// This mask is right aligned with one fewer nibbles than the get_query_part
+  /// would return.
+  static constexpr uint32_t QUERY_SHIFTED_MASK =  //
+      ((1ULL << TRAIN_FIND_MASK) - 1) >> (TRAIN_FIND_MASK_LOW + 4);
 
   /// Compares an incoming search query's drive mode bits to an actual drive
   /// mode of a locomotive. Decides whether they match using tri-state logic,

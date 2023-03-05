@@ -121,7 +121,27 @@ TEST_F(FindProtocolTest, RaceToQuery) {
   // arrive concurrently.
   BlockExecutor b(nullptr);
   send_packet(":X19914123N090099FFFFFFF400;");
-  send_packet(":X19914123N090099FFFFFFF400;");
+  send_packet(":X19914124N090099FFFFFFF400;");
+  send_packet(":X19914125N090099FFFFFFF400;");
+  send_packet(":X19914126N090099FFFFFFF400;");
+  // ... and go!
+  b.release_block();
+  wait();
+  clear_expect();
+}
+
+TEST_F(FindProtocolTest, DupElimination) {
+  // This test checks sending repeated queries from the same throttle. These
+  // are optimized.
+
+  clear_expect(true);  // strict
+  // Put in expectations
+  expect_packet(":X19544440N090099FFFFFFF400;").Times(2);
+  expect_packet(":X19544441N090099FFFFFFF400;").Times(1);
+  expect_packet(":X19544442N090099FFFFFFF400;").Times(1);
+  // We block the main executor to ensure that the multiple requests really do
+  // arrive concurrently.
+  BlockExecutor b(nullptr);
   send_packet(":X19914123N090099FFFFFFF400;");
   send_packet(":X19914123N090099FFFFFFF400;");
   // ... and go!
