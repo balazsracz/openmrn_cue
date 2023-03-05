@@ -54,7 +54,7 @@ struct FindProtocolDefs {
     TRAIN_FIND_MASK = 32,
     // Where does the command byte start.
     TRAIN_FIND_MASK_LOW = 8,
-
+    
     ALLOCATE = 0x80,
     // SEARCH = 0x00,
 
@@ -90,6 +90,18 @@ struct FindProtocolDefs {
     return (event >> TRAIN_FIND_MASK) == (TRAIN_FIND_BASE >> TRAIN_FIND_MASK);
   }
 
+  /// @param event is an event ID for which is_find_event is true.
+  /// @return only the user-entered digits part of the query (6 nibbles, right
+  /// aligned).
+  static uint32_t get_query_part(openlcb::EventId event) {
+    return (event & ((1ULL << TRAIN_FIND_MASK) - 1)) >> TRAIN_FIND_MASK_LOW;
+  }
+
+  /// This mask is right aligned with one fewer nibbles than the get_query_part
+  /// would return.
+  static constexpr uint32_t QUERY_SHIFTED_MASK =  //
+      ((1ULL << TRAIN_FIND_MASK) - 1) >> (TRAIN_FIND_MASK_LOW + 4);
+  
   /// Compares an incoming search query's drive mode bits to an actual drive
   /// mode of a locomotive. Decides whether they match using tri-state logic,
   /// i.e. taking into account "no restriction" queries.
