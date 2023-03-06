@@ -276,7 +276,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       auto db_entry = nodes()->get_traindb_entry(nextTrainId_, &bn_);
       unsigned tm_usec = (os_get_time_monotonic() / 1000) % 100000000;
       uint32_t counter = 0;
-#ifndef GTEST
+#if (LATENCYDEBUG == ALWAYS) && !defined(GTEST)
       counter = spiffsReadCount;
 #endif
       if (!bn_.abort_if_almost_done()) {
