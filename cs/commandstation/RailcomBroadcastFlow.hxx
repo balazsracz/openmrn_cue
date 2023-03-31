@@ -65,8 +65,10 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
     auto channel = message()->data()->channel;
     if (channel == 0xff) {
       uint32_t new_values = message()->data()->ch1Data[0];
+      (void) new_values;
       for (unsigned i = 0; i < size_; ++i) {
-        channels_[i].set_occupancy(new_values & (1 << i));
+        /// @todo reenable this once occupancy detection is working again.
+        //channels_[i].set_occupancy(new_values & (1 << i));
         auto& decoder = channels_[i];
         if (decoder.current_address() != decoder.lastAddress_) {
           // We need to send a fake railcom packet to ourselves to allow the
@@ -148,10 +150,11 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
 
  private:
   static constexpr uint64_t FEEDBACK_EVENTID_BASE =
-      (0x09ULL << 56) | openlcb::TractionDefs::NODE_ID_DCC;
+      (0x08ULL << 56) | openlcb::TractionDefs::NODE_ID_DCC;
   uint64_t address_to_eventid(unsigned channel, uint16_t address) {
     uint64_t ret = FEEDBACK_EVENTID_BASE;
     ret |= uint64_t(channel & 0xff) << 48;
+    
     ret |= address;
     return ret;
   }
