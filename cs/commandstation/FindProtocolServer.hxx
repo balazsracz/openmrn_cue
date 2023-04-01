@@ -41,8 +41,6 @@
 #include "openlcb/EventHandlerTemplates.hxx"
 #include "openlcb/TractionTrain.hxx"
 
-extern uint32_t spiffsReadCount;
-
 /// A loglevel to output the latency debugging commands.
 #define LATENCYDEBUG VERBOSE
 
@@ -277,7 +275,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
       unsigned tm_usec = (os_get_time_monotonic() / 1000) % 100000000;
       uint32_t counter = 0;
 #if (LATENCYDEBUG == ALWAYS) && !defined(GTEST)
-      counter = spiffsReadCount;
+      counter = 0; //spiffsReadCount;
 #endif
       if (!bn_.abort_if_almost_done()) {
         bn_.notify();
