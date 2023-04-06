@@ -4,6 +4,7 @@
 namespace commandstation {
 
 __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = {
+#if 0
   // 0
   { 50, //{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19} ,
     { LIGHT, ENGINE, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN }, "ICN", DCC_128  },  // ESU loksound V4.0 MM/DCC
@@ -113,6 +114,7 @@ __attribute__((weak)) extern const struct const_traindb_entry_t const_lokdb[] = 
   { 5, //{0, 1, 2, 3, 4 },
     { LIGHT, SMOKE, ENGINE, WHISTLE, ABV },
     "Re 620 cargo", DCC_128 }, // Some ZIMO decoder
+#endif  
   { 0, {0,}, "", 0},
   { 0, {0,}, "", 0},
 };
