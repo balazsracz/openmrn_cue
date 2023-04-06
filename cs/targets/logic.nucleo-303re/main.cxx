@@ -60,9 +60,9 @@
 
 // These preprocessor symbols are used to select which physical connections
 // will be enabled in the main(). See @ref appl_main below.
-//#define SNIFF_ON_SERIAL
+#define SNIFF_ON_SERIAL
 //#define SNIFF_ON_USB
-#define HAVE_PHYSICAL_CAN_PORT
+//#define HAVE_PHYSICAL_CAN_PORT
 
 // Changes the default behavior by adding a newline after each gridconnect
 // packet. Makes it easier for debugging the raw device.
@@ -90,11 +90,12 @@ openlcb::ConfigDef cfg(0);
 // Defines weak constants used by the stack to tell it which device contains
 // the volatile configuration information. This device name appears in
 // HwInit.cxx that creates the device drivers.
-extern const char *const openlcb::CONFIG_FILENAME = "/ffs/eeprom";
+extern const char *const openlcb::CONFIG_FILENAME = "/dev/eeprom";
 // The size of the memory space to export over the above device.
 extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
-static_assert(openlcb::CONFIG_FILE_SIZE <= 24000, "Need to adjust eeprom size");
+static_assert(openlcb::CONFIG_FILE_SIZE <= 20 * 1024,
+              "Need to adjust eeprom size");
 // The SNIP user-changeable information in also stored in the above eeprom
 // device. In general this could come from different eeprom segments, but it is
 // simpler to keep them together.

@@ -77,7 +77,7 @@ CDI_GROUP_ENTRY(enabled, openlcb::Uint8ConfigEntry, Default(0), Min(0), Max(1),
 CDI_GROUP_ENTRY(body, LogicBlockBody);
 CDI_GROUP_END();
 
-using ReptBlock = openlcb::RepeatedGroup<LogicBlock, 8>;
+using ReptBlock = openlcb::RepeatedGroup<LogicBlock, 4>;
 
 CDI_GROUP(LogicConfig);
 CDI_GROUP_ENTRY(blocks, ReptBlock, RepName("Block"));

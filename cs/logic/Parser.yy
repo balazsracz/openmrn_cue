@@ -34,9 +34,9 @@
  */
 
 %skeleton "lalr1.cc" 
-%require ""
+//%require ""
 %defines
-%define parser_class_name {Parser}
+%define api.parser.class {Parser}
 %define api.namespace {logic::yy}
 %define api.token.constructor
 %define api.value.type variant

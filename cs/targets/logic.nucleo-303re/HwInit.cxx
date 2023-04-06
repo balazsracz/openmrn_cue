@@ -48,9 +48,9 @@
 #include "Stm32Can.hxx"
 #include "Stm32SPI.hxx"
 #include "Stm32I2C.hxx"
-#include "freertos_drivers/spiffs/stm32f0_f3/Stm32SPIFFS.hxx"
 #include "Stm32PWM.hxx"
 #include "hardware.hxx"
+#include "Stm32EEPROMEmulation.hxx"
 
 /** override stdin */
 const char *STDIN_DEVICE = "/dev/ser0";
@@ -67,11 +67,11 @@ static Stm32Uart uart0("/dev/ser0", USART2, USART2_IRQn);
 /** CAN 0 CAN driver instance */
 static Stm32Can can0("/dev/can0");
 
-extern char __flash_fs_start;
-extern char __flash_fs_end;
-static Stm32SPIFFS spiffs0((size_t)&__flash_fs_start,
-                           (&__flash_fs_end - &__flash_fs_start),
-                           16 * 1024, 64);
+/** EEPROM emulation driver. */
+static Stm32EEPROMEmulation eeprom0("/dev/eeprom", 10*1024);
+
+const size_t EEPROMEmulation::SECTOR_SIZE = 60 * 1024;
+const bool EEPROMEmulation::SHADOW_IN_RAM = true;
 
 /** UART 0 serial driver instance */
 static Stm32I2C i2c1("/dev/i2c0", I2C1, I2C1_EV_IRQn, I2C1_ER_IRQn);
@@ -372,7 +372,6 @@ void usart2_interrupt_handler(void)
  */
 void hw_postinit(void)
 {
-    spiffs0.mount("/ffs");
 }
  
 }

@@ -42,7 +42,7 @@ using Ext0PC = RepeatedGroup<PCConfig, 32>;
 
 /// Modify this value every time the EEPROM needs to be cleared on the node
 /// after an update.
-static constexpr uint16_t CANONICAL_VERSION = 0x2178;
+static constexpr uint16_t CANONICAL_VERSION = 0x2138;
 
 CDI_GROUP(NucleoGroup, Name("Nucleo peripherals"), Description("These are physically located on the nucleo CPU daughterboard."));
 CDI_GROUP_ENTRY(green_led, ConsumerConfig, Name("Nucleo user LED"), Description("Green led (LD2)."));
@@ -85,8 +85,6 @@ CDI_GROUP_ENTRY(acdi, Acdi);
 CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
 /// Adds the main configuration segment.
 CDI_GROUP_ENTRY(seg, IoBoardSegment);
-/// Adds the versioning segment.
-CDI_GROUP_ENTRY(version, VersionSeg);
 CDI_GROUP_END();
 
 } // namespace openlcb
