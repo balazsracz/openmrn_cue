@@ -1,1 +1,1 @@
-../../../../openmrn/boards/st-stm32f303re-nucleo/hardware.hxx
+../../../../openmrn/boards/st-stm32f303re-nucleo-dev-board/hardware.hxx

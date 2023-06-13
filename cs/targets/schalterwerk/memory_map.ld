@@ -1,1 +1,1 @@
-../../../../openmrn/boards/st-stm32f303re-nucleo/memory_map.ld
+../../../../openmrn/boards/st-stm32f303re-nucleo-dev-board/memory_map.ld

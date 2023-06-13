@@ -1,1 +1,1 @@
-../../../../openmrn/boards/st-stm32f303re-nucleo/startup.c
+../../../../openmrn/boards/st-stm32f303re-nucleo-dev-board/startup.c
