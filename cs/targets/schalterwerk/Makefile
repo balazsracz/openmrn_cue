@@ -3,6 +3,7 @@ APP_PATH ?= $(realpath ../..)
 -include local_config.mk
 
 SUBDIRS =
+EXECUTABLE=schalterwerk
 
 OPENMRNPATH ?= $(shell \
 sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \

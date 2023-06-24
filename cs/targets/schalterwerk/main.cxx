@@ -58,9 +58,9 @@
 
 // These preprocessor symbols are used to select which physical connections
 // will be enabled in the main(). See @ref appl_main below.
-//#define SNIFF_ON_SERIAL
+  #define SNIFF_ON_SERIAL
 //#define SNIFF_ON_USB
-#define HAVE_PHYSICAL_CAN_PORT
+//efine HAVE_PHYSICAL_CAN_PORT
 
 // Changes the default behavior by adding a newline after each gridconnect
 // packet. Makes it easier for debugging the raw device.
@@ -125,34 +125,6 @@ openlcb::ConfiguredProducer producer_sw1(
 openlcb::RefreshLoop loop(
     stack.node(), {producer_sw1.polling()});
 
-// List of GPIO objects that will be used for the output pins. You should keep
-// the constexpr declaration, because it will produce a compile error in case
-// the list of pointers cannot be compiled into a compiler constant and thus
-// would be placed into RAM instead of ROM.
-constexpr const Gpio *const kDirectGpio[] = {
-    TDRV1_Pin::instance(), TDRV2_Pin::instance(), //
-    TDRV3_Pin::instance(), TDRV4_Pin::instance(), //
-    TDRV5_Pin::instance(), TDRV6_Pin::instance(), //
-    TDRV7_Pin::instance(), TDRV8_Pin::instance()  //
-};
-
-openlcb::MultiConfiguredConsumer direct_consumers(stack.node(), kDirectGpio,
-    ARRAYSIZE(kDirectGpio), cfg.seg().direct_consumers());
-
-// servoPwmCountPerMs defined in hardware.hxx.
-// PWM* servo_channels[] defined in HwInit.cxx
-openlcb::ServoConsumer srv0(
-    stack.node(), cfg.seg().servo_consumers().entry<0>(),
-    servoPwmCountPerMs, servo_channels[0]);
-openlcb::ServoConsumer srv1(
-    stack.node(), cfg.seg().servo_consumers().entry<1>(),
-    servoPwmCountPerMs, servo_channels[1]);
-openlcb::ServoConsumer srv2(
-    stack.node(), cfg.seg().servo_consumers().entry<2>(),
-    servoPwmCountPerMs, servo_channels[2]);
-openlcb::ServoConsumer srv3(
-    stack.node(), cfg.seg().servo_consumers().entry<3>(),
-    servoPwmCountPerMs, servo_channels[3]);
 
 class FactoryResetHelper : public DefaultConfigUpdateListener {
 public:
@@ -307,62 +279,11 @@ private:
 
 Executor<1> io_executor("io_thread", 1, 1300);
 Service io_service(&io_executor);
+AsyncMutex spi1_io_mutex;
 
 uint32_t output_register[1] = {0x00000000};
 
-SpiIOShiftRegister internal_outputs(&io_service, nullptr, OUT_LAT_Pin::instance(), output_register, 2);
-
-constexpr const MmapGpio PORTD_LINE1(output_register, 7, true);
-constexpr const MmapGpio PORTD_LINE2(output_register, 6, true);
-constexpr const MmapGpio PORTD_LINE3(output_register, 5, true);
-constexpr const MmapGpio PORTD_LINE4(output_register, 4, true);
-constexpr const MmapGpio PORTD_LINE5(output_register, 3, true);
-constexpr const MmapGpio PORTD_LINE6(output_register, 2, true);
-constexpr const MmapGpio PORTD_LINE7(output_register, 1, true);
-constexpr const MmapGpio PORTD_LINE8(output_register, 0, true);
-
-constexpr const MmapGpio PORTE_LINE1(output_register, 15, true);
-constexpr const MmapGpio PORTE_LINE2(output_register, 14, true);
-constexpr const MmapGpio PORTE_LINE3(output_register, 13, true);
-constexpr const MmapGpio PORTE_LINE4(output_register, 12, true);
-constexpr const MmapGpio PORTE_LINE5(output_register, 11, true);
-constexpr const MmapGpio PORTE_LINE6(output_register, 10, true);
-constexpr const MmapGpio PORTE_LINE7(output_register, 9, true);
-constexpr const MmapGpio PORTE_LINE8(output_register, 8, true);
-
-
-constexpr const Gpio *const kPortDEGpio[] = {
-#ifndef PORTD_SNAP
-    &PORTD_LINE1, &PORTD_LINE2, &PORTD_LINE3, &PORTD_LINE4, //
-    &PORTD_LINE5, &PORTD_LINE6, &PORTD_LINE7, &PORTD_LINE8, //
-#endif
-    &PORTE_LINE1, &PORTE_LINE2, &PORTE_LINE3, &PORTE_LINE4, //
-    &PORTE_LINE5, &PORTE_LINE6, &PORTE_LINE7, &PORTE_LINE8  //
-};
-
-openlcb::MultiConfiguredConsumer portde_consumers(stack.node(), kPortDEGpio,
-    ARRAYSIZE(kPortDEGpio), cfg.seg().portde_consumers());
-
-#ifdef PORTD_SNAP
-
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_1(
-    stack.node(), cfg.seg().snap_switches().entry<0>(), (const Gpio*)&PORTD_LINE1);
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_2(
-    stack.node(), cfg.seg().snap_switches().entry<1>(), (const Gpio*)&PORTD_LINE2);
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_3(
-    stack.node(), cfg.seg().snap_switches().entry<2>(), (const Gpio*)&PORTD_LINE3);
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_4(
-    stack.node(), cfg.seg().snap_switches().entry<3>(), (const Gpio*)&PORTD_LINE4);
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_5(
-    stack.node(), cfg.seg().snap_switches().entry<4>(), (const Gpio*)&PORTD_LINE5);
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_6(
-    stack.node(), cfg.seg().snap_switches().entry<5>(), (const Gpio*)&PORTD_LINE6);
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_7(
-    stack.node(), cfg.seg().snap_switches().entry<6>(), (const Gpio*)&PORTD_LINE7);
-openlcb::ConfiguredPulseConsumer turnout_pulse_consumer_8(
-    stack.node(), cfg.seg().snap_switches().entry<7>(), (const Gpio*)&PORTD_LINE8);
-
-#endif
+SpiIOShiftRegister internal_outputs(&io_service, &spi1_io_mutex, OUT_LAT_Pin::instance(), output_register, 2);
 
 uint32_t input_register[2] = {0};
 
@@ -422,244 +343,102 @@ openlcb::ConfiguredProducer producer_b7(
 openlcb::ConfiguredProducer producer_b8(
     stack.node(), cfg.seg().portab_producers().entry<15>(), (const Gpio*)&PORTB_LINE8);
 
-#if NUM_MCPIOS > 0
-MCP23017 exp0(&io_executor, 0, 0, 0);
-MCP23017 exp1(&io_executor, 0, 0, 1);
 
-constexpr const MCP23017Gpio IOEXT0_A0(&exp0, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT0_A1(&exp0, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT0_A2(&exp0, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT0_A3(&exp0, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT0_A4(&exp0, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT0_A5(&exp0, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT0_A6(&exp0, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT0_A7(&exp0, MCP23017::PORTA, 7);
+uint32_t ext_input_register[2] = {0};
+uint32_t ext_output_register[2] = {0};
 
-constexpr const MCP23017Gpio IOEXT0_B0(&exp0, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT0_B1(&exp0, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT0_B2(&exp0, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT0_B3(&exp0, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT0_B4(&exp0, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT0_B5(&exp0, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT0_B6(&exp0, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT0_B7(&exp0, MCP23017::PORTB, 7);
+SpiIOShiftRegister external_io(&io_service, &spi1_io_mutex, EXT_LAT_Pin::instance(), ext_output_register, 2, ext_input_register, 2);
 
-constexpr const MCP23017Gpio IOEXT1_A0(&exp1, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT1_A1(&exp1, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT1_A2(&exp1, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT1_A3(&exp1, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT1_A4(&exp1, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT1_A5(&exp1, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT1_A6(&exp1, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT1_A7(&exp1, MCP23017::PORTA, 7);
 
-constexpr const MCP23017Gpio IOEXT1_B0(&exp1, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT1_B1(&exp1, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT1_B2(&exp1, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT1_B3(&exp1, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT1_B4(&exp1, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT1_B5(&exp1, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT1_B6(&exp1, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT1_B7(&exp1, MCP23017::PORTB, 7);
+constexpr const MmapGpio EXT0_O1(ext_output_register, 8 * 1 + 0, true);
+constexpr const MmapGpio EXT0_O2(ext_output_register, 8 * 1 + 1, true);
+constexpr const MmapGpio EXT0_O3(ext_output_register, 8 * 1 + 2, true);
+constexpr const MmapGpio EXT0_O4(ext_output_register, 8 * 1 + 3, true);
+constexpr const MmapGpio EXT0_O5(ext_output_register, 8 * 1 + 4, true);
+constexpr const MmapGpio EXT0_O6(ext_output_register, 8 * 1 + 5, true);
+constexpr const MmapGpio EXT0_O7(ext_output_register, 8 * 1 + 6, true);
+constexpr const MmapGpio EXT0_O8(ext_output_register, 8 * 1 + 7, true);
+constexpr const MmapGpio EXT0_I1(ext_input_register, 0, true);
+constexpr const MmapGpio EXT0_I2(ext_input_register, 1, true);
+constexpr const MmapGpio EXT0_I3(ext_input_register, 2, true);
+constexpr const MmapGpio EXT0_I4(ext_input_register, 3, true);
+constexpr const MmapGpio EXT0_I5(ext_input_register, 4, true);
+constexpr const MmapGpio EXT0_I6(ext_input_register, 5, true);
+constexpr const MmapGpio EXT0_I7(ext_input_register, 6, true);
+constexpr const MmapGpio EXT0_I8(ext_input_register, 7, true);
 
-#if NUM_MCPIOS > 2
-MCP23017 exp10(&io_executor, 0, 1, 0);
-MCP23017 exp11(&io_executor, 0, 1, 1);
 
-constexpr const MCP23017Gpio IOEXT10_A0(&exp10, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT10_A1(&exp10, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT10_A2(&exp10, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT10_A3(&exp10, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT10_A4(&exp10, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT10_A5(&exp10, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT10_A6(&exp10, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT10_A7(&exp10, MCP23017::PORTA, 7);
+constexpr const MmapGpio EXT1_O1(ext_output_register, 8 * 0 + 0, true);
+constexpr const MmapGpio EXT1_O2(ext_output_register, 8 * 0 + 1, true);
+constexpr const MmapGpio EXT1_O3(ext_output_register, 8 * 0 + 2, true);
+constexpr const MmapGpio EXT1_O4(ext_output_register, 8 * 0 + 3, true);
+constexpr const MmapGpio EXT1_O5(ext_output_register, 8 * 0 + 4, true);
+constexpr const MmapGpio EXT1_O6(ext_output_register, 8 * 0 + 5, true);
+constexpr const MmapGpio EXT1_O7(ext_output_register, 8 * 0 + 6, true);
+constexpr const MmapGpio EXT1_O8(ext_output_register, 8 * 0 + 7, true);
+constexpr const MmapGpio EXT1_I1(ext_input_register, 8 * 1 + 0, true);
+constexpr const MmapGpio EXT1_I2(ext_input_register, 8 * 1 + 1, true);
+constexpr const MmapGpio EXT1_I3(ext_input_register, 8 * 1 + 2, true);
+constexpr const MmapGpio EXT1_I4(ext_input_register, 8 * 1 + 3, true);
+constexpr const MmapGpio EXT1_I5(ext_input_register, 8 * 1 + 4, true);
+constexpr const MmapGpio EXT1_I6(ext_input_register, 8 * 1 + 5, true);
+constexpr const MmapGpio EXT1_I7(ext_input_register, 8 * 1 + 6, true);
+constexpr const MmapGpio EXT1_I8(ext_input_register, 8 * 1 + 7, true);
 
-constexpr const MCP23017Gpio IOEXT10_B0(&exp10, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT10_B1(&exp10, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT10_B2(&exp10, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT10_B3(&exp10, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT10_B4(&exp10, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT10_B5(&exp10, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT10_B6(&exp10, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT10_B7(&exp10, MCP23017::PORTB, 7);
-
-constexpr const MCP23017Gpio IOEXT11_A0(&exp11, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT11_A1(&exp11, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT11_A2(&exp11, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT11_A3(&exp11, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT11_A4(&exp11, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT11_A5(&exp11, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT11_A6(&exp11, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT11_A7(&exp11, MCP23017::PORTA, 7);
-
-constexpr const MCP23017Gpio IOEXT11_B0(&exp11, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT11_B1(&exp11, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT11_B2(&exp11, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT11_B3(&exp11, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT11_B4(&exp11, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT11_B5(&exp11, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT11_B6(&exp11, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT11_B7(&exp11, MCP23017::PORTB, 7);
-#endif
-
-#if NUM_MCPIOS > 4
-MCP23017 exp20(&io_executor, 1, 0, 0);
-MCP23017 exp21(&io_executor, 1, 0, 1);
-
-constexpr const MCP23017Gpio IOEXT20_A0(&exp20, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT20_A1(&exp20, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT20_A2(&exp20, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT20_A3(&exp20, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT20_A4(&exp20, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT20_A5(&exp20, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT20_A6(&exp20, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT20_A7(&exp20, MCP23017::PORTA, 7);
-
-constexpr const MCP23017Gpio IOEXT20_B0(&exp20, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT20_B1(&exp20, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT20_B2(&exp20, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT20_B3(&exp20, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT20_B4(&exp20, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT20_B5(&exp20, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT20_B6(&exp20, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT20_B7(&exp20, MCP23017::PORTB, 7);
-
-constexpr const MCP23017Gpio IOEXT21_A0(&exp21, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT21_A1(&exp21, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT21_A2(&exp21, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT21_A3(&exp21, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT21_A4(&exp21, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT21_A5(&exp21, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT21_A6(&exp21, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT21_A7(&exp21, MCP23017::PORTA, 7);
-
-constexpr const MCP23017Gpio IOEXT21_B0(&exp21, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT21_B1(&exp21, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT21_B2(&exp21, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT21_B3(&exp21, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT21_B4(&exp21, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT21_B5(&exp21, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT21_B6(&exp21, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT21_B7(&exp21, MCP23017::PORTB, 7);
-#endif
-
-#if NUM_MCPIOS > 6
-MCP23017 exp30(&io_executor, 1, 1, 0);
-MCP23017 exp31(&io_executor, 1, 1, 1);
-
-constexpr const MCP23017Gpio IOEXT30_A0(&exp30, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT30_A1(&exp30, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT30_A2(&exp30, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT30_A3(&exp30, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT30_A4(&exp30, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT30_A5(&exp30, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT30_A6(&exp30, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT30_A7(&exp30, MCP23017::PORTA, 7);
-
-constexpr const MCP23017Gpio IOEXT30_B0(&exp30, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT30_B1(&exp30, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT30_B2(&exp30, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT30_B3(&exp30, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT30_B4(&exp30, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT30_B5(&exp30, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT30_B6(&exp30, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT30_B7(&exp30, MCP23017::PORTB, 7);
-
-constexpr const MCP23017Gpio IOEXT31_A0(&exp31, MCP23017::PORTA, 0);
-constexpr const MCP23017Gpio IOEXT31_A1(&exp31, MCP23017::PORTA, 1);
-constexpr const MCP23017Gpio IOEXT31_A2(&exp31, MCP23017::PORTA, 2);
-constexpr const MCP23017Gpio IOEXT31_A3(&exp31, MCP23017::PORTA, 3);
-constexpr const MCP23017Gpio IOEXT31_A4(&exp31, MCP23017::PORTA, 4);
-constexpr const MCP23017Gpio IOEXT31_A5(&exp31, MCP23017::PORTA, 5);
-constexpr const MCP23017Gpio IOEXT31_A6(&exp31, MCP23017::PORTA, 6);
-constexpr const MCP23017Gpio IOEXT31_A7(&exp31, MCP23017::PORTA, 7);
-
-constexpr const MCP23017Gpio IOEXT31_B0(&exp31, MCP23017::PORTB, 0);
-constexpr const MCP23017Gpio IOEXT31_B1(&exp31, MCP23017::PORTB, 1);
-constexpr const MCP23017Gpio IOEXT31_B2(&exp31, MCP23017::PORTB, 2);
-constexpr const MCP23017Gpio IOEXT31_B3(&exp31, MCP23017::PORTB, 3);
-constexpr const MCP23017Gpio IOEXT31_B4(&exp31, MCP23017::PORTB, 4);
-constexpr const MCP23017Gpio IOEXT31_B5(&exp31, MCP23017::PORTB, 5);
-constexpr const MCP23017Gpio IOEXT31_B6(&exp31, MCP23017::PORTB, 6);
-constexpr const MCP23017Gpio IOEXT31_B7(&exp31, MCP23017::PORTB, 7);
-#endif
-
-constexpr const Gpio *const kPortExt0[] = {
-    &IOEXT0_A0, &IOEXT0_A1, &IOEXT0_A2, &IOEXT0_A3, //
-    &IOEXT0_A4, &IOEXT0_A5, &IOEXT0_A6, &IOEXT0_A7, //
-    &IOEXT0_B0, &IOEXT0_B1, &IOEXT0_B2, &IOEXT0_B3, //
-    &IOEXT0_B4, &IOEXT0_B5, &IOEXT0_B6, &IOEXT0_B7, //
-    &IOEXT1_A0, &IOEXT1_A1, &IOEXT1_A2, &IOEXT1_A3, //
-    &IOEXT1_A4, &IOEXT1_A5, &IOEXT1_A6, &IOEXT1_A7, //
-    &IOEXT1_B0, &IOEXT1_B1, &IOEXT1_B2, &IOEXT1_B3, //
-    &IOEXT1_B4, &IOEXT1_B5, &IOEXT1_B6, &IOEXT1_B7  //
-
-#if NUM_MCPIOS > 2
-    ,
-    &IOEXT10_A0, &IOEXT10_A1, &IOEXT10_A2, &IOEXT10_A3, //
-    &IOEXT10_A4, &IOEXT10_A5, &IOEXT10_A6, &IOEXT10_A7, //
-    &IOEXT10_B0, &IOEXT10_B1, &IOEXT10_B2, &IOEXT10_B3, //
-    &IOEXT10_B4, &IOEXT10_B5, &IOEXT10_B6, &IOEXT10_B7, //
-    &IOEXT11_A0, &IOEXT11_A1, &IOEXT11_A2, &IOEXT11_A3, //
-    &IOEXT11_A4, &IOEXT11_A5, &IOEXT11_A6, &IOEXT11_A7, //
-    &IOEXT11_B0, &IOEXT11_B1, &IOEXT11_B2, &IOEXT11_B3, //
-    &IOEXT11_B4, &IOEXT11_B5, &IOEXT11_B6, &IOEXT11_B7
-#endif
-
-#if NUM_MCPIOS > 4
-    ,
-    &IOEXT20_A0, &IOEXT20_A1, &IOEXT20_A2, &IOEXT20_A3, //
-    &IOEXT20_A4, &IOEXT20_A5, &IOEXT20_A6, &IOEXT20_A7, //
-    &IOEXT20_B0, &IOEXT20_B1, &IOEXT20_B2, &IOEXT20_B3, //
-    &IOEXT20_B4, &IOEXT20_B5, &IOEXT20_B6, &IOEXT20_B7, //
-    &IOEXT21_A0, &IOEXT21_A1, &IOEXT21_A2, &IOEXT21_A3, //
-    &IOEXT21_A4, &IOEXT21_A5, &IOEXT21_A6, &IOEXT21_A7, //
-    &IOEXT21_B0, &IOEXT21_B1, &IOEXT21_B2, &IOEXT21_B3, //
-    &IOEXT21_B4, &IOEXT21_B5, &IOEXT21_B6, &IOEXT21_B7
-#endif
-
-#if NUM_MCPIOS > 6
-    ,
-    &IOEXT30_A0, &IOEXT30_A1, &IOEXT30_A2, &IOEXT30_A3, //
-    &IOEXT30_A4, &IOEXT30_A5, &IOEXT30_A6, &IOEXT30_A7, //
-    &IOEXT30_B0, &IOEXT30_B1, &IOEXT30_B2, &IOEXT30_B3, //
-    &IOEXT30_B4, &IOEXT30_B5, &IOEXT30_B6, &IOEXT30_B7, //
-    &IOEXT31_A0, &IOEXT31_A1, &IOEXT31_A2, &IOEXT31_A3, //
-    &IOEXT31_A4, &IOEXT31_A5, &IOEXT31_A6, &IOEXT31_A7, //
-    &IOEXT31_B0, &IOEXT31_B1, &IOEXT31_B2, &IOEXT31_B3, //
-    &IOEXT31_B4, &IOEXT31_B5, &IOEXT31_B6, &IOEXT31_B7  //
-#endif
+constexpr const Gpio *const kPortExtO[] = {
+    &EXT0_O1, &EXT0_O2, &EXT0_O3, &EXT0_O4,
+    &EXT0_O5, &EXT0_O6, &EXT0_O7, &EXT0_O8,
+    &EXT1_O1, &EXT1_O2, &EXT1_O3, &EXT1_O4,
+    &EXT1_O5, &EXT1_O6, &EXT1_O7, &EXT1_O8,
 };
 
-openlcb::MultiConfiguredPC ext0_pcs(
-    stack.node(), kPortExt0, ARRAYSIZE(kPortExt0), cfg.seg().ext0_pc());
+openlcb::MultiConfiguredConsumer extport_consumers(stack.node(), kPortExtO,
+    ARRAYSIZE(kPortExtO), cfg.seg().ext_consumers());
 
-#endif // if NUM_MCPIOS > 0
+openlcb::ConfiguredProducer producer_ext0_1(
+    stack.node(), cfg.seg().ext_producers().entry<0>(), (const Gpio*)&EXT0_I1);
+openlcb::ConfiguredProducer producer_ext0_2(
+    stack.node(), cfg.seg().ext_producers().entry<1>(), (const Gpio*)&EXT0_I2);
+openlcb::ConfiguredProducer producer_ext0_3(
+    stack.node(), cfg.seg().ext_producers().entry<2>(), (const Gpio*)&EXT0_I3);
+openlcb::ConfiguredProducer producer_ext0_4(
+    stack.node(), cfg.seg().ext_producers().entry<3>(), (const Gpio*)&EXT0_I4);
+openlcb::ConfiguredProducer producer_ext0_5(
+    stack.node(), cfg.seg().ext_producers().entry<4>(), (const Gpio*)&EXT0_I5);
+openlcb::ConfiguredProducer producer_ext0_6(
+    stack.node(), cfg.seg().ext_producers().entry<5>(), (const Gpio*)&EXT0_I6);
+openlcb::ConfiguredProducer producer_ext0_7(
+    stack.node(), cfg.seg().ext_producers().entry<6>(), (const Gpio*)&EXT0_I7);
+openlcb::ConfiguredProducer producer_ext0_8(
+    stack.node(), cfg.seg().ext_producers().entry<7>(), (const Gpio*)&EXT0_I8);
 
-openlcb::RefreshLoop loopab(stack.node(),
+openlcb::ConfiguredProducer producer_ext1_1(
+    stack.node(), cfg.seg().ext_producers().entry<8>(), (const Gpio*)&EXT1_I1);
+openlcb::ConfiguredProducer producer_ext1_2(
+    stack.node(), cfg.seg().ext_producers().entry<9>(), (const Gpio*)&EXT1_I2);
+openlcb::ConfiguredProducer producer_ext1_3(
+    stack.node(), cfg.seg().ext_producers().entry<10>(), (const Gpio*)&EXT1_I3);
+openlcb::ConfiguredProducer producer_ext1_4(
+    stack.node(), cfg.seg().ext_producers().entry<11>(), (const Gpio*)&EXT1_I4);
+openlcb::ConfiguredProducer producer_ext1_5(
+    stack.node(), cfg.seg().ext_producers().entry<12>(), (const Gpio*)&EXT1_I5);
+openlcb::ConfiguredProducer producer_ext1_6(
+    stack.node(), cfg.seg().ext_producers().entry<13>(), (const Gpio*)&EXT1_I6);
+openlcb::ConfiguredProducer producer_ext1_7(
+    stack.node(), cfg.seg().ext_producers().entry<14>(), (const Gpio*)&EXT1_I7);
+openlcb::ConfiguredProducer producer_ext1_8(
+    stack.node(), cfg.seg().ext_producers().entry<15>(), (const Gpio*)&EXT1_I8);
+
+openlcb::RefreshLoop loopext(stack.node(),
     {
-#if NUM_MCPIOS > 0
-        ext0_pcs.polling(),                           //
-#endif
-        producer_a1.polling(), producer_a2.polling(), //
-        producer_a3.polling(), producer_a4.polling(), //
-        producer_a5.polling(), producer_a6.polling(), //
-        producer_a7.polling(), producer_a8.polling(), //
-        producer_b1.polling(), producer_b2.polling(), //
-        producer_b3.polling(), producer_b4.polling(), //
-        producer_b5.polling(), producer_b6.polling(), //
-        producer_b7.polling(), producer_b8.polling(), //
-#ifdef PORTD_SNAP
-	&turnout_pulse_consumer_1,                    //
-        &turnout_pulse_consumer_2,                    //
-        &turnout_pulse_consumer_3,                    //
-        &turnout_pulse_consumer_4,                    //
-        &turnout_pulse_consumer_5,                    //
-        &turnout_pulse_consumer_6,                    //
-        &turnout_pulse_consumer_7,                    //
-        &turnout_pulse_consumer_8                     //
-#endif
+        producer_ext0_1.polling(), producer_ext0_2.polling(), //
+        producer_ext0_3.polling(), producer_ext0_4.polling(), //
+        producer_ext0_5.polling(), producer_ext0_6.polling(), //
+        producer_ext0_7.polling(), producer_ext0_8.polling(), //
+        producer_ext1_1.polling(), producer_ext1_2.polling(), //
+        producer_ext1_3.polling(), producer_ext1_4.polling(), //
+        producer_ext1_5.polling(), producer_ext1_6.polling(), //
+        producer_ext1_7.polling(), producer_ext1_8.polling(), //
     });
 
 /** Entry point to application.
@@ -694,6 +473,7 @@ int appl_main(int argc, char *argv[])
 
     internal_outputs.init("/dev/spi1.ioboard");
     internal_inputs.init("/dev/spi2");
+    external_io.init("/dev/spi1.ioboard");
     
     // The necessary physical ports must be added to the stack.
     //
