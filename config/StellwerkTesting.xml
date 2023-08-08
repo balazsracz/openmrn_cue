@@ -1,0 +1,1136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="/xml/XSLT/panelfile-4-19-2.xsl" type="text/xsl"?>
+<layout-config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://jmri.org/xml/schema/layout-4-19-2.xsd">
+  <jmriversion>
+    <major>5</major>
+    <minor>4</minor>
+    <test>0</test>
+    <modifier />
+  </jmriversion>
+  <sensors class="jmri.jmrix.openlcb.configurexml.OlcbSensorManagerXml">
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.00;05.01.01.01.14.EF.F0.01</systemName>
+      <userName>W12Soll+</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.02;05.01.01.01.14.EF.F0.03</systemName>
+      <userName>W12Soll-</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.04;05.01.01.01.14.EF.F0.05</systemName>
+      <userName>W12Ist+</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.06;05.01.01.01.14.EF.F0.07</systemName>
+      <userName>W12Ist-</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.08;05.01.01.01.14.EF.F0.09</systemName>
+      <userName>W3Soll+</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.0A;05.01.01.01.14.EF.F0.0B</systemName>
+      <userName>W3Soll-</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.0C;05.01.01.01.14.EF.F0.0D</systemName>
+      <userName>W3Ist+</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.0E;05.01.01.01.14.EF.F0.0F</systemName>
+      <userName>W3Ist-</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.10;05.01.01.01.14.EF.F0.11</systemName>
+      <userName>W4Soll+</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.12;05.01.01.01.14.EF.F0.13</systemName>
+      <userName>W4Soll-</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.14;05.01.01.01.14.EF.F0.15</systemName>
+      <userName>W4Ist+</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.16;05.01.01.01.14.EF.F0.17</systemName>
+      <userName>W4Ist-</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.20;05.01.01.01.14.EF.F0.21</systemName>
+      <userName>GlFreiab</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.22;05.01.01.01.14.EF.F0.23</systemName>
+      <userName>GlFreiW1</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.24;05.01.01.01.14.EF.F0.25</systemName>
+      <userName>GlFrei1x</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.26;05.01.01.01.14.EF.F0.27</systemName>
+      <userName>GlFrei2</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.28;05.01.01.01.14.EF.F0.29</systemName>
+      <userName>GlFrei4y</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.2A;05.01.01.01.14.EF.F0.2B</systemName>
+      <userName>GlFrei4x</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.2C;05.01.01.01.14.EF.F0.2D</systemName>
+      <userName>GlFreiW4</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.2E;05.01.01.01.14.EF.F0.2F</systemName>
+      <userName>GlFreicd</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.40;05.01.01.01.14.EF.F0.41</systemName>
+      <userName>SignalAF1</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.42;05.01.01.01.14.EF.F0.43</systemName>
+      <userName>SignalAF2</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.44;05.01.01.01.14.EF.F0.45</systemName>
+      <userName>SignalAH</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.46;05.01.01.01.14.EF.F0.47</systemName>
+      <userName>SignalANH</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.50;05.01.01.01.14.EF.F0.51</systemName>
+      <userName>SignalBF1</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.52;05.01.01.01.14.EF.F0.53</systemName>
+      <userName>SignalBF2</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.54;05.01.01.01.14.EF.F0.55</systemName>
+      <userName>SignalBH</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.56;05.01.01.01.14.EF.F0.57</systemName>
+      <userName>SignalBNH</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.60;05.01.01.01.14.EF.F0.61</systemName>
+      <userName>SignalCF1</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.62;05.01.01.01.14.EF.F0.63</systemName>
+      <userName>SignalCF2</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.64;05.01.01.01.14.EF.F0.65</systemName>
+      <userName>SignalCH</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.66;05.01.01.01.14.EF.F0.67</systemName>
+      <userName>SignalCNH</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.70;05.01.01.01.14.EF.F0.71</systemName>
+      <userName>SignalDF1</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.72;05.01.01.01.14.EF.F0.73</systemName>
+      <userName>SignalDF2</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.74;05.01.01.01.14.EF.F0.75</systemName>
+      <userName>SignalDH</userName>
+    </sensor>
+    <sensor inverted="false">
+      <systemName>MS05.01.01.01.14.EF.F0.76;05.01.01.01.14.EF.F0.77</systemName>
+      <userName>SignalDNH</userName>
+    </sensor>
+  </sensors>
+  <sensors class="jmri.jmrix.internal.configurexml.InternalSensorManagerXml">
+    <defaultInitialState>unknown</defaultInitialState>
+    <sensor inverted="false">
+      <systemName>ISCLOCKRUNNING</systemName>
+    </sensor>
+  </sensors>
+  <memories class="jmri.managers.configurexml.DefaultMemoryManagerXml">
+    <memory value="6:36 PM">
+      <systemName>IMCURRENTTIME</systemName>
+    </memory>
+    <memory value="1.0">
+      <systemName>IMRATEFACTOR</systemName>
+    </memory>
+  </memories>
+  <signalmastlogics class="jmri.managers.configurexml.DefaultSignalMastLogicManagerXml">
+    <logicDelay>500</logicDelay>
+  </signalmastlogics>
+  <timebase class="jmri.jmrit.simpleclock.configurexml.SimpleTimebaseXml" time="Tue Jun 20 23:45:21 CEST 2023" rate="1.0" startrate="1.0" run="yes" master="yes" sync="no" correct="no" display="no" startstopped="no" startrunning="yes" startsettime="no" startclockoption="0" showbutton="no" startsetrate="yes" />
+  <LayoutEditor class="jmri.jmrit.display.layoutEditor.configurexml.LayoutEditorXml" name="Schalterwerk I/O" x="0" y="16" windowheight="1032" windowwidth="1920" panelheight="387" panelwidth="1050" sliders="no" scrollable="none" editable="no" positionable="yes" controlling="yes" animating="yes" showhelpbar="no" drawgrid="yes" snaponadd="yes" snaponmove="yes" antialiasing="no" turnoutcircles="no" tooltipsnotedit="no" tooltipsinedit="yes" mainlinetrackwidth="4" xscale="2.0" yscale="2.0" sidetrackwidth="2" defaulttrackcolor="darkGray" defaultoccupiedtrackcolor="red" defaultalternativetrackcolor="white" defaulttextcolor="black" turnoutcirclecolor="black" turnoutcirclesize="4" turnoutdrawunselectedleg="yes" turnoutbx="20.0" turnoutcx="20.0" turnoutwid="10.0" xoverlong="30.0" xoverhwid="10.0" xovershort="10.0" autoblkgenerate="no" redBackground="192" greenBackground="192" blueBackground="192" gridSize="10" gridSize2nd="10" openDispatcher="no" useDirectTurnoutControl="no">
+    <layoutTrackDrawingOptions name="Schalterwerk I/O" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutTrackDrawingOptionsXml">
+      <mainBallastColor>#000000</mainBallastColor>
+      <mainBallastWidth>0</mainBallastWidth>
+      <mainBlockLineDashPercentageX10>0</mainBlockLineDashPercentageX10>
+      <mainBlockLineWidth>4</mainBlockLineWidth>
+      <mainRailColor>#404040</mainRailColor>
+      <mainRailCount>1</mainRailCount>
+      <mainRailGap>0</mainRailGap>
+      <mainRailWidth>2</mainRailWidth>
+      <mainTieColor>#000000</mainTieColor>
+      <mainTieGap>0</mainTieGap>
+      <mainTieLength>0</mainTieLength>
+      <mainTieWidth>0</mainTieWidth>
+      <sideBallastColor>#000000</sideBallastColor>
+      <sideBallastWidth>0</sideBallastWidth>
+      <sideBlockLineDashPercentageX10>0</sideBlockLineDashPercentageX10>
+      <sideBlockLineWidth>2</sideBlockLineWidth>
+      <sideRailColor>#404040</sideRailColor>
+      <sideRailCount>1</sideRailCount>
+      <sideRailGap>0</sideRailGap>
+      <sideRailWidth>1</sideRailWidth>
+      <sideTieColor>#000000</sideTieColor>
+      <sideTieGap>0</sideTieGap>
+      <sideTieLength>0</sideTieLength>
+      <sideTieWidth>0</sideTieWidth>
+    </layoutTrackDrawingOptions>
+    <positionablelabel x="210" y="190" level="4" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="W1" size="12" style="1" red="0" green="0" blue="0" hasBackground="no" justification="centre" class="jmri.jmrit.display.configurexml.PositionableLabelXml" />
+    <positionablelabel x="370" y="320" level="4" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="W2" size="12" style="1" red="0" green="0" blue="0" hasBackground="no" justification="centre" class="jmri.jmrit.display.configurexml.PositionableLabelXml" />
+    <positionablelabel x="690" y="320" level="4" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="W3" size="12" style="1" red="0" green="0" blue="0" hasBackground="no" justification="centre" class="jmri.jmrit.display.configurexml.PositionableLabelXml" />
+    <positionablelabel x="850" y="190" level="4" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="W4" size="12" style="1" red="0" green="0" blue="0" hasBackground="no" justification="centre" class="jmri.jmrit.display.configurexml.PositionableLabelXml" />
+    <sensoricon sensor="GlFreicd" x="940" y="230" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="GlFreiW4" x="860" y="230" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="GlFreiW1" x="210" y="230" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="GlFreiab" x="120" y="230" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="GlFrei1x" x="330" y="230" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="GlFrei4x" x="750" y="230" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="GlFrei4y" x="760" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="GlFrei2" x="550" y="230" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <positionablelabel x="15" y="227" level="4" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" text="Gleis=frei" size="12" style="1" red="0" green="0" blue="0" hasBackground="no" justification="centre" class="jmri.jmrit.display.configurexml.PositionableLabelXml" />
+    <sensoricon sensor="W12Soll+" x="260" y="200" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W12Soll-" x="260" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W12Ist+" x="280" y="200" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W12Ist+" x="280" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W3Soll+" x="710" y="270" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W3Soll-" x="710" y="310" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W3Ist+" x="730" y="270" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W3Ist-" x="730" y="310" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W4Soll+" x="790" y="200" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W4Ist+" x="810" y="200" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W4Soll-" x="790" y="240" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="W4Ist-" x="810" y="240" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <positionablelabel x="780" y="170" level="4" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" degrees="90" text="Soll" size="12" style="1" red="0" green="0" blue="0" hasBackground="no" justification="centre" class="jmri.jmrit.display.configurexml.PositionableLabelXml" />
+    <positionablelabel x="810" y="170" level="4" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" degrees="90" text="Ist" size="12" style="1" red="0" green="0" blue="0" hasBackground="no" justification="centre" class="jmri.jmrit.display.configurexml.PositionableLabelXml" />
+    <sensoricon sensor="SignalAF1" x="130" y="190" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-green.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalAH" x="120" y="190" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalAF2" x="110" y="190" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalANH" x="100" y="190" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalBF1" x="370" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-green.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalBH" x="380" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalBF2" x="390" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalBNH" x="400" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalCF1" x="700" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-green.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalCH" x="690" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalCF2" x="680" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalCNH" x="670" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalDF1" x="910" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-green.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalDH" x="920" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalDF2" x="930" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-occupied.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <sensoricon sensor="SignalDNH" x="940" y="250" level="10" forcecontroloff="false" hidden="no" positionable="true" showtooltip="false" editable="false" momentary="false" icon="yes" class="jmri.jmrit.display.configurexml.SensorIconXml">
+      <active url="program:resources/icons/smallschematics/tracksegments/circuit-error.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </active>
+      <inactive url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inactive>
+      <unknown url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </unknown>
+      <inconsistent url="program:resources/icons/smallschematics/tracksegments/circuit-empty.gif" degrees="0" scale="1.0">
+        <rotation>0</rotation>
+      </inconsistent>
+      <iconmaps />
+    </sensoricon>
+    <layoutturnout ident="TO4" type="RH_TURNOUT" hidden="no" disabled="no" disableWhenOccupied="no" continuing="2" xcen="220.0" ycen="220.0" xa="180.0" ya="220.0" xb="260.0" yb="220.0" xc="260.0" yc="240.0" xd="180.0" yd="220.0" ver="1" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutRHTurnoutXml" connectaname="T1" connectbname="T2" connectcname="T6" />
+    <layoutturnout ident="TO5" type="LH_TURNOUT" hidden="no" disabled="no" disableWhenOccupied="no" continuing="2" xcen="860.0" ycen="220.0" xa="900.0" ya="220.0" xb="820.0" yb="220.0" xc="820.0" yc="240.0" xd="900.0" yd="220.0" ver="1" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutLHTurnoutXml" connectaname="T5" connectbname="T4" connectcname="T8" />
+    <layoutturnout ident="TO6" type="RH_TURNOUT" hidden="no" disabled="no" disableWhenOccupied="no" continuing="2" xcen="380.0" ycen="300.0" xa="420.0" ya="300.0" xb="340.0" yb="300.0" xc="340.0" yc="280.0" xd="420.0" yd="300.0" ver="1" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutRHTurnoutXml" connectaname="T7" connectbname="T9" connectcname="T6" />
+    <layoutturnout ident="TO7" type="LH_TURNOUT" hidden="no" disabled="no" disableWhenOccupied="no" continuing="2" xcen="700.0" ycen="300.0" xa="660.0" ya="300.0" xb="740.0" yb="300.0" xc="740.0" yc="280.0" xd="660.0" yd="300.0" ver="1" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutLHTurnoutXml" connectaname="T7" connectbname="T10" connectcname="T8" />
+    <tracksegment ident="T1" connect1name="EB1" type1="POS_POINT" connect2name="TO4" type2="TURNOUT_A" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T2" connect1name="TO4" type1="TURNOUT_B" connect2name="A4" type2="POS_POINT" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T3" connect1name="A4" type1="POS_POINT" connect2name="A3" type2="POS_POINT" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T4" connect1name="A3" type1="POS_POINT" connect2name="TO5" type2="TURNOUT_B" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T5" connect1name="TO5" type1="TURNOUT_A" connect2name="EB2" type2="POS_POINT" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T6" connect1name="TO4" type1="TURNOUT_C" connect2name="TO6" type2="TURNOUT_C" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T7" connect1name="TO6" type1="TURNOUT_A" connect2name="TO7" type2="TURNOUT_A" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T8" connect1name="TO7" type1="TURNOUT_C" connect2name="TO5" type2="TURNOUT_C" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T9" connect1name="EB3" type1="POS_POINT" connect2name="TO6" type2="TURNOUT_B" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <tracksegment ident="T10" connect1name="TO7" type1="TURNOUT_B" connect2name="EB4" type2="POS_POINT" dashed="no" mainline="yes" hidden="no" class="jmri.jmrit.display.layoutEditor.configurexml.TrackSegmentXml" />
+    <positionablepoint ident="A3" type="ANCHOR" x="700.0" y="220.0" connect1name="T3" connect2name="T4" class="jmri.jmrit.display.layoutEditor.configurexml.PositionablePointXml" />
+    <positionablepoint ident="A4" type="ANCHOR" x="380.0" y="220.0" connect1name="T2" connect2name="T3" class="jmri.jmrit.display.layoutEditor.configurexml.PositionablePointXml" />
+    <positionablepoint ident="EB1" type="END_BUMPER" x="40.0" y="220.0" connect1name="T1" class="jmri.jmrit.display.layoutEditor.configurexml.PositionablePointXml" />
+    <positionablepoint ident="EB2" type="END_BUMPER" x="1000.0" y="220.0" connect1name="T5" class="jmri.jmrit.display.layoutEditor.configurexml.PositionablePointXml" />
+    <positionablepoint ident="EB3" type="END_BUMPER" x="160.0" y="300.0" connect1name="T9" class="jmri.jmrit.display.layoutEditor.configurexml.PositionablePointXml" />
+    <positionablepoint ident="EB4" type="END_BUMPER" x="940.0" y="300.0" connect1name="T10" class="jmri.jmrit.display.layoutEditor.configurexml.PositionablePointXml" />
+    <layoutShape ident="S3" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="390.0" y="90.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S4" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="140.0" y="180.0" />
+        <point type="Straight" x="150.0" y="190.0" />
+        <point type="Straight" x="150.0" y="200.0" />
+        <point type="Straight" x="140.0" y="210.0" />
+        <point type="Straight" x="100.0" y="210.0" />
+        <point type="Straight" x="90.0" y="200.0" />
+        <point type="Straight" x="90.0" y="190.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S5" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="150.0" y="190.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S6" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="150.0" y="200.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S7" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="140.0" y="210.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S8" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="100.0" y="210.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S9" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="90.0" y="200.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S10" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="90.0" y="190.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S11" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="90.0" y="190.0" />
+        <point type="Straight" x="100.0" y="180.0" />
+        <point type="Straight" x="140.0" y="180.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S15" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="370.0" y="240.0" />
+        <point type="Straight" x="410.0" y="240.0" />
+        <point type="Straight" x="420.0" y="250.0" />
+        <point type="Straight" x="420.0" y="260.0" />
+        <point type="Straight" x="410.0" y="270.0" />
+        <point type="Straight" x="370.0" y="270.0" />
+        <point type="Straight" x="360.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S16" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="370.0" y="240.0" />
+        <point type="Straight" x="360.0" y="250.0" />
+        <point type="Straight" x="360.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S17" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="360.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S18" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="370.0" y="270.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S19" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="410.0" y="270.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S20" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="420.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S21" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="420.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S22" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="410.0" y="240.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S23" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="710.0" y="240.0" />
+        <point type="Straight" x="720.0" y="250.0" />
+        <point type="Straight" x="720.0" y="260.0" />
+        <point type="Straight" x="710.0" y="270.0" />
+        <point type="Straight" x="670.0" y="270.0" />
+        <point type="Straight" x="660.0" y="260.0" />
+        <point type="Straight" x="660.0" y="250.0" />
+        <point type="Straight" x="670.0" y="240.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S24" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="720.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S25" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="720.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S26" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="710.0" y="270.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S27" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="670.0" y="270.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S28" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="660.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S29" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="660.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S30" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="670.0" y="240.0" />
+        <point type="Straight" x="710.0" y="240.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S31" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="900.0" y="250.0" />
+        <point type="Straight" x="910.0" y="240.0" />
+        <point type="Straight" x="950.0" y="240.0" />
+        <point type="Straight" x="960.0" y="250.0" />
+        <point type="Straight" x="960.0" y="260.0" />
+        <point type="Straight" x="950.0" y="270.0" />
+        <point type="Straight" x="910.0" y="270.0" />
+        <point type="Straight" x="900.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S32" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="910.0" y="240.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S33" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="950.0" y="240.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S34" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="960.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S35" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="960.0" y="260.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S36" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="950.0" y="270.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S37" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="910.0" y="270.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S38" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="900.0" y="260.0" />
+        <point type="Straight" x="900.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S1" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="450.0" y="250.0" />
+        <point type="Straight" x="420.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S2" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="450.0" y="240.0" />
+        <point type="Straight" x="450.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S3" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="450.0" y="260.0" />
+        <point type="Straight" x="450.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S4" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="630.0" y="250.0" />
+        <point type="Straight" x="660.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S5" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="630.0" y="240.0" />
+        <point type="Straight" x="630.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S6" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="630.0" y="260.0" />
+        <point type="Straight" x="630.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S7" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="990.0" y="250.0" />
+        <point type="Straight" x="960.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S8" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="990.0" y="240.0" />
+        <point type="Straight" x="990.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S9" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="990.0" y="260.0" />
+        <point type="Straight" x="990.0" y="250.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S10" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="60.0" y="190.0" />
+        <point type="Straight" x="90.0" y="190.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S11" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="60.0" y="180.0" />
+        <point type="Straight" x="60.0" y="190.0" />
+      </points>
+    </layoutShape>
+    <layoutShape ident="S12" type="Open" level="3" linewidth="3" lineColor="#000000" fillColor="#404040" class="jmri.jmrit.display.layoutEditor.configurexml.LayoutShapeXml">
+      <points>
+        <point type="Straight" x="60.0" y="200.0" />
+        <point type="Straight" x="60.0" y="190.0" />
+      </points>
+    </layoutShape>
+  </LayoutEditor>
+  <filehistory>
+    <operation>
+      <type>app</type>
+      <date>Sun Aug 06 14:11:15 CEST 2023</date>
+      <filename>JMRI program</filename>
+    </operation>
+    <operation>
+      <type>Load OK</type>
+      <date>Sun Aug 06 14:11:19 CEST 2023</date>
+      <filename>/home/bracz/.jmri/StellwerkTesting.jmri/sensors.xml</filename>
+      <filehistory>
+        <operation>
+          <type>app</type>
+          <date>Wed Jul 05 18:42:14 CEST 2023</date>
+          <filename>JMRI program</filename>
+        </operation>
+        <operation>
+          <type>Load OK</type>
+          <date>Wed Jul 05 18:42:16 CEST 2023</date>
+          <filename>/home/bracz/.jmri/StellwerkTesting.jmri/sensors.xml</filename>
+          <filehistory>
+            <operation>
+              <type>app</type>
+              <date>Wed Jul 05 18:32:46 CEST 2023</date>
+              <filename>JMRI program</filename>
+            </operation>
+            <operation>
+              <type>Load OK</type>
+              <date>Wed Jul 05 18:32:47 CEST 2023</date>
+              <filename>/home/bracz/.jmri/StellwerkTesting.jmri/sensors.xml</filename>
+              <filehistory>
+                <operation>
+                  <type>app</type>
+                  <date>Mon Jul 03 21:11:17 CEST 2023</date>
+                  <filename>JMRI program</filename>
+                </operation>
+                <operation>
+                  <type>Load OK</type>
+                  <date>Mon Jul 03 21:11:18 CEST 2023</date>
+                  <filename>/home/bracz/.jmri/StellwerkTesting.jmri/sensors.xml</filename>
+                  <filehistory>
+                    <operation>
+                      <type>app</type>
+                      <date>Wed Jun 28 21:04:20 CEST 2023</date>
+                      <filename>JMRI program</filename>
+                    </operation>
+                    <operation>
+                      <type>Load OK</type>
+                      <date>Wed Jun 28 21:04:23 CEST 2023</date>
+                      <filename>/home/bracz/.jmri/StellwerkTesting.jmri/sensors.xml</filename>
+                      <filehistory>
+                        <operation>
+                          <type>app</type>
+                          <date>Tue Jun 20 23:45:20 CEST 2023</date>
+                          <filename>JMRI program</filename>
+                        </operation>
+                        <operation>
+                          <type>Store</type>
+                          <date>Wed Jun 21 00:20:35 CEST 2023</date>
+                          <filename />
+                        </operation>
+                      </filehistory>
+                    </operation>
+                    <operation>
+                      <type>Store</type>
+                      <date>Mon Jul 03 21:11:07 CEST 2023</date>
+                      <filename />
+                    </operation>
+                  </filehistory>
+                </operation>
+                <operation>
+                  <type>Store</type>
+                  <date>Wed Jul 05 18:30:52 CEST 2023</date>
+                  <filename />
+                </operation>
+              </filehistory>
+            </operation>
+            <operation>
+              <type>Store</type>
+              <date>Wed Jul 05 18:36:39 CEST 2023</date>
+              <filename />
+            </operation>
+          </filehistory>
+        </operation>
+        <operation>
+          <type>Store</type>
+          <date>Wed Jul 05 18:42:48 CEST 2023</date>
+          <filename />
+        </operation>
+      </filehistory>
+    </operation>
+    <operation>
+      <type>Store</type>
+      <date>Sun Aug 06 14:11:33 CEST 2023</date>
+      <filename />
+    </operation>
+  </filehistory>
+  <!--Written by JMRI version 5.4+R9005ecb4ac on Sun Aug 06 14:11:33 CEST 2023-->
+</layout-config>
