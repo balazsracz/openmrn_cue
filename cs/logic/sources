@@ -14,6 +14,8 @@ Parser.cxxout: Parser.yy
 
 ../logic/Parser.hxxout ../logic/location.hh: Parser.cxxout
 
+location.hh: Parser.cxxout
+
 ../logic/Scanner.hxxout: Scanner.cxxout
 
 Scanner.o Parser.o: %.o: %.cxxout
@@ -25,3 +27,5 @@ Scanner.o Parser.o: %.o: %.cxxout
 CPPSRCS += Scanner.cpp Parser.cpp
 
 Driver.o: Parser.o Scanner.o
+
+INCLUDES += -I$(TARGET_DIR_PATH)/

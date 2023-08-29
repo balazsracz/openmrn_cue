@@ -2,6 +2,7 @@
 
 #include "utils/Buffer.hxx"
 #include "dcc/Packet.hxx"
+#include "dcc/TrackIf.hxx"
 #include "custom/TrackInterface.hxx"
 #include "tests/mock_packet_handler.hxx"
 
@@ -15,7 +16,7 @@ TEST_F(HostPacketQueueTest, TestSendLog) {
   send_host_log_event(bracz_custom::HostLogEvent::MOSTA_DISCOVER);
 }
 
-class MockEmptyQueue : public dcc::PacketFlowInterface {
+class MockEmptyQueue : public dcc::TrackIf {
  public:
   MOCK_METHOD2(arrived, void(Buffer<dcc::Packet>*, unsigned));
 

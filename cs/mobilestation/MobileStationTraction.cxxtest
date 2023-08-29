@@ -15,10 +15,10 @@ namespace commandstation {
 
 const struct const_traindb_entry_t const_lokdb[] = {
   // 0
-  { 0x57, { LIGHT, TELEX, FN_NONEXISTANT, FNT11, ABV,  0xff, },
+  { 0x57, { LIGHT, UNCOUPLE, FN_NONEXISTANT, FNP, SHUNTING_MODE,  0xff, },
     "BR 260417", DCC_28 },
   // 1
-  { 0x56, { LIGHT, ENGINE, FN_NONEXISTANT, HORN, SPEECH, SPEECH, SPEECH, SPEECH, LIGHT1, FNP, ABV, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_28 },
+  { 0x56, { HEADLIGHT, ENGINE, FN_NONEXISTANT, HORN, ANNOUNCE, ANNOUNCE, ANNOUNCE, ANNOUNCE, LIGHT, FNP, SHUNTING_MODE, HORN, SOUNDP, SOUNDP, SOUNDP, HORN, HORN, HORN, HORN, HORN, HORN, 0xff }, "ICN", DCC_28 },
 
 };
 
@@ -48,7 +48,6 @@ class MostaTranslationTest : public openlcb::TractionTest {
     gc_hub1.register_port(&canBus1_);
     // Sets up the traction train node.
     create_allocated_alias();
-    expect_next_alias_allocation();
     EXPECT_CALL(m1_, legacy_address()).Times(AtLeast(0)).WillRepeatedly(
         Return(0x00000056U));
     EXPECT_CALL(m1_, legacy_address_type()).Times(AtLeast(0)).WillRepeatedly(

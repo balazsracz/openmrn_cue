@@ -6,8 +6,15 @@ SUBDIRS ?= \
 
 
 ifeq ($(strip $(TARGET)),linux.x86)
-SUBDIRS += automata server
-SYSLIBRARIESEXTRA += -lprotobuf
+SUBDIRS += automata
+# server subdir does not compile due to protobuf
+# SYSLIBRARIESEXTRA += -lprotobuf
+endif
+
+ifeq ($(strip $(TARGET)),test)
+# does not compile right now
+# SUBDIRS += automata
+SUBDIRS += logic
 endif
 
 ifeq ($(EXECUTABLE),logic)
