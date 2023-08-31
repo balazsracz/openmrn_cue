@@ -250,7 +250,8 @@ private:
             HASSERT((size_t)rb == inputLenBytes_);
         }
         usleep(2);
-        latch_->write(Gpio::CLR);
+        // original: latch_->write(Gpio::CLR);
+        latch_->write(Gpio::SET);
         if (asyncMutex_) {
             asyncMutex_->Unlock();
         }
@@ -347,35 +348,34 @@ openlcb::ConfiguredProducer producer_b8(
 uint32_t ext_input_register[2] = {0};
 uint32_t ext_output_register[2] = {0};
 
-SpiIOShiftRegister external_io(&io_service, &spi1_io_mutex, EXT_LAT_Pin::instance(), ext_output_register, 2, ext_input_register, 2);
+SpiIOShiftRegister external_io(&io_service, &spi1_io_mutex, EXT_LAT_Pin::instance(), ext_output_register, 3, ext_input_register, 3, 2);
 
 
-constexpr const MmapGpio EXT0_O1(ext_output_register, 8 * 1 + 0, true);
-constexpr const MmapGpio EXT0_O2(ext_output_register, 8 * 1 + 1, true);
-constexpr const MmapGpio EXT0_O3(ext_output_register, 8 * 1 + 2, true);
-constexpr const MmapGpio EXT0_O4(ext_output_register, 8 * 1 + 3, true);
-constexpr const MmapGpio EXT0_O5(ext_output_register, 8 * 1 + 4, true);
-constexpr const MmapGpio EXT0_O6(ext_output_register, 8 * 1 + 5, true);
-constexpr const MmapGpio EXT0_O7(ext_output_register, 8 * 1 + 6, true);
-constexpr const MmapGpio EXT0_O8(ext_output_register, 8 * 1 + 7, true);
-constexpr const MmapGpio EXT0_I1(ext_input_register, 0, true);
-constexpr const MmapGpio EXT0_I2(ext_input_register, 1, true);
-constexpr const MmapGpio EXT0_I3(ext_input_register, 2, true);
-constexpr const MmapGpio EXT0_I4(ext_input_register, 3, true);
-constexpr const MmapGpio EXT0_I5(ext_input_register, 4, true);
-constexpr const MmapGpio EXT0_I6(ext_input_register, 5, true);
-constexpr const MmapGpio EXT0_I7(ext_input_register, 6, true);
-constexpr const MmapGpio EXT0_I8(ext_input_register, 7, true);
+constexpr const MmapGpio EXT0_O1(ext_output_register, 8 * 2 + 0, true);
+constexpr const MmapGpio EXT0_O2(ext_output_register, 8 * 2 + 1, true);
+constexpr const MmapGpio EXT0_O3(ext_output_register, 8 * 2 + 2, true);
+constexpr const MmapGpio EXT0_O4(ext_output_register, 8 * 2 + 3, true);
+constexpr const MmapGpio EXT0_O5(ext_output_register, 8 * 2 + 4, true);
+constexpr const MmapGpio EXT0_O6(ext_output_register, 8 * 2 + 5, true);
+constexpr const MmapGpio EXT0_O7(ext_output_register, 8 * 2 + 6, true);
+constexpr const MmapGpio EXT0_O8(ext_output_register, 8 * 2 + 7, true);
+constexpr const MmapGpio EXT0_I1(ext_input_register, 8 * 0 + 0, true);
+constexpr const MmapGpio EXT0_I2(ext_input_register, 8 * 0 + 1, true);
+constexpr const MmapGpio EXT0_I3(ext_input_register, 8 * 0 + 2, true);
+constexpr const MmapGpio EXT0_I4(ext_input_register, 8 * 0 + 3, true);
+constexpr const MmapGpio EXT0_I5(ext_input_register, 8 * 0 + 4, true);
+constexpr const MmapGpio EXT0_I6(ext_input_register, 8 * 0 + 5, true);
+constexpr const MmapGpio EXT0_I7(ext_input_register, 8 * 0 + 6, true);
+constexpr const MmapGpio EXT0_I8(ext_input_register, 8 * 0 + 7, true);
 
-
-constexpr const MmapGpio EXT1_O1(ext_output_register, 8 * 0 + 0, true);
-constexpr const MmapGpio EXT1_O2(ext_output_register, 8 * 0 + 1, true);
-constexpr const MmapGpio EXT1_O3(ext_output_register, 8 * 0 + 2, true);
-constexpr const MmapGpio EXT1_O4(ext_output_register, 8 * 0 + 3, true);
-constexpr const MmapGpio EXT1_O5(ext_output_register, 8 * 0 + 4, true);
-constexpr const MmapGpio EXT1_O6(ext_output_register, 8 * 0 + 5, true);
-constexpr const MmapGpio EXT1_O7(ext_output_register, 8 * 0 + 6, true);
-constexpr const MmapGpio EXT1_O8(ext_output_register, 8 * 0 + 7, true);
+constexpr const MmapGpio EXT1_O1(ext_output_register, 8 * 1 + 0, true);
+constexpr const MmapGpio EXT1_O2(ext_output_register, 8 * 1 + 1, true);
+constexpr const MmapGpio EXT1_O3(ext_output_register, 8 * 1 + 2, true);
+constexpr const MmapGpio EXT1_O4(ext_output_register, 8 * 1 + 3, true);
+constexpr const MmapGpio EXT1_O5(ext_output_register, 8 * 1 + 4, true);
+constexpr const MmapGpio EXT1_O6(ext_output_register, 8 * 1 + 5, true);
+constexpr const MmapGpio EXT1_O7(ext_output_register, 8 * 1 + 6, true);
+constexpr const MmapGpio EXT1_O8(ext_output_register, 8 * 1 + 7, true);
 constexpr const MmapGpio EXT1_I1(ext_input_register, 8 * 1 + 0, true);
 constexpr const MmapGpio EXT1_I2(ext_input_register, 8 * 1 + 1, true);
 constexpr const MmapGpio EXT1_I3(ext_input_register, 8 * 1 + 2, true);
@@ -385,11 +385,30 @@ constexpr const MmapGpio EXT1_I6(ext_input_register, 8 * 1 + 5, true);
 constexpr const MmapGpio EXT1_I7(ext_input_register, 8 * 1 + 6, true);
 constexpr const MmapGpio EXT1_I8(ext_input_register, 8 * 1 + 7, true);
 
+constexpr const MmapGpio EXT2_O1(ext_output_register, 8 * 0 + 0, true);
+constexpr const MmapGpio EXT2_O2(ext_output_register, 8 * 0 + 1, true);
+constexpr const MmapGpio EXT2_O3(ext_output_register, 8 * 0 + 2, true);
+constexpr const MmapGpio EXT2_O4(ext_output_register, 8 * 0 + 3, true);
+constexpr const MmapGpio EXT2_O5(ext_output_register, 8 * 0 + 4, true);
+constexpr const MmapGpio EXT2_O6(ext_output_register, 8 * 0 + 5, true);
+constexpr const MmapGpio EXT2_O7(ext_output_register, 8 * 0 + 6, true);
+constexpr const MmapGpio EXT2_O8(ext_output_register, 8 * 0 + 7, true);
+constexpr const MmapGpio EXT2_I1(ext_input_register, 8 * 2 + 0, true);
+constexpr const MmapGpio EXT2_I2(ext_input_register, 8 * 2 + 1, true);
+constexpr const MmapGpio EXT2_I3(ext_input_register, 8 * 2 + 2, true);
+constexpr const MmapGpio EXT2_I4(ext_input_register, 8 * 2 + 3, true);
+constexpr const MmapGpio EXT2_I5(ext_input_register, 8 * 2 + 4, true);
+constexpr const MmapGpio EXT2_I6(ext_input_register, 8 * 2 + 5, true);
+constexpr const MmapGpio EXT2_I7(ext_input_register, 8 * 2 + 6, true);
+constexpr const MmapGpio EXT2_I8(ext_input_register, 8 * 2 + 7, true);
+
 constexpr const Gpio *const kPortExtO[] = {
     &EXT0_O1, &EXT0_O2, &EXT0_O3, &EXT0_O4,
     &EXT0_O5, &EXT0_O6, &EXT0_O7, &EXT0_O8,
     &EXT1_O1, &EXT1_O2, &EXT1_O3, &EXT1_O4,
     &EXT1_O5, &EXT1_O6, &EXT1_O7, &EXT1_O8,
+    &EXT2_O1, &EXT2_O2, &EXT2_O3, &EXT2_O4,
+    &EXT2_O5, &EXT2_O6, &EXT2_O7, &EXT2_O8,
 };
 
 openlcb::MultiConfiguredConsumer extport_consumers(stack.node(), kPortExtO,
@@ -429,6 +448,23 @@ openlcb::ConfiguredProducer producer_ext1_7(
 openlcb::ConfiguredProducer producer_ext1_8(
     stack.node(), cfg.seg().ext_producers().entry<15>(), (const Gpio*)&EXT1_I8);
 
+openlcb::ConfiguredProducer producer_ext2_1(
+    stack.node(), cfg.seg().ext_producers().entry<16>(), (const Gpio*)&EXT2_I1);
+openlcb::ConfiguredProducer producer_ext2_2(
+    stack.node(), cfg.seg().ext_producers().entry<17>(), (const Gpio*)&EXT2_I2);
+openlcb::ConfiguredProducer producer_ext2_3(
+    stack.node(), cfg.seg().ext_producers().entry<18>(), (const Gpio*)&EXT2_I3);
+openlcb::ConfiguredProducer producer_ext2_4(
+    stack.node(), cfg.seg().ext_producers().entry<19>(), (const Gpio*)&EXT2_I4);
+openlcb::ConfiguredProducer producer_ext2_5(
+    stack.node(), cfg.seg().ext_producers().entry<20>(), (const Gpio*)&EXT2_I5);
+openlcb::ConfiguredProducer producer_ext2_6(
+    stack.node(), cfg.seg().ext_producers().entry<21>(), (const Gpio*)&EXT2_I6);
+openlcb::ConfiguredProducer producer_ext2_7(
+    stack.node(), cfg.seg().ext_producers().entry<22>(), (const Gpio*)&EXT2_I7);
+openlcb::ConfiguredProducer producer_ext2_8(
+    stack.node(), cfg.seg().ext_producers().entry<23>(), (const Gpio*)&EXT2_I8);
+
 openlcb::RefreshLoop loopext(stack.node(),
     {
         producer_ext0_1.polling(), producer_ext0_2.polling(), //
@@ -439,7 +475,32 @@ openlcb::RefreshLoop loopext(stack.node(),
         producer_ext1_3.polling(), producer_ext1_4.polling(), //
         producer_ext1_5.polling(), producer_ext1_6.polling(), //
         producer_ext1_7.polling(), producer_ext1_8.polling(), //
+        producer_ext2_1.polling(), producer_ext2_2.polling(), //
+        producer_ext2_3.polling(), producer_ext2_4.polling(), //
+        producer_ext2_5.polling(), producer_ext2_6.polling(), //
+        producer_ext2_7.polling(), producer_ext2_8.polling(), //
     });
+
+
+class Logic : public StateFlowBase {
+ public:
+  Logic() : StateFlowBase(stack.service()) {
+    ext_output_register[0] = 0xffffffff;
+    start_flow(STATE(delay));
+  }
+
+ private:
+  Action delay() {
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(10), STATE(act));
+  }
+
+  Action act() {
+    return call_immediately(STATE(delay));
+  }
+  
+  StateFlowTimer timer_{this};
+} logic;
+
 
 /** Entry point to application.
  * @param argc number of command line arguments
