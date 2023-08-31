@@ -199,6 +199,8 @@ struct DccHwDefs {
   static const int RAILCOM_CUTOUT_MID_DELTA_USEC = 0;
   static const int RAILCOM_CUTOUT_END_DELTA_USEC = 0;
   static const int RAILCOM_CUTOUT_POST_DELTA_USEC = 0;
+  static const int RAILCOM_CUTOUT_POST_NEGATIVE_DELTA_USEC = 0;
+  static const int RESYNC_DELAY_USEC = 0;
 
   static_assert(RAILCOM_TRIGGER_INVERT == true,
                 "fix railcom enable pin inversion");

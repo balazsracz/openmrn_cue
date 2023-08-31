@@ -445,16 +445,17 @@ void DefaultPacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 	break;
     }
     case CMDUM_SETRELSPEED: {
-	DccLoop_SetLocoRelativeSpeed(in_pkt[2], in_pkt[3]);
+      // this implementation does not exist anymore.
+        //DccLoop_SetLocoRelativeSpeed(in_pkt[2], in_pkt[3]);
 	//fallthrough
     }
     case CMDUM_GETRELSPEED: {
-	if (DccLoop_IsUnknownLoco(in_pkt[2])) {
+      //if (true /*DccLoop_IsUnknownLoco(in_pkt[2])*/) {
             miscpacket[2] = 0xff; // invalid argument.
             break;
-	}
+            //}
 	miscpacket[3] = in_pkt[2];
-	miscpacket[4] = DccLoop_GetLocoRelativeSpeed(in_pkt[2]);
+	//miscpacket[4] = DccLoop_GetLocoRelativeSpeed(in_pkt[2]); does not exist
 	break;
     }
     case CMDUM_GET_LOCK_INFO: {

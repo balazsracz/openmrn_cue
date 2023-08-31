@@ -8,18 +8,18 @@ namespace openlcb {
 
 class ChuckThrottleTest : public TractionTest {
  protected:
-  ChuckThrottleTest() : trainImpl_(1732), throttle_(node_, 0x0601000006C4ULL) {
+  ChuckThrottleTest() : trainImpl_(1732), throttle_(node_, 0x06010000C6C4ULL) {
     create_allocated_alias();
-    expect_next_alias_allocation();
+    //expect_next_alias_allocation();
     // alias reservation
-    expect_packet(":X1070133AN0601000006C4;");
+    expect_packet(":X1070133AN06010000C6C4;");
     // initialized
-    expect_packet(":X1910033AN0601000006C4;");
+    expect_packet(":X1910033AN06010000C6C4;");
     trainNode_.reset(new TrainNodeForProxy(&trainService_, &trainImpl_));
     wait();
   }
 
-  ~ChuckThrottleTest() { wait(); }
+  ~ChuckThrottleTest() { twait(); }
 
   void send_measurement(uint8_t value) {
     auto* b = throttle_.alloc();
