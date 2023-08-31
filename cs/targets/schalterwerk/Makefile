@@ -30,7 +30,7 @@ endif
 include $(OPENMRNPATH)/etc/prog.mk
 
 ifndef DEFAULT_ADDRESS
-DEFAULT_ADDRESS=0x16
+DEFAULT_ADDRESS=0x17
 endif
 
 include $(OPENMRNPATH)/etc/node_id.mk
