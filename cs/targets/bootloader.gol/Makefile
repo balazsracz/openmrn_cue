@@ -2,6 +2,8 @@ APP_PATH ?= $(realpath ../..)
 -include $(APP_PATH)/config.mk
 -include local_config.mk
 
+SUBDIRS=
+
 OPENMRNPATH ?= $(shell \
 sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \
      elif [ -d /opt/openmrn/src ]; then echo /opt/openmrn; \
@@ -15,9 +17,9 @@ LINKCORELIBS = -lopenlcb -lutils
 
 include $(OPENMRNPATH)/etc/stm32cubef0.mk
 
-CFLAGSEXTRA += -DSTM32F091xC
-CXXFLAGSEXTRA += -DSTM32F091xC
-SYSLIBRARIES += -lfreertos_drivers_stm32cubef091xc
+CFLAGSEXTRA += -DSTM32F072xB
+CXXFLAGSEXTRA += -DSTM32F072xB
+SYSLIBRARIES += -lfreertos_drivers_stm32cubef071xb_2xb
 OPENOCDARGS = -f board/st_nucleo_f0.cfg
 
 export TARGET := bare.armv6m
