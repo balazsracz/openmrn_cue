@@ -41,6 +41,7 @@
 #include "os/OS.hxx"
 #include "Stm32Uart.hxx"
 #include "Stm32Can.hxx"
+#include "Stm32Flash.hxx"
 #include "freertos_drivers/spiffs/stm32f7/Stm32SPIFFS.hxx"
 #include "hardware.hxx"
 

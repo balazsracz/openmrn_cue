@@ -75,12 +75,16 @@ OVERRIDE_CONST(main_thread_stack_size, 2500);
 // hardware manufactured, so in production this should be replaced by some
 // easily incrementable method.
 extern const openlcb::NodeID NODE_ID;
+uint64_t decode_nodeid(uint64_t);
 
 // Sets up a comprehensive OpenLCB stack for a single virtual node. This stack
 // contains everything needed for a usual peripheral node -- all
 // CAN-bus-specific components, a virtual node, PIP, SNIP, Memory configuration
 // protocol, ACDI, CDI, a bunch of memory spaces, etc.
-openlcb::SimpleCanStack stack(NODE_ID);
+//
+// The node ID is taken from raw flash that can be overwritten using a memory
+// space. To handle the different formats here, we use a conversion function.
+openlcb::SimpleCanStack stack(decode_nodeid(NODE_ID));
 
 // ConfigDef comes from config.hxx and is specific to the particular device and
 // target. It defines the layout of the configuration memory space and is also
@@ -156,6 +160,23 @@ openlcb::ServoConsumer srv3(
     servoPwmCountPerMs, servo_channels[3]);
 
 */
+
+/// Converts a node ID stored in flash to the node ID to be used by the stack. 
+uint64_t decode_nodeid(uint64_t stored) {
+  // Flip endianness.
+  stored = be64toh(stored);
+  uint8_t top_byte = stored >> 56;
+  if (top_byte == 0xff) {
+    // Probably erased the flash. We return a hardcoded node ID.
+    return 0x0501010114FF;
+  }
+  if (top_byte != 0) {
+    // Left aligned.
+    return stored >> 16;
+  }
+  // Assume it's right aligned.
+  return stored & 0xFFFFFFFFFFFFull;
+}
 
 class FactoryResetHelper : public DefaultConfigUpdateListener {
 public:

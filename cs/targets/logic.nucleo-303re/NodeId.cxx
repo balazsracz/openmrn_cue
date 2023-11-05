@@ -6,4 +6,9 @@
 #endif
 
 extern const openlcb::NodeID NODE_ID;
-const openlcb::NodeID NODE_ID = 0x050101010000ULL | (NODEID_HIGH_BITS << 8) | NODEID_LOW_BITS;
+/// WARNING: this is manually endian-swapped, because the underlying flash will
+/// be used as a memory space.
+const openlcb::NodeID NODE_ID =
+    (uint64_t(NODEID_LOW_BITS) << 40) |
+    (uint64_t(NODEID_HIGH_BITS) << 32) |
+    0x01010105;

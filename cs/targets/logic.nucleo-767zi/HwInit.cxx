@@ -1,1 +1,1 @@
-../../../../openmrn/boards/st-stm32f767zi-nucleo/HwInit.cxx
+../../boards/st-stm32f767-nucleo/HwInit.cxx
