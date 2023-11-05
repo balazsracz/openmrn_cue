@@ -28,13 +28,14 @@ SECTIONS
 	QUAD(0);
 	LONG(0); /* App header: data size */
 	QUAD(0); /* App header: checksum for payload. */
-	QUAD(0);
-    } > FLASH
+	QUAD(1);
+    } > FLASH 
 
 
     /* MAIN TEXT SECTION */    
     .text : ALIGN(4)
     {
+        KEEP(*(.alt_interrupt_vector))
         
         /* Global Section Table */
         . = ALIGN(4) ;

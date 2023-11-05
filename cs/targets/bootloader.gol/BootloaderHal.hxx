@@ -77,16 +77,18 @@ void checksum_data(const void *data, uint32_t size, uint32_t *checksum)
 
 extern const openlcb::NodeID NODE_ID;
 
-uint16_t nmranet_alias()
-{
-    /// TODO: we should probably read this from someplace else
-    return 0x400 ^ (NODE_ID & 0xFFF);
+uint64_t nmranet_nodeid() {
+  static constexpr uint32_t kOBHiAddress = 0x1FFFF806;
+  static constexpr uint32_t kOBLoAddress = 0x1FFFF804;
+
+  return 0x050101010000 | ((*(uint8_t *)kOBHiAddress) << 8) |
+         (*(uint8_t *)kOBLoAddress);
 }
 
-uint64_t nmranet_nodeid()
+uint16_t nmranet_alias()
 {
-    /// TODO(balazs.racz):  read some form of EEPROM instead.
-    return NODE_ID;
+  auto node = nmranet_nodeid();
+  return (node & 0xfff) ^ ((node >> 12) & 0xfff) ^ ((node >> 24) & 0xfff) ^ ((node >> 36) & 0xfff);  
 }
 
 bool read_can_frame(struct can_frame *can_frame)
@@ -202,12 +204,19 @@ void bootloader_reboot(void)
 
 void application_entry(void)
 {
-    bootloader_hw_set_to_safe();
+    extern char __flash_start;
+
     /* Globally disables interrupts. */
     asm("cpsid i\n");
+    bootloader_hw_set_to_safe();
+
+    // clear all interrupt enable bits.
+    NVIC->ICER[0] = 0xffffffffu;
+    // reset interrupt vector table address
+    //SCB->VTOR = &__flash_start;
+    
     extern uint64_t __application_node_id;
     __application_node_id = nmranet_nodeid();
-    extern char __flash_start;
     // We store the application reset in interrupt vecor 13, which is reserved
     // / unused on all Cortex-M0 processors.
     asm volatile(" mov   r3, %[flash_addr] \n"
@@ -216,6 +225,7 @@ void application_entry(void)
     asm volatile(" ldr r0, [r3]\n"
                  " mov sp, r0\n"
                  " ldr r0, [r3, #52]\n"
+                 " cpsie i\n" // reenable interrupts
                  " bx  r0\n");
 }
 
@@ -281,6 +291,8 @@ void write_flash(const void *address, const void *data, uint32_t size_bytes)
 {
     extern char __flash_start;
     if (address == &__flash_start) {
+        // Saves reset vector.
+        memcpy(((uint8_t*)data) + 13 * 4, ((uint8_t*)data) + 4, 4);
         address = static_cast<const uint8_t*>(address) + 8;
         data = static_cast<const uint8_t*>(data) + 8;
         size_bytes -= 8;

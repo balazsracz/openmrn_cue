@@ -2,6 +2,13 @@
 
 #define BOOTLOADER_STREAM
 //#define BOOTLOADER_DATAGRAM
+#define WRITE_BUFFER_SIZE 2048
+
+#define _OPENLCB_APPLICATIONCHECKSUM_HXX_
+extern "C" bool check_application_checksum();
+
+#define BOOTLOADER_LOOP_HOOK custom_bload_hook
+extern "C" void custom_bload_hook();
 
 #include "BootloaderHal.hxx"
 #include "bootloader_hal.h"
@@ -12,6 +19,7 @@
 #include "openlcb/Bootloader.hxx"
 #include "openlcb/If.hxx"
 #include "utils/GpioInitializer.hxx"
+#include "freertos_drivers/common/GpioWrapper.hxx"
 
 const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
 const uint8_t APBPrescTable[8]  = {0, 0, 0, 0, 1, 2, 3, 4};
@@ -21,15 +29,81 @@ int g_death_lineno = 0;
 
 extern "C" {
 
-GPIO_PIN(LED_GREEN, LedPin, A, 5);
-GPIO_PIN(SW1, GpioInputPU, C, 13);
+GPIO_PIN(LED_GREEN_RAW, LedPin, F, 0);
+using LED_GREEN_Pin = ::InvertedGpio<LED_GREEN_RAW_Pin>;
+GPIO_PIN(LED_OTHER_RAW, LedPin, F, 1);
+using LED_OTHER_Pin = ::InvertedGpio<LED_OTHER_RAW_Pin>;
+GPIO_PIN(SW1, GpioInputPU, B, 15);
 
 static constexpr unsigned clock_hz = 48000000;
 
+// Replaces checksum mechanism in the bootloader. @return true if there seems
+// to be an application loaded.
+bool check_application_checksum() {
+  extern char __flash_start;
+  extern char __bootloader_start;
+  uint32_t* p = (uint32_t*) &__flash_start;
+  uint32_t* b = (uint32_t*) &__bootloader_start;
+  // The alt reset vector at ofs 13 should be the app entry. There are two cases:
+  //
+  // 1. the app was flashed directly. p[1] != p[13](==0) != b[1].
+  // 2. the app was flashed by the bootloader. p[13] != p[1] == b[1].
+  //
+  // If the app was flashed directly the bootloader will not start at
+  // startup. Therefore once we are here, the bootloader was jumped to by hand.
+  return (p[13] != 0 && p[13] != b[1]);
+}
+
+void custom_bload_hook() {
+  if (!state_.input_frame_full || !IS_CAN_FRAME_EFF(state_.input_frame))
+  {
+    return;
+  }
+  uint32_t can_id = GET_CAN_FRAME_ID_EFF(state_.input_frame);
+  if ((can_id >> 12) != 0x195B4) {
+    return;
+  }
+  const uint8_t kPrefix[] = {0x09, 0x00, 0x0D, 0xF9};
+  const uint8_t kStart[] = {0x09, 0x00, 0x0D, 0xFF, 0, 0, 0, 15};
+  const uint8_t kFinish[] = {0x09, 0x00, 0x0D, 0xFF, 0, 0, 0, 16};
+  const uint8_t kResponse[] = {0x09, 0x00, 0x0D, 0xFF, 0, 0, 0, 17};
+  if (memcmp(&state_.input_frame.data[0], kPrefix, 4) == 0) {
+    // Got a firmware upgrade data event.
+    memcpy(&g_write_buffer[state_.write_buffer_index],
+        &state_.input_frame.data[4], 4);
+    state_.write_buffer_index += 4;
+    if (state_.write_buffer_index >= WRITE_BUFFER_SIZE)
+    {
+        flush_flash_buffer();
+        set_can_frame_global(Defs::MTI_EVENT_REPORT);
+        state_.output_frame.can_dlc = 8;
+        memcpy(state_.output_frame.data, kResponse, 8);
+    }
+  } else if (memcmp(&state_.input_frame.data[0], kFinish, 8) == 0) {
+    // Got a firmware upgrade finish.
+    if (state_.write_buffer_index > 0)
+    {
+        flush_flash_buffer();
+    }
+    state_.request_reset = 1;
+  } else if (memcmp(&state_.input_frame.data[0], kStart, 8) == 0) {
+    // Got a firmware upgrade start.
+    state_.write_buffer_offset = 0;
+    normalize_write_buffer_offset();
+    state_.write_buffer_index = 0;
+  }
+}
+
 void bootloader_hw_set_to_safe(void)
 {
+    /* enable peripheral clocks */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOF_CLK_ENABLE();
     SW1_Pin::hw_set_to_safe();
     LED_GREEN_Pin::hw_set_to_safe();
+    LED_OTHER_Pin::hw_set_to_safe();
 }
 
 extern void bootloader_reset_segments(void);
@@ -43,7 +117,7 @@ static void clock_setup(void)
     while (!(RCC->CR & RCC_CR_HSIRDY))
         ;
 
-#define USE_EXTERNAL_8_MHz_CLOCK_SOURCE 1
+#define USE_EXTERNAL_8_MHz_CLOCK_SOURCE 0
 /* configure PLL:  8 MHz * 6 = 48 MHz */
 #if USE_EXTERNAL_8_MHz_CLOCK_SOURCE
     RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
@@ -82,6 +156,7 @@ void bootloader_hw_init()
 
     /* Disable all interrupts */
     RCC->CIR = 0x00000000U;
+    NVIC->ICER[0] = 0xFFFFFFFFu;
 
     clock_setup();
 
@@ -89,6 +164,7 @@ void bootloader_hw_init()
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOF_CLK_ENABLE();
     __HAL_RCC_CAN1_CLK_ENABLE();
 
     /* setup pinmux */
@@ -96,10 +172,9 @@ void bootloader_hw_init()
     memset(&gpio_init, 0, sizeof(gpio_init));
 
     /* CAN pinmux on PB8 and PB9 */
-    gpio_init.Mode = GPIO_MODE_AF_PP;
-    // Disables pull-ups because this is a 5V tolerant pin.
-    gpio_init.Pull = GPIO_NOPULL;
+    gpio_init.Mode = GPIO_MODE_AF_OD;
     gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
+    gpio_init.Pull = GPIO_PULLUP;
     gpio_init.Alternate = GPIO_AF4_CAN;
     gpio_init.Pin = GPIO_PIN_8;
     HAL_GPIO_Init(GPIOB, &gpio_init);
@@ -153,7 +228,7 @@ void bootloader_led(enum BootloaderLed id, bool value)
             LED_GREEN_Pin::set(value);
             return;
         case LED_WRITING:
-            LED_GREEN_Pin::set(value);
+            LED_OTHER_Pin::set(value);
             return;
         case LED_CSUM_ERROR:
             return;
@@ -167,6 +242,8 @@ void bootloader_led(enum BootloaderLed id, bool value)
     }
 }
 
+/// @return true if the bootloader should be started, false if the application
+/// check should be performed.
 bool request_bootloader()
 {
     extern uint32_t __bootloader_magic_ptr;
@@ -176,6 +253,7 @@ bool request_bootloader()
         return true;
     }
     LED_GREEN_Pin::set(SW1_Pin::get());
+    // if the pin is low, forces the bootloader.
     return !SW1_Pin::get();
 }
 

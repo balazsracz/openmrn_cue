@@ -20,7 +20,8 @@ include $(OPENMRNPATH)/etc/stm32cubef0.mk
 CFLAGSEXTRA += -DSTM32F072xB
 CXXFLAGSEXTRA += -DSTM32F072xB
 SYSLIBRARIES += -lfreertos_drivers_stm32cubef071xb_2xb
-OPENOCDARGS = -f board/st_nucleo_f0.cfg
+include find-emulator.mk
+#OPENOCDARGS = -f board/st_nucleo_f0.cfg
 
 export TARGET := bare.armv6m
 
