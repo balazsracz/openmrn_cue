@@ -54,6 +54,16 @@ lflash: $(EXECUTABLE).bin $(EXECUTABLE).lst
 	@if ps ax -o comm | grep -q openocd ; then echo openocd already running. quit existing first. ; exit 1 ; fi
 	$(GDB) $< -ex "target remote | $(OPENOCDPATH)/openocd -c \"gdb_port pipe\" --search $(OPENOCDSCRIPTSPATH) $(OPENOCDARGS)" -ex "monitor reset halt" -ex "monitor program $< 0x08000000 verify reset exit" -ex "monitor reset run"  -ex "detach" -ex "quit"
 
+RELEASEDIR=./releases/$(shell date +%Y-%m-%d-%H-%M-%S)
+
+release: $(EXECUTABLE)$(EXTENTION) $(EXECUTABLE).bin $(EXECUTABLE).lst
+	mkdir -p $(RELEASEDIR)
+	cp -fax $(EXECUTABLE){$(EXTENTION),.bin,.lst,.map} $(RELEASEDIR)
+	ln -sf $(RELEASEDIR) latest-release
+
+release-flash:
+	$(GDB) latest-release/*elf -ex "target remote | $(OPENOCDPATH)/openocd -c \"gdb_port pipe\" --search $(OPENOCDSCRIPTSPATH) $(OPENOCDARGS)" -ex "monitor reset halt" -ex "load" -ex "monitor reset init" -ex "monitor reset run"  -ex "detach" -ex "quit"
+
 gdb:
 	@if ps ax -o comm | grep -q openocd ; then echo openocd already running. quit existing first. ; exit 1 ; fi
 	$(GDB) $(EXECUTABLE)$(EXTENTION) -ex "target remote | $(OPENOCDPATH)/openocd -c \"gdb_port pipe\" --search $(OPENOCDSCRIPTSPATH) $(OPENOCDARGS)" -ex "continue" # -ex "monitor reset halt"
