@@ -2,12 +2,12 @@ ___ram_for_bootloader_api = 8;
 
 MEMORY
 {
-  FLASH      (rx)  : ORIGIN = 0x08000000, LENGTH = 240K
-  EEPROMEMU  (r)   : ORIGIN = 0x0803C000, LENGTH = 8K
-  BOOTLOADER (rx)  : ORIGIN = 0x0803E000, LENGTH = 8K
+  FLASH      (rx)  : ORIGIN = 0x08000000, LENGTH = 112K
+  EEPROMEMU  (r)   : ORIGIN = 0x0801C000, LENGTH = 8K
+  BOOTLOADER (rx)  : ORIGIN = 0x0801E000, LENGTH = 8K
   RAM        (rwx) : ORIGIN = 0x20000000,
-                     LENGTH = 32K - ___ram_for_bootloader_api
-  BOOTLOADERAPI (rw)  : ORIGIN = 0x20000000 + 32K - ___ram_for_bootloader_api,
+                     LENGTH = 16K - ___ram_for_bootloader_api
+  BOOTLOADERAPI (rw)  : ORIGIN = 0x20000000 + 16K - ___ram_for_bootloader_api,
                         LENGTH = ___ram_for_bootloader_api
 }
 

@@ -2,6 +2,8 @@ APP_PATH ?= $(realpath ../..)
 -include $(APP_PATH)/config.mk
 -include local_config.mk
 
+SUBDIRS=
+
 OPENMRNPATH ?= $(shell \
 sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \
      elif [ -d /opt/openmrn/src ]; then echo /opt/openmrn; \
@@ -15,10 +17,11 @@ LINKCORELIBS = -lopenlcb -lutils
 
 include $(OPENMRNPATH)/etc/stm32cubef0.mk
 
-CFLAGSEXTRA += -DSTM32F091xC
-CXXFLAGSEXTRA += -DSTM32F091xC
-SYSLIBRARIES += -lfreertos_drivers_stm32cubef091xc
-OPENOCDARGS = -f board/st_nucleo_f0.cfg
+CFLAGSEXTRA += -DSTM32F072xB
+CXXFLAGSEXTRA += -DSTM32F072xB
+SYSLIBRARIES += -lfreertos_drivers_stm32cubef071xb_2xb
+include find-emulator.mk
+#OPENOCDARGS = -f board/st_nucleo_f0.cfg
 
 export TARGET := bare.armv6m
 
@@ -50,6 +53,16 @@ flash: $(EXECUTABLE)$(EXTENTION) $(EXECUTABLE).bin $(EXECUTABLE).lst
 lflash: $(EXECUTABLE).bin $(EXECUTABLE).lst
 	@if ps ax -o comm | grep -q openocd ; then echo openocd already running. quit existing first. ; exit 1 ; fi
 	$(GDB) $< -ex "target remote | $(OPENOCDPATH)/openocd -c \"gdb_port pipe\" --search $(OPENOCDSCRIPTSPATH) $(OPENOCDARGS)" -ex "monitor reset halt" -ex "monitor program $< 0x08000000 verify reset exit" -ex "monitor reset run"  -ex "detach" -ex "quit"
+
+RELEASEDIR=./releases/$(shell date +%Y-%m-%d-%H-%M-%S)
+
+release: $(EXECUTABLE)$(EXTENTION) $(EXECUTABLE).bin $(EXECUTABLE).lst
+	mkdir -p $(RELEASEDIR)
+	cp -fax $(EXECUTABLE){$(EXTENTION),.bin,.lst,.map} $(RELEASEDIR)
+	ln -sf $(RELEASEDIR) latest-release
+
+release-flash:
+	$(GDB) latest-release/*elf -ex "target remote | $(OPENOCDPATH)/openocd -c \"gdb_port pipe\" --search $(OPENOCDSCRIPTSPATH) $(OPENOCDARGS)" -ex "monitor reset halt" -ex "load" -ex "monitor reset init" -ex "monitor reset run"  -ex "detach" -ex "quit"
 
 gdb:
 	@if ps ax -o comm | grep -q openocd ; then echo openocd already running. quit existing first. ; exit 1 ; fi

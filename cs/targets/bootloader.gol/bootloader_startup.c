@@ -111,7 +111,7 @@ void (* const __interrupt_vector[])(void) =
     0,                               /**<  10 reserved */
     SVC_Handler,                     /**<  11 SV call */
     0,                               /**<  12 reservedd */
-    reset_handler,                   /**<  13 reserved -- bootloader appentry */
+    0,                               /**<  13 reserved -- bootloader appentry */
     PendSV_Handler,                  /**<  14 pend SV */
     SysTick_Handler,                 /**<  15 system tick */
     watchdog_interrupt_handler,      /**<  16 watchdog timer */
@@ -160,6 +160,14 @@ void (* const __interrupt_vector[])(void) =
     usb_interrupt_handler,           /**<  47 USB + EXTI line[18] */
 
     ignore_fn                        /**< forces the linker to add this fn */
+};
+
+/** Alternate Exception table at the bootloader segment */
+__attribute__ ((section(".alt_interrupt_vector")))
+void (* const __alt_interrupt_vector[])(void) =
+{
+    (void (*)(void))(&__stack),      /**<   0 initial stack pointer */
+    reset_handler,                   /**<   1 reset vector */
 };
 
 extern unsigned long __data_section_table;
