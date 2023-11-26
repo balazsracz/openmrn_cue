@@ -35,6 +35,10 @@ GPIO_PIN(LED_OTHER_RAW, LedPin, F, 1);
 using LED_OTHER_Pin = ::InvertedGpio<LED_OTHER_RAW_Pin>;
 GPIO_PIN(SW1, GpioInputPU, B, 15);
 
+GPIO_PIN(LED_D15, GpioOutputSafeLow, B, 14);
+GPIO_PIN(LED_D16, GpioOutputSafeLow, B, 13);
+
+
 static constexpr unsigned clock_hz = 48000000;
 
 // Replaces checksum mechanism in the bootloader. @return true if there seems
@@ -142,6 +146,74 @@ static void clock_setup(void)
         ;
 }
 
+
+TSC_HandleTypeDef TscHandle;
+TSC_IOConfigTypeDef IoConfig;
+
+
+/* Array used to store the three acquisition value (one per channel) */
+__IO uint32_t uhTSCAcquisitionValue[3];
+
+struct AcquisitionPhase {
+  // Bitmask of which channel IOs to capture.
+  uint32_t channel_ios;
+  // Group2 channel: row or col.
+  uint8_t group2_rc;
+  // Group2 channel: which entry.
+  uint8_t group2_num;
+  // Group3 channel: row or col.
+  uint8_t group3_rc;
+  // Group3 channel: which entry.
+  uint8_t group3_num;
+  // Group5 channel: row or col.
+  uint8_t group5_rc;
+  // Group5 channel: which entry.
+  uint8_t group5_num;
+};
+
+static constexpr unsigned kNumPhases = 3;
+
+// Use this constant in the first index of channel_results[][] to see the output for rows.
+static constexpr unsigned kChRow = 0;
+// Use this constant in the first index of channel_results[][] to see the output for columns.
+static constexpr unsigned kChCol = 1;
+
+
+static const AcquisitionPhase kPhases[kNumPhases] = {
+  { TSC_GROUP2_IO2 | TSC_GROUP3_IO3 | TSC_GROUP5_IO2, kChCol, 0, kChRow, 1, kChCol, 2 },
+  { TSC_GROUP2_IO3 | TSC_GROUP3_IO4 | TSC_GROUP5_IO3, kChRow, 2, kChCol, 1, kChCol, 3 },
+  { TSC_GROUP2_IO4 | TSC_GROUP3_IO3 | TSC_GROUP5_IO4, kChRow, 0, kChRow, 1, kChRow, 3 }
+};
+
+
+void Error_Handler(volatile unsigned line) {
+  while(1) {
+    (void)line;
+    LED_GREEN_Pin::set(true);
+    LED_OTHER_Pin::set(false);
+    for (volatile unsigned i = 0; i < 200000; i++);
+    LED_GREEN_Pin::set(false);
+    LED_OTHER_Pin::set(true);
+    for (volatile unsigned i = 0; i < 200000; i++);
+  }
+  (void)line;
+}
+
+void touch_io_start(unsigned phase) {
+  if (phase >= kNumPhases) {
+    phase = 0;
+  }
+  /*##-2- Configure the touch-sensing IOs ####################################*/
+  IoConfig.ChannelIOs = kPhases[phase].channel_ios;
+  IoConfig.SamplingIOs = TSC_GROUP2_IO1 | TSC_GROUP3_IO2 | TSC_GROUP5_IO1;
+  IoConfig.ShieldIOs = 0;
+
+  if (HAL_TSC_IOConfig(&TscHandle, &IoConfig) != HAL_OK) {
+    /* Initialization Error */
+    Error_Handler(__LINE__);
+  }
+}
+
 void bootloader_hw_init()
 {
     /* Globally disables interrupts until the FreeRTOS scheduler is up. */
@@ -166,6 +238,10 @@ void bootloader_hw_init()
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOF_CLK_ENABLE();
     __HAL_RCC_CAN1_CLK_ENABLE();
+    __HAL_RCC_TSC_CLK_ENABLE();
+    __HAL_RCC_TSC_FORCE_RESET();
+    for (volatile unsigned i = 0; i < 100; i++);
+    __HAL_RCC_TSC_RELEASE_RESET();
 
     /* setup pinmux */
     GPIO_InitTypeDef gpio_init;
@@ -181,9 +257,96 @@ void bootloader_hw_init()
     gpio_init.Pin = GPIO_PIN_9;
     HAL_GPIO_Init(GPIOB, &gpio_init);
 
+    /*##-2- Configure Sampling Capacitor IOs (Alternate-Function Open-Drain)
+     * ###*/
+    gpio_init.Mode = GPIO_MODE_AF_OD;
+    gpio_init.Pull = GPIO_NOPULL;
+    gpio_init.Speed = GPIO_SPEED_FREQ_LOW;
+
+    gpio_init.Alternate = GPIO_AF3_TSC;
+    // caps are A4 B0 B3
+    gpio_init.Pin = GPIO_PIN_4;
+    HAL_GPIO_Init(GPIOA, &gpio_init);
+    gpio_init.Pin = GPIO_PIN_0;
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+    gpio_init.Pin = GPIO_PIN_3;
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+
+    /*##-3- Configure Channel IOs (Alternate-Function Output PP)
+     * ###############*/
+    gpio_init.Mode = GPIO_MODE_AF_PP;
+    gpio_init.Pull = GPIO_NOPULL;
+    gpio_init.Speed = GPIO_SPEED_FREQ_LOW;
+
+    // A 5-6-7
+    gpio_init.Pin = GPIO_PIN_5;  // group2 io2
+    HAL_GPIO_Init(GPIOA, &gpio_init);
+    gpio_init.Pin = GPIO_PIN_6;  // group2 io3
+    HAL_GPIO_Init(GPIOA, &gpio_init);
+    gpio_init.Pin = GPIO_PIN_7;  // group2 io4
+    HAL_GPIO_Init(GPIOA, &gpio_init);
+
+    // B 1-2 4-5-6
+    gpio_init.Pin = GPIO_PIN_1;  // group3 io3
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+    gpio_init.Pin = GPIO_PIN_2;  // group3 io4
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+    gpio_init.Pin = GPIO_PIN_4;  // group5 io2
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+    gpio_init.Pin = GPIO_PIN_6;  // group5 io3
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+    // B5 is incorrectly wired to a TSC circuit. B7 is a spare pin.
+    gpio_init.Pin = GPIO_PIN_7;  // group5 io4
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+
     LED_GREEN_Pin::hw_init();
+    LED_OTHER_Pin::hw_init();
+    LED_D15_Pin::hw_init();
+    LED_D16_Pin::hw_init();
     SW1_Pin::hw_init();
 
+    memset(&TscHandle, 0, sizeof(TscHandle));
+    memset(&IoConfig, 0, sizeof(IoConfig));
+
+    // Configures TSC peripheral
+    TscHandle.Instance = TSC;
+    TscHandle.Init.AcquisitionMode = TSC_ACQ_MODE_NORMAL;
+    TscHandle.Init.CTPulseHighLength = TSC_CTPH_1CYCLE;
+    TscHandle.Init.CTPulseLowLength = TSC_CTPL_1CYCLE;
+    TscHandle.Init.IODefaultMode =
+        TSC_IODEF_IN_FLOAT; /* Because the electrodes are interlaced on this
+                               board */
+    TscHandle.Init.MaxCountInterrupt = ENABLE;
+    TscHandle.Init.MaxCountValue = TSC_MCV_16383;
+    TscHandle.Init.PulseGeneratorPrescaler = TSC_PG_PRESC_DIV64;
+    TscHandle.Init.SpreadSpectrum = DISABLE;
+    TscHandle.Init.SpreadSpectrumDeviation = 127;
+    TscHandle.Init.SpreadSpectrumPrescaler = TSC_SS_PRESC_DIV1;
+    TscHandle.Init.SynchroPinPolarity = TSC_SYNC_POLARITY_FALLING;
+    TscHandle.Init.ChannelIOs =
+        0; /* Not needed yet. Will be set with HAL_TSC_IOConfig() */
+    TscHandle.Init.SamplingIOs =
+        0; /* Not needed yet. Will be set with HAL_TSC_IOConfig() */
+    TscHandle.Init.ShieldIOs =
+        0; /* Not needed yet. Will be set with HAL_TSC_IOConfig() */
+
+    if (HAL_TSC_Init(&TscHandle) != HAL_OK) {
+      /* Initialization Error */
+      Error_Handler(__LINE__);
+    }
+
+    // B5 we switch to analog mode.
+    gpio_init.Mode = GPIO_MODE_ANALOG;
+    gpio_init.Pull = GPIO_NOPULL;
+    gpio_init.Speed = GPIO_SPEED_FREQ_LOW;
+    gpio_init.Pin = GPIO_PIN_5;
+    HAL_GPIO_Init(GPIOB, &gpio_init);
+
+    HAL_TSC_IODischarge(&TscHandle, ENABLE);
+    touch_io_start(2);
+
+    // Configures CAN peripheral
+    
     /* disable sleep, enter init mode */
     CAN->MCR = CAN_MCR_INRQ;
 
@@ -218,28 +381,43 @@ void bootloader_hw_init()
     /* Activeate filter and exit initialization mode. */
     CAN->FA1R = 0x000000001;
     CAN->FMR &= ~CAN_FMR_FINIT;
+
+    // Check if the bootloader reset vector is in the right place.
+    uint32_t* p = (uint32_t*) &__flash_start;
+    if (p[13] == 0 || p[13] == 0xffffffffu) {
+      // need to rewrite the first sector.
+      memcpy(g_write_buffer, p, 0x800);
+      erase_flash_page(p);
+      write_flash(p, g_write_buffer, 0x800);
+    }
 }
 
-void bootloader_led(enum BootloaderLed id, bool value)
-{
-    switch(id)
-    {
-        case LED_ACTIVE:
-            LED_GREEN_Pin::set(value);
-            return;
-        case LED_WRITING:
-            LED_OTHER_Pin::set(value);
-            return;
-        case LED_CSUM_ERROR:
-            return;
-        case LED_REQUEST:
-            return;
-        case LED_FRAME_LOST:
-            return;
-        default:
-            /* ignore */
-            break;
-    }
+void bootloader_led(enum BootloaderLed id, bool value) {
+  switch (id) {
+    case LED_ACTIVE:
+      LED_GREEN_Pin::set(value);
+      return;
+    case LED_WRITING:
+      LED_OTHER_Pin::set(value);
+      return;
+    case LED_CSUM_ERROR:
+      if (value) {
+        LED_D15_Pin::set(1);
+        LED_D16_Pin::set(0);
+      }
+      return;
+    case LED_REQUEST:
+      if (value) {
+        LED_D16_Pin::set(1);
+        LED_D15_Pin::set(0);
+      }
+      return;
+    case LED_FRAME_LOST:
+      return;
+    default:
+      /* ignore */
+      break;
+  }
 }
 
 /// @return true if the bootloader should be started, false if the application
@@ -252,9 +430,54 @@ bool request_bootloader()
         LED_GREEN_Pin::set(true);
         return true;
     }
-    LED_GREEN_Pin::set(SW1_Pin::get());
+
+    bool pressed = true;
+    
+    HAL_TSC_IODischarge(&TscHandle, DISABLE);
+    if (HAL_TSC_Start(&TscHandle) != HAL_OK) {
+      /* Acquisition Error */
+      Error_Handler(__LINE__);
+    }
+    HAL_TSC_PollForAcquisition(&TscHandle);
+    if (HAL_TSC_GroupGetStatus(&TscHandle, TSC_GROUP2_IDX) ==
+        TSC_GROUP_COMPLETED) {
+      unsigned res = HAL_TSC_GroupGetValue(&TscHandle, TSC_GROUP2_IDX);
+      // Calibration 0x2e0 (736), below 85% it is pressed.
+      if (res > 625) pressed = false;
+    } else {
+      Error_Handler(__LINE__);
+    }
+    touch_io_start(1);
+    HAL_TSC_IODischarge(&TscHandle, ENABLE);
+    for (volatile unsigned i = 0; i < 200000; i++);
+
+    HAL_TSC_IODischarge(&TscHandle, DISABLE);
+    if (HAL_TSC_Start(&TscHandle) != HAL_OK) {
+      /* Acquisition Error */
+      Error_Handler(__LINE__);
+    }
+    HAL_TSC_PollForAcquisition(&TscHandle);
+    if (HAL_TSC_GroupGetStatus(&TscHandle, TSC_GROUP2_IDX) ==
+        TSC_GROUP_COMPLETED) {
+      unsigned res = HAL_TSC_GroupGetValue(&TscHandle, TSC_GROUP2_IDX);
+      // Calibration 0x3e0 (992), below 85% it is pressed.
+      if (res > 843) pressed = false;
+    } else {
+      Error_Handler(__LINE__);
+    }
+    
     // if the pin is low, forces the bootloader.
-    return !SW1_Pin::get();
+    if (pressed || !SW1_Pin::get()) {
+      LED_GREEN_Pin::set(1);
+      LED_OTHER_Pin::set(1);
+      LED_D16_Pin::set(1);
+      LED_D15_Pin::set(0);
+      return true;
+    } else {
+      LED_GREEN_Pin::set(0);
+      LED_OTHER_Pin::set(0);
+      return false;
+    }
 }
 
 } // extern "C"
