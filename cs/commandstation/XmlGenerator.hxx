@@ -36,6 +36,7 @@
 #define _BRACZ_MOBILESTATION_XMLGENERATOR_HXX_
 
 #include <stdio.h>
+#include <stdint.h>
 #include "utils/SimpleQueue.hxx"
 
 namespace commandstation {
