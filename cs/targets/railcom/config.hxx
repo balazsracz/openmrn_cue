@@ -27,7 +27,7 @@ extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
     4,               "Balazs Racz", "Railcom IO board",
     "ek-tm4c123gxl", "2015-10-25"};
 
-static const uint16_t EXPECTED_VERSION = 0xf371;
+static const uint16_t EXPECTED_VERSION = 0xc371;
 
 #define NUM_OUTPUTS 3
 #define NUM_INPUTS 2
@@ -64,17 +64,14 @@ CDI_GROUP_END();
 
 /// Defines the main segment in the configuration CDI. This is laid out at
 /// origin 128 to give space for the ACDI user data at the beginning.
-CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
-CDI_GROUP_ENTRY(internal, InternalConfigData);
+CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(384));
+CDI_GROUP_ENTRY(detectors, DetectorPorts, Name("Channels"), RepName("Channel"));
+//CDI_GROUP_ENTRY(enables, EnableConsumers, Name("Channel enable"),
+//                Description("Consumers to turn channels on and off."));
 /// Each entry declares the name of the current entry, then the type and then
 /// optional arguments list.
 CDI_GROUP_ENTRY(consumers, AllConsumers, Name("Output LEDs"));
 CDI_GROUP_ENTRY(producers, AllProducers, Name("Input buttons"));
-CDI_GROUP_ENTRY(current, CurrentParams);
-//CDI_GROUP_ENTRY(enables, EnableConsumers, Name("Channel enable"),
-//                Description("Consumers to turn channels on and off."));
-CDI_GROUP_ENTRY(detectors, DetectorPorts, Name("Channels"), RepName("Channel"));
-CDI_GROUP_ENTRY(detector_options, bracz_custom::DetectorTuningOptions, Name("Short detector options"));
 CDI_GROUP_END();
 
 /// This segment is only needed temporarily until there is program code to set
@@ -85,7 +82,11 @@ CDI_GROUP_ENTRY(acdi_user_version, Uint8ConfigEntry,
     Name("ACDI User Data version"), Description("Set to 2 and do not change."));
 CDI_GROUP_END();
 
-
+CDI_GROUP(DevSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
+CDI_GROUP_ENTRY(internal, InternalConfigData);
+CDI_GROUP_ENTRY(detector_options, bracz_custom::DetectorTuningOptions, Name("Short detector options"));
+CDI_GROUP_ENTRY(current, CurrentParams);
+CDI_GROUP_END();
 
 /// The main structure of the CDI. ConfigDef is the symbol we use in main.cxx
 /// to refer to the configuration defined here.
@@ -99,9 +100,13 @@ CDI_GROUP_ENTRY(acdi, Acdi);
 CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
 /// Adds the main configuration segment.
 CDI_GROUP_ENTRY(seg, IoBoardSegment);
+/// Development configuration options
+CDI_GROUP_ENTRY(dev, DevSegment);
 /// Adds the versioning segment.
 //CDI_GROUP_ENTRY(version, VersionSeg);
 CDI_GROUP_END();
+
+static_assert(ConfigDef(0).seg().offset() >= ConfigDef(0).dev().end_offset(), "dev and prod segments overlap");
 
 }  // namespace openlcb
 

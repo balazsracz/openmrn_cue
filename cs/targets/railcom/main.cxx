@@ -184,6 +184,9 @@ class RailcomOccupancyDecoder : public dcc::RailcomHubPortInterface {
         updateFunction_(i, debouncer.current_state());
       }
     }
+    // This code measures the interrupt to processing latency. We get a timer
+    // counter in the ch2Data, and we compare that with the current count value
+    // of the same timer.
     int current_tick = RailcomDefs::get_timer_tick();
     int start_tick = 0;
     memcpy(&start_tick, entry->data()->ch2Data, 4);
@@ -292,23 +295,6 @@ class DACThread : public OSThread {
   }
 } dac_thread;
 
-void read_dac_settings(int fd, openlcb::DacSettingsConfig cfg,
-                       DacSettings* out) {
-  uint16_t n = cfg.nominator().read(fd);
-  uint16_t d = cfg.denom().read(fd);
-  uint8_t div = cfg.divide().read(fd) ? true : false;
-  if (n >= d || !(div == 0 || div == 1)) {
-    // corrupted data. overwrite with default
-    cfg.nominator().write(fd, out->nominator);
-    cfg.denom().write(fd, out->denominator);
-    cfg.divide().write(fd, out->divide ? 1 : 0);
-    return;
-  }
-  out->nominator = n;
-  out->denominator = d;
-  out->divide = div;
-}
-
 // Enable this if you want all DCC packets to be printed to the debug USB.
 #if 0
 
@@ -409,6 +395,90 @@ class WatchForDccSignal : public StateFlowBase {
   StateFlowTimer timer_{this};
 } g_wait_for_dcc_signal;
 
+// Sets the text fields in the config file upon factory reset.
+class FactoryResetHelper : public DefaultConfigUpdateListener {
+public:
+    UpdateAction apply_configuration(int fd, bool initial_load,
+                                     BarrierNotifiable *done) OVERRIDE {
+        AutoNotify n(done);
+
+        for (unsigned i = 0; i < 6; ++i) {
+          const auto& grp = cfg.seg().detectors().entry(i);
+          string pname = grp.name().read(fd);
+          maybe_update_string(fd, grp.occupancy().name(), pname + " occupancy");
+          maybe_update_string(fd, grp.overcurrent().name(), pname + " short");
+          maybe_update_string(fd, grp.enable().name(), pname + " enable");
+        }
+
+        read_dac_settings(fd, cfg.dev().current().dac_occupancy(),
+                          &dac_occupancy);
+        read_dac_settings(fd, cfg.dev().current().dac_overcurrent(),
+                          &dac_overcurrent);
+        read_dac_settings(fd, cfg.dev().current().dac_railcom(), &dac_railcom);
+
+        return UPDATED;
+    }
+
+    void factory_reset(int fd) override {
+      cfg.userinfo().name().write(fd, "RailCom Power Manager");
+      cfg.userinfo().description().write(
+          fd, "Tiva 123 + RailCom + short circuit detector.");
+      /// @todo add name to input and button
+      // cfg.seg().in
+      for (unsigned i = 0; i < 6; ++i) {
+        cfg.seg().detectors().entry(i).name().write(
+            fd, string("Port ") + integer_to_string(i + 1));
+      }
+      cfg.dev().current().occupancy().count_total().write(fd, 30);
+      cfg.dev().current().occupancy().min_active().write(fd, 10);
+      cfg.dev().current().overcurrent().count_total().write(fd, 20);
+      cfg.dev().current().overcurrent().min_active().write(fd, 10);
+
+      dac_overcurrent = {5, 20, false};
+      dac_railcom = {5, 10, true};  // 8.6 mV
+      dac_occupancy = {5, 50, true};  // 1.9 mV
+      // This will write back the default settings.
+      cfg.dev().current().dac_occupancy().divide().write(fd, 255);
+      cfg.dev().current().dac_overcurrent().divide().write(fd, 255);
+      cfg.dev().current().dac_railcom().divide().write(fd, 255);
+      read_dac_settings(fd, cfg.dev().current().dac_occupancy(),
+                        &dac_occupancy);
+      read_dac_settings(fd, cfg.dev().current().dac_overcurrent(),
+                        &dac_overcurrent);
+      read_dac_settings(fd, cfg.dev().current().dac_railcom(), &dac_railcom);
+    }
+
+   private:
+    void read_dac_settings(int fd, const openlcb::DacSettingsConfig &cfg,
+                           DacSettings* out) {
+      uint16_t n = cfg.nominator().read(fd);
+      uint16_t d = cfg.denom().read(fd);
+      uint8_t div = cfg.divide().read(fd);
+      if (n >= d || !(div == 0 || div == 1)) {
+        // corrupted data. overwrite with default
+        cfg.nominator().write(fd, out->nominator);
+        cfg.denom().write(fd, out->denominator);
+        cfg.divide().write(fd, out->divide ? 1 : 0);
+        return;
+      }
+      out->nominator = n;
+      out->denominator = d;
+      out->divide = div;
+    }
+
+  /// Checks a value in the config storage, and if it does not match the
+  /// expected, overwrites it.
+  template<unsigned N>
+  void maybe_update_string(int fd, const openlcb::StringConfigEntry<N>& e,
+                           string value) {
+    string old = e.read(fd);
+    if (old != value) {
+      e.write(fd, value);
+    }
+  }
+
+} factory_reset_helper;
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -416,28 +486,24 @@ class WatchForDccSignal : public StateFlowBase {
  */
 int appl_main(int argc, char* argv[]) {
   LOG(ALWAYS, "hello world");
-  
+
+  static bracz_custom::DetectorOptions opts(cfg.dev().detector_options(), 6);
+    
   LED_BLUE_Pin::set(false);
-  stack.check_version_and_factory_reset(cfg.seg().internal(), openlcb::EXPECTED_VERSION);
-  int fd = ::open(openlcb::CONFIG_FILENAME, O_RDWR);
+  int fd = stack.check_version_and_factory_reset(cfg.dev().internal(),
+                                                 openlcb::EXPECTED_VERSION);
   HASSERT(fd >= 0);
-  read_dac_settings(fd, cfg.seg().current().dac_occupancy(), &dac_occupancy);
-  read_dac_settings(fd, cfg.seg().current().dac_overcurrent(),
-                    &dac_overcurrent);
-  read_dac_settings(fd, cfg.seg().current().dac_railcom(), &dac_railcom);
 
   // default: 30, 10
   CountingDebouncer::Options occupancy_debouncer_opts{
-      cfg.seg().current().occupancy().count_total().read(fd),
-      cfg.seg().current().occupancy().min_active().read(fd)};
+      cfg.dev().current().occupancy().count_total().read(fd),
+      cfg.dev().current().occupancy().min_active().read(fd)};
 
   // default: 20 10
   CountingDebouncer::Options overcurrent_debouncer_opts{
-      cfg.seg().current().overcurrent().count_total().read(fd),
-      cfg.seg().current().overcurrent().min_active().read(fd)};
+      cfg.dev().current().overcurrent().count_total().read(fd),
+      cfg.dev().current().overcurrent().min_active().read(fd)};
 
-  static bracz_custom::DetectorOptions opts(cfg.seg().detector_options(), 6);
-  
   static bracz_custom::DetectorPort ports[6] = {
       {stack.node(), 0, fd, cfg.seg().detectors().entry<0>(), opts},
       {stack.node(), 1, fd, cfg.seg().detectors().entry<1>(), opts},
