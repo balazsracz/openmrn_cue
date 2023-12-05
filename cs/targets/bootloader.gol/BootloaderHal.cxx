@@ -382,6 +382,7 @@ void bootloader_hw_init()
     CAN->FA1R = 0x000000001;
     CAN->FMR &= ~CAN_FMR_FINIT;
 
+    extern char __flash_start;
     // Check if the bootloader reset vector is in the right place.
     uint32_t* p = (uint32_t*) &__flash_start;
     if (p[13] == 0 || p[13] == 0xffffffffu) {
