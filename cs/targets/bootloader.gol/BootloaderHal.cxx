@@ -35,6 +35,8 @@ GPIO_PIN(LED_OTHER_RAW, LedPin, F, 1);
 using LED_OTHER_Pin = ::InvertedGpio<LED_OTHER_RAW_Pin>;
 GPIO_PIN(SW1, GpioInputPU, B, 15);
 
+GPIO_PIN(GLB, GpioInputPU, B, 9);
+
 GPIO_PIN(LED_D15, GpioOutputSafeLow, B, 14);
 GPIO_PIN(LED_D16, GpioOutputSafeLow, B, 13);
 
@@ -466,9 +468,24 @@ bool request_bootloader()
     } else {
       Error_Handler(__LINE__);
     }
-    
-    // if the pin is low, forces the bootloader.
-    if (pressed || !SW1_Pin::get()) {
+
+    if (!SW1_Pin::get()) {
+      pressed = true;
+    }
+
+    if (!pressed && !GLB_Pin::get()) {
+      // waits for global pin. If the CAN-bus is transmitting , there will be a
+      // recessive bit every 10 bits or so. This waits for 12 to 30 bits long.
+      pressed = true;
+      for (unsigned i = 0; i < 7000; ++i) {
+        if (GLB_Pin::get()) {
+          pressed = false;
+          break;
+        }
+      }
+    }
+    // if pressed or the pin is low, forces the bootloader.
+    if (pressed) {
       LED_GREEN_Pin::set(1);
       LED_OTHER_Pin::set(1);
       LED_D16_Pin::set(1);
