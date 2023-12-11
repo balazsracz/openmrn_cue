@@ -225,8 +225,8 @@ void bootloader_reset_segments(void)
         }
     }
 
-    /* call static constructors */
-    __libc_init_array();
+    /* do not call static constructors for bootloader */
+    // __libc_init_array();
 }
 
 

@@ -234,6 +234,8 @@ void bootloader_hw_init()
 
     clock_setup();
 
+    bootloader_reset_segments();
+    
     /* enable peripheral clocks */
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
