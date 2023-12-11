@@ -54,10 +54,11 @@ bool check_application_checksum() {
   //
   // 1. the app was flashed directly. p[1] != p[13](==0) != b[1].
   // 2. the app was flashed by the bootloader. p[13] != p[1] == b[1].
+  // 3. flashing is incomplete, value is all FF's
   //
   // If the app was flashed directly the bootloader will not start at
   // startup. Therefore once we are here, the bootloader was jumped to by hand.
-  return (p[13] != 0 && p[13] != b[1]);
+  return (p[13] != 0 && p[13] != 0xffffffffu && p[13] != b[1]);
 }
 
 void custom_bload_hook() {
