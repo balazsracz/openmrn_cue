@@ -287,15 +287,26 @@ void raw_write_flash(const void *address, const void *data, uint32_t size_bytes)
     bootloader_led(LED_ACTIVE, 1);
 }
 
+static uint32_t saved_reset_vector = 0;
+
 void write_flash(const void *address, const void *data, uint32_t size_bytes)
 {
     extern char __flash_start;
     if (address == &__flash_start) {
-        // Saves reset vector.
-        memcpy(((uint8_t*)data) + 13 * 4, ((uint8_t*)data) + 4, 4);
+        // Saves reset vector: ((uint8_t*)data) + 13 * 4
+        memcpy(&saved_reset_vector, ((uint8_t*)data) + 4, 4);
+        // Jumps over two entries, which are already written with bootloader
+        // entry values.
         address = static_cast<const uint8_t*>(address) + 8;
         data = static_cast<const uint8_t*>(data) + 8;
         size_bytes -= 8;
+        // Writes the first part of the interrupt table, which should be entry
+        // 2..12, i.e., 11*4 bytes.
+        raw_write_flash(address, (uint32_t*)data, 11*4);
+        // Skips to entry 14, jumping over entry 13, which will be the reset
+        // vector
+        address = static_cast<const uint8_t*>(address) + 12 * 4;
+        size_bytes -= 12 * 4;
     }
     raw_write_flash(address, (uint32_t*)data, (size_bytes + 3) & ~3);
 }
@@ -312,6 +323,11 @@ void get_flash_page_info(const void *address, const void **page_start,
 
 uint16_t flash_complete(void)
 {
+    // Writes the saved reset vector to the interrupt vector table position
+    // 13. This signals to the next boot that the flash is complete.
+    extern char __flash_start;
+    char* address = &__flash_start;
+    raw_write_flash(address + 13 * 4, &saved_reset_vector, 4);
     return 0;
 }
 
