@@ -83,18 +83,19 @@ const char *host = "localhost";
 const char *device_path = nullptr;
 const char *filename = nullptr;
 int num_client = 0;
+// if true, sends global enter bootloader command.
+bool enter_bootloader = true;
 
 void usage(const char *e)
 {
     fprintf(stderr,
-        "Usage: %s ([-i destination_host] [-p port] | [-d device_path]) [-s "
-        "memory_space_id] [-c csum_algo [-m hw_magic] [-M hw_magic2]] [-r] [-t] [-x] "
-        "[-w dg_timeout] [-W stream_timeout] [-D dump_filename] "
-        "(-n nodeid | -a alias) -f filename\n",
+        "Usage: %s ([-i destination_host] [-p port] | [-d device_path])  "
+        " -c num_clients "
+        " [-r] "
+        " -f filename\n",
         e);
     fprintf(stderr, "Connects to an openlcb bus and performs the "
-                    "bootloader protocol on openlcb node with id nodeid with "
-                    "the contents of a given file.\n");
+                    "bootloader protocol using the broadcast method.\n");
     fprintf(stderr,
         "The bus connection will be through an OpenLCB HUB on "
         "destination_host:port with OpenLCB over TCP "
@@ -103,30 +104,10 @@ void usage(const char *e)
         "precedence over TCP host:port specification.");
     fprintf(stderr, "The default target is localhost:12021.\n");
     fprintf(stderr,
-        "\n\tnodeid should be a 12-char hex string with 0x prefix and "
-        "no separators, like '-b 0x05010101141F'\n");
+            "\n\tnum_clients defines how many clients should be reporting "
+            "their status after every block.\n");
     fprintf(stderr,
-        "\n\talias should be a 3-char hex string with 0x prefix and no "
-        "separators, like '-a 0x3F9'\n");
-    fprintf(stderr,
-        "\n\tmemory_space_id defines which memory space to write the "
-        "data into. Default is '-s 0xEF'.\n");
-    fprintf(stderr,
-        "\n\tcsum_algo defines the checksum algorithm to use. If "
-        "omitted, no checksumming is done before writing the "
-        "data. hw_magic and hw_magic2 are arguments to the checksum.\n");
-    fprintf(stderr,
-        "\n\t-r request the target to enter bootloader mode before sending "
-        "data\n");
-    fprintf(stderr,
-        "\n\tUnless -t is specified the target will be rebooted after "
-        "flashing complete.\n");
-    fprintf(stderr, "\n\t-x skips the PIP request and uses streams.\n");
-    fprintf(stderr,
-        "\n\t-w dg_timeout sets how many seconds to wait for a datagram "
-        "reply.\n");
-    fprintf(stderr,
-        "\n\t-D filename  writes the checksummed payload to the given file.\n");
+        "\n\t-r will skip the global enter bootloader command\n");
     exit(1);
 }
 
@@ -151,6 +132,9 @@ void parse_args(int argc, char *argv[])
                 break;
             case 'f':
                 filename = optarg;
+                break;
+            case 'r':
+                enter_bootloader = false;
                 break;
             case 'c':
                 num_client = atoi(optarg);
@@ -211,8 +195,10 @@ int appl_main(int argc, char *argv[])
     g_event_handler.add_entry(kGlobalEvent | 17,
                               openlcb::CallbackEventHandler::IS_CONSUMER);
 
-    // enter bootloader
-    openlcb::send_event(&g_node, kGlobalEvent | 14);
+    if (enter_bootloader) {
+      // enter bootloader
+      openlcb::send_event(&g_node, kGlobalEvent | 14);
+    }
 
     microsleep(350000);
     openlcb::send_event(&g_node, kGlobalEvent | 15);
