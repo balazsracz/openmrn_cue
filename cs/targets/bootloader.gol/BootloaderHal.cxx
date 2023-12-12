@@ -390,11 +390,14 @@ void bootloader_hw_init()
     extern char __flash_start;
     // Check if the bootloader reset vector is in the right place.
     uint32_t* p = (uint32_t*) &__flash_start;
-    if (p[13] == 0 || p[13] == 0xffffffffu) {
+    extern void reset_handler(void);
+    uint32_t bootdata = reinterpret_cast<uint32_t>(&reset_handler);
+    if (p[1] != bootdata) {
       // need to rewrite the first sector.
       memcpy(g_write_buffer, p, 0x800);
       erase_flash_page(p);
       write_flash(p, g_write_buffer, 0x800);
+      flash_complete();
     }
 }
 
