@@ -293,9 +293,10 @@ void write_flash(const void *address, const void *data, uint32_t size_bytes)
 {
     extern char __flash_start;
     if (address == &__flash_start) {
-        memcpy(saved_irq, data, 13*4);
-        size_bytes -= 13 * 4;
+        memcpy(saved_irq, data, 14*4);
+        size_bytes -= 14 * 4;
         saved_irq[13] = saved_irq[1];
+        address = static_cast<const uint8_t*>(address) + 14 * 4;
 
         /*
         // Saves reset vector: ((uint8_t*)data) + 13 * 4
