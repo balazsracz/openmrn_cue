@@ -260,6 +260,7 @@ void bootloader_hw_init()
     gpio_init.Alternate = GPIO_AF4_CAN;
     gpio_init.Pin = GPIO_PIN_8;
     HAL_GPIO_Init(GPIOB, &gpio_init);
+    gpio_init.Pull = GPIO_NOPULL;
     gpio_init.Pin = GPIO_PIN_9;
     HAL_GPIO_Init(GPIOB, &gpio_init);
 
