@@ -92,6 +92,7 @@ void custom_bload_hook() {
     {
         flush_flash_buffer();
     }
+    flash_complete();
     state_.request_reset = 1;
   } else if (memcmp(&state_.input_frame.data[0], kStart, 8) == 0) {
     // Got a firmware upgrade start.
