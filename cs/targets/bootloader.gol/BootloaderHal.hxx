@@ -297,6 +297,7 @@ void write_flash(const void *address, const void *data, uint32_t size_bytes)
         size_bytes -= 14 * 4;
         saved_irq[13] = saved_irq[1];
         address = static_cast<const uint8_t*>(address) + 14 * 4;
+        data = static_cast<const uint8_t*>(data) + 14 * 4;
 
         /*
         // Saves reset vector: ((uint8_t*)data) + 13 * 4
