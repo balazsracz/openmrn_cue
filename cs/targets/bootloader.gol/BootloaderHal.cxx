@@ -35,6 +35,8 @@ GPIO_PIN(LED_OTHER_RAW, LedPin, F, 1);
 using LED_OTHER_Pin = ::InvertedGpio<LED_OTHER_RAW_Pin>;
 GPIO_PIN(SW1, GpioInputPU, B, 15);
 
+GPIO_PIN(GLB, GpioInputPU, B, 9);
+
 GPIO_PIN(LED_D15, GpioOutputSafeLow, B, 14);
 GPIO_PIN(LED_D16, GpioOutputSafeLow, B, 13);
 
@@ -52,10 +54,11 @@ bool check_application_checksum() {
   //
   // 1. the app was flashed directly. p[1] != p[13](==0) != b[1].
   // 2. the app was flashed by the bootloader. p[13] != p[1] == b[1].
+  // 3. flashing is incomplete, value is all FF's
   //
   // If the app was flashed directly the bootloader will not start at
   // startup. Therefore once we are here, the bootloader was jumped to by hand.
-  return (p[13] != 0 && p[13] != b[1]);
+  return (p[13] != 0 && p[13] != 0xffffffffu && p[13] != b[1]);
 }
 
 void custom_bload_hook() {
@@ -89,6 +92,7 @@ void custom_bload_hook() {
     {
         flush_flash_buffer();
     }
+    flash_complete();
     state_.request_reset = 1;
   } else if (memcmp(&state_.input_frame.data[0], kStart, 8) == 0) {
     // Got a firmware upgrade start.
@@ -232,6 +236,8 @@ void bootloader_hw_init()
 
     clock_setup();
 
+    bootloader_reset_segments();
+    
     /* enable peripheral clocks */
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -254,6 +260,7 @@ void bootloader_hw_init()
     gpio_init.Alternate = GPIO_AF4_CAN;
     gpio_init.Pin = GPIO_PIN_8;
     HAL_GPIO_Init(GPIOB, &gpio_init);
+    gpio_init.Pull = GPIO_NOPULL;
     gpio_init.Pin = GPIO_PIN_9;
     HAL_GPIO_Init(GPIOB, &gpio_init);
 
@@ -382,13 +389,17 @@ void bootloader_hw_init()
     CAN->FA1R = 0x000000001;
     CAN->FMR &= ~CAN_FMR_FINIT;
 
+    extern char __flash_start;
     // Check if the bootloader reset vector is in the right place.
     uint32_t* p = (uint32_t*) &__flash_start;
-    if (p[13] == 0 || p[13] == 0xffffffffu) {
+    extern void reset_handler(void);
+    uint32_t bootdata = reinterpret_cast<uint32_t>(&reset_handler);
+    if (p[1] != bootdata) {
       // need to rewrite the first sector.
       memcpy(g_write_buffer, p, 0x800);
       erase_flash_page(p);
       write_flash(p, g_write_buffer, 0x800);
+      flash_complete();
     }
 }
 
@@ -465,9 +476,24 @@ bool request_bootloader()
     } else {
       Error_Handler(__LINE__);
     }
-    
-    // if the pin is low, forces the bootloader.
-    if (pressed || !SW1_Pin::get()) {
+
+    if (!SW1_Pin::get()) {
+      pressed = true;
+    }
+
+    if (!pressed && !GLB_Pin::get()) {
+      // waits for global pin. If the CAN-bus is transmitting , there will be a
+      // recessive bit every 10 bits or so. This waits for 12 to 30 bits long.
+      pressed = true;
+      for (unsigned i = 0; i < 7000; ++i) {
+        if (GLB_Pin::get()) {
+          pressed = false;
+          break;
+        }
+      }
+    }
+    // if pressed or the pin is low, forces the bootloader.
+    if (pressed) {
       LED_GREEN_Pin::set(1);
       LED_OTHER_Pin::set(1);
       LED_D16_Pin::set(1);

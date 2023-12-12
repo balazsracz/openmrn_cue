@@ -59,6 +59,7 @@ RELEASEDIR=./releases/$(shell date +%Y-%m-%d-%H-%M-%S)
 release: $(EXECUTABLE)$(EXTENTION) $(EXECUTABLE).bin $(EXECUTABLE).lst
 	mkdir -p $(RELEASEDIR)
 	cp -fax $(EXECUTABLE){$(EXTENTION),.bin,.lst,.map} $(RELEASEDIR)
+	rm -f latest-release
 	ln -sf $(RELEASEDIR) latest-release
 
 release-flash:

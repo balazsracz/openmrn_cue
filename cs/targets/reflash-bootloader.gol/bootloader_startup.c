@@ -43,7 +43,7 @@
 /* prototypes */
 extern unsigned long *__stack;
 extern void reset_handler(void);
-extern void bootloader_entry(void);
+extern void reflash_bootloader_entry(void);
 static void nmi_handler(void);
 static void hard_fault_handler(void);
 extern void SVC_Handler(void);
@@ -163,11 +163,24 @@ void (* const __interrupt_vector[])(void) =
 };
 
 /** Alternate Exception table at the bootloader segment */
-__attribute__ ((section(".alt_interrupt_vector")))
-void (* const __alt_interrupt_vector[])(void) =
-{
-    (void (*)(void))(&__stack),      /**<   0 initial stack pointer */
-    reset_handler,                   /**<   1 reset vector */
+__attribute__((section(".alt_interrupt_vector")))  //
+void (*const __alt_interrupt_vector[])(void) = {
+    (void (*)(void))(&__stack), /**<   0 initial stack pointer */
+    reset_handler,              /**<   1 reset vector */
+    0,                          /**<   2 non-maskable interrupt */
+    0,                          /**<   3 hard fault */
+    0,                          /**<   4 reserved */
+    0,                          /**<   5 reserved */
+    0,                          /**<   6 reserved */
+    0,                          /**<   7 reserved */
+    0,                          /**<   8 reserved */
+    0,                          /**<   9 reserved */
+    0,                          /**<  10 reserved */
+    0,                          /**<  11 SV call */
+    0,                          /**<  12 reservedd */
+    (void (*)(void))0xffffffff, /**<  13 reserved -- bootloader appentry */
+    0,                          /**<  14 pend SV */
+    0,                          /**<  15 system tick */
 };
 
 extern unsigned long __data_section_table;
@@ -186,7 +199,7 @@ uint32_t HAL_RCC_GetSysClockFreq(void)
 
 void reset_handler(void)
 {
-    bootloader_entry();
+    reflash_bootloader_entry();
     for ( ; /* forever */ ;)
     {
         /* if we ever return from main, loop forever */
