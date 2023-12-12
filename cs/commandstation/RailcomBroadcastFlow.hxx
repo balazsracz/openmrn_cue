@@ -64,6 +64,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
   Action entry() override {
     auto channel = message()->data()->channel;
     if (channel == 0xff) {
+      // occupancy port
       uint32_t new_values = message()->data()->ch1Data[0];
       for (unsigned i = 0; i < size_; ++i) {
         channels_[i].set_occupancy(new_values & (1 << i));
