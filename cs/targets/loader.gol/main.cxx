@@ -45,6 +45,7 @@
 #include "openlcb/Node.hxx"
 #include "openlcb/IfCan.hxx"
 #include "openlcb/AliasAllocator.hxx"
+#include "openlcb/BootloaderClient.hxx"
 #include "openlcb/DefaultNode.hxx"
 #include "openlcb/EventService.hxx"
 #include "openlcb/CallbackEventHandler.hxx"
@@ -71,6 +72,8 @@ openlcb::CanDatagramService g_datagram_can(&g_if_can, 10, 2);
 static openlcb::AddAliasAllocator g_alias_allocator(NODE_ID, &g_if_can);
 openlcb::DefaultNode g_node(&g_if_can, NODE_ID);
 openlcb::EventService g_event_service{&g_if_can};
+openlcb::BootloaderClient bootloader_client(
+    &g_node, &g_datagram_can, &g_if_can);
 
 namespace openlcb
 {
@@ -84,7 +87,9 @@ const char *device_path = nullptr;
 const char *filename = nullptr;
 int num_client = 0;
 // if true, sends global enter bootloader command.
-bool enter_bootloader = true;
+bool global_enter_bootloader = true;
+vector<openlcb::NodeID> reboot_nodes;
+openlcb::NodeID nodeid_base = 0x050101018500;
 
 void usage(const char *e)
 {
@@ -92,7 +97,7 @@ void usage(const char *e)
         "Usage: %s ([-i destination_host] [-p port] | [-d device_path])  "
         " -c num_clients "
         " [-r] "
-        " -f filename\n",
+        " -f filename [reboot_node reboot_node ...]\n",
         e);
     fprintf(stderr, "Connects to an openlcb bus and performs the "
                     "bootloader protocol using the broadcast method.\n");
@@ -108,6 +113,8 @@ void usage(const char *e)
             "their status after every block.\n");
     fprintf(stderr,
         "\n\t-r will skip the global enter bootloader command\n");
+    fprintf(stderr,
+        "\n\treboot_node are one-byte hex suffixes of node IDs that will be rebooted into bootloader mode. The first 5 bytes are fixed.\n");
     exit(1);
 }
 
@@ -134,7 +141,7 @@ void parse_args(int argc, char *argv[])
                 filename = optarg;
                 break;
             case 'r':
-                enter_bootloader = false;
+                global_enter_bootloader = false;
                 break;
             case 'c':
                 num_client = atoi(optarg);
@@ -147,6 +154,13 @@ void parse_args(int argc, char *argv[])
     if (!filename)
     {
         usage(argv[0]);
+    }
+    extern int optind;
+    while (optind < argc) {
+      openlcb::NodeID nid = nodeid_base;
+      auto ending = strtol(argv[optind], nullptr, 16);
+      reboot_nodes.push_back(nid | ending);
+      ++optind;
     }
 }
 
@@ -186,6 +200,30 @@ int appl_main(int argc, char *argv[])
     g_executor.start_thread("g_executor", 0, 1024);
     usleep(400000);
 
+    openlcb::BootloaderResponse response;
+    SyncNotifiable n;
+    for (const auto &id : reboot_nodes) {
+      Buffer<openlcb::BootloaderRequest> *b;
+      mainBufferPool->alloc(&b);
+      b->data()->dst.alias = 0;
+      b->data()->dst.id = id;
+      b->data()->memory_space = openlcb::MemoryConfigDefs::SPACE_FIRMWARE;
+      b->data()->offset = 0;
+      b->data()->response = &response;
+      b->data()->request_reboot = true;
+      b->data()->request_reboot_after = false;
+      b->data()->skip_pip = true;
+      b->data()->data.clear();
+      BarrierNotifiable bn(&n);
+      b->set_done(&bn);
+
+      fprintf(stderr, "Rebooting 0x%012" PRIx64 "... ", id);
+      bootloader_client.send(b);
+      n.wait_for_notification();
+
+      fprintf(stderr, " %04x\n", response.error_code);
+    }
+
     string payload = read_file_to_string(filename);
     printf("Read %" PRIdPTR " bytes from file %s.\n", payload.size(),
         filename);
@@ -195,7 +233,7 @@ int appl_main(int argc, char *argv[])
     g_event_handler.add_entry(kGlobalEvent | 17,
                               openlcb::CallbackEventHandler::IS_CONSUMER);
 
-    if (enter_bootloader) {
+    if (global_enter_bootloader) {
       // enter bootloader
       openlcb::send_event(&g_node, kGlobalEvent | 14);
     }
