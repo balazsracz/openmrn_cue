@@ -90,13 +90,16 @@ int num_client = 0;
 bool global_enter_bootloader = true;
 vector<openlcb::NodeID> reboot_nodes;
 openlcb::NodeID nodeid_base = 0x050101018500;
+bool osc_test = false;
+unsigned osc_period = 100;
+unsigned osc_count = 10;
 
 void usage(const char *e)
 {
     fprintf(stderr,
         "Usage: %s ([-i destination_host] [-p port] | [-d device_path])  "
         " -c num_clients "
-        " [-r] "
+        " [-r] [-o osc_test_count]"
         " -f filename [reboot_node reboot_node ...]\n",
         e);
     fprintf(stderr, "Connects to an openlcb bus and performs the "
@@ -115,13 +118,15 @@ void usage(const char *e)
         "\n\t-r will skip the global enter bootloader command\n");
     fprintf(stderr,
         "\n\treboot_node are one-byte hex suffixes of node IDs that will be rebooted into bootloader mode. The first 5 bytes are fixed.\n");
+    fprintf(stderr,
+        "\n\n\t -o count will run no bootload, just an oscillator calibration test, with count packets of 100 msec each.\n");
     exit(1);
 }
 
 void parse_args(int argc, char *argv[])
 {
     int opt;
-    while ((opt = getopt(argc, argv, "hp:i:d:f:c:r")) >= 0)
+    while ((opt = getopt(argc, argv, "hp:i:d:f:c:ro:")) >= 0)
     {
         switch (opt)
         {
@@ -146,12 +151,16 @@ void parse_args(int argc, char *argv[])
             case 'c':
                 num_client = atoi(optarg);
                 break;
+            case 'o':
+                osc_test = true;
+                osc_count = atoi(optarg);
+                break;
             default:
-                fprintf(stderr, "Unknown option %c\n", opt);
-                usage(argv[0]);
+              fprintf(stderr, "Unknown option %c\n", opt);
+              usage(argv[0]);
         }
     }
-    if (!filename)
+    if (!osc_test && !filename)
     {
         usage(argv[0]);
     }
@@ -200,8 +209,47 @@ int appl_main(int argc, char *argv[])
     g_executor.start_thread("g_executor", 0, 1024);
     usleep(400000);
 
-    openlcb::BootloaderResponse response;
     SyncNotifiable n;
+
+    if (osc_test) {
+      printf("Doing osc calibration with %d packets of %d msec apart...\n",
+             osc_count, osc_period);
+      class OscTimer : public ::Timer {
+       public:
+        OscTimer(Notifiable* done)
+            : ::Timer(g_executor.active_timers()),
+            done_(done) {
+          start(MSEC_TO_NSEC(osc_period));
+        }
+
+        long long timeout() override {
+          uint64_t ev = 0x09000DFF00000000 | 30;
+          if (remaining < 0) {
+            // first.
+            remaining = osc_count;
+            ev |= (0x80) << 16;
+          } else if (remaining == 0) {
+            done_->notify();
+            return NONE;
+          }
+          --remaining;
+          ev |= (remaining) << 16;
+          ev |= (osc_period / 10) << 24;
+          openlcb::send_event(&g_node, ev);
+          return RESTART;
+        }
+
+       private:
+        int remaining{-1};
+        Notifiable* done_;
+      } osc_timer(&n);
+      n.wait_for_notification();
+
+      printf("Done\n");
+      return 0;
+    }
+    
+    openlcb::BootloaderResponse response;
     for (const auto &id : reboot_nodes) {
       Buffer<openlcb::BootloaderRequest> *b;
       mainBufferPool->alloc(&b);
