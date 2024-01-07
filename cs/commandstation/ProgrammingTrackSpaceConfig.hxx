@@ -40,6 +40,8 @@ static const char OPERATING_MODE_MAP_VALUES[] = R"(
 <relation><property>1</property><value>Direct mode</value></relation>
 <relation><property>2</property><value>POM mode</value></relation>
 <relation><property>3</property><value>Paged mode</value></relation>
+<relation><property>4</property><value>POM for Basic Accessory</value></relation>
+<relation><property>5</property><value>POM for Ext Accessory</value></relation>
 <relation><property>10</property><value>Advanced mode</value></relation>
 )";
 
@@ -67,6 +69,8 @@ enum OperatingMode {
   DIRECT_MODE = 1,
   POM_MODE = 2,
   PAGED_MODE = 3,
+  POM_ACCY_BASIC_MODE = 4,
+  POM_ACCY_EXT_MODE = 5,
   ADVANCED = 10,
 };
 
@@ -90,6 +94,11 @@ CDI_GROUP_ENTRY(bit_value_string, openlcb::StringConfigEntry<24>,
                 Name("Read Bits Decomposition"),
                 Description("Hit Refresh on this line after reading a CV value "
                             "to see which bits are set."));
+CDI_GROUP_ENTRY(accy_address, openlcb::Uint32ConfigEntry,
+                Name("DCC Accy address"),
+                Description("For Accessory POM, this contains the accessory "
+                            "address to program (user address), 1..2048."),
+                Default(1), Min(1), Max(2047));
 CDI_GROUP_ENTRY(advanced, ProgrammingTrackSpaceConfigAdvanced,
                 Name("Advanced Settings"));
 struct Shadow;
@@ -102,6 +111,8 @@ struct ProgrammingTrackSpaceConfig::Shadow {
   uint32_t value;
   uint32_t bit_write_value;
   char bit_value_string[24];
+  // This is user-facing address, 1 to 2048
+  uint32_t accy_address;
   uint32_t verify_repeats;
   uint32_t verify_cooldown_repeats;
 };

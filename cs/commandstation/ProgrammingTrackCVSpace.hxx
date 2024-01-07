@@ -82,6 +82,7 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     if (node == node_) {
       if (!enableServiceMode_) return false;
       pomAddressType_ = dcc::TrainAddressType::UNSPECIFIED;
+      pomAddress_ = 0xFFFFFFFFu;
       return true;
     }
     openlcb::NodeID id = node->node_id();
@@ -196,12 +197,18 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
       // The virtual address space.
       return true;
     }
+    uint8_t hi = (*address) >> 24;
+    unsigned accy_address = 0;
+    if (hi == 0x4 || hi == 0x5) { // accy pom
+      accy_address = ((*address) & 0xFFFFFFu) >> 10;
+      pomAddress_ = accy_address;
+      *address &= ~(0x7FFu << 10);  // mask out 11 bits.
+    }
     bool valid_cv = (*address & 0xFFFFFFu) < 1024;
     if (!valid_cv) {
       *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
       return false;
     }
-    uint8_t hi = (*address) >> 24;
     // Checks for bit operations.
     if ((hi & 0xF8) == (ADDRESS_PREFIX_SVC_BITOP >> 24)) {
       bitOperation_ = true;
@@ -236,13 +243,29 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
       case 0x03:
         store_.mode = htobe32(ProgrammingTrackSpaceConfig::PAGED_MODE);
         break;
+      case 0x04:
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_ACCY_BASIC_MODE);
+        store_.accy_address =
+            htobe32(dcc::Defs::accy_address_binary_to_user(accy_address));
+        pomAddressType_ = dcc::TrainAddressType::DCC_ACCY_BASIC_OUTPUT;
+        break;
+      case 0x05:
+        store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_ACCY_EXT_MODE);
+        store_.accy_address =
+            htobe32(dcc::Defs::accy_address_binary_to_user(accy_address));
+        pomAddressType_ = dcc::TrainAddressType::DCC_ACCY_EXT;
+        break;
       default:
         *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
         return false;
     }
     *address &= 0xFFFFFFu;
     if (!enableServiceMode_ &&
-        store_.mode != htobe32(ProgrammingTrackSpaceConfig::POM_MODE)) {
+        store_.mode != htobe32(ProgrammingTrackSpaceConfig::POM_MODE) &&
+        store_.mode !=
+            htobe32(ProgrammingTrackSpaceConfig::POM_ACCY_BASIC_MODE) &&
+        store_.mode !=
+            htobe32(ProgrammingTrackSpaceConfig::POM_ACCY_EXT_MODE)) {
       store_.mode = htobe32(ProgrammingTrackSpaceConfig::POM_MODE);
       *error = ProgrammingTrackFrontend::ERROR_PGMTRACK_DISABLED;
       return false;
@@ -297,9 +320,23 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
           ProgrammingTrackFrontendRequest::PAGED_WRITE_BYTE, be32toh(store_.cv),
           be32toh(store_.value));
     }
-    if (mode == ProgrammingTrackSpaceConfig::POM_MODE) {
+    if (mode == ProgrammingTrackSpaceConfig::POM_ACCY_EXT_MODE) {
+      pomAddressType_ = dcc::TrainAddressType::DCC_ACCY_EXT;
+      pomAddress_ =
+          dcc::Defs::accy_address_user_to_binary(be32toh(store_.accy_address));
+    }
+    if (mode == ProgrammingTrackSpaceConfig::POM_ACCY_BASIC_MODE) {
+      pomAddressType_ = dcc::TrainAddressType::DCC_ACCY_BASIC_OUTPUT;
+      pomAddress_ =
+          dcc::Defs::accy_address_user_to_binary(be32toh(store_.accy_address));
+    }
+    if (mode == ProgrammingTrackSpaceConfig::POM_MODE ||
+        mode == ProgrammingTrackSpaceConfig::POM_ACCY_EXT_MODE ||
+        mode == ProgrammingTrackSpaceConfig::POM_ACCY_BASIC_MODE) {
       if (pomAddressType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-          pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
+          pomAddressType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS ||
+          pomAddressType_ == dcc::TrainAddressType::DCC_ACCY_EXT ||
+          pomAddressType_ == dcc::TrainAddressType::DCC_ACCY_BASIC_OUTPUT) {
         if (bitOperation_) {
           return invoke_subflow_and_wait(
               frontend_, STATE(cv_write_done),
@@ -438,18 +475,24 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
 
   /// Put this address prefix to request default mode operations (direct mode
   /// on program track, POM on mainline).
-  static constexpr uint32_t ADDRESS_PREFIX_DEFAULT_MODE = 0x0000000;
+  static constexpr uint32_t ADDRESS_PREFIX_DEFAULT_MODE = 0x0 << 24;
   /// Put this address prefix to request direct mode operations on program
   /// track.
-  static constexpr uint32_t ADDRESS_PREFIX_DIRECT_MODE = 0x1000000;
+  static constexpr uint32_t ADDRESS_PREFIX_DIRECT_MODE = 0x1 << 24;
   /// Put this address prefix to request POM operations on mainline.
-  static constexpr uint32_t ADDRESS_PREFIX_POM_MODE = 0x2000000;
+  static constexpr uint32_t ADDRESS_PREFIX_POM_MODE = 0x2 << 24;
   /// Put this address prefix to request paged mode operations on program
   /// track.
-  static constexpr uint32_t ADDRESS_PREFIX_PAGED_MODE = 0x3000000;
+  static constexpr uint32_t ADDRESS_PREFIX_PAGED_MODE = 0x3 << 24;
+  /// Put this address prefix to request basic accessory program on main
+  /// operation.
+  static constexpr uint32_t ADDRESS_PREFIX_POM_ACCY_BASIC_MODE = 0x4 << 24;
+  /// Put this address prefix to request extended accessory program on main
+  /// operation.
+  static constexpr uint32_t ADDRESS_PREFIX_POM_ACCY_EXT_MODE = 0x5 << 24;
   /// Put this address prefix to request direct mode bit operations on program
   /// track.
-  static constexpr uint32_t ADDRESS_PREFIX_SVC_BITOP = 0x10000000;
+  static constexpr uint32_t ADDRESS_PREFIX_SVC_BITOP = 0x10 << 24;
   /// The bit number should be shifted this many bits.
   static constexpr uint32_t SVC_BITOP_BITSHIFT = 24;
   
