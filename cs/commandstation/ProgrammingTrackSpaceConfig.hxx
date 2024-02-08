@@ -43,6 +43,26 @@ static const char OPERATING_MODE_MAP_VALUES[] = R"(
 <relation><property>10</property><value>Advanced mode</value></relation>
 )";
 
+static const char EXT_MODE_MAP_VALUES[] = R"(
+<relation><property>0</property><value>Disabled</value></relation>
+<relation><property>256</property><value>Direct mode</value></relation>
+<relation><property>513</property><value>POM mode (Short address)</value></relation>
+<relation><property>514</property><value>POM mode (Long address)</value></relation>
+<relation><property>516</property><value>POM mode (Basic accy)</value></relation>
+<relation><property>517</property><value>POM mode (Ext accy)</value></relation>
+<relation><property>768</property><value>Paged mode</value></relation>
+<relation><property>2560</property><value>Advanced mode</value></relation>
+)";
+
+
+static const char ADDRESS_TYPE_MAP_VALUES[] = R"(
+<relation><property>0</property><value>Service mode</value></relation>
+<relation><property>1</property><value>Short address (DCC Mobile decoder)</value></relation>
+<relation><property>2</property><value>Long address (DCC Mobile decoder)</value></relation>
+<relation><property>4</property><value>Basic Accessory Decoder</value></relation>
+<relation><property>5</property><value>Extended Accessory Decoder</value></relation>
+)";
+
 CDI_GROUP(ProgrammingTrackSpaceConfigAdvanced);
 CDI_GROUP_ENTRY(
     repeat_verify, openlcb::Uint32ConfigEntry,
@@ -62,24 +82,33 @@ CDI_GROUP(ProgrammingTrackSpaceConfig, Segment(openlcb::MemoryConfigDefs::SPACE_
           Description("Use this component to read and write CVs on the "
                       "programming track of the command station."));
 
-enum OperatingMode {
+enum OperatingMode : uint8_t {
   DISABLED = 0,
   DIRECT_MODE = 1,
   POM_MODE = 2,
   PAGED_MODE = 3,
+  POM_ACCY_BASIC_MODE = 4,
+  POM_ACCY_EXT_MODE = 5,
   ADVANCED = 10,
 };
 
-CDI_GROUP_ENTRY(mode, openlcb::Uint32ConfigEntry, Name("Operating Mode"), MapValues(OPERATING_MODE_MAP_VALUES));
+CDI_GROUP_ENTRY(mode, openlcb::Uint16ConfigEntry, Name("Operating Mode"), MapValues(EXT_MODE_MAP_VALUES));
+CDI_GROUP_ENTRY(address_type, openlcb::Uint8ConfigEntry, Offset(-1), Name("Address type"), MapValues(ADDRESS_TYPE_MAP_VALUES));
+CDI_GROUP_ENTRY(dcc_address, openlcb::Uint16ConfigEntry,
+                Name("DCC address"),
+                Description("For Accessory POM, this contains the accessory "
+                            "address to program (user address), 1..2048."),
+                Default(3), Min(0), Max(10239));
 CDI_GROUP_ENTRY(cv, openlcb::Uint32ConfigEntry, Name("CV Number"), Description("Number of CV to read or write (1..1024)."), Default(0), Min(0), Max(1024));
 CDI_GROUP_ENTRY(
-    value, openlcb::Uint32ConfigEntry, Name("CV Value"),
+    value, openlcb::Uint8ConfigEntry, Name("CV Value"),
     Description(
         "Set 'Operating Mode' and 'CV Number' first, then: hit 'Refresh' to "
         "read the entire CV, or enter a value and hit 'Write' to set the CV."),
     Default(0), Min(0), Max(255));
+CDI_GROUP_ENTRY(reserved1, openlcb::EmptyGroup<1>);
 CDI_GROUP_ENTRY(
-    bit_write_value, openlcb::Uint32ConfigEntry, Name("Bit Change"),
+    bit_write_value, openlcb::Uint16ConfigEntry, Name("Bit Change"),
     Description(
         "Set 'Operating Mode' and 'CV Number' first, then: write 1064 to set "
         "the single bit whose value is 64, or 2064 to clear that bit. Write "
@@ -97,10 +126,18 @@ CDI_GROUP_END();
 
 /// This shadow structure is declared to be parallel to the CDI entries.
 struct ProgrammingTrackSpaceConfig::Shadow {
-  uint32_t mode;
+  /// operating mode, of enum OperatingMode
+  uint8_t mode;
+  /// DCC address type, enum dcc::TrainAddressType
+  uint8_t address_type;
+  // DCC address, user facing (accy has 1..2048)
+  uint16_t dcc_address;
+  // CV number to access (user-facing, 1..1024)
   uint32_t cv;
-  uint32_t value;
-  uint32_t bit_write_value;
+  // CV value to read/write
+  uint8_t value;
+  uint8_t reserved[1];
+  uint16_t bit_write_value;
   char bit_value_string[24];
   uint32_t verify_repeats;
   uint32_t verify_cooldown_repeats;

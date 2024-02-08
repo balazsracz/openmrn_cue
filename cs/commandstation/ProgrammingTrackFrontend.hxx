@@ -622,12 +622,25 @@ class ProgrammingTrackFrontend
   Action fill_pom_write_byte_packet() {
     auto b = get_buffer_deleter(get_allocation_result(track_));
     b->data()->start_dcc_packet();
-    if (request()->addrType_ == dcc::TrainAddressType::DCC_SHORT_ADDRESS) {
-      b->data()->add_dcc_address(dcc::DccShortAddress(request()->dccAddress_));
-    } else if (request()->addrType_ == dcc::TrainAddressType::DCC_LONG_ADDRESS) {
-      b->data()->add_dcc_address(dcc::DccLongAddress(request()->dccAddress_));
-    } else {
-      return return_with_error(ERROR_INVALID_ARGS);
+    switch(request()->addrType_) {
+      case dcc::TrainAddressType::DCC_SHORT_ADDRESS:
+        b->data()->add_dcc_address(
+            dcc::DccShortAddress(request()->dccAddress_));
+        break;
+      case dcc::TrainAddressType::DCC_LONG_ADDRESS:
+        b->data()->add_dcc_address(dcc::DccLongAddress(request()->dccAddress_));
+        break;
+      case dcc::TrainAddressType::DCC_ACCY_BASIC_OUTPUT:
+        b->data()->add_dcc_accy_address(true, request()->dccAddress_);
+        b->data()->set_dcc_basic_accy_params(false, true);
+        break;
+      case dcc::TrainAddressType::DCC_ACCY_EXT:
+        b->data()->add_dcc_accy_address(false, request()->dccAddress_);
+        break;
+      case dcc::TrainAddressType::MM:
+      case dcc::TrainAddressType::UNSPECIFIED:
+      case dcc::TrainAddressType::UNSUPPORTED:
+        return return_with_error(ERROR_INVALID_ARGS);
     }
     b->data()->add_dcc_pom_write1(request()->cvOffset_, request()->value_);
     b->data()->feedback_key = reinterpret_cast<uintptr_t>(this);
