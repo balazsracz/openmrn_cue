@@ -81,7 +81,6 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     }
     if (node == node_) {
       isMainNode_ = true;
-      if (!enableServiceMode_) return false;
       return true;
     }
     isMainNode_ = false;
