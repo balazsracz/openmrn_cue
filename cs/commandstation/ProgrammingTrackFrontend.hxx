@@ -293,7 +293,7 @@ class ProgrammingTrackFrontend
     // When we have always-on program track, these initial resets are sent out
     // only once. Later operations are started immediately.
     return invoke_subflow_and_wait(backend_, STATE(enter_service_mode_done),
-                                   ProgrammingTrackRequest::SEND_RESET, 25);
+                                   ProgrammingTrackRequest::SEND_RESET, 85);
   }
 
   Action enter_service_mode_done() {
