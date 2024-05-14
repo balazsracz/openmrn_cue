@@ -285,10 +285,16 @@ class ProgrammingTrackFrontend
   Action send_initial_resets() {
     auto b = get_buffer_deleter(full_allocation_result(backend_));
     if (b->data()->hasShortCircuit_) return call_immediately(STATE(pgm_short));
-    // RCN-216 needs 25 reset packets at startup of service mode. In reality
-    // this will make us send more than 25, because there is usually 6 or 7
-    // additional reset packets in the queue when we get back the control from
-    // the backend.
+    // RCN-216 needs 25 reset packets at startup of service mode.
+    //
+    // Some decoders have significant onboard capacitance (such as Keep-Alive).
+    // This capacitance takes a charge current right after startup, and can
+    // cause false triggers of programming track short conditions. The reason is
+    // that the standard limit on maximum program track current is very low
+    // (100 mA), and the capacitor charge current + decoder consumption + ACK
+    // energy can trip the limit. As a workaround, we leave significantly more
+    // time at startup to wait for the capacitor to charge. With 85 reset
+    // packets we found that the first ACK comes at 800 msec.
     //
     // When we have always-on program track, these initial resets are sent out
     // only once. Later operations are started immediately.
