@@ -191,6 +191,21 @@ struct FindProtocolDefs {
    */
   static openlcb::EventId input_to_allocate(const string& input);
 
+  /** Translates a sequence of input digits punched in by a headless throttle
+   * to a request to issue on the OpenLCB bus. This request will be the
+   * recommendation issued by the Train Search Protocol Technical Note for
+   * throttles that come without a screen. It is an allocate request without a
+   * restriction to address only.
+   *
+   * @param input is the sequence of numbers that the user typed. This is
+   * expected to have form like '415' or '021' or '474014'. You can add a
+   * leading zero to force DCC long address, two leading zeros or a trailing M
+   * to force a Marklin locomotive.
+   * @return an event ID representing the search/allocate. This event ID will
+   * be zero if the user input is invalid.
+   */
+  static openlcb::EventId input_to_headless(const string& input);
+  
   /// Specifies what kind of train to allocate when the drive mode is left as
   /// default / unspecified.
   static uint8_t DEFAULT_DRIVE_MODE;
