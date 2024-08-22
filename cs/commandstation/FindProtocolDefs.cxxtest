@@ -32,8 +32,8 @@
  * @date 2 Jul 2016
  */
 
-#include "utils/test_main.hxx"
 #include "commandstation/FindProtocolDefs.hxx"
+#include "utils/test_main.hxx"
 
 namespace commandstation {
 namespace {
@@ -59,7 +59,7 @@ string I2A(const string& input) {
 }
 
 string dcc_mode_to_string(DccMode mode) {
-  switch((unsigned)mode) {
+  switch ((unsigned)mode) {
     case DCCMODE_DEFAULT:
       return "Not Specified";
     case DCCMODE_OLCBUSER:
@@ -72,13 +72,13 @@ string dcc_mode_to_string(DccMode mode) {
   if ((mode & DCC_ANY_MASK) == DCC_ANY) {
     string ret = "DCC";
     switch (mode & DCC_SS_MASK) {
-      case DCC_14 & DCC_SS_MASK:
+      case DCC_14& DCC_SS_MASK:
         ret += " 14-speed";
         break;
-      case DCC_28 & DCC_SS_MASK:
+      case DCC_28& DCC_SS_MASK:
         ret += " 28-speed";
         break;
-      case DCC_128 & DCC_SS_MASK:
+      case DCC_128& DCC_SS_MASK:
         ret += " 128-speed";
         break;
     }
@@ -89,14 +89,14 @@ string dcc_mode_to_string(DccMode mode) {
   }
   if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY) {
     string ret = "Marklin-Motorola";
-    switch(mode & MARKLIN_V_MASK) {
-      case MARKLIN_OLD & MARKLIN_V_MASK:
+    switch (mode & MARKLIN_V_MASK) {
+      case MARKLIN_OLD& MARKLIN_V_MASK:
         ret += " I";
         break;
-      case MARKLIN_NEW & MARKLIN_V_MASK:
+      case MARKLIN_NEW& MARKLIN_V_MASK:
         ret += " II";
         break;
-      case MARKLIN_TWOADDR & MARKLIN_V_MASK:
+      case MARKLIN_TWOADDR& MARKLIN_V_MASK:
         ret += " II w/two addresses";
         break;
     }
@@ -105,10 +105,29 @@ string dcc_mode_to_string(DccMode mode) {
   return "n/a";
 }
 
-uint8_t match(const string& input, bool query, const string& name,
+enum MatchType {
+  /// Query. Issues a search on a throttle with screen.
+  QRY = 1,
+  /// Allocate. Issues an allocate on a throttles with a screen.
+  ALC,
+  /// Headless. Issues a search+allocate on a throttle with no screen.
+  HDL
+};
+
+uint8_t match(const string& input, MatchType query_type, const string& name,
               unsigned address, DccMode mode) {
-  auto event = query ? FindProtocolDefs::input_to_search(input)
-                     : FindProtocolDefs::input_to_allocate(input);
+  openlcb::EventId event = 0;
+  switch (query_type) {
+    case QRY:
+      event = FindProtocolDefs::input_to_search(input);
+      break;
+    case ALC:
+      event = FindProtocolDefs::input_to_allocate(input);
+      break;
+    case HDL:
+      event = FindProtocolDefs::input_to_headless(input);
+      break;
+  }
   auto ret = FindProtocolDefs::match_query_to_train(event, name, address, mode);
   LOG(INFO, "%s\t%016llX\t%u\t\"%s\"\t%s", ret ? "   match" : "no match",
       (unsigned long long)event, address, name.c_str(),
@@ -161,107 +180,249 @@ TEST(InputToAllocTest, simplexlate) {
 typedef FindProtocolDefs F;
 
 TEST(MatchTest, testmatch) {
-  EXPECT_EQ(0, match("13", true, "FooBar", 45, DCC_ANY));
-  EXPECT_EQ(0, match("13", true, "FooBar", 4513, DCC_ANY));
-  EXPECT_EQ(F::EXACT | F::MATCH_ANY,
-            match("13", true, "FooBar13", 45, DCC_ANY));
-  EXPECT_EQ(F::MATCH_ANY,
-            match("13", true, "FooBar135", 45, DCC_ANY));
+  EXPECT_EQ(0, match("13", QRY, "FooBar", 45, DCC_ANY));
+  EXPECT_EQ(0, match("13", QRY, "FooBar", 4513, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY, match("13", QRY, "FooBar13", 45, DCC_ANY));
+  EXPECT_EQ(F::MATCH_ANY, match("13", QRY, "FooBar135", 45, DCC_ANY));
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("13", true, "FooBar777", 13, DCC_128));
+            match("13", QRY, "FooBar777", 13, DCC_128));
 
   EXPECT_EQ(F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,
-            match("013", true, "FooBar777", 13, DCC_DEFAULT_LONG_ADDRESS));
-  EXPECT_EQ(0,
-            match("013", true, "FooBar777", 13, DCC_28));
-  EXPECT_EQ(0, // allocate will not match due to short vs long
-            match("013", false, "FooBar777", 13, DCC_ANY));
+            match("013", QRY, "FooBar777", 13, DCC_DEFAULT_LONG_ADDRESS));
+  EXPECT_EQ(0, match("013", QRY, "FooBar777", 13, DCC_28));
+  EXPECT_EQ(0,  // allocate will not match due to short vs long
+            match("013", ALC, "FooBar777", 13, DCC_ANY));
 
   EXPECT_EQ(0,  // allocate will not match due to marklin vs dcc
-            match("13M", false, "FooBar777", 13, DCC_ANY));
+            match("13M", ALC, "FooBar777", 13, DCC_ANY));
   EXPECT_NE(0,  // this is marklin vs marklin
-            match("13M", false, "FooBar777", 13, MARKLIN_NEW));
+            match("13M", ALC, "FooBar777", 13, MARKLIN_NEW));
 
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("013", true, "FooBar777", 13, DCC_14_LONG_ADDRESS));
+            match("013", QRY, "FooBar777", 13, DCC_14_LONG_ADDRESS));
 
   // Empty query should match all trains
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("", true, "FooBar", 13, DCC_14_LONG_ADDRESS));
+            match("", QRY, "FooBar", 13, DCC_14_LONG_ADDRESS));
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("", true, "FooBar777", 13, DCC_128));
+            match("", QRY, "FooBar777", 13, DCC_128));
+}
+
+TEST(MatchTest, testheadless) {
+  EXPECT_EQ(0, match("13", HDL, "FooBar", 45, DCC_ANY));
+  EXPECT_EQ(0, match("13", HDL, "FooBar", 4513, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::MATCH_ANY, match("13", HDL, "FooBar13", 45, DCC_ANY));
+  EXPECT_EQ(0,  // not exact
+            match("13", HDL, "FooBar135", 45, DCC_ANY));
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("13", HDL, "FooBar777", 13, DCC_128));
+
+  EXPECT_EQ(F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,
+            match("013", HDL, "FooBar777", 13, DCC_DEFAULT_LONG_ADDRESS));
+  EXPECT_EQ(F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,
+            match("013", HDL, "13", 13, DCC_DEFAULT_LONG_ADDRESS));
+  EXPECT_EQ(0,  // will not match due to short vs long
+            match("013", HDL, "FooBar777", 13, DCC_28));
+  EXPECT_EQ(0,  // will not match due to short vs long
+            match("013", HDL, "FooBar777", 13, DCC_ANY));
+
+  EXPECT_EQ(0,  // will not match due to marklin vs dcc
+            match("13M", HDL, "FooBar777", 13, DCC_ANY));
+  EXPECT_EQ(
+      F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,  // this is marklin vs marklin
+      match("13M", HDL, "FooBar777", 13, MARKLIN_NEW));
+  EXPECT_EQ(
+      F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,  // this is marklin vs marklin
+      match("13M", HDL, "FooBar777", 13, MARKLIN_OLD));
+  EXPECT_EQ(
+      F::ADDRESS_ONLY | F::EXACT | F::MATCH_ANY,  // this is marklin vs marklin
+      match("13M", HDL, "FooBar777", 13, MARKLIN_ANY));
+
+  EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
+            match("013", HDL, "FooBar777", 13, DCC_14_LONG_ADDRESS));
+
+  // Empty query is invalid on headless throttle.
+  EXPECT_EQ(0, match("", HDL, "FooBar", 13, DCC_14_LONG_ADDRESS));
+  EXPECT_EQ(0, match("", HDL, "FooBar777", 13, DCC_128));
 }
 
 TEST(MatchTest, longtoshortmatch) {
   // In this test we have a dcc long address locomotive and then a short
   // address allocate arrives. The match should fail.
-  EXPECT_EQ(0, match("13", false, "013", 13, DCC_28_LONG_ADDRESS));
+  EXPECT_EQ(0, match("13", ALC, "013", 13, DCC_28_LONG_ADDRESS));
 
   // Another example in reverse: a short locomotive and a long address query.
-  EXPECT_EQ(0, match("013", false, "13", 13, DCC_28));
+  EXPECT_EQ(0, match("013", ALC, "13", 13, DCC_28));
 
   // Search for short address should return a long address loco.
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("13", true, "FooBar777", 13, DCC_28_LONG_ADDRESS));
+            match("13", QRY, "FooBar777", 13, DCC_28_LONG_ADDRESS));
   // Search for long address should not return a short address loco.
-  EXPECT_EQ(0, match("013", true, "FooBar777", 13, DCC_28));
+  EXPECT_EQ(0, match("013", QRY, "FooBar777", 13, DCC_28));
 
   // Search for short address should return a long address loco.
   EXPECT_EQ(F::EXACT | F::ADDRESS_ONLY | F::MATCH_ANY,
-            match("13", true, "013L", 13, DCC_28_LONG_ADDRESS));
+            match("13", QRY, "013L", 13, DCC_28_LONG_ADDRESS));
   // Search for long address should not return a short address loco.
-  EXPECT_EQ(0, match("013", true, "13S", 13, DCC_28));
+  EXPECT_EQ(0, match("013", QRY, "13S", 13, DCC_28));
 }
 
-TEST(MatchTest, marklinmatch) {
+TEST(MatchTest, marklinallocate) {
   // In this test we have a dcc long address locomotive and then a marklin
   // allocate arrives. The match should fail.
-  EXPECT_EQ(0, match("13M", false, "013L", 13, DCC_28_LONG_ADDRESS));
+  EXPECT_EQ(0, match("13M", ALC, "013L", 13, DCC_28_LONG_ADDRESS));
   LOG(INFO, "2");
   // Another example: a short locomotive and a marklin query.
-  EXPECT_EQ(0, match("13M", false, "13S", 13, DCC_28));
+  EXPECT_EQ(0, match("13M", ALC, "13S", 13, DCC_28));
 
   // In this test we have a marklin-old locomotive and then a marklin address
   // allocate arrives.
-  EXPECT_NE(0, match("13M", false, "13m", 13, MARKLIN_OLD));
+  EXPECT_NE(0, match("13M", ALC, "13m", 13, MARKLIN_OLD));
 
   // Another example: a marklin-new loco and a marklin query.
-  EXPECT_NE(0, match("13M", false, "13M", 13, MARKLIN_NEW));
+  EXPECT_NE(0, match("13M", ALC, "13M", 13, MARKLIN_NEW));
 
   // In this test we have a marklin-old locomotive and then a generic
   // allocate arrives. This won't match if the default drive mode is DCC.
-  EXPECT_EQ(0, match("13", false, "13m", 13, MARKLIN_OLD));
-  
+  EXPECT_EQ(0, match("13", ALC, "13m", 13, MARKLIN_OLD));
+
   // Another example: a marklin-new loco and a generic query.
-  EXPECT_EQ(0, match("13", false, "13M", 13, MARKLIN_NEW));
+  EXPECT_EQ(0, match("13", ALC, "13M", 13, MARKLIN_NEW));
 
   {
+    LOG(INFO, "default mode is Marklin-Motorola II");
     ScopedOverride ov(&FindProtocolDefs::DEFAULT_DRIVE_MODE, MARKLIN_NEW);
     // In this test we have a marklin-old locomotive and then a generic
     // allocate arrives. This will match if the default drive mode is MM.
-    EXPECT_NE(0, match("13", false, "13m", 13, MARKLIN_OLD));
-    EXPECT_NE(0, match("13", false, "13M", 13, MARKLIN_NEW));
+    EXPECT_NE(0, match("13", ALC, "13m", 13, MARKLIN_OLD));
+    EXPECT_NE(0, match("13", ALC, "13M", 13, MARKLIN_NEW));
   }
-  
-  // In this test we have a marklin-old locomotive and then a DCC address
-  // allocate arrives.
-  EXPECT_EQ(0, match("013", false, "13m", 13, MARKLIN_OLD));
 
-  // Another example: a marklin-new loco and a DCC query.
-  EXPECT_EQ(0, match("013", false, "13M", 13, MARKLIN_NEW));
-
-  // Another example: a marklin-new loco and a DCC query.
-  EXPECT_EQ(0, match("13L", false, "13M", 13, MARKLIN_NEW));
-
-  // Another example: a marklin-new loco and a DCC query.
-  EXPECT_EQ(0, match("13L", false, "13m", 13, MARKLIN_OLD));
+  LOG(INFO, "default mode is DCC");
 
   // In this test we have a marklin-old locomotive and then a DCC address
   // allocate arrives.
-  EXPECT_EQ(0, match("13S", false, "13m", 13, MARKLIN_OLD));
+  EXPECT_EQ(0, match("013", ALC, "13m", 13, MARKLIN_OLD));
 
   // Another example: a marklin-new loco and a DCC query.
-  EXPECT_EQ(0, match("13S", false, "13M", 13, MARKLIN_NEW));
+  EXPECT_EQ(0, match("013", ALC, "13M", 13, MARKLIN_NEW));
+
+  // Another example: a marklin-new loco and a DCC query.
+  EXPECT_EQ(0, match("13L", ALC, "13M", 13, MARKLIN_NEW));
+
+  // Another example: a marklin-new loco and a DCC query.
+  EXPECT_EQ(0, match("13L", ALC, "13m", 13, MARKLIN_OLD));
+
+  // In this test we have a marklin-old locomotive and then a DCC address
+  // allocate arrives.
+  EXPECT_EQ(0, match("13S", ALC, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a DCC query.
+  EXPECT_EQ(0, match("13S", ALC, "13M", 13, MARKLIN_NEW));
+}
+
+TEST(MatchTest, marklinhdl) {
+  // In this test we have a dcc long address locomotive and then a marklin
+  // allocate arrives. The match should fail.
+  EXPECT_EQ(0, match("13M", HDL, "013L", 13, DCC_28_LONG_ADDRESS));
+  LOG(INFO, "2");
+  // Another example: a short locomotive and a marklin query.
+  EXPECT_EQ(0, match("13M", HDL, "13S", 13, DCC_28));
+
+  // In this test we have a marklin-old locomotive and then a marklin address
+  // allocate arrives.
+  EXPECT_NE(0, match("13M", HDL, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a marklin query.
+  EXPECT_NE(0, match("13M", HDL, "13M", 13, MARKLIN_NEW));
+
+  // In this test we have a marklin-old locomotive and then a generic allocate
+  // arrives. Since the generic query does not disambiguate the protocols, this
+  // will match. It means that the utility throttle will pick any locomotive of
+  // any protocol with address 13 when there is no forced address coming in.
+  EXPECT_NE(0, match("13", HDL, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a generic query.
+  EXPECT_NE(0, match("13", HDL, "13M", 13, MARKLIN_NEW));
+
+  {
+    LOG(INFO, "default mode is Marklin-Motorola II");
+    ScopedOverride ov(&FindProtocolDefs::DEFAULT_DRIVE_MODE, MARKLIN_NEW);
+    // In this test we have a marklin-old locomotive and then a generic
+    // allocate arrives. This will match if the default drive mode is MM.
+    EXPECT_NE(0, match("13", HDL, "13m", 13, MARKLIN_OLD));
+    EXPECT_NE(0, match("13", HDL, "13M", 13, MARKLIN_NEW));
+
+    // When the request is for DCC-long, it does not match.
+    EXPECT_EQ(0, match("13L", HDL, "13M", 13, MARKLIN_NEW));
+    // Also for DCC-short.
+    EXPECT_EQ(0, match("13S", HDL, "13M", 13, MARKLIN_NEW));
+  }
+
+  LOG(INFO, "default mode is DCC");
+
+  // In this test we have a marklin-old locomotive and then a DCC long address
+  // allocate arrives.
+  EXPECT_EQ(0, match("013", HDL, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a DCC-long query.
+  EXPECT_EQ(0, match("013", HDL, "13M", 13, MARKLIN_NEW));
+
+  // Another example: a marklin-new loco and a DCC-long query.
+  EXPECT_EQ(0, match("13L", HDL, "13M", 13, MARKLIN_NEW));
+
+  // Another example: a marklin-new loco and a DCC-long query.
+  EXPECT_EQ(0, match("13L", HDL, "13m", 13, MARKLIN_OLD));
+
+  // In this test we have a marklin-old locomotive and then a DCC-short address
+  // allocate arrives.
+  EXPECT_EQ(0, match("13S", HDL, "13m", 13, MARKLIN_OLD));
+
+  // Another example: a marklin-new loco and a DCC-short query.
+  EXPECT_EQ(0, match("13S", HDL, "13M", 13, MARKLIN_NEW));
+}
+
+// Tests using native OpenLCB locomotive types.
+TEST(MatchTest, matchopenlcb) {
+  static const auto OLCB = DCCMODE_OLCBUSER;
+  // Query with prefix match
+  EXPECT_EQ(F::MATCH_ANY, match("13", QRY, "Re 450 130", 9999, OLCB));
+
+  // Prefix match does not match allocate nor headless
+  EXPECT_EQ(0, match("13", ALC, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0, match("13", HDL, "Re 450 130", 9999, OLCB));
+
+  // Full match on a part of the name.
+  EXPECT_EQ(F::MATCH_ANY | F::EXACT,
+            match("130", QRY, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0,  // allocate uses address only, which does not match here
+            match("130", ALC, "Re 450 130", 9999, OLCB));
+  // This is the important positive use-case. Something in the title of the
+  // locomotive can be pulled up by a utility throttle.
+  EXPECT_EQ(F::MATCH_ANY | F::EXACT,
+            match("130", HDL, "Re 450 130", 9999, OLCB));
+  // Writing more of the title also works.
+  EXPECT_EQ(F::MATCH_ANY | F::EXACT,
+            match("450130", HDL, "Re 450 130", 9999, OLCB));
+
+  // Address also works.
+  EXPECT_EQ(F::MATCH_ANY | F::EXACT | F::ADDRESS_ONLY,
+            match("9999", QRY, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(F::MATCH_ANY | F::EXACT | F::ADDRESS_ONLY,
+            match("9999", ALC, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(F::MATCH_ANY | F::EXACT | F::ADDRESS_ONLY,
+            match("9999", HDL, "Re 450 130", 9999, OLCB));
+
+  // Negative cases when a specific protocol is requested.
+  EXPECT_EQ(0, match("09999", QRY, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0, match("09999", ALC, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0, match("09999", HDL, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0, match("9999M", QRY, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0, match("9999M", ALC, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0, match("9999M", HDL, "Re 450 130", 9999, OLCB));
+  EXPECT_EQ(0, match("99S", QRY, "Re 450 130", 99, OLCB));
+  EXPECT_EQ(0, match("99S", ALC, "Re 450 130", 99, OLCB));
+  EXPECT_EQ(0, match("99S", HDL, "Re 450 130", 99, OLCB));
 }
 
 }  // namespace

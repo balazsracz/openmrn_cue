@@ -346,6 +346,15 @@ openlcb::EventId FindProtocolDefs::input_to_allocate(const string& input) {
   return event;
 }
 
+openlcb::EventId FindProtocolDefs::input_to_headless(const string& input) {
+  if (input.empty()) {
+    return 0;
+  }
+  auto event = input_to_event(input);
+  event |= (FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT);
+  return event;
+}
+
 uint8_t FindProtocolDefs::match_query_to_train(openlcb::EventId event,
                                                const string& name,
                                                unsigned address, DccMode mode) {
