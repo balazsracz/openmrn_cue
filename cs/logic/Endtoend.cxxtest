@@ -81,8 +81,6 @@ class EndToEndTestBase : public openlcb::TwoNodeDatagramTest {
 
 };
 
-std::initializer_list<uint16_t> get_event_list() { return {0, 1}; }
-
 std::vector<uint16_t> event_offsets;
 
 class EndToEndTest : public EndToEndTestBase {

@@ -13,4 +13,4 @@ docs:
 
 
 tests:
-	$(MAKE) -C targets/linux.x86 tests
+	$(MAKE) -C targets/test tests

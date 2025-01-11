@@ -7,7 +7,6 @@ node_modules
 *.lst
 
 
-
 # bison / flex artifacts
 location.hh
 position.hh

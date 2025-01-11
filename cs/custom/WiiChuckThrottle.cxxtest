@@ -39,11 +39,11 @@ class ChuckThrottleTest : public TractionTest {
  * you run the test, the actions should be printed to stderr. */
 TEST_F(ChuckThrottleTest, CreateDestroy) {}
 
-TEST_F(ChuckThrottleTest, SetSpeed) { send_packet(":X195EA551N033A0050B0;"); }
+TEST_F(ChuckThrottleTest, SetSpeed) { send_packet(":X195EB551N033A0050B0;"); }
 
 TEST_F(ChuckThrottleTest, SetFn) {
-  send_packet(":X195EA551N033A010000050001;");
-  send_packet(":X195EA551N033A010000050000;");
+  send_packet(":X195EB551N033A010000050001;");
+  send_packet(":X195EB551N033A010000050000;");
 }
 
 TEST_F(ChuckThrottleTest, ChuckCenter) {
