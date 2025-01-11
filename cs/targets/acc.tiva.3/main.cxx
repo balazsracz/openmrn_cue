@@ -201,7 +201,7 @@ class RailcomProxy : public RailcomHubPort {
   ~RailcomProxy() {  // parent_->unregister_port(this);
   }
 
-  Action entry() {
+  Action entry() override {
     if (message()->data()->channel == 0xff && occupancyPort_) {
       occupancyPort_->send(transfer_message());
       return exit();
@@ -278,7 +278,7 @@ class RailcomBroadcastFlow : public RailcomHubPort {
     delete[] channels_;
   }
 
-  Action entry() {
+  Action entry() override {
     auto channel = message()->data()->channel;
     if (channel == 0xff && occupancyPort_) {
       occupancyPort_->send(transfer_message());
@@ -361,7 +361,7 @@ class FeedbackBasedOccupancy : public RailcomHubPort {
         currentValues_(0),
         eventHandler_(node, event_base, &currentValues_, channel_count) {}
 
-  Action entry() {
+  Action entry() override {
     if (message()->data()->channel != 0xff) return release_and_exit();
     uint32_t new_values = message()->data()->ch1Data[0];
     release();
