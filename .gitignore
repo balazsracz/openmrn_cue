@@ -3,8 +3,16 @@ compile_cdi
 *.hxxout
 *.cxxout
 node_modules
+*.bin
+*.lst
+
+
 
 # bison / flex artifacts
 location.hh
 position.hh
 stack.hh
+
+# local artifacts
+address.h
+ConfigLocal.hxx
