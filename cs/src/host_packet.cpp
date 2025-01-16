@@ -408,7 +408,7 @@ void DefaultPacketQueue::HandleMiscPacket(const PacketBase& in_pkt) {
 	// Clears all possible interrupt sources.
 	NVIC->IntEnClr = NVIC->IntEnable;
 	start();
-#elif defined(TARGET_LPC11Cxx)
+#elif defined(TARGET_LPC11Cxx) || defined(GCC_ARMCM0)
         // TODO(bracz): define how to reset a Cortex-M0.
         abort();
 #elif defined(GCC_ARMCM3)
