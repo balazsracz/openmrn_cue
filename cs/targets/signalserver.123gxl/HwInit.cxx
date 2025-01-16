@@ -211,8 +211,9 @@ void hw_preinit(void)
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER5);
     MAP_TimerConfigure(TIMER5_BASE, TIMER_CFG_PERIODIC);
     MAP_TimerLoadSet(TIMER5_BASE, TIMER_A, MAP_SysCtlClockGet() / 8);
+    MAP_TimerControlStall(TIMER5_BASE, TIMER_A, true);
     MAP_IntEnable(INT_TIMER5A);
-
+    
     /* This interrupt should hit even during kernel operations. */
     MAP_IntPrioritySet(INT_TIMER5A, 0);
     MAP_TimerIntEnable(TIMER5_BASE, TIMER_TIMA_TIMEOUT);
