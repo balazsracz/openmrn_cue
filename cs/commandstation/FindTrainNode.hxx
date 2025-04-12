@@ -56,6 +56,7 @@ struct RemoteFindTrainNodeRequest {
       DCC_LONG_ADDRESS bit if the inbound address should be interpreted as a
       long address (even if it is a small number). */
   void reset(int address, bool exact, DccMode type, ResultFn res = nullptr) {
+    resultCode = DEFAULT_REQUEST;
     event = FindProtocolDefs::address_to_query(address, exact, type);
     nodeId = 0;
     resultCallback = std::move(res);
@@ -63,6 +64,7 @@ struct RemoteFindTrainNodeRequest {
   /** Constructor with arbitrary set find_protocol_flags. These come from
    * FindProtocolDefs. */
   void reset(int address, uint8_t find_protocol_flags, ResultFn res = nullptr) {
+    resultCode = DEFAULT_REQUEST;
     event = FindProtocolDefs::address_to_query(address, false, (DccMode)0);
     event &= ~UINT64_C(0xFF);
     event |= find_protocol_flags;
@@ -74,6 +76,7 @@ struct RemoteFindTrainNodeRequest {
   }
   /** Constructor for recalling a node based on a previous search. */
   void reset(uint64_t event_id, ResultFn res = nullptr) {
+    resultCode = DEFAULT_REQUEST;
     event = event_id;
     nodeId = 0;
     if (FindProtocolDefs::is_find_event(event_id) &&
@@ -84,6 +87,7 @@ struct RemoteFindTrainNodeRequest {
   }
   /** Copy-Constructor. */
   void reset(const RemoteFindTrainNodeRequest& params, ResultFn res = nullptr) {
+    resultCode = DEFAULT_REQUEST;
     event = params.event;
     nodeId = 0;
     resultCode = params.resultCode;
@@ -91,12 +95,15 @@ struct RemoteFindTrainNodeRequest {
   }
   /** Requests all train nodes. */
   void reset(ResultFn res = nullptr) {
+    resultCode = DEFAULT_REQUEST;
     event = openlcb::TractionDefs::IS_TRAIN_EVENT;
     nodeId = 0;
     resultCallback = std::move(res);
   }
 
   enum {
+    // Operation pending
+    DEFAULT_REQUEST = 0x20000,
     // if the resultCode is set to this value at the request start, the request
     // will keep outstanding after the timeout expires and delivering results,
     // until the next request is sent to this flow.
