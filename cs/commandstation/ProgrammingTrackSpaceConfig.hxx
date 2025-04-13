@@ -114,7 +114,7 @@ CDI_GROUP_ENTRY(
         "the single bit whose value is 64, or 2064 to clear that bit. Write "
         "100 to 107 to set bit index 0 to 7, or 200 to 207 to clear bit 0 to "
         "7. Values outside of these two ranges do nothing."),
-    Default(1000), Min(100), Max(2128));
+    Default(1000), Min(0), Max(2128));
 CDI_GROUP_ENTRY(bit_value_string, openlcb::StringConfigEntry<24>,
                 Name("Read Bits Decomposition"),
                 Description("Hit Refresh on this line after reading a CV value "

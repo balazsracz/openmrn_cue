@@ -52,6 +52,8 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
         enableServiceMode_(1) {
     parent_->registry()->insert(nullptr, SPACE_ID, this);
     memset(&store_, 0, sizeof(store_));
+    // Zero is not a valid value in this field.
+    store_.bit_write_value = htobe16(1000);
   }
 
   ~ProgrammingTrackCVSpace() {
@@ -184,6 +186,8 @@ class ProgrammingTrackCVSpace : private openlcb::MemorySpace,
     // will avoid reads causing spurious operations when the window is next
     // opened.
     memset(&store_, 0, sizeof(store_));
+    // Zero is not a valid value in this field.
+    store_.bit_write_value = htobe16(1000);
     return UPDATED;
   }
 
