@@ -60,16 +60,17 @@
 
 // These preprocessor symbols are used to select which physical connections
 // will be enabled in the main(). See @ref appl_main below.
-#define SNIFF_ON_SERIAL
+//#define SNIFF_ON_SERIAL
 //#define SNIFF_ON_USB
-//#define HAVE_PHYSICAL_CAN_PORT
+#define HAVE_PHYSICAL_CAN_PORT
 
 // Changes the default behavior by adding a newline after each gridconnect
 // packet. Makes it easier for debugging the raw device.
 OVERRIDE_CONST(gc_generate_newlines, 1);
 // Specifies how much RAM (in bytes) we allocate to the stack of the main
 // thread. Useful tuning parameter in case the application runs out of memory.
-OVERRIDE_CONST(main_thread_stack_size, 2500);
+// was 2500. stack size errors when trying to expand the logic blocks
+OVERRIDE_CONST(main_thread_stack_size, 3500);
 
 // Specifies the 48-bit OpenLCB node identifier. This must be unique for every
 // hardware manufactured, so in production this should be replaced by some
@@ -94,7 +95,8 @@ extern const char *const openlcb::CONFIG_FILENAME = "/ffs/eeprom";
 // The size of the memory space to export over the above device.
 extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
-static_assert(openlcb::CONFIG_FILE_SIZE <= 24000, "Need to adjust eeprom size");
+// was 24000
+static_assert(openlcb::CONFIG_FILE_SIZE <= 96000, "Need to adjust eeprom size");
 // The SNIP user-changeable information in also stored in the above eeprom
 // device. In general this could come from different eeprom segments, but it is
 // simpler to keep them together.
@@ -124,38 +126,6 @@ openlcb::ConfiguredProducer producer_sw1(
 // producers to it.
 openlcb::RefreshLoop loop(
     stack.node(), {producer_sw1.polling()});
-
-/*
-// List of GPIO objects that will be used for the output pins. You should keep
-// the constexpr declaration, because it will produce a compile error in case
-// the list of pointers cannot be compiled into a compiler constant and thus
-// would be placed into RAM instead of ROM.
-constexpr const Gpio *const kDirectGpio[] = {
-    TDRV1_Pin::instance(), TDRV2_Pin::instance(), //
-    TDRV3_Pin::instance(), TDRV4_Pin::instance(), //
-    TDRV5_Pin::instance(), TDRV6_Pin::instance(), //
-    TDRV7_Pin::instance(), TDRV8_Pin::instance()  //
-};
-
-openlcb::MultiConfiguredConsumer direct_consumers(stack.node(), kDirectGpio,
-    ARRAYSIZE(kDirectGpio), cfg.seg().direct_consumers());
-
-// servoPwmCountPerMs defined in hardware.hxx.
-// PWM* servo_channels[] defined in HwInit.cxx
-openlcb::ServoConsumer srv0(
-    stack.node(), cfg.seg().servo_consumers().entry<0>(),
-    servoPwmCountPerMs, servo_channels[0]);
-openlcb::ServoConsumer srv1(
-    stack.node(), cfg.seg().servo_consumers().entry<1>(),
-    servoPwmCountPerMs, servo_channels[1]);
-openlcb::ServoConsumer srv2(
-    stack.node(), cfg.seg().servo_consumers().entry<2>(),
-    servoPwmCountPerMs, servo_channels[2]);
-openlcb::ServoConsumer srv3(
-    stack.node(), cfg.seg().servo_consumers().entry<3>(),
-    servoPwmCountPerMs, servo_channels[3]);
-
-*/
 
 class FactoryResetHelper : public DefaultConfigUpdateListener {
 public:

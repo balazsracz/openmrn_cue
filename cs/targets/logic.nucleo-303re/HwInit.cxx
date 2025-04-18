@@ -52,6 +52,9 @@
 #include "Stm32PWM.hxx"
 #include "hardware.hxx"
 
+#include "SPIFlash.hxx"
+#include "freertos_drivers/spiffs/SpiSPIFFS.hxx"
+
 /** override stdin */
 const char *STDIN_DEVICE = "/dev/ser0";
 
@@ -67,11 +70,30 @@ static Stm32Uart uart0("/dev/ser0", USART2, USART2_IRQn);
 /** CAN 0 CAN driver instance */
 static Stm32Can can0("/dev/can0");
 
+/* internal flash setup. Non functional on F303RE and other small (512KB and under) MCUs
 extern char __flash_fs_start;
 extern char __flash_fs_end;
 static Stm32SPIFFS spiffs0((size_t)&__flash_fs_start,
                            (&__flash_fs_end - &__flash_fs_start),
                            16 * 1024, 64);
+*/
+
+/** external flash as EEPROM driver. */
+// read data sheet to confirm attributes to be specified here that are different from the defaults
+// For Winbond W25Q16JV series, the defaults are good besides speed - 133Mhz
+static const SPIFlashConfig spiFlashCfg = {
+	.speedHz_ = 1000000,};
+//	.readNeedsStuffing_ = 1,};
+
+OSMutex spiFlashMutex;
+
+SPIFlash spiFlash(&spiFlashCfg, &spiFlashMutex);
+
+/** Call SPIFFS with settings of external flash. Will be initialized in main at end
+ * Winbond W25Q16JV is a 16Mbit == 2097152 bit, organized in 8192 pages of 256 bytes
+ * 1 block is 16 sectors of 4kB */
+static SpiSPIFFS spiffs0(&spiFlash, 0, 2097152, 16 * 4096, 256);
+
 
 /** UART 0 serial driver instance */
 static Stm32I2C i2c1("/dev/i2c0", I2C1, I2C1_EV_IRQn, I2C1_ER_IRQn);
@@ -372,7 +394,11 @@ void usart2_interrupt_handler(void)
  */
 void hw_postinit(void)
 {
-    spiffs0.mount("/ffs");
+	spiFlash.init("/dev/spi1.ext");
+	char id[3];
+	spiFlash.get_id(id);
+	LOG(ALWAYS, "spiflash id %02x:%02x:%02x", id[0],id[1],id[2]);
+	spiffs0.mount("/ffs");
 }
  
 }

@@ -94,7 +94,7 @@ extern const char *const openlcb::CONFIG_FILENAME = "/ffs/eeprom";
 // The size of the memory space to export over the above device.
 extern const size_t openlcb::CONFIG_FILE_SIZE =
     cfg.seg().size() + cfg.seg().offset();
-static_assert(openlcb::CONFIG_FILE_SIZE <= 24000, "Need to adjust eeprom size");
+//static_assert(openlcb::CONFIG_FILE_SIZE <= 24000, "Need to adjust eeprom size");
 // The SNIP user-changeable information in also stored in the above eeprom
 // device. In general this could come from different eeprom segments, but it is
 // simpler to keep them together.
@@ -252,9 +252,13 @@ logic::OlcbVariableFactory logic_blocks(stack.node(), cfg.seg().logic());
  */
 int appl_main(int argc, char *argv[])
 {
-    stack.create_config_file_if_needed(cfg.seg().internal_config(),
+/* original for on MCU volatile config storage
+ * stack.create_config_file_if_needed(cfg.seg().internal_config(),
                                        openlcb::CANONICAL_VERSION,
                                        openlcb::CONFIG_FILE_SIZE);
+*/
+stack.create_config_file_if_needed(cfg.seg().internal_config(), openlcb::CANONICAL_VERSION, openlcb::CONFIG_FILE_SIZE);
+
 
 #if 0 &&(NUM_EXTBOARDS > 0)
     {
