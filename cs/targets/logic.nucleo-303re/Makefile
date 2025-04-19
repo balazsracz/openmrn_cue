@@ -4,4 +4,4 @@ export BOARD:=BOARD_NUCLEO_IO
 export EXECUTABLE:=logic
 include hardware.mk
 
-SYSLIBRARIESEXTRA += -lfreertos_drivers_spiffs_stm32f303xe -lfreertos_drivers_spiffs_spi
+SYSLIBRARIESEXTRA += -lfreertos_drivers_spiffs_spi

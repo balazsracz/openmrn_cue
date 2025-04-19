@@ -48,7 +48,6 @@
 #include "Stm32Can.hxx"
 #include "Stm32SPI.hxx"
 #include "Stm32I2C.hxx"
-#include "freertos_drivers/spiffs/stm32f0_f3/Stm32SPIFFS.hxx"
 #include "Stm32PWM.hxx"
 #include "hardware.hxx"
 
@@ -69,14 +68,6 @@ static Stm32Uart uart0("/dev/ser0", USART2, USART2_IRQn);
 
 /** CAN 0 CAN driver instance */
 static Stm32Can can0("/dev/can0");
-
-/* internal flash setup. Non functional on F303RE and other small (512KB and under) MCUs
-extern char __flash_fs_start;
-extern char __flash_fs_end;
-static Stm32SPIFFS spiffs0((size_t)&__flash_fs_start,
-                           (&__flash_fs_end - &__flash_fs_start),
-                           16 * 1024, 64);
-*/
 
 /** external flash as EEPROM driver. */
 // read data sheet to confirm attributes to be specified here that are different from the defaults
@@ -387,7 +378,7 @@ void hw_preinit(void)
 
 void usart2_interrupt_handler(void)
 {
-    Stm32Uart::interrupt_handler(1);
+    uart0.interrupt_handler();
 }
 
 /** Initialize the processor hardware post platform init.
