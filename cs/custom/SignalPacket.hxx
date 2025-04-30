@@ -110,7 +110,8 @@ class SignalPacketBase : public SignalPacketBaseInterface {
 
   Action send_data_byte() {
     if (offset_ >= message()->data()->size()) {
-      return release_and_exit();
+      release();
+      return wait_for_send(STATE(exit));
     }
     if (try_send_byte(payload()[offset_])) {
       offset_++;

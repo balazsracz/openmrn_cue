@@ -32,6 +32,8 @@
  * @date 22 Feb 2015
  */
 
+#pragma once
+
 #include "openlcb/DatagramHandlerDefault.hxx"
 #include "custom/SignalPacket.hxx"
 
