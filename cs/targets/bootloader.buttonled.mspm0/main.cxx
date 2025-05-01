@@ -33,11 +33,62 @@
  */
 
 #include "custom/MspM0SignalReceiver.hxx"
+#include "custom/Crc32.h"
 #include "os/os.h"
 #include "os/sleep.h"
 #include "utils/blinker.h"
 
+#include "src/base.h"
+#include "address.h"
+
+#include <ti/driverlib/m0p/dl_sysctl.h>
+
+
+
+extern void set_pix(uint32_t color);
+
+enum Color {
+  COLOR_GREEN = 0x00ff00,
+  COLOR_RED = 0xff0000,
+};
+
 MspM0SignalReceiver g_receiver;
+
+/// Retrieves a halfword from the packet contents. Does not check boundary.
+/// @param offset is which byte in the packet the halfword starts at. offset 0
+/// is the length byte, offset 1 is the cmd, offset 2 is the first byte of the
+/// payload.
+/// @return the little-endian half-word at that offset.
+uint16_t get_hword(unsigned offset) {
+  return (g_receiver.data()[offset] | (g_receiver.data()[offset+1] << 8));
+}
+
+void process_packet() {
+  switch(g_receiver.cmd()) {
+    case SCMD_RESET: {
+      DL_SYSCTL_resetDevice(DL_SYSCTL_RESET_BOOT);
+      return;
+    }
+    case SCMD_CRC: {
+      uint16_t address = get_hword(2);
+      uint16_t len = get_hword(4);
+      Crc32 crc;
+      extern uint8_t __flash_start[];
+      for (unsigned i = 0; i < len; ++i) {
+        crc.Add(__flash_start[address + i]);
+      }
+      uint32_t expected = get_hword(6) | (get_hword(8) << 16);
+      if (expected == crc.Get()) {
+        set_pix(COLOR_GREEN);
+      } else {
+        set_pix(COLOR_RED);
+      }
+      return;
+    }
+  }
+
+}
+
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -50,13 +101,10 @@ int appl_main(int argc, char *argv[]) {
   while (1) {
     g_receiver.loop();
     if (g_receiver.is_full()) {
-      //asm("bkpt #0 ");
-      if (g_receiver.address() == 0x55) {
-        resetblink(g_receiver.data()[2] ? 1 : 0);
+      if (g_receiver.address() == NODEID_LOW_BITS) {
+        process_packet();
       }
       g_receiver.clear();
-      //resetblink(bl);
-      //bl ^= 1;
     }
   }
   return 0;
