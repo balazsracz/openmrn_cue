@@ -232,3 +232,6 @@ contents of the frame will be <len> <cmd> <payload> unmodified. These bytes
 will have the ninth bit clear.
 
 
+## Signalbus aspect events
+
+This is a block of 
