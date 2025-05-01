@@ -40,6 +40,7 @@
 
 #include "src/base.h"
 #include "address.h"
+#include "utils/macros.h"
 
 #include <ti/driverlib/m0p/dl_sysctl.h>
 
@@ -63,11 +64,47 @@ uint16_t get_hword(unsigned offset) {
   return (g_receiver.data()[offset] | (g_receiver.data()[offset+1] << 8));
 }
 
+/// Converts a linker symbol into an uint32 address.
+/// @param sym a linker symbol like __app_start
+/// @return the 32-bit address in the memory space for this symbol.
+inline uint16_t symbol_to_address(char& sym) {
+  return (uint32_t)(&sym);
+}
+
+extern char __app_start;
+extern char __app_end;
+
+static constexpr unsigned SECTOR_SIZE = 1024;
+
 void process_packet() {
   switch(g_receiver.cmd()) {
     case SCMD_RESET: {
       DL_SYSCTL_resetDevice(DL_SYSCTL_RESET_BOOT);
       return;
+    }
+    case SCMD_FLASH: {
+      uint16_t address = get_hword(2);
+      uint16_t length = g_receiver.size() - 4;
+      HASSERT(address >= symbol_to_address(__app_start));
+      HASSERT(address+length <= symbol_to_address(__app_end));
+      HASSERT(length == 8);
+      HASSERT(address % 8 == 0);
+      uint64_t data;
+      memcpy(&data, g_receiver.data() + 4, 8);
+      // auto-erase
+      if ((address & (SECTOR_SIZE - 1)) == 0) {
+        DL_FlashCTL_protectSector(FLASHCTL, address - SECTOR_SIZE,
+                                  DL_FLASHCTL_REGION_SELECT_MAIN);
+        DL_FlashCTL_unprotectSector(FLASHCTL, address,
+                                    DL_FLASHCTL_REGION_SELECT_MAIN);
+        DL_FlashCTL_eraseMemory(FLASHCTL, address,
+                                DL_FLASHCTL_COMMAND_SIZE_SECTOR);
+        flashStat = DL_FlashCTL_waitForCmdDone(FLASHCTL);
+      }
+      auto ret = DL_FlashCTL_programMemoryBlocking(
+          FLASHCTL, address, (uint32_t *)&data, 2,
+          DL_FLASHCTL_REGION_SELECT_MAIN);
+      
     }
     case SCMD_CRC: {
       uint16_t address = get_hword(2);
