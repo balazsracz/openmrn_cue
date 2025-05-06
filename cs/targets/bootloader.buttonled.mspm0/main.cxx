@@ -76,6 +76,37 @@ extern char __app_end;
 
 static constexpr unsigned SECTOR_SIZE = 1024;
 
+void ack() {
+  microsleep(32);
+  DL_UART_transmitData(SIG_UART, 0x55);
+}
+
+void __attribute__((noinline)) execute_flash_program() {
+  uint16_t address = get_hword(2) << 1;
+  uint16_t length = g_receiver.size() - 4;
+  HASSERT(address >= symbol_to_address(__app_start));
+  HASSERT(address + length <= symbol_to_address(__app_end));
+  HASSERT(length == 8);
+  HASSERT(address % 8 == 0);
+  uint64_t data;
+  memcpy(&data, g_receiver.data() + 4, 8);
+  // Auto-erase
+  if ((address & (SECTOR_SIZE - 1)) == 0) {
+    DL_FlashCTL_unprotectSector(FLASHCTL, address,
+                                DL_FLASHCTL_REGION_SELECT_MAIN);
+    DL_FlashCTL_eraseMemory(FLASHCTL, address, DL_FLASHCTL_COMMAND_SIZE_SECTOR);
+    auto ret = DL_FlashCTL_waitForCmdDone(FLASHCTL);
+    HASSERT(ret);
+  }
+  // Actually program the data.
+  auto ret = DL_FlashCTL_programMemoryBlocking64WithECCGenerated(
+      FLASHCTL, address, (uint32_t *)&data, 2, DL_FLASHCTL_REGION_SELECT_MAIN);
+  HASSERT(ret);
+  ret = DL_FlashCTL_waitForCmdDone(FLASHCTL);
+  HASSERT(ret);
+  return;
+}
+
 void process_packet() {
   switch(g_receiver.cmd()) {
     case SCMD_RESET: {
@@ -83,31 +114,10 @@ void process_packet() {
       return;
     }
     case SCMD_FLASH: {
-      uint16_t address = get_hword(2);
-      uint16_t length = g_receiver.size() - 4;
-      HASSERT(address >= symbol_to_address(__app_start));
-      HASSERT(address+length <= symbol_to_address(__app_end));
-      HASSERT(length == 8);
-      HASSERT(address % 8 == 0);
-      uint64_t data;
-      memcpy(&data, g_receiver.data() + 4, 8);
-      // auto-erase
-      if ((address & (SECTOR_SIZE - 1)) == 0) {
-        DL_FlashCTL_protectSector(FLASHCTL, address - SECTOR_SIZE,
-                                  DL_FLASHCTL_REGION_SELECT_MAIN);
-        DL_FlashCTL_unprotectSector(FLASHCTL, address,
-                                    DL_FLASHCTL_REGION_SELECT_MAIN);
-        DL_FlashCTL_eraseMemory(FLASHCTL, address,
-                                DL_FLASHCTL_COMMAND_SIZE_SECTOR);
-        flashStat = DL_FlashCTL_waitForCmdDone(FLASHCTL);
-      }
-      auto ret = DL_FlashCTL_programMemoryBlocking(
-          FLASHCTL, address, (uint32_t *)&data, 2,
-          DL_FLASHCTL_REGION_SELECT_MAIN);
-      
+      return execute_flash_program();
     }
     case SCMD_CRC: {
-      uint16_t address = get_hword(2);
+      uint16_t address = get_hword(2) << 1;
       uint16_t len = get_hword(4);
       Crc32 crc;
       extern uint8_t __flash_start[];
@@ -117,10 +127,19 @@ void process_packet() {
       uint32_t expected = get_hword(6) | (get_hword(8) << 16);
       if (expected == crc.Get()) {
         set_pix(COLOR_GREEN);
+        return ack();
       } else {
         set_pix(COLOR_RED);
       }
       return;
+    }
+    case SCMD_PING: {
+      return ack();
+    }
+    case SCMD_LED: {
+      set_pix((g_receiver.data()[2] << 16) | (g_receiver.data()[3] << 8) |
+              (g_receiver.data()[4] << 0));
+      return ack();
     }
   }
 
@@ -135,10 +154,12 @@ void process_packet() {
 int appl_main(int argc, char *argv[]) {
   g_receiver.hw_init();
   setblink(0);
+  set_pix(COLOR_RED);
   while (1) {
     g_receiver.loop();
     if (g_receiver.is_full()) {
-      if (g_receiver.address() == NODEID_LOW_BITS) {
+      if (g_receiver.address() == NODEID_LOW_BITS ||
+          g_receiver.address() == 0) {
         process_packet();
       }
       g_receiver.clear();

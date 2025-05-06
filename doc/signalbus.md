@@ -116,14 +116,19 @@ Format: Address NN 0x04 Offset-Low Offset-High data...
 
 - Length = 4 + num data bytes
 - Cmd = 0x04
-- Payload = two byte offset where to write the data (LSB first), and 1-12 bytes
-  of data payload to write there.
+- Payload = two byte word offset where to write the data (LSB first), and 1-12
+  bytes of data payload to write there. The word offset is the byte offset
+  divided by two.
   
 Maximum length of packet is 16 bytes (12 bytes of data).
 
 Effect: the bootloader writes the commanded data to the specified offset. If
 the given offset is at the beginning of a flash sector, the sector is erased
 before writing the payload (i.e., auto-erase forward).
+
+Offsets are interpreted by the bootloader, but in the MSPM0 interpretation they
+are absolute offsets in the flash. The application starts at byte offset
+0x1000.
 
 ### LED test (bootloader)
 
@@ -148,7 +153,8 @@ CRC-b3 CRC-MSB
   CRC32, LSB-first>
 
 Effect: The bootloader computes the CRC32 of the given data range from the
-program flash. If the supplies CRC matches the computed CRC, a success is
+program flash. Offset is word offset LSB-first, which is the byte offset
+divided by 2. If the sent CRC matches the computed CRC, a success is
 displayed on the outputs. If the computed CRC does not match the supplied CRC,
 a failure is displayed on the outputs.
 

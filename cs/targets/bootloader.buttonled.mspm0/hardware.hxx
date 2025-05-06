@@ -5,6 +5,6 @@
 
 static const auto SIG_UART = UART0;
 
-
+static const auto USEC_TIMER = TIMG1;
 
 #endif // _HARDWARE_HXX_

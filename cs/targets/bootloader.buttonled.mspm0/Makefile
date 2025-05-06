@@ -29,6 +29,8 @@ include $(OPENMRNPATH)/etc/prog.mk
 # Create address.h using node_id
 include $(OPENMRNPATH)/etc/node_id.mk
 
+main.o: address.h
+
 ifeq ($(call find_missing_deps,OPENOCDPATH OPENOCDSCRIPTSPATH),)
 all: $(EXECUTABLE).bin
 

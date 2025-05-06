@@ -90,12 +90,13 @@ unsigned signal_offset = 0;
 const unsigned FLAGS_signal_flash_sleep = 50000;
 
 bool noreset = false;
+bool binfile = false;
 
 
 void usage(const char *e) {
   fprintf(stderr,
           "Usage: %s ([-i destination_host] [-p port] | [-d device_path]) "
-          "(-n nodeid | -a alias) [-k] -f filename -s signal_address -o offset\n",
+          "(-n nodeid | -a alias) [-k] [-b] -f filename -s signal_address -o offset\n",
           e);
   fprintf(stderr,
           "Connects to an openlcb bus and sends a datagram to a "
@@ -115,7 +116,9 @@ void usage(const char *e) {
           "no separators, like '-a 0x3F9'\n");
   fprintf(stderr,
           "\n-k will prevent resetting the signals before flashing.\n");
-  fprintf(stderr, "\nfilename contains the binary to flash.\n");
+  fprintf(stderr, "\nfilename contains the binary to flash in HEX format.\n");
+  fprintf(stderr,
+          "\n-b means the filename is a binary file.\n");
   fprintf(stderr,
           "\nsignal_address is the decimal or hex address of the signal on the "
           "bus to flash. example -s 31 or -s 0x1F.\n");
@@ -126,7 +129,7 @@ void usage(const char *e) {
 
 void parse_args(int argc, char *argv[]) {
   int opt;
-  while ((opt = getopt(argc, argv, "hi:p:d:n:a:g:f:s:o:k")) >= 0) {
+  while ((opt = getopt(argc, argv, "hi:p:d:n:a:g:f:s:o:kb")) >= 0) {
     switch (opt) {
       case 'h':
         usage(argv[0]);
@@ -148,6 +151,9 @@ void parse_args(int argc, char *argv[]) {
         break;
       case 'f':
         filename = optarg;
+        break;
+      case 'b':
+        binfile = true;
         break;
       case 's':
         signal_address = strtoul(optarg, nullptr, 0);
@@ -277,7 +283,11 @@ void FlashSignal(unsigned request_offset, const string& data) {
   Crc32 crc;
   for (unsigned i = 0; i < data.size(); ++i) {
     if (i & 1) {
-      crc.Add(data[i] & 0x3f);
+      if (binfile) {
+        crc.Add(data[i]);
+      } else {
+        crc.Add(data[i] & 0x3f);
+      }
     } else {
       crc.Add(data[i]);
     }
@@ -348,11 +358,14 @@ int appl_main(int argc, char *argv[]) {
   string hex = read_file_to_string(filename);
 
   string payload;
-  unsigned ofs = 0;
-  while (ofs + 2 <= hex.size()) {
-    payload.push_back(
-        strtoul(hex.substr(ofs, 2).c_str(), nullptr, 16));
-    ofs += 2;
+  if (binfile) {
+    payload = hex;
+  } else {
+    unsigned ofs = 0;
+    while (ofs + 2 <= hex.size()) {
+      payload.push_back(strtoul(hex.substr(ofs, 2).c_str(), nullptr, 16));
+      ofs += 2;
+    }
   }
 
   FlashSignal(signal_offset, payload);
