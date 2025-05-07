@@ -71,8 +71,7 @@ StateFlowBase::Action SignalServer::entry() {
 
 StateFlowBase::Action SignalServer::send_signalpacket() {
   auto* b = get_allocation_result(signalbus_);
-  b->data()->assign((char*) (payload() + 2),
-                    size() - 2);
+  b->data()->payload_.assign((char*)(payload() + 2), size() - 2);
   b->set_done(bn_.reset(this));
   signalbus_->send(b);
   return wait_and_call(STATE(wait_for_packet_ready));

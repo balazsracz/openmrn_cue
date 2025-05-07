@@ -87,8 +87,8 @@ class SignalLoop : public StateFlowBase,
 
   ~SignalLoop() { free(backingStore_); }
 
-  void send_update(Buffer<string>* b, uint8_t address, uint8_t aspect) {
-    auto& s = *b->data();
+  void send_update(Buffer<SignalPacket>* b, uint8_t address, uint8_t aspect) {
+    auto& s = b->data()->payload_;
     s.clear();
     s.push_back(address);
     s.push_back(3);  // len

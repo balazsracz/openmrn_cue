@@ -42,7 +42,35 @@
 
 namespace bracz_custom {
 
-typedef StateFlow<Buffer<string>, QList<1> > SignalPacketBaseInterface;
+
+struct SignalPacket {
+  /// The data to send out to the bus. Starts with the address byte, then the
+  /// length byte, then the data bytes.
+  string payload_;
+
+  /// If not null, this notifiable will be called when the packet send is
+  /// complete.
+  AutoNotify done_;
+
+  enum {
+    RESULT_PENDING = 0x10000,
+    RESULT_ACK = 0,
+    RESULT_NOACK = openlcb::Defs::OPENMRN_TIMEOUT,
+  };
+
+  static constexpr unsigned DEFAULT_TIMEOUT_MSEC = 2;
+  
+  /// How long to wait for a response from the target
+  uint32_t responseTimeoutMsec_{DEFAULT_TIMEOUT_MSEC};
+  
+  /// What is the outcome of the packet sending.
+  uint32_t resultCode_{RESULT_PENDING};
+
+  /// If we received returned data, this is that data.
+  string responsePayload_;
+};
+
+typedef StateFlow<Buffer<SignalPacket>, QList<1> > SignalPacketBaseInterface;
 
 class SignalPacketBase : public SignalPacketBaseInterface {
  public:
@@ -66,6 +94,23 @@ class SignalPacketBase : public SignalPacketBaseInterface {
   /** Sets the 9th bit to 0 for the upcoming bytes to be transmitted. */
   virtual void set_parity_off() = 0;
 
+  /** Sets the port to transmit mode. */
+  virtual void set_tx() = 0;
+
+  /** Sets the port to receive mode and flushes any pending data. */
+  virtual void set_rx() = 0;
+
+  /** Precondition: port is in receive mode. Waits up to a certain amount for
+   * an acknowledgement to come from the addressed device. The minimum timeout
+   * is 2 msec to ensure that a full byte is received. */
+  virtual Action wait_for_ack(unsigned timeout_msec, Callback c) = 0;
+
+  /** Precondition: port is in receive mode. @return true if there was an ACK
+   * on the bus since the last call of this function or since putting the port
+   * in receive mode. Specifically, returns true if the bus is not idle level
+   * right now. */
+  virtual bool has_ack() = 0;
+  
   /** Sends a byte to the UART. Returns true if send is successful, false if
    * buffer full. */
   virtual bool try_send_byte(uint8_t data) = 0;
@@ -74,9 +119,10 @@ class SignalPacketBase : public SignalPacketBaseInterface {
    * state c. */
   virtual Action wait_for_send(Callback c) = 0;
 
+  
  private:
   Action entry() OVERRIDE {
-    if (message()->data()->empty()) return release_and_exit();
+    if (message()->data()->payload_.empty()) return release_and_exit();
     return call_immediately(STATE(wait_for_tx_empty));
   }
 
@@ -89,7 +135,7 @@ class SignalPacketBase : public SignalPacketBaseInterface {
   }
 
   const uint8_t* payload() {
-    return reinterpret_cast<const uint8_t*>(message()->data()->data());
+    return reinterpret_cast<const uint8_t*>(message()->data()->payload_.data());
   }
 
   Action send_address_byte() {
@@ -109,9 +155,8 @@ class SignalPacketBase : public SignalPacketBaseInterface {
   }
 
   Action send_data_byte() {
-    if (offset_ >= message()->data()->size()) {
-      release();
-      return wait_for_send(STATE(exit));
+    if (offset_ >= message()->data()->payload_.size()) {
+      return wait_for_send(STATE(start_ack));
     }
     if (try_send_byte(payload()[offset_])) {
       offset_++;
@@ -121,6 +166,31 @@ class SignalPacketBase : public SignalPacketBaseInterface {
     }
   }
 
+  Action start_ack() {
+    unsigned timeout_msec =
+        std::max((unsigned)message()->data()->responseTimeoutMsec_,
+                 (unsigned)SignalPacket::DEFAULT_TIMEOUT_MSEC);
+    set_rx();
+    return wait_for_ack(timeout_msec, STATE(eval_ack));
+  }
+  
+ protected:
+  Action eval_ack() {
+    if (!has_ack()) {
+      if (message()->data()->resultCode_ == SignalPacket::RESULT_PENDING) {
+        message()->data()->resultCode_ = SignalPacket::RESULT_NOACK;
+      }
+      message()->data()->done_.reset();
+      return release_and_exit();
+    } else {
+      message()->data()->resultCode_ = SignalPacket::RESULT_ACK;
+      message()->data()->done_.reset();
+      // Waits for idle bus.
+      return wait_for_ack(SignalPacket::DEFAULT_TIMEOUT_MSEC, STATE(eval_ack));
+    }
+  }
+
+ private:
   /** Next byte in the packet to transmit. */
   size_t offset_;
 };
