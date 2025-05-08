@@ -53,9 +53,15 @@ class SignalServer : public openlcb::DefaultDatagramHandler {
 
   Action send_signalpacket();
   Action wait_for_packet_ready();
+  Action send_signalpacket_with_ack();
+  Action wait_for_packet_response();
 
+  /// Local OpenLCB node to export the datagram service onto.
   openlcb::Node* node_;
+  /// Target bus implementation. Packets are sent here.
   SignalPacketBaseInterface* signalbus_;
+  /// Holds the packet reference until packet processing is complete.
+  BufferPtr<SignalPacket> busPacket_;
   BarrierNotifiable bn_;
 };
 

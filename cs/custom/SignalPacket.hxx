@@ -94,22 +94,18 @@ class SignalPacketBase : public SignalPacketBaseInterface {
   /** Sets the 9th bit to 0 for the upcoming bytes to be transmitted. */
   virtual void set_parity_off() = 0;
 
-  /** Sets the port to transmit mode. */
-  virtual void set_tx() = 0;
-
-  /** Sets the port to receive mode and flushes any pending data. */
-  virtual void set_rx() = 0;
-
-  /** Precondition: port is in receive mode. Waits up to a certain amount for
-   * an acknowledgement to come from the addressed device. The minimum timeout
-   * is 2 msec to ensure that a full byte is received. */
+  /** Waits up to a certain amount for an acknowledgement to come from the
+   * addressed device. The minimum timeout is 2 msec to ensure that a full byte
+   * is received. */
   virtual Action wait_for_ack(unsigned timeout_msec, Callback c) = 0;
 
-  /** Precondition: port is in receive mode. @return true if there was an ACK
-   * on the bus since the last call of this function or since putting the port
-   * in receive mode. Specifically, returns true if the bus is not idle level
+  /** Call this function exactly once at the beginning of the state that is the
+   * callback to wait_for_ack. This function will do some mandatory
+   * cleanup including switching to TX mode.
+   * @return true if there was an ACK on the bus since the start of
+   * wait_for_ack(). Specifically, returns true if the bus is not idle level
    * right now. */
-  virtual bool has_ack() = 0;
+  virtual bool postprocess_ack() = 0;
   
   /** Sends a byte to the UART. Returns true if send is successful, false if
    * buffer full. */
@@ -156,7 +152,7 @@ class SignalPacketBase : public SignalPacketBaseInterface {
 
   Action send_data_byte() {
     if (offset_ >= message()->data()->payload_.size()) {
-      return wait_for_send(STATE(start_ack));
+      return call_immediately(STATE(packet_end));
     }
     if (try_send_byte(payload()[offset_])) {
       offset_++;
@@ -166,17 +162,21 @@ class SignalPacketBase : public SignalPacketBaseInterface {
     }
   }
 
+  Action packet_end() {
+    //return wait_for_send(STATE(release_and_exit));
+    return wait_for_send(STATE(start_ack));
+  }
+  
   Action start_ack() {
     unsigned timeout_msec =
         std::max((unsigned)message()->data()->responseTimeoutMsec_,
                  (unsigned)SignalPacket::DEFAULT_TIMEOUT_MSEC);
-    set_rx();
     return wait_for_ack(timeout_msec, STATE(eval_ack));
   }
   
  protected:
   Action eval_ack() {
-    if (!has_ack()) {
+    if (!postprocess_ack()) {
       if (message()->data()->resultCode_ == SignalPacket::RESULT_PENDING) {
         message()->data()->resultCode_ = SignalPacket::RESULT_NOACK;
       }

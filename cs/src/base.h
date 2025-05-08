@@ -20,6 +20,8 @@
 
 // ==== Signal handler flow definitions
 #define CMD_SIGNALPACKET 0x10   // arg1... the signal packet (arg1=address arg2=len arg3... = payload. the payload has to be one less bytes than len). Maximum length value is 12.
+#define CMD_SIGNALPACKET_WITH_ACK 0x12   // arg1,arg2 = timeout msec (big endian) arg3... the signal packet (arg3=address arg4=len arg5... = payload. the payload has to be one less bytes than len). Maximum length value is 12.
+
 #define CMD_SIGNAL_PAUSE 0x18
 #define CMD_SIGNAL_RESUME 0x19
 

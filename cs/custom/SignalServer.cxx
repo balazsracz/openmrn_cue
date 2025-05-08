@@ -56,6 +56,13 @@ StateFlowBase::Action SignalServer::entry() {
     case CMD_SIGNALPACKET: {
       return allocate_and_call(signalbus_, STATE(send_signalpacket));
     }
+    case CMD_SIGNALPACKET_WITH_ACK: {
+      if (size() < 4) {
+        return respond_reject(
+            openlcb::Defs::ERROR_INVALID_ARGS_MESSAGE_TOO_SHORT);
+      }
+      return allocate_and_call(signalbus_, STATE(send_signalpacket_with_ack));
+    }
     case CMD_SIGNAL_PAUSE: {
       Singleton<SignalLoopInterface>::instance()->disable_loop();
       return respond_ok(0);
@@ -75,6 +82,28 @@ StateFlowBase::Action SignalServer::send_signalpacket() {
   b->set_done(bn_.reset(this));
   signalbus_->send(b);
   return wait_and_call(STATE(wait_for_packet_ready));
+}
+
+StateFlowBase::Action SignalServer::send_signalpacket_with_ack() {
+  BufferPtr<SignalPacket> b(get_allocation_result(signalbus_));
+  busPacket_.reset(b->ref());
+  b->data()->payload_.assign((char*)(payload() + 4), size() - 4);
+  uint16_t timeout = openlcb::data_to_error(payload() + 2);
+  b->data()->responseTimeoutMsec_ = timeout;
+  b->data()->done_.reset(this);
+  signalbus_->send(b.release());
+  return wait_and_call(STATE(wait_for_packet_response));
+}
+
+StateFlowBase::Action SignalServer::wait_for_packet_response() {
+  switch (busPacket_->data()->resultCode_) {
+    case SignalPacket::RESULT_NOACK:
+      return respond_reject(openlcb::Defs::ERROR_OPENLCB_TIMEOUT);
+    case SignalPacket::RESULT_ACK:
+      return respond_ok(0);
+    default:
+      return respond_reject(openlcb::Defs::ERROR_TEMPORARY);
+  }
 }
 
 StateFlowBase::Action SignalServer::wait_for_packet_ready() {
