@@ -76,14 +76,14 @@ extern char __app_end;
 
 static constexpr unsigned SECTOR_SIZE = 1024;
 
-void ack() {
+void __attribute__((noinline)) ack() {
   microsleep(32);
   DL_UART_transmitData(SIG_UART, 0x55);
 }
 
 void __attribute__((noinline)) execute_flash_program() {
   uint16_t address = get_hword(2) << 1;
-  uint16_t length = g_receiver.size() - 4;
+  uint16_t length = g_receiver.size() - 5;
   HASSERT(address >= symbol_to_address(__app_start));
   HASSERT(address + length <= symbol_to_address(__app_end));
   HASSERT(length == 8);
@@ -113,8 +113,17 @@ void process_packet() {
       DL_SYSCTL_resetDevice(DL_SYSCTL_RESET_BOOT);
       return;
     }
-    case SCMD_FLASH: {
-      return execute_flash_program();
+    case SCMD_FLASH_SUM: {
+      uint8_t sum = 0;
+      for (unsigned i = 1; i < g_receiver.size(); ++i) {
+        sum += g_receiver.data()[i];
+      }
+      if (sum == 0) {
+        execute_flash_program();
+        return ack();
+      } else {
+        return;
+      }
     }
     case SCMD_CRC: {
       uint16_t address = get_hword(2) << 1;

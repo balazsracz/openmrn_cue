@@ -28,6 +28,7 @@
 // ==== Signal commands
 #define SCMD_RESET 0x1
 #define SCMD_FLASH 0x4  // arguments: ofsl ofsh data... max packet length = 16.
+#define SCMD_FLASH_SUM 0xa  // arguments: ofsl ofsh data... csum max packet length = 32. csum is a negative of the sum of all bytes from the command onwards MOD 256.
 #define SCMD_CRC 0x6  // argument: ofsl ofsh lenl lenh crcb1 crcb2 crcb3 crcb4 (little-endian)
 #define SCMD_LED 0x5  // argument: out bits
 

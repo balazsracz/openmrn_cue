@@ -91,12 +91,15 @@ const unsigned FLAGS_signal_flash_sleep = 50000;
 
 bool noreset = false;
 bool binfile = false;
+bool resume_after = true;
+bool retry_flash = false;
+bool checksum = false;
 
 
 void usage(const char *e) {
   fprintf(stderr,
           "Usage: %s ([-i destination_host] [-p port] | [-d device_path]) "
-          "(-n nodeid | -a alias) [-k] [-b] -f filename -s signal_address -o offset\n",
+          "(-n nodeid | -a alias) [-k] [-r] [-c] [-R] [-b] -f filename -s signal_address -o offset\n",
           e);
   fprintf(stderr,
           "Connects to an openlcb bus and sends a datagram to a "
@@ -116,6 +119,12 @@ void usage(const char *e) {
           "no separators, like '-a 0x3F9'\n");
   fprintf(stderr,
           "\n-k will prevent resetting the signals before flashing.\n");
+  fprintf(stderr,
+          "\n-r will prevent restarting the regular loop in the host.\n");
+  fprintf(stderr,
+          "\n-c adds checksum to the flash datagrams.\n");
+  fprintf(stderr,
+          "\n-R enables retries of flash datagrams that were not ACKed.\n");
   fprintf(stderr, "\nfilename contains the binary to flash in HEX format.\n");
   fprintf(stderr,
           "\n-b means the filename is a binary file.\n");
@@ -129,7 +138,7 @@ void usage(const char *e) {
 
 void parse_args(int argc, char *argv[]) {
   int opt;
-  while ((opt = getopt(argc, argv, "hi:p:d:n:a:g:f:s:o:kb")) >= 0) {
+  while ((opt = getopt(argc, argv, "hi:p:d:n:a:g:f:s:o:kbrRc")) >= 0) {
     switch (opt) {
       case 'h':
         usage(argv[0]);
@@ -154,6 +163,15 @@ void parse_args(int argc, char *argv[]) {
         break;
       case 'b':
         binfile = true;
+        break;
+      case 'c':
+        checksum = true;
+        break;
+      case 'r':
+        resume_after = false;
+        break;
+      case 'R':
+        retry_flash = true;
         break;
       case 's':
         signal_address = strtoul(optarg, nullptr, 0);
@@ -182,7 +200,7 @@ using openlcb::NodeHandle;
 SyncNotifiable n;
 BarrierNotifiable bn;
 
-void send_datagram(const string &dg) {
+uint32_t send_datagram(const string &dg) {
   DatagramClient *client = g_datagram_can.client_allocator()->next_blocking();
 
   Buffer<openlcb::GenMessage> *b;
@@ -195,7 +213,9 @@ void send_datagram(const string &dg) {
   b->set_done(bn.reset(&n));
   client->write_datagram(b);
   n.wait_for_notification();
+  uint32_t ret = client->result();
   g_datagram_can.client_allocator()->typed_insert(client);
+  return ret;
 }
 
 void send_signal_dg(uint8_t cmd, const string& arg = "") {
@@ -207,7 +227,25 @@ void send_signal_dg(uint8_t cmd, const string& arg = "") {
 }
 
 void send_packet(const string &packet) {
-  send_signal_dg(0x10, packet);
+  send_signal_dg(CMD_SIGNALPACKET, packet);
+}
+
+bool send_packet_with_ack(const string &packet, unsigned timeout_msec) {
+  string dg;
+  dg.push_back(0x2F);
+  dg.push_back(CMD_SIGNALPACKET_WITH_ACK);
+  dg.push_back((timeout_msec >> 8) & 0xff);
+  dg.push_back((timeout_msec >> 0) & 0xff);
+  dg += packet;
+  uint32_t ret = send_datagram(dg);
+  if (ret == openlcb::DatagramClient::OPERATION_SUCCESS) {
+    return true;
+  } else if (ret == openlcb::Defs::ERROR_OPENLCB_TIMEOUT) {
+    return false;
+  } else {
+    LOG(LEVEL_ERROR, "Unexpected datagram result %04x", (unsigned)ret);
+    return false;
+  }
 }
 
 class Crc32 {
@@ -256,11 +294,13 @@ void FlashSignal(unsigned request_offset, const string& data) {
     usleep(10000);
   }
 
+  bool seen_failure = false;
+  
   while (current < data.size()) {
     LOG(INFO, "Writing at offset %x", current);
     for (int i = 0; i < kNumBytesPerRow/kNumBytesPerRequest; ++i) {
       string s;
-      s.push_back(SCMD_FLASH);
+      s.push_back(checksum ? SCMD_FLASH_SUM : SCMD_FLASH);
       int offset = (request_offset + current) >> 1;
       s.push_back(offset & 0xff);
       s.push_back((offset>>8) & 0xff);
@@ -271,15 +311,31 @@ void FlashSignal(unsigned request_offset, const string& data) {
           s.push_back(0xff);
         }
       }
+      uint8_t sum = 0;
+      for (auto c : s) {
+        sum += (uint8_t)c;
+      }
+      if (checksum) s.push_back((-sum) & 0xff);
       string k;
       k.push_back(signal_address);
       k.push_back(s.size() + 1);
-      usleep(FLAGS_signal_flash_sleep);
-      send_packet(k + s);
-      current += kNumBytesPerRequest;
+      bool success = send_packet_with_ack(k + s, 200 /*msec for flash*/);
+      if (!success) {
+        LOG(INFO, "Offset %x NO ACK", request_offset + current); 
+        seen_failure = true;
+      }
+      if (success || !retry_flash) {
+        current += kNumBytesPerRequest;
+      } else {
+        --i; // retry
+      }
     } // for requests
   } // for rows.
 
+  if (seen_failure) {
+    LOG(LEVEL_ERROR, "Some writes were not acked.");
+  }
+  
   Crc32 crc;
   for (unsigned i = 0; i < data.size(); ++i) {
     if (i & 1) {
@@ -306,10 +362,15 @@ void FlashSignal(unsigned request_offset, const string& data) {
   string k;
   k.push_back(signal_address);
   k.push_back(s.size() + 1);
-  usleep(10000);
-  send_packet(k + s);
+  if (send_packet_with_ack(k + s, 200)) {
+    LOG(INFO, "Flash OK, CRC verified.");
+  } else {
+    LOG(LEVEL_ERROR, "CRC error");
+  }
 
-  //send_signal_dg(CMD_SIGNAL_RESUME);
+  if (resume_after) {
+    send_signal_dg(CMD_SIGNAL_RESUME);
+  }
 }
 
 
