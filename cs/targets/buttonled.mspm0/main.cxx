@@ -32,12 +32,71 @@
  * @date 12 Jan 2025
  */
 
+#include "address.h"
 #include "custom/MspM0SignalReceiver.hxx"
 #include "os/os.h"
-#include "os/sleep.h"
+#include "src/base.h"
 #include "utils/blinker.h"
 
 MspM0SignalReceiver g_receiver;
+
+/// Current state of t he button. True = pressed, false = not pressed.
+bool button_state = false;
+
+extern void set_pix(uint32_t color);
+
+enum Color {
+  COLOR_BLACK = 0x000000,
+  COLOR_RED = 0xff0000,
+  COLOR_GREEN = 0x00ff00,
+  COLOR_BLUE = 0x0000ff,
+  COLOR_CYAN = 0x00ffff,
+  COLOR_MAGENTA = 0xff00ff,
+  COLOR_YELLOW = 0xffff00,
+  COLOR_BROWN = 0xff8000,
+};
+
+static const uint32_t aspect_to_color[] = {
+    COLOR_BLACK, COLOR_RED,     COLOR_GREEN,  COLOR_BLUE,
+    COLOR_CYAN,  COLOR_MAGENTA, COLOR_YELLOW, COLOR_BROWN,
+};
+
+void process_packet() {
+  switch (g_receiver.cmd()) {
+    case SCMD_RESET: {
+      DL_SYSCTL_resetDevice(DL_SYSCTL_RESET_BOOT);
+      return;
+    }
+    case SCMD_ASPECT: {
+      if (g_receiver.size() < 3) {
+        return;
+      }
+      uint8_t aspect = g_receiver.data()[2];
+      if (aspect >= ARRAYSIZE(aspect_to_color)) {
+        return;
+      }
+      set_pix(aspect_to_color[aspect]);
+      return g_receiver.ack();
+    }
+    case SCMD_PING: {
+      return g_receiver.ack();
+    }
+    case SCMD_INZERO: {
+      if (g_receiver.size() >= 3 && g_receiver.data()[2] == 0 &&
+          !button_state) {
+        return g_receiver.ack();
+      }
+      break;
+    }
+    case SCMD_INONE: {
+      if (g_receiver.size() >= 3 && g_receiver.data()[2] == 0 &&
+          button_state) {
+        return g_receiver.ack();
+      }
+      break;
+    }
+  }
+}
 
 /** Entry point to application.
  * @param argc number of command line arguments
@@ -50,13 +109,11 @@ int appl_main(int argc, char *argv[]) {
   while (1) {
     g_receiver.loop();
     if (g_receiver.is_full()) {
-      //asm("bkpt #0 ");
-      if (g_receiver.address() == 0x55) {
-        resetblink(g_receiver.data()[2] ? 1 : 0);
+      if (g_receiver.address() == NODEID_LOW_BITS ||
+          g_receiver.address() == 0) {
+        process_packet();
       }
       g_receiver.clear();
-      //resetblink(bl);
-      //bl ^= 1;
     }
   }
   return 0;

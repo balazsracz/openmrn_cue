@@ -27,6 +27,7 @@
 
 // ==== Signal commands
 #define SCMD_RESET 0x1
+#define SCMD_ASPECT 0x3
 #define SCMD_FLASH 0x4  // arguments: ofsl ofsh data... max packet length = 16.
 #define SCMD_FLASH_SUM 0xa  // arguments: ofsl ofsh data... csum max packet length = 32. csum is a negative of the sum of all bytes from the command onwards MOD 256.
 #define SCMD_CRC 0x6  // argument: ofsl ofsh lenl lenh crcb1 crcb2 crcb3 crcb4 (little-endian)
@@ -35,6 +36,8 @@
 #define SCMD_CRCRESULT 0x8  // No argument. ACK-ed if the previous CRC result
                             // was OK.
 #define SCMD_PING 0x9  // No argument. ACK-ed always with return pulse.
+#define SCMD_INZERO 0x10  // arg: input number. ACK-ed if the given input number is false.
+#define SCMD_INONE 0x11  // arg: input number. ACK-ed if the given input number is true.
 
 
 

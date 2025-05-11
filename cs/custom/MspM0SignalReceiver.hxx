@@ -40,6 +40,8 @@
 #include <ti/driverlib/driverlib.h>
 #include <ti/driverlib/m0p/dl_core.h>
 
+#include "os/sleep.h"
+
 #include "hardware.hxx"
 
 class MspM0SignalReceiver {
@@ -91,6 +93,11 @@ class MspM0SignalReceiver {
     }
   }
 
+  void ack() {
+    microsleep(32);
+    DL_UART_transmitData(SIG_UART, 0x55);
+  }
+  
   /// @return true if we have received a complete packet.
   bool is_full() {
     return size_ >= 1 && size_ >= packet_[0];
@@ -104,6 +111,8 @@ class MspM0SignalReceiver {
     return packet_[1];
   }
 
+  /// @return the number of bytes in this packet, including the size and
+  /// command bytes.
   uint8_t size() {
     return packet_[0];
   }
@@ -112,6 +121,8 @@ class MspM0SignalReceiver {
     size_ = 0;
   }
 
+  /// @return the raw data in the packet. Offset [0] is the size, offset [1] is
+  /// the command, offset [2] is the first payload byte.
   uint8_t* data() {
     return packet_;
   }

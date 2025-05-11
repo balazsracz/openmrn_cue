@@ -113,6 +113,20 @@ void process_packet() {
       DL_SYSCTL_resetDevice(DL_SYSCTL_RESET_BOOT);
       return;
     }
+    case SCMD_ASPECT: {
+      // Starts main application.
+      extern char __app_start;
+      // We store the application reset in interrupt vecor 13, which is
+      // reserved / unused on all Cortex-M0 processors.
+      asm volatile(" mov   r3, %[flash_addr] \n"
+                   :
+                   : [flash_addr] "r"(&__app_start));
+      asm volatile(" ldr r0, [r3]\n"
+                   " mov sp, r0\n"
+                   " ldr r0, [r3, #4]\n"
+                   " bx  r0\n");
+      return;
+    }
     case SCMD_FLASH_SUM: {
       uint8_t sum = 0;
       for (unsigned i = 1; i < g_receiver.size(); ++i) {
