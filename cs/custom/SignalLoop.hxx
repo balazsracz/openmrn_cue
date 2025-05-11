@@ -37,10 +37,13 @@
 #define _BRACZ_CUSTOM_SIGNALLOOP_HXX_
 
 #include "utils/Singleton.hxx"
+#include "utils/BusMaster.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 #include "custom/SignalPacket.hxx"
 
 namespace bracz_custom {
+
+using SignalBus = Bus<SignalPacket>;
 
 class SignalLoopInterface : public Singleton<SignalLoopInterface> {
  public:
@@ -50,14 +53,44 @@ class SignalLoopInterface : public Singleton<SignalLoopInterface> {
   virtual void disable_loop() = 0;
   /** Turns on signal looping. This is the default state at reset. */
   virtual void enable_loop() = 0;
+
+  /// @return the bus master responsible for the scheduling of activities.
+  virtual SignalBus::Master* get_bus_master() = 0;
+  
+  bool isLoopRunning_ = true;
 };
 
+enum SignalPriorities {
+  // When an aspect needs to be modified due to an event.
+  LIVE_UPDATE,
+  // Polling button states.
+  BUTTON_POLL,
+  // Background refreshes of aspects.
+  ASPECT_REFRESH,
+  NUM_PRIORITIES
+};
+
+/// Defines the policy of bandwidth sharing between the different priority
+/// levels. This array goes into { \link ScheduledQueue }. Tokens go through
+/// the priority order. A value of 0.8 means that a token at this level gets
+/// caught 80% of the time, and passed to the next level 20% of the time. A
+/// value of 1 means strict priority order, i.e., if this level is not empty,
+/// then no token will pass through to the next level.
+static constexpr Fixed16 SIGNAL_PRIORITIES[SignalPriorities::NUM_PRIORITIES] = {
+    {Fixed16::FROM_DOUBLE, 0.8},  // live update
+    {Fixed16::FROM_DOUBLE, 0.8},  // button poll
+    {1, 0},                       // aspect refresh
+};
 
 class SignalLoop : public StateFlowBase,
                    private openlcb::ByteRangeEventC,
                    public SignalLoopInterface,
-                   private Atomic {
+                   private Atomic,
+                   private SignalBus::Activity {
  public:
+
+  
+  
   /** We wait this long between two refresh cycles or an interactive update and
    * a refresh cycle. */
   static const int REFRESH_DELAY_MSEC = 700;
@@ -74,26 +107,36 @@ class SignalLoop : public StateFlowBase,
         go_sleep_(0),
         waiting_(0),
         paused_(0),
-        timer_(this)
+        timer_(this),
+        busMaster_(node->iface(), bus, /*idle=*/this, 3)
   {
     memset(backingStore_, 0, num_signals * 2);
-    reset_flow(STATE(refresh));
+    //reset_flow(STATE(refresh));
     // Sets all signals to ESTOP.
     auto* b = bus->alloc();
     b->set_done(n_.reset(this));
     send_update(b, 0, 0);
     lastUpdateTime_ = os_get_time_monotonic();
+    busMaster_.set_policy((unsigned)SignalPriorities::NUM_PRIORITIES,
+                          SIGNAL_PRIORITIES);
+    busMaster_.schedule_activity(this, SignalPriorities::ASPECT_REFRESH);
   }
 
   ~SignalLoop() { free(backingStore_); }
 
-  void send_update(Buffer<SignalPacket>* b, uint8_t address, uint8_t aspect) {
+  /// Fills in a buffer for a signal update packet.
+  void prep_update_packet(Buffer<SignalPacket>* b, uint8_t address,
+                          uint8_t aspect) {
     auto& s = b->data()->payload_;
     s.clear();
     s.push_back(address);
     s.push_back(3);  // len
     s.push_back(3 /*SCMD_ASPECT*/);
     s.push_back(aspect);
+  }
+
+  void send_update(Buffer<SignalPacket>* b, uint8_t address, uint8_t aspect) {
+    prep_update_packet(b, address, aspect);
     bus_->send(b);
   }
 
@@ -121,6 +164,21 @@ class SignalLoop : public StateFlowBase,
     return allocate_and_call(bus_, STATE(fill_packet));
   }
 
+  void fill_packet(SignalBus::Packet *packet) override {
+    // Skips signals for which we don't have an address. Slot zero is always
+    // used even if address is 0.
+    while (nextSignal_ < numSignals_ &&
+           (nextSignal_ > 0 && !backingStore_[nextSignal_ << 1])) {
+      ++nextSignal_;
+    }
+    if (nextSignal_ >= numSignals_) {
+      nextSignal_ = 0;
+    }
+    prep_update_packet(packet, backingStore_[nextSignal_ << 1],
+                       backingStore_[(nextSignal_ << 1) + 1]);
+    busMaster_.schedule_activity(this, SignalPriorities::ASPECT_REFRESH);
+  }
+  
   Action fill_packet() {
     auto* b = get_allocation_result(bus_);
     b->set_done(n_.reset(this));
@@ -130,7 +188,9 @@ class SignalLoop : public StateFlowBase,
     return wait_and_call(STATE(start_refresh));
   }
 
-  void notify_changed(unsigned offset) OVERRIDE {
+  /// Called by ByteRangeEventC when an event changes one of the entries in the
+  /// backing store.
+  void notify_changed(unsigned offset) override {
     auto* b = bus_->alloc();  // sync alloc -- not very nice.
     send_update(b, backingStore_[offset & ~1], backingStore_[offset | 1]);
     lastUpdateTime_ = os_get_time_monotonic();
@@ -139,10 +199,18 @@ class SignalLoop : public StateFlowBase,
 
   void enable_loop() OVERRIDE {
     paused_ = 0;
+    isLoopRunning_ = true;
+    busMaster_.resume();
   }
 
   void disable_loop() OVERRIDE {
     paused_ = 1;
+    isLoopRunning_ = false;
+    busMaster_.pause();
+  }
+
+  SignalBus::Master* get_bus_master() override {
+    return &busMaster_;
   }
 
  private:
@@ -158,6 +226,8 @@ class SignalLoop : public StateFlowBase,
 
   BarrierNotifiable n_;
   StateFlowTimer timer_;
+
+  SignalBus::Master busMaster_;
 };
 
 }  // namespace bracz_custom
