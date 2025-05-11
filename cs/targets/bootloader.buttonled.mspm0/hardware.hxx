@@ -1,1 +1,1 @@
-../buttonled.mspm0/hardware.hxx
+../../boards/ti-mspm0l1304-button/hardware.hxx

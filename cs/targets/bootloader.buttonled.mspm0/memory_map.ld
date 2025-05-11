@@ -1,1 +1,1 @@
-../../../../openmrn/boards/ti-mspm0l1104-button/memory_map.ld
+../../boards/ti-mspm0l1304-button/memory_map.ld

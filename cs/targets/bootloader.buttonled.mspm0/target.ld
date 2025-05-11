@@ -1,1 +1,1 @@
-../../../../openmrn/boards/ti-mspm0l1104-button/target.ld
+../../boards/ti-mspm0l1304-button/target.ld

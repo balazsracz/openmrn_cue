@@ -1,1 +1,1 @@
-../../../../openmrn/boards/ti-mspm0l1104-button/HwInit.cxx
+../../boards/ti-mspm0l1304-button/HwInit.cxx
