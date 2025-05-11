@@ -37,10 +37,11 @@
 #include "os/os.h"
 #include "src/base.h"
 #include "utils/blinker.h"
+#include "utils/Debouncer.hxx"
 
 MspM0SignalReceiver g_receiver;
 
-/// Current state of t he button. True = pressed, false = not pressed.
+/// Current state of the button. True = pressed, false = not pressed.
 bool button_state = false;
 
 extern void set_pix(uint32_t color);
@@ -98,6 +99,9 @@ void process_packet() {
   }
 }
 
+extern uint64_t g_time_msec;
+QuiesceDebouncer btn_debouncer{10};
+
 /** Entry point to application.
  * @param argc number of command line arguments
  * @param argv array of command line arguments
@@ -106,7 +110,15 @@ void process_packet() {
 int appl_main(int argc, char *argv[]) {
   g_receiver.hw_init();
   setblink(0);
+  uint64_t last_time = 0;
+  btn_debouncer.initialize(true); // not pressed
   while (1) {
+    if (last_time != g_time_msec) {
+      // Runs once per msec.
+      last_time = g_time_msec;
+      btn_debouncer.update_state(BUTTON_Pin::get());
+      button_state = !btn_debouncer.current_state();
+    }
     g_receiver.loop();
     if (g_receiver.is_full()) {
       if (g_receiver.address() == NODEID_LOW_BITS ||
