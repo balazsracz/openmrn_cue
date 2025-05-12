@@ -10,6 +10,8 @@ sh -c "if [ \"X`printenv OPENMRNPATH`\" != \"X\" ]; then printenv OPENMRNPATH; \
      else echo OPENMRNPATH not found; fi" \
 )
 
+DEFAULT_ADDRESS=0xc0
+
 # Find MSPM0 SDK libraries
 include $(OPENMRNPATH)/etc/ti-mspm0sdk.mk
 
@@ -21,7 +23,13 @@ OBJEXTRA += $(TIMSPM0SDKPATH)/source/ti/driverlib/lib/gcc/m0p/mspm0l11xx_l13xx/d
 include $(OPENMRNPATH)/boards/ti-mspm0l1x-generic/find-emulator.mk
 
 export TARGET := bare.armv6m
+export BOARD := BOARD_BUTTONLED_MSP
 include $(OPENMRNPATH)/etc/prog.mk
+
+# Create address.h using node_id
+include $(OPENMRNPATH)/etc/node_id.mk
+
+main.o: address.h
 
 ifeq ($(call find_missing_deps,OPENOCDPATH OPENOCDSCRIPTSPATH),)
 all: $(EXECUTABLE).bin
