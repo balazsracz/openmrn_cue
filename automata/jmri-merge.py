@@ -23,6 +23,10 @@ g_signal_reverse_names = {
   "HB.B2": "HB.A2",
   "HB.B3": "HB.A3",
   "HB.B4": "HB.A4",
+  "BS.B1": "BS.A1",
+  "BS.B2": "BS.A2",
+  "ZH.A1": "ZH.B1",
+  "ZH.A2": "ZH.B2",
 }
 
 g_missing_signals = {
@@ -52,9 +56,7 @@ class Sensor:
   def Render(self, parent_element):
     e = ET.SubElement(parent_element, 'sensor')
     e.tail = '\n'
-    e.set('systemName', self.system_name)
     e.set('inverted', 'false')
-    e.set('userName', self.user_name)
     sn = ET.SubElement(e, 'systemName')
     sn.text = self.system_name
     un = ET.SubElement(e, 'userName')
@@ -69,9 +71,7 @@ class Turnout:
   def Render(self, parent_element):
     e = ET.SubElement(parent_element, 'turnout')
     e.tail = '\n'
-    e.set('systemName', self.system_name)
     e.set('inverted', 'false')
-    e.set('userName', self.user_name)
     e.set('automate', 'Default')
     if self.sensor_name:
       e.set('feedback', 'ONESENSOR')
@@ -545,6 +545,10 @@ def GetMaxSystemId(parent_element, strip_letters = 'IBL'):
   if parent_element is None: return max_id
   for e in parent_element:
     system_name = e.get('systemName')
+    if not system_name:
+      sub_tag = e.find('systemName')
+      if sub_tag is not None:
+        system_name = sub_tag.text
     if not system_name:
       print("Missing system name from entry in ", parent_element.tag)
       ET.dump(e)
@@ -1099,7 +1103,7 @@ def main():
     except:
       pass
     os.symlink(outfilename, symlink)
-    print("Created symlink %s -> %s." % (symlink, outfilename))
+    print("Created symlink %s -> %s" % (symlink, outfilename))
 
 
 main()
