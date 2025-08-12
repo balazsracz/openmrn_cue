@@ -1,1 +1,1 @@
-/home/bracz/train/openlcb/openmrn/boards/ti-bracz-cs-connected/hardware.hxx
+../../../../openmrn/boards/ti-bracz-cs-connected/hardware.hxx

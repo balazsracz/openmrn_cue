@@ -1,1 +1,1 @@
-/home/bracz/train/openlcb/openmrn/boards/ti-bracz-cs-connected/memory_map.ld
+../../../../openmrn/boards/ti-bracz-cs-connected/memory_map.ld
