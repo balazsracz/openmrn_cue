@@ -1,1 +1,1 @@
-/home/bracz/train/openlcb/openmrn/boards/ti-bracz-cs-connected/HwInit.cxx
+../../../../openmrn/boards/ti-bracz-cs-connected/HwInit.cxx

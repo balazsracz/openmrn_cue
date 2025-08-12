@@ -1,1 +1,1 @@
-/home/bracz/train/openlcb/openmrn/boards/ti-bracz-cs-connected/startup.c
+../../../../openmrn/boards/ti-bracz-cs-connected/startup.c
