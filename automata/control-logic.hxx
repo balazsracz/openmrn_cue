@@ -1153,14 +1153,14 @@ class DKW : private OccupancyLookupInterface,
   };
 
   DKW(AllocatorPtr allocator)
-      : routes_({RouteInfo(POINT_A1, POINT_B1, DKW_STRAIGHT),
+      : routes_{RouteInfo(POINT_A1, POINT_B1, DKW_STRAIGHT),
                  RouteInfo(POINT_A1, POINT_B2, DKW_CURVED),
                  RouteInfo(POINT_A2, POINT_B2, DKW_STRAIGHT),
                  RouteInfo(POINT_A2, POINT_B1, DKW_CURVED),
                  RouteInfo(POINT_B1, POINT_A1, DKW_STRAIGHT),
                  RouteInfo(POINT_B1, POINT_A2, DKW_CURVED),
                  RouteInfo(POINT_B2, POINT_A2, DKW_STRAIGHT),
-                 RouteInfo(POINT_B2, POINT_A1, DKW_CURVED)}) {
+                 RouteInfo(POINT_B2, POINT_A1, DKW_CURVED)} {
     for (int i = POINT_MIN; i <= POINT_MAX; ++i) {
       points_[i].interface.reset(new CtrlTrackInterface(
           allocator->Allocate(string("point_") + point_name(i), 8, 8), this));

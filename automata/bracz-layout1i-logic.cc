@@ -439,7 +439,7 @@ void IfNotPaused(Automata::Op* op) {
 }
 
 namespace automata {
-auto g_not_paused_condition = NewCallback(&IfNotPaused);
+CallbackSpec1_0<Automata::Op*> g_not_paused_condition = NewCallback(&IfNotPaused);
 }
 
 // Adds the necessary conditions that represent if there is a train at the

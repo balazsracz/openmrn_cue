@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <inttypes.h>
 
 #include <string>
 #include <vector>
