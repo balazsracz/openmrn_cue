@@ -511,6 +511,7 @@ bool AutomataRunner::eval_condition(insn_t insn) {
 
 bool AutomataRunner::eval_condition2(insn_t insn, insn_t arg2) {
   switch (insn) {
+#if 0 // These commands are now replaced by their equivalent OpenLCB commands.
     case _IF_STOP_TRAIN: {
       if (DccLoop_SetLocoPaused(arg2, 1)) return false;
       return true;
@@ -544,6 +545,7 @@ bool AutomataRunner::eval_condition2(insn_t insn, insn_t arg2) {
       DccLoop_SetLocoRelativeSpeed(train_ids[aut_srcplace_], arg2);
       return true;
     }
+#endif
     case _IF_ASPECT: { return (aut_signal_aspect_ == arg2); }
       // EEPROMs should be replaced with standard remote bits.
       /*    case _IF_EEPROM_0:
