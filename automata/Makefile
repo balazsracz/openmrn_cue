@@ -2,12 +2,13 @@
 OBJS=system.o control-logic.o registry.o
 
 AUTS = rr-crossing.cpp logic-demo.cpp 
-OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout bracz-layout1i-logic.cout bracz-layout2b-logic.cout bracz-layout2a-logic.cout bracz-layout5a-logic.cout
+OUTPUTS = $(AUTS:.cpp=.cout) convention-logic.cout stbaker-logic.cout lcc-layout-logic.cout lcc-layout-logic-soft.cout bracz-layout3h-logic.cout bracz-layout1i-logic.cout bracz-layout2b-logic.cout bracz-layout2a-logic.cout bracz-layout5a-logic.cout bracz-layout6a-logic.cout
 BINS = $(AUTS:.cpp=)
 
 #DEFAULT_AUT = bracz-layout3h-logic
 #DEFAULT_AUT = bracz-layout2b-logic
-DEFAULT_AUT = bracz-layout5a-logic
+#DEFAULT_AUT = bracz-layout5a-logic
+DEFAULT_AUT = bracz-layout6a-logic
 # DEFAULT_AUT = lcc-layout-logic
 TARGET_NODE = 0x05010101143F # cue.tiva
 
@@ -26,7 +27,7 @@ callback-specializations.hxx: gen_callback
 gencb: callback-specializations.hxx
 
 #CXXFLAGS := -std=gnu++0x
-CXXFLAGS += -std=gnu++0x -MMD -MF $@.d -g -ggdb -Wall -isystem /opt/gmock/default/gtest/include
+CXXFLAGS += -std=gnu++0x -MMD -MF $@.d -g -ggdb -Wall -isystem /opt/gtest/default/googletest/include
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c -o $@ $(abspath $<)

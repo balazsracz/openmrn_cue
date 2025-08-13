@@ -769,6 +769,20 @@ uint64_t MMAddress(uint16_t addr) {
 }
 
 
+void IfAisleLoopFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_XXW2.b.any_route()));
+}
+auto g_aisle_loop_free = NewCallback(&IfAisleLoopFree);
+
+
+void IfWinLoopFree(Automata::Op* op) {
+  IfNotPaused(op);
+  op->IfReg0(op->parent()->ImportVariable(*Turnout_YYW2.b.any_route()));
+}
+auto g_win_loop_free = NewCallback(&IfWinLoopFree);
+
+
 void IfZHEntry(Automata::Op* op) {
   IfNotPaused(op);
   op->IfReg0(op->parent()->ImportVariable(*Turnout_ZHW1.b.any_route()));
@@ -783,15 +797,8 @@ void IfZHExit(Automata::Op* op) {
 auto g_zh_exit_free = NewCallback(&IfZHExit);
 
 
-void IfBSW1Free(Automata::Op* op) {
-  IfNotPaused(op);
-  op->IfReg0(op->parent()->ImportVariable(*Turnout_BSW1.b.any_route()));
-}
-auto g_bs_w1_free = NewCallback(&IfBSW1Free);
 
-
-auto& Block_EntryToZH = Block_LBA2;
-auto& Block_EntryToBS = Block_LBB1;
+auto& Block_EntryToZH = Block_YYA2;
 
 class LayoutSchedule : public TrainSchedule {
  public:
@@ -816,12 +823,16 @@ class LayoutSchedule : public TrainSchedule {
     StopAndReverseAtStub(Stub_ZHA1);
   }
 
-  void RunStubBS2(Automata* aut) {
-    WithRouteLock l(this, &route_lock_BS);
-    AddDirectBlockTransition(Block_EntryToBS, Stub_BSB2, &g_bs_w1_free);
-    StopAndReverseAtStub(Stub_BSB2);
+  void RunLoopCCW(Automata* aut) {
+    AddDirectBlockTransition(Block_XXB1, Block_YYB1, &g_aisle_loop_free);
+    AddDirectBlockTransition(Block_YYB1, Block_XXB1, &g_win_loop_free);
   }
-  
+ 
+  void RunLoopCW(Automata* aut) {
+    AddDirectBlockTransition(Block_XXA2, Block_YYA2, &g_win_loop_free);
+    AddDirectBlockTransition(Block_YYA2, Block_XXA2, &g_aisle_loop_free);
+  }
+ 
 #if 0
   void RunXtoY(Automata* aut) {
     AddDirectBlockTransition(Block_A461, Block_A441, &g_355_free);
@@ -960,35 +971,9 @@ class LayoutSchedule : public TrainSchedule {
 #endif
   
   void RunCycle(Automata* aut) {
-  /*
-    RunB108_to_A240(aut);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A217, &l240_to217, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), false);
-
-    AddBlockTransitionOnPermit(Block_A240, Block_A317, &l240_to317, &g_not_paused_condition, true);
-    SwitchTurnout(Turnout_W231.b.magnet(), true);
-
-    {
-      WithRouteLock l(this, &route_lock_WW);
-      AddBlockTransitionOnPermit(Block_A217, Block_A406, &w217_from217, &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCross);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCurved);
-
-      AddBlockTransitionOnPermit(Block_A317, Block_A406, &w217_from317, &g_dkw209_free);
-      SwitchTurnout(DKW_W216.b.magnet(), MovableDKW::kDKWStateCurved);
-      SwitchTurnout(DKW_W209.b.magnet(), MovableDKW::kDKWStateCurved);
-    }
-
-    AddEagerBlockTransition(Block_A406, Block_XXB1);
-    AddDirectBlockTransition(Block_XXB1, Block_B108, &g_not_paused_condition);
-  */
+    RunLoopCW(aut);
+    RunLoopCCW(aut);
   }
-
-
-  void RunAltCycle(Automata* aut) {
-  }
-
 
   ByteImportVariable stored_speed_;
 };
@@ -1001,11 +986,7 @@ class CircleTrain : public LayoutSchedule {
       : LayoutSchedule(name, train_id, default_speed) {}
 
   void RunTransition(Automata* aut) OVERRIDE {
-    RunStubZH1(aut);
-    AddDirectBlockTransition(Stub_ZHA1.b_.rev_signal, Block_LBB1,
-                             &g_zh_exit_free);
-    RunStubBS2(aut);
-    AddDirectBlockTransition(Stub_BSB2.b_.rev_signal, Block_LBA2, &g_bs_w1_free);
+    RunCycle(aut);
   }
 };
 
