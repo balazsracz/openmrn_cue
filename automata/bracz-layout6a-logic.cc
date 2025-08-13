@@ -78,7 +78,7 @@ constexpr auto SCENE_OFF_EVENT = BRACZ_LAYOUT | 0x0029;
 
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n9(0x29);
-AccBoard ba(0x2a), bb(0x2b), bc(0x2c), bd(0x2d), be(0x2e), b9(0x29);
+AccBoard bd(0x2d), b9(0x29);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -238,11 +238,7 @@ DefAut(blinkaut, brd, {
       .ActReg1(rep);
 
   DefCopy(*rep, ImportVariable(&b9.LedBlueSw));
-  DefCopy(*rep, ImportVariable(&ba.LedBlueSw));
-  DefCopy(*rep, ImportVariable(&bb.LedBlueSw));
-  DefCopy(*rep, ImportVariable(&bc.LedBlueSw));
   DefCopy(*rep, ImportVariable(&bd.LedBlueSw));
-  DefCopy(*rep, ImportVariable(&be.LedBlueSw));
 });
 
 /*DefAut(testaut, brd, { Def().IfState(StInit).ActState(StBase);
@@ -445,7 +441,7 @@ PhysicalSignal YYA1(&ba.InBrownBrown, nullptr, nullptr, nullptr,
                     nullptr);
 */
 
-
+#if 0
 // 4-way bridge. Heads are from left to right.
 I2CSignal signal_ZHB1_main(&b9, 53, "ZH.B1.main");
 I2CSignal signal_ZHB1_adv(&b9, 54, "ZH.B1.adv");
@@ -467,25 +463,30 @@ I2CSignal signal_BSB1_adv(&bb, 75, "BSB1.adv");
 I2CSignal signal_BSB2_adv(&bb, 74, "BSB2.adv");
 // End bridge
 
+#endif
 
-PhysicalSignal ZHA1(&b9.InOraRed, nullptr, nullptr, nullptr,
+
+PhysicalSignal ZHA1(&ba.InOraRed, nullptr, nullptr, nullptr,
                     &signal_ZHB1_main.signal, &signal_ZHB1_adv.signal, nullptr,
                     nullptr);
 
-PhysicalSignal ZHA2(&b9.InOraGreen, nullptr, nullptr, nullptr,
+PhysicalSignal ZHA2(&ba.InOraGreen, nullptr, nullptr, nullptr,
                     &signal_ZHB2_main.signal, &signal_ZHB2_adv.signal, nullptr,
                     nullptr);
 
+PhysicalSignal XXB1(&b9.InBrownBrown, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
-PhysicalSignal BSB1(&ba.InOraGreen, nullptr, nullptr, nullptr,
-                    &signal_BSA1_main.signal, &signal_BSA1_adv.signal, nullptr,
-                    nullptr);
+PhysicalSignal XXA2(&bd.InBrownGrey, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
-PhysicalSignal BSB2(&ba.In6, nullptr, nullptr, nullptr,
-                    &signal_BSA2_main.signal, &signal_BSA1_adv.signal, nullptr,
-                    nullptr);
+PhysicalSignal YYA2(&b9.InOraGreen, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
+PhysicalSignal YYB1(&bd.InGreenYellow, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, nullptr, nullptr);
 
+/*
 StubBlock Stub_ZHA1(&brd, &ZHA1, nullptr, logic, "ZH.A1");
 StubBlock Stub_ZHA2(&brd, &ZHA2, nullptr, logic, "ZH.A2");
 
@@ -493,80 +494,50 @@ StandardFixedTurnout Turnout_ZHW1(&brd, logic->Allocate("ZH.W1", 40),
                                   FixedTurnout::TURNOUT_THROWN);
 TurnoutWrap TZHW1(&Turnout_ZHW1.b, kPointToThrown);
 
-PhysicalSignal LBB1(&bd.InBrownGrey, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
+*/
 
-PhysicalSignal LBA2(&b9.InGreenGreen, nullptr, nullptr, nullptr, nullptr,
-                    nullptr, nullptr, nullptr);
-
-StandardFixedTurnout Turnout_LBW1(&brd, logic->Allocate("LB.W1", 40),
+StandardFixedTurnout Turnout_YYW1(&brd, logic->Allocate("YY.W1", 40),
                                   FixedTurnout::TURNOUT_THROWN);
-TurnoutWrap TLBW1(&Turnout_LBW1.b, kClosedToPoint);
+TurnoutWrap TYYW1(&Turnout_YYW1.b, kClosedToPoint);
 
-StandardBlock Block_LBB1(&brd, &LBB1, logic, "LB.B1");
-StandardBlock Block_LBA2(&brd, &LBA2, logic, "LB.A2");
+StandardBlock Block_YYB1(&brd, &YYB1, logic, "YY.B1");
+StandardBlock Block_YYA2(&brd, &YYA2, logic, "YY.A2");
 
-StandardFixedTurnout Turnout_LBW2(&brd, logic->Allocate("LB.W2", 40),
+StandardFixedTurnout Turnout_YYW2(&brd, logic->Allocate("YY.W2", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
-TurnoutWrap TLBW2(&Turnout_LBW2.b, kPointToClosed);
+TurnoutWrap TYYW2(&Turnout_YYW2.b, kPointToClosed);
 
+StandardFixedTurnout Turnout_XXW1(&brd, logic->Allocate("XX.W1", 40),
+                                  FixedTurnout::TURNOUT_THROWN);
+TurnoutWrap TXXW1(&Turnout_XXW1.b, kClosedToPoint);
 
+StandardBlock Block_XXB1(&brd, &XXB1, logic, "XX.B1");
+StandardBlock Block_XXA2(&brd, &XXA2, logic, "XX.A2");
 
-StubBlock Stub_BSB1(&brd, &BSB1, nullptr, logic, "BS.B1");
-StubBlock Stub_BSB2(&brd, &BSB2, nullptr, logic, "BS.B2");
-
-StandardFixedTurnout Turnout_BSW1(&brd, logic->Allocate("BS.W1", 40),
+StandardFixedTurnout Turnout_XXW2(&brd, logic->Allocate("XX.W2", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
-TurnoutWrap TBSW1(&Turnout_BSW1.b, kThrownToPoint);
+TurnoutWrap TXXW2(&Turnout_XXW2.b, kPointToClosed);
 
+bool ignored2 = BindSequence(                            //
+    Turnout_YYW1.b.side_points(),                        //
+    {&TXXW2, &Block_XXA2, &TXXW1, &TYYW2, &Block_YYA2},  //
+    Turnout_YYW1.b.side_closed());
 
+bool ignored1 = BindSequence(      //
+    Turnout_YYW1.b.side_thrown(),  //
+    {&Block_YYB1},                 //
+    Turnout_YYW2.b.side_thrown());
 
+bool ignored3 = BindSequence(      //
+    Turnout_XXW1.b.side_thrown(),  //
+    {&Block_XXB1},                 //
+    Turnout_XXW2.b.side_thrown());
 
 /*
 StandardFixedTurnout Turnout_YYW9(&brd, logic->Allocate("YY.W9", 40),
                                   FixedTurnout::TURNOUT_CLOSED);
 TurnoutWrap TYYW9(&Turnout_YYW9.b, kThrownToPoint);
 */
-
-bool ignored1 = BindPairs({
-    //
-    {Stub_ZHA2.entry(), Turnout_ZHW1.b.side_closed()},  //
-    {Stub_BSB2.entry(), Turnout_BSW1.b.side_closed()}   //
-});
-
-bool ignored2 = BindSequence(  //
-    Stub_BSB1.entry(),         //
-    {&TBSW1, &TLBW2, &Block_LBA2, &TLBW1, &TZHW1},          //
-    Stub_ZHA1.entry());
-
-bool ignored3 = BindSequence(      //
-    Turnout_LBW1.b.side_thrown(),  //
-    {&Block_LBB1},                 //
-    Turnout_LBW2.b.side_thrown());
-
-#if 0
-bool ignored4 = BindSequence(  //
-    Turnout_YYW4.b.side_thrown(),
-    {&Block_YYB22, &TYYW3, &TYYW2, &Block_B339, &TW340, &Block_B349},
-    Turnout_W349.b.side_thrown());
-
-bool ignored3 = BindSequence(Turnout_W360.b.side_thrown(),
-                             {&Block_B369, &TXXW2, &TXXW3, &TXXW4, &Block_XXB4,
-                              &TZZW1, &Block_ZZB2, &Block_ZZA1},
-                             Turnout_ZZW1.b.side_closed());
-
-bool ignored5 = BindSequence(  //
-    Turnout_YYW5.b.side_closed(),
-    {&Block_YYB42, &TYYW9},
-    Turnout_YYW3.b.side_thrown());
-
-bool ignored6 = BindSequence( //
-    Turnout_YYW6.b.side_thrown(), //
-    { &Block_YYA4, &TQQW1, &TQQW2, &Block_QQA2, &Block_QQB3 }, //
-    Turnout_QQW1.b.side_thrown());
-#endif
-
-
 
 void RgSignal(Automata* aut, const Automata::LocalVariable& route_set,
               Automata::LocalVariable* signal) {
@@ -815,7 +786,6 @@ class LayoutSchedule : public TrainSchedule {
     AddEagerBlockTransition(Block_B108, Block_B129);
     AddEagerBlockTransition(Block_B129, Block_A240);
     }*/
-
 
   void RunStubZH1(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZH);
