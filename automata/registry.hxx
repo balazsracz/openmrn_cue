@@ -2,6 +2,7 @@
 #define _BRACZ_AUTOMATA_REGISTRY_HXX_
 
 #include <stdio.h>
+#include <inttypes.h>
 #include <string>
 #include <vector>
 using std::string;

@@ -78,7 +78,7 @@ constexpr auto SCENE_OFF_EVENT = BRACZ_LAYOUT | 0x0029;
 
 // I2CBoard b5(0x25), b6(0x26); //, b7(0x27), b1(0x21), b2(0x22);
 //NativeIO n9(0x29);
-AccBoard bd(0x2d), b9(0x29);
+AccBoard bd(0x2d), b9(0x29), ba(0x2a);
 
 /*StateRef StGreen(2);
 StateRef StGoing(3);
@@ -238,6 +238,7 @@ DefAut(blinkaut, brd, {
       .ActReg1(rep);
 
   DefCopy(*rep, ImportVariable(&b9.LedBlueSw));
+  DefCopy(*rep, ImportVariable(&ba.LedBlueSw));
   DefCopy(*rep, ImportVariable(&bd.LedBlueSw));
 });
 
@@ -441,7 +442,6 @@ PhysicalSignal YYA1(&ba.InBrownBrown, nullptr, nullptr, nullptr,
                     nullptr);
 */
 
-#if 0
 // 4-way bridge. Heads are from left to right.
 I2CSignal signal_ZHB1_main(&b9, 53, "ZH.B1.main");
 I2CSignal signal_ZHB1_adv(&b9, 54, "ZH.B1.adv");
@@ -452,6 +452,8 @@ I2CSignal signal_ZHB3_adv(&b9, 58, "ZH.B3.adv");
 I2CSignal signal_ZHB4_main(&b9, 65, "ZH.B4.main");
 I2CSignal signal_ZHB4_adv(&b9, 66, "ZH.B4.adv");
 // end four-way bridge.
+
+#if 0
 
 // 2-way bridge with main signals on one side, advance on the other. Heads are
 // from left to right (starting at main head).
@@ -753,7 +755,7 @@ void IfWinLoopFree(Automata::Op* op) {
 }
 auto g_win_loop_free = NewCallback(&IfWinLoopFree);
 
-
+/*
 void IfZHEntry(Automata::Op* op) {
   IfNotPaused(op);
   op->IfReg0(op->parent()->ImportVariable(*Turnout_ZHW1.b.any_route()));
@@ -766,7 +768,7 @@ void IfZHExit(Automata::Op* op) {
   op->IfReg0(op->parent()->ImportVariable(*Turnout_ZHW1.b.any_route()));
 }
 auto g_zh_exit_free = NewCallback(&IfZHExit);
-
+*/
 
 
 auto& Block_EntryToZH = Block_YYA2;
@@ -782,16 +784,11 @@ class LayoutSchedule : public TrainSchedule {
 
  protected:
   /*
-  void RunB108_to_A240(Automata* aut) {
-    AddEagerBlockTransition(Block_B108, Block_B129);
-    AddEagerBlockTransition(Block_B129, Block_A240);
-    }*/
-
   void RunStubZH1(Automata* aut) {
     WithRouteLock l(this, &route_lock_ZH);
     AddDirectBlockTransition(Block_EntryToZH, Stub_ZHA1, &g_zh_entry_free);
     StopAndReverseAtStub(Stub_ZHA1);
-  }
+    }*/
 
   void RunLoopCCW(Automata* aut) {
     AddDirectBlockTransition(Block_XXB1, Block_YYB1, &g_aisle_loop_free);

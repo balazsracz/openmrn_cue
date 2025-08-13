@@ -12,7 +12,7 @@ DEFAULT_AUT = bracz-layout6a-logic
 # DEFAULT_AUT = lcc-layout-logic
 TARGET_NODE = 0x05010101143F # cue.tiva
 
-all: lib test-aut bracz-layout3h-logic bin lcc-layout-logic lcc-layout-logic-soft
+all: lib test-aut bracz-layout6a-logic bin lcc-layout-logic lcc-layout-logic-soft
 
 -include *.d
 
@@ -44,6 +44,9 @@ libautomata.a: $(OBJS)
 
 test-aut: $(OBJS) test-aut.o
 	$(CXX) $(CXXFLAGS) -o $@ test-aut.o $(OBJS) 
+
+bracz-layout6a-logic: $(OBJS) bracz-layout6a-logic.o # control-logic.hxx
+	$(CXX) $(CXXFLAGS) -o $@ bracz-layout6a-logic.o $(OBJS) 
 
 bracz-layout5a-logic: $(OBJS) bracz-layout5a-logic.o # control-logic.hxx
 	$(CXX) $(CXXFLAGS) -o $@ bracz-layout5a-logic.o $(OBJS) 
