@@ -1033,6 +1033,14 @@ FreightTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
 
 CircleTrain train_re465("Re465", DccShortAddress(47), 25);
 CircleTrain train_re460hag("Re460_HAG", DccShortAddress(26), 32);
+CircleTrain train_rts("rts_railtraction", MMAddress(32), 10);
+CircleTrain train_wle("wle_er20", MMAddress(27), 10);
+CircleTrain train_re474("Re474", MMAddress(12), 30);
+CircleTrain train_krokodil("Krokodil", MMAddress(68), 40);
+CircleTrain train_rheingold("Rheingold", MMAddress(19), 35);
+CircleTrain train_bde44("BDe-4/4", DccShortAddress(38), 35);
+CircleTrain train_re620("Re620", DccShortAddress(5), 45);
+CircleTrain train_re420("Re420", DccShortAddress(4), 45);
 
 
 int main(int argc, char** argv) {
