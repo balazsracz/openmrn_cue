@@ -61,6 +61,14 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
     delete[] channels_;
   }
 
+  /// @return the currently valid DCC address, or zero if no valid address
+  /// right now.
+  /// @param channel which channel (0 to channel_count)
+  uint16_t current_address(unsigned ch)
+  {
+    return channels_[ch].current_address();
+  }
+  
   Action entry() override {
     auto channel = message()->data()->channel;
     if (channel == 0xff) {
@@ -73,7 +81,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
           // We need to send a fake railcom packet to ourselves to allow the
           // channel empty events to be generated.
           auto* b = alloc();
-          b->data()->reset(0);
+          b->data()->reset(0, 0xFF00);
           b->data()->channel = i;
           send(b);
         }
