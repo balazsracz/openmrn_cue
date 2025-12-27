@@ -49,6 +49,10 @@ flash gdb:
 
 endif
 
+HOST_ADDRESS ?= 0x16
 
 rflash: $(EXECUTABLE).bin $(EXECUTABLE).lst
-	../signal_reflash/cs -n 0x050101011416 -s $(ADDRESS) -R -c -o 0x1000 -f $< -b
+	../signal_reflash/cs -n 0x0501010114$$(printf %02x $(HOST_ADDRESS)) -s $(ADDRESS) -R -c -o 0x1000 -f $< -b
+
+rflashm: $(EXECUTABLE).bin $(EXECUTABLE).lst
+	../signal_reflash/cs -n 0x0501010114$$(printf %02x $(HOST_ADDRESS)) -s $(ADDRESS) -R -r -c -o 0x1000 -f $< -b
