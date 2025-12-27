@@ -111,6 +111,7 @@ class SignalLoop : public StateFlowBase,
         busMaster_(node->iface(), bus, /*idle=*/this, 3)
   {
     memset(backingStore_, 0, num_signals * 2);
+    backingStore_[0] = 255;
     //reset_flow(STATE(refresh));
     // Sets all signals to ESTOP.
     auto* b = bus->alloc();
@@ -151,10 +152,10 @@ class SignalLoop : public StateFlowBase,
   Action start_refresh() {
     waiting_ = 0;
     lastUpdateTime_ = os_get_time_monotonic();
-    // Skips signals for which we don't have an address. Slot zero is always
-    // used even if address is 0.
+    // Skips signals for which we don't have an address. This might mean that
+    // nothing is sent out as part of a refresh.
     while (nextSignal_ < numSignals_ &&
-           (nextSignal_ > 0 && !backingStore_[nextSignal_ << 1])) {
+           (!backingStore_[nextSignal_ << 1])) {
       ++nextSignal_;
     }
     if (paused_ || go_sleep_ || (nextSignal_ >= numSignals_)) {
