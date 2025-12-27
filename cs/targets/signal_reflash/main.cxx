@@ -26,7 +26,8 @@
  *
  * \file main.cxx
  *
- * An application that sends an OpenLCB datagram from command line.
+ * Application that reflashes a target board via a signal bus, by sending
+ * signal bus datagrams to the bus master's openlcb node.
  *
  * @author Balazs Racz
  * @date 27 Feb 2015

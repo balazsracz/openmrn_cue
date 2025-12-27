@@ -116,8 +116,8 @@ void process_packet() {
     case SCMD_ASPECT: {
       // Starts main application.
       extern char __app_start;
-      // We store the application reset in interrupt vecor 13, which is
-      // reserved / unused on all Cortex-M0 processors.
+      // Loads the application's initial stack pointer value to SP, loads the
+      // reset vector, and branches to it.
       asm volatile(" mov   r3, %[flash_addr] \n"
                    :
                    : [flash_addr] "r"(&__app_start));
