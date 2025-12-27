@@ -10,7 +10,7 @@ Scanner.cxxout: Scanner.ll Parser.cxxout
 	flex -o $@ $<
 
 Parser.cxxout: Parser.yy
-	bison -v --report=solved --report-file=/tmp/bison.report -o $@ $<
+	/usr/bin/bison -v --report=solved --report-file=/tmp/bison.report -o $@ $<
 
 ../logic/Parser.hxxout ../logic/location.hh: Parser.cxxout
 
