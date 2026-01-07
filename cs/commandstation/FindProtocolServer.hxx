@@ -301,9 +301,13 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
 
     Action send_response() {
       auto *b = get_allocation_result(iface()->global_message_write_flow());
+      auto node_id = nodes()->get_train_node_id(nextTrainId_);
+      if (!node_id) {
+        b->unref();
+        return call_immediately(STATE(next_iterate));
+      }
       b->set_done(bn_.reset(this));
       if (eventId_ == REQUEST_GLOBAL_IDENTIFY) {
-        auto node_id = nodes()->get_train_node_id(nextTrainId_);
         b->data()->reset(
             openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE, node_id,
             openlcb::eventid_to_buffer(FindProtocolDefs::TRAIN_FIND_BASE));
@@ -316,11 +320,11 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
         iface()->global_message_write_flow()->send(bb);
       } else if (eventId_ == IS_TRAIN_EVENT) {
         b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_UNKNOWN,
-                         nodes()->get_train_node_id(nextTrainId_),
+                         node_id,
                          openlcb::eventid_to_buffer(eventId_));
       } else {
         b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-                         nodes()->get_train_node_id(nextTrainId_),
+                         node_id,
                          openlcb::eventid_to_buffer(eventId_));
       }
       b->data()->set_flag_dst(openlcb::GenMessage::WAIT_FOR_LOCAL_LOOPBACK);
