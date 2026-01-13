@@ -27,17 +27,36 @@
 
 // ==== Signal commands
 #define SCMD_RESET 0x1
+// 0x02 is eeprom set
 #define SCMD_ASPECT 0x3
 #define SCMD_FLASH 0x4  // arguments: ofsl ofsh data... max packet length = 16.
 #define SCMD_FLASH_SUM 0xa  // arguments: ofsl ofsh data... csum max packet length = 32. csum is a negative of the sum of all bytes from the command onwards MOD 256.
 #define SCMD_CRC 0x6  // argument: ofsl ofsh lenl lenh crcb1 crcb2 crcb3 crcb4 (little-endian)
 #define SCMD_LED 0x5  // argument: out bits
+// 0x07 is ARESET
 
 #define SCMD_CRCRESULT 0x8  // No argument. ACK-ed if the previous CRC result
                             // was OK.
 #define SCMD_PING 0x9  // No argument. ACK-ed always with return pulse.
 #define SCMD_INZERO 0x10  // arg: input number. ACK-ed if the given input number is false.
 #define SCMD_INONE 0x11  // arg: input number. ACK-ed if the given input number is true.
+
+#define SCMD_BOOT 0x12 // exit bootloader and start app. No ack.
+
+#define SCMD_DISPLAY 0x18 // For screens. arg: text (UTF8) to display. Max packet len 16. Always ACK-ed when it is received without error.
+
+
+
+// ==== enumeration commands
+#define SCMD_FIND_ON 0x20  // Enables the find protocol on the addressed device. ACK-ed by the target device.
+#define SCMD_FIND_OFF 0x21  // Disables the find protocol on the addressed device. ACK-ed by the target device.
+#define SCMD_FINDADDR 0x22  // arg: Pairs of bytes, the first one being a value, the second being a mask. Value is compared under the mask against the unique ID of the current device. If it matches, the device ACKs. If the unique ID is shorter than the query, does not ack.
+#define SCMD_ASSIGN 0x23  // arg: designated address (1 byte); sequence of bytes. The sequence of bytes is compared against unique ID (MSB-first). If it matches, the device takes the designated address on the local bus.
+
+// ==== Reading parameters
+#define SCMD_PARAMREADZERO 0x28  // arg: paramh paraml bitnum. ACK-ed if the given bit of the given param is zero. Not acked if the paramnum or bitnum is invalid.
+#define SCMD_PARAMREADONE 0x29  // arg: paramh paraml bitnum. ACK-ed if the given bit of the given param is one. Not acked if the paramnum or bitnum is invalid.
+
 
 
 
