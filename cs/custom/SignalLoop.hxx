@@ -65,6 +65,8 @@ enum SignalPriorities {
   LIVE_UPDATE,
   // Polling button states.
   BUTTON_POLL,
+  // Background refreshes of displays.
+  DISPLAY_REFRESH,
   // Background refreshes of aspects.
   ASPECT_REFRESH,
   NUM_PRIORITIES
@@ -79,6 +81,7 @@ enum SignalPriorities {
 static constexpr Fixed16 SIGNAL_PRIORITIES[SignalPriorities::NUM_PRIORITIES] = {
     {Fixed16::FROM_DOUBLE, 0.8},  // live update
     {Fixed16::FROM_DOUBLE, 0.8},  // button poll
+    {Fixed16::FROM_DOUBLE, 0.8},  // display refresh
     {1, 0},                       // aspect refresh
 };
 
