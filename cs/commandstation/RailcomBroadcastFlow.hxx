@@ -35,10 +35,13 @@
 #ifndef _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
 #define _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
 
-#include "dcc/RailcomHub.hxx"
 #include "dcc/RailcomBroadcastDecoder.hxx"
+#include "dcc/RailcomHub.hxx"
+#include "openlcb/EventHandler.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
 
-class RailcomBroadcastFlow : public dcc::RailcomHubPort {
+class RailcomBroadcastFlow : public dcc::RailcomHubPort,
+                             openlcb::SimpleEventHandler {
  public:
   RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, openlcb::Node* node,
                        dcc::RailcomHubPortInterface* occupancy_port,
@@ -54,9 +57,16 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
         size_(channel_count),
         channels_(new dcc::RailcomBroadcastDecoder[channel_count]) {
     parent_->register_port(this);
+    // Registers event handler for range.
+    uint64_t event_base = address_to_eventid(0, 0);
+    unsigned mask =
+        openlcb::EventRegistry::align_mask(&event_base, 65536 * size_);
+    openlcb::EventRegistry::instance()->register_handler(
+        EventRegistryEntry(this, event_base), mask);
   }
 
   ~RailcomBroadcastFlow() {
+    openlcb::EventRegistry::instance()->unregister_handler(this);
     parent_->unregister_port(this);
     delete[] channels_;
   }
@@ -64,11 +74,10 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
   /// @return the currently valid DCC address, or zero if no valid address
   /// right now.
   /// @param channel which channel (0 to channel_count)
-  uint16_t current_address(unsigned ch)
-  {
+  uint16_t current_address(unsigned ch) {
     return channels_[ch].current_address();
   }
-  
+
   Action entry() override {
     auto channel = message()->data()->channel;
     if (channel == 0xff) {
@@ -166,6 +175,45 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
     return ret;
   }
 
+  void handle_identify_producer(const EventRegistryEntry& registry_entry,
+                                EventReport* event,
+                                BarrierNotifiable* done) override {
+    AutoNotify an(done);
+    uint64_t event_base = address_to_eventid(0, 0);
+    if (event->event < event_base) return;
+    unsigned ch = (event->event - event_base) >> 16;
+    if (ch >= size_) return;
+    uint16_t query = event->event & 0xFFFF;
+    uint16_t actual = channels_[ch].lastAddress_;
+    uint64_t actual_event = address_to_eventid(ch, actual);
+    if (query != actual) {
+      event->event_write_helper<1>()->WriteAsync(
+          node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(event->event), done->new_child());
+    }
+    event->event_write_helper<2>()->WriteAsync(
+        node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+        openlcb::WriteHelper::global(),
+        openlcb::eventid_to_buffer(actual_event), done->new_child());
+  }
+
+  void handle_identify_global(const EventRegistryEntry& registry_entry,
+                              EventReport* event,
+                              BarrierNotifiable* done) override {
+    if (event->dst_node && event->dst_node != node_) {
+      return done->notify();
+    }
+    // We are a producer of these events.
+    uint64_t range =
+        openlcb::EncodeRange(address_to_eventid(0, 0), size_ * 65536);
+    event->event_write_helper<1>()->WriteAsync(
+        node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
+        done->new_child());
+    done->maybe_done();
+  }
+
   dcc::RailcomHubFlow* parent_;
   openlcb::Node* node_;
   dcc::RailcomHubPortInterface* occupancyPort_;
@@ -176,5 +224,4 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort {
   BarrierNotifiable n_;
 };
 
-#endif // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
-
+#endif  // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
