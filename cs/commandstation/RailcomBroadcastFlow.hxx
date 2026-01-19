@@ -24,9 +24,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file LoggingBit.hxx
+ * \file RailcomBroadcastFlow.hxx
  *
- * Simple Bit event implementation that logs to the blinker or stderr.
+ * Listens to messages on the railcom hub, and decodes railcom ID1 and ID2
+ * messages coming in channel1 to determine what DCC address decoders are
+ * present in the current block. Implemented for multiple channels
+ * directly. Exposes the found locomotives using a 16-bit event encoding per
+ * channel.
  *
  * @author Balazs Racz
  * @date 13 Dec 2015
@@ -35,11 +39,16 @@
 #ifndef _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
 #define _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
 
-#include "dcc/RailcomBroadcastDecoder.hxx"
 #include "dcc/RailcomHub.hxx"
+#include "dcc/RailcomBroadcastDecoder.hxx"
 #include "openlcb/EventHandler.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 
+/// Listens to messages on the railcom hub, and decodes railcom ID1 and ID2
+/// messages coming in channel1 to determine what DCC address decoders are
+/// present in the current block. Implemented for multiple channels
+/// directly. Exposes the found locomotives using a 16-bit event encoding per
+/// channel.
 class RailcomBroadcastFlow : public dcc::RailcomHubPort,
                              openlcb::SimpleEventHandler {
  public:
@@ -63,6 +72,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         openlcb::EventRegistry::align_mask(&event_base, 65536 * size_);
     openlcb::EventRegistry::instance()->register_handler(
         EventRegistryEntry(this, event_base), mask);
+    
   }
 
   ~RailcomBroadcastFlow() {
@@ -74,10 +84,11 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   /// @return the currently valid DCC address, or zero if no valid address
   /// right now.
   /// @param channel which channel (0 to channel_count)
-  uint16_t current_address(unsigned ch) {
+  uint16_t current_address(unsigned ch)
+  {
     return channels_[ch].current_address();
   }
-
+  
   Action entry() override {
     auto channel = message()->data()->channel;
     if (channel == 0xff) {
@@ -175,9 +186,9 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     return ret;
   }
 
-  void handle_identify_producer(const EventRegistryEntry& registry_entry,
-                                EventReport* event,
-                                BarrierNotifiable* done) override {
+  void handle_identify_producer(
+      const EventRegistryEntry& registry_entry, EventReport* event,
+      BarrierNotifiable* done) override {
     AutoNotify an(done);
     uint64_t event_base = address_to_eventid(0, 0);
     if (event->event < event_base) return;
@@ -189,13 +200,13 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     if (query != actual) {
       event->event_write_helper<1>()->WriteAsync(
           node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
-          openlcb::WriteHelper::global(),
-          openlcb::eventid_to_buffer(event->event), done->new_child());
+          openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(event->event),
+          done->new_child());
     }
     event->event_write_helper<2>()->WriteAsync(
         node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-        openlcb::WriteHelper::global(),
-        openlcb::eventid_to_buffer(actual_event), done->new_child());
+        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(actual_event),
+        done->new_child());
   }
 
   void handle_identify_global(const EventRegistryEntry& registry_entry,
@@ -205,12 +216,10 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       return done->notify();
     }
     // We are a producer of these events.
-    uint64_t range =
-        openlcb::EncodeRange(address_to_eventid(0, 0), size_ * 65536);
+    uint64_t range = openlcb::EncodeRange(address_to_eventid(0, 0), size_ * 65536);
     event->event_write_helper<1>()->WriteAsync(
-        node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
-        done->new_child());
+        node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE, openlcb::WriteHelper::global(),
+        openlcb::eventid_to_buffer(range), done->new_child());
     done->maybe_done();
   }
 
@@ -224,4 +233,5 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   BarrierNotifiable n_;
 };
 
-#endif  // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
+#endif // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
+
