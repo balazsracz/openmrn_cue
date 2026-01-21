@@ -41,6 +41,8 @@
 
 #include "dcc/RailcomHub.hxx"
 #include "dcc/RailcomBroadcastDecoder.hxx"
+#include "dcc/Address.hxx"
+#include "dcc/Defs.hxx"
 #include "openlcb/EventHandler.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 
@@ -67,7 +69,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         channels_(new dcc::RailcomBroadcastDecoder[channel_count]) {
     parent_->register_port(this);
     // Registers event handler for range.
-    uint64_t event_base = address_to_eventid(0, 0);
+    uint64_t event_base = this->event_base();
     unsigned mask =
         openlcb::EventRegistry::align_mask(&event_base, 65536 * size_);
     openlcb::EventRegistry::instance()->register_handler(
@@ -178,11 +180,32 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
  private:
   static constexpr uint64_t FEEDBACK_EVENTID_BASE = (0x0680ULL << 48);
   uint64_t address_to_eventid(unsigned channel, uint16_t address) {
+    uint64_t ret = event_base();
+    ret |= uint64_t(channel & 0xf) << 16;
+    // These are from the DCC standard for railcom.
+    static constexpr uint16_t LONG_ADDRESS_BIT = 0x8000;
+    static constexpr uint16_t CONSIST_ADDRESS_BIT = (0b01100000) << 8;
+    static constexpr uint16_t LONG_ADDRESS_MASK = (1u << 14) - 1;
+    // Direction unknown
+    uint16_t val = 0xC000;
+    if (address & LONG_ADDRESS_BIT) {
+      // Long address
+      val |= std::min((unsigned)address & LONG_ADDRESS_MASK,
+                      (unsigned)dcc::DccLongAddress::ADDRESS_MAX);
+    } else if ((address & CONSIST_ADDRESS_BIT) == CONSIST_ADDRESS_BIT) {
+      val |= (address & 0x7F) | (dcc::Defs::ADR_CONSIST_SHORT << 8);
+    } else {
+      val |= (address & 0x7F) | (dcc::Defs::ADR_MOBILE_SHORT << 8);
+    }
+    ret |= val;
+    return ret;
+  }
+
+  /// @return the event base for this node.
+  uint64_t event_base() {
     uint64_t ret = FEEDBACK_EVENTID_BASE;
     ret |= ((node_->node_id() >> 24) & 0x0FFFULL) << 40;
     ret |= (node_->node_id() & 0xFFFFF) << 20;
-    ret |= uint64_t(channel & 0xf) << 16;
-    ret |= address;
     return ret;
   }
 
@@ -190,7 +213,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       const EventRegistryEntry& registry_entry, EventReport* event,
       BarrierNotifiable* done) override {
     AutoNotify an(done);
-    uint64_t event_base = address_to_eventid(0, 0);
+    uint64_t event_base = this->event_base();
     if (event->event < event_base) return;
     unsigned ch = (event->event - event_base) >> 16;
     if (ch >= size_) return;
@@ -216,7 +239,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       return done->notify();
     }
     // We are a producer of these events.
-    uint64_t range = openlcb::EncodeRange(address_to_eventid(0, 0), size_ * 65536);
+    uint64_t range = openlcb::EncodeRange(event_base(), size_ * 65536);
     event->event_write_helper<1>()->WriteAsync(
         node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE, openlcb::WriteHelper::global(),
         openlcb::eventid_to_buffer(range), done->new_child());
