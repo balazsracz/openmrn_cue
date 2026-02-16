@@ -146,10 +146,9 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     auto& decoder = channels_[channel];
     auto* b =
         get_allocation_result(node_->iface()->global_message_write_flow());
-    b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
-                     node_->node_id(),
-                     openlcb::eventid_to_buffer(
-                         address_to_eventid(channel, decoder.lastAddress_)));
+    b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(address_to_eventid(
+                         channel, decoder.lastAddress_, false)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
     return wait_and_call(STATE(allocate_for_event));
@@ -167,7 +166,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         get_allocation_result(node_->iface()->global_message_write_flow());
     b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      openlcb::eventid_to_buffer(address_to_eventid(
-                         channel, decoder.current_address())));
+                         channel, decoder.current_address(), true)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
     decoder.lastAddress_ = decoder.current_address();
@@ -179,7 +178,15 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
  private:
   static constexpr uint64_t FEEDBACK_EVENTID_BASE = (0x0680ULL << 48);
-  uint64_t address_to_eventid(unsigned channel, uint16_t address) {
+  /// Computes the event ID for a report to send.
+  ///
+  /// @param channel 0-15, the channel ID for a multichannel detector to use.
+  /// @param address DCC address, the concatenation of ID1 and ID2 values.
+  /// @param entry true for entry, false for exit.
+  ///
+  /// @return event ID to send as event report.
+  ///  
+  uint64_t address_to_eventid(unsigned channel, uint16_t address, bool entry) {
     uint64_t ret = event_base();
     ret |= uint64_t(channel & 0xf) << 16;
     // These are from the DCC standard for railcom.
@@ -187,13 +194,14 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     static constexpr uint16_t CONSIST_ADDRESS_BIT = (0b01100000) << 8;
     static constexpr uint16_t LONG_ADDRESS_MASK = (1u << 14) - 1;
     // Direction unknown
-    uint16_t val = 0xC000;
-    if (address & LONG_ADDRESS_BIT) {
+    uint16_t val = entry ? 0xC000 : 0;
+    if ((address & CONSIST_ADDRESS_BIT) == CONSIST_ADDRESS_BIT) {
+      val |= (address & 0x7F) | (dcc::Defs::ADR_CONSIST_SHORT << 8);
+    } else if ((address & ~0xC000) > 127 ||
+               ((address & ~LONG_ADDRESS_MASK) == LONG_ADDRESS_BIT)) {
       // Long address
       val |= std::min((unsigned)address & LONG_ADDRESS_MASK,
                       (unsigned)dcc::DccLongAddress::ADDRESS_MAX);
-    } else if ((address & CONSIST_ADDRESS_BIT) == CONSIST_ADDRESS_BIT) {
-      val |= (address & 0x7F) | (dcc::Defs::ADR_CONSIST_SHORT << 8);
     } else {
       val |= (address & 0x7F) | (dcc::Defs::ADR_MOBILE_SHORT << 8);
     }
@@ -219,7 +227,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     if (ch >= size_) return;
     uint16_t query = event->event & 0xFFFF;
     uint16_t actual = channels_[ch].lastAddress_;
-    uint64_t actual_event = address_to_eventid(ch, actual);
+    uint64_t actual_event = address_to_eventid(ch, actual, true);
     if (query != actual) {
       event->event_write_helper<1>()->WriteAsync(
           node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
