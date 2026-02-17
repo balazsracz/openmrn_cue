@@ -98,30 +98,22 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   /// Called when a DCC packet is sent to the track.
   /// @param packet The DCC packet that was sent.
   void handle_dcc_packet(const DCCPacket* packet) {
-      if (packet->payload[0] == 0 || packet->payload[0] == 0xFF) return;
-
-      uint16_t address = 0;
-      if ((packet->payload[0] & 0xC0) == 0xC0) {
-          // Long address
-          address = ((packet->payload[0] & 0x3F) << 8) | packet->payload[1];
-      } else {
-          // Short address? Check partition.
-          if ((packet->payload[0] & 0x80) == 0) {
-             address = packet->payload[0];
-          } else {
-             return; // Not a mobile decoder address
-          }
-      }
+      uint16_t address = dcc_to_address(packet->payload[0], packet->payload[1]);
+      if (address == 0xFFFF) return; // Not a valid/supported mobile address
 
       OSMutexLock l(&lock_);
-      // Iterate channels and update
-      for (unsigned ch = 0; ch < size_; ++ch) {
-          uint32_t key = (ch << 16) | address;
-          auto it = trackers_.find(key);
-          if (it != trackers_.end()) {
-              it->second.report_loco_addressed();
-              // We do not remove here, let entry() clean up.
+      // Address-major key: (Address << 16) | Channel
+      uint32_t start_key = (uint32_t(address) << 16);
+
+      // Use lower_bound to find the first entry for this address
+      auto it = trackers_.lower_bound(start_key);
+
+      // Iterate while the address matches
+      while (it != trackers_.end() && ((it->first >> 16) == address)) {
+          if (it->second.report_loco_addressed()) {
+              pending_deletions_ = true;
           }
+          ++it;
       }
   }
   
@@ -159,26 +151,33 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     }
 
     // Start processing ch2
-    return call(STATE(process_ch2));
+    return call_immediately(STATE(process_ch2));
   }
 
   Action check_timeouts() {
       OSMutexLock l(&lock_);
+      if (!pending_deletions_) return call(STATE(process_ch1));
+
       // Find tracker with count 0
-      for (auto it = trackers_.begin(); it != trackers_.end(); ++it) {
+      auto it = trackers_.lower_bound(current_timeout_key_); // Start from saved key
+      while (it != trackers_.end()) {
           if (it->second.count == 0) {
               current_timeout_key_ = it->first;
               trackers_.erase(it); // Remove from map
               return allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_timeout_event));
           }
+          ++it;
       }
+      // Reached end, clear flag and reset key
+      pending_deletions_ = false;
+      current_timeout_key_ = 0;
       return call(STATE(process_ch1));
   }
 
   Action send_timeout_event() {
       auto* b = get_allocation_result(node_->iface()->global_message_write_flow());
-      unsigned ch = current_timeout_key_ >> 16;
-      uint16_t addr = current_timeout_key_ & 0xFFFF;
+      uint16_t addr = current_timeout_key_ >> 16;
+      unsigned ch = current_timeout_key_ & 0xFFFF;
 
       b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      openlcb::eventid_to_buffer(address_to_eventid(
@@ -319,29 +318,49 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   /// @param address DCC address, the concatenation of ID1 and ID2 values.
   /// @param entry true for entry, false for exit.
   ///
+  /// Converts a DCC address to an Event ID for RailCom reporting.
+  ///
+  /// @param channel 0-15, the channel ID for a multichannel detector to use.
+  /// @param address 14-bit DCC address (0-10239).
+  /// @param entry true for entry, false for exit.
+  ///
   /// @return event ID to send as event report.
-  ///  
   uint64_t address_to_eventid(unsigned channel, uint16_t address, bool entry) {
     uint64_t ret = event_base();
     ret |= uint64_t(channel & 0xf) << 16;
-    // These are from the DCC standard for railcom.
-    static constexpr uint16_t LONG_ADDRESS_BIT = 0x8000;
-    static constexpr uint16_t CONSIST_ADDRESS_BIT = (0b01100000) << 8;
-    static constexpr uint16_t LONG_ADDRESS_MASK = (1u << 14) - 1;
-    // Direction unknown
+    // Direction unknown (0xC000 for entry, 0 for exit)
     uint16_t val = entry ? 0xC000 : 0;
-    if ((address & CONSIST_ADDRESS_BIT) == CONSIST_ADDRESS_BIT) {
-      val |= (address & 0x7F) | (dcc::Defs::ADR_CONSIST_SHORT << 8);
-    } else if ((address & ~0xC000) > 127 ||
-               ((address & ~LONG_ADDRESS_MASK) == LONG_ADDRESS_BIT)) {
-      // Long address
-      val |= std::min((unsigned)address & LONG_ADDRESS_MASK,
-                      (unsigned)dcc::DccLongAddress::ADDRESS_MAX);
+
+    // Check if it's a short address (0-127) or long/extended address
+    if (address <= 127) {
+        // Short address
+        val |= (address & 0x7F) | (dcc::Defs::ADR_MOBILE_SHORT << 8);
     } else {
-      val |= (address & 0x7F) | (dcc::Defs::ADR_MOBILE_SHORT << 8);
+        // Long address (or potentially Consist, but handled as Long here for simplicity if not distinguished upstream)
+        // Ensure it fits in 14 bits
+        val |= (address & 0x3FFF);
     }
     ret |= val;
     return ret;
+  }
+
+  /// Helper to decode a DCC address from the first two bytes of a packet/feedback.
+  /// @param b0 First byte (address byte or command byte for extended/accessory).
+  /// @param b1 Second byte.
+  /// @return 14-bit DCC address (0-10239) or 0xFFFF if invalid/unsupported.
+  static uint16_t dcc_to_address(uint8_t b0, uint8_t b1) {
+      if (b0 == 0 || b0 == 0xFF) return 0xFFFF; // Broadcast or Idle
+
+      if ((b0 & 0xC0) == 0xC0) {
+          // Long address: 11AAAAAA AAAAAAAA
+          return ((b0 & 0x3F) << 8) | b1;
+      } else if ((b0 & 0x80) == 0) {
+          // Short address: 0AAAAAAA
+          if (b0 == 0) return 0xFFFF; // Broadcast again
+          return b0;
+      }
+      // Accessory/Extended Accessory/Consist logic could be added here if needed
+      return 0xFFFF;
   }
 
   /// @return the event base for this node.
@@ -398,15 +417,21 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   dcc::RailcomBroadcastDecoder* channels_;
   BarrierNotifiable n_;
 
+  /// Tracks the presence confidence of a single locomotive on a specific channel.
   struct LocoTracker {
     uint8_t count = 0;
     static constexpr uint8_t MAX_COUNT = 10;
+
+    /// Called when a RailCom reply is received.
     void report_loco_seen() {
       if (count <= MAX_COUNT - 2)
         count += 2;
       else
         count = MAX_COUNT;
     }
+
+    /// Called when a DCC packet is sent.
+    /// @return true if the confidence reached zero (loco missing).
     bool report_loco_addressed() {
       if (count > 0) {
         count--;
@@ -415,8 +440,18 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       return false;
     }
   };
+
+  /// Map of active locomotive trackers.
+  /// Key: (Address << 16) | Channel.
   std::map<uint32_t, LocoTracker> trackers_;
+
+  /// Key of the next tracker to check for timeout during iteration.
   uint32_t current_timeout_key_ = 0;
+
+  /// Flag indicating if there are pending deletions to process.
+  bool pending_deletions_ = false;
+
+  /// Mutex protecting the trackers map and associated state.
   OSMutex lock_;
 };
 
