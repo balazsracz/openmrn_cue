@@ -46,6 +46,10 @@
 #include "openlcb/EventHandler.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 
+#include <map>
+#include "dcc/packet.h"
+#include "os/OS.hxx"
+
 /// Listens to messages on the railcom hub, and decodes railcom ID1 and ID2
 /// messages coming in channel1 to determine what DCC address decoders are
 /// present in the current block. Implemented for multiple channels
@@ -90,6 +94,36 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   {
     return channels_[ch].current_address();
   }
+
+  /// Called when a DCC packet is sent to the track.
+  /// @param packet The DCC packet that was sent.
+  void handle_dcc_packet(const DCCPacket* packet) {
+      if (packet->payload[0] == 0 || packet->payload[0] == 0xFF) return;
+
+      uint16_t address = 0;
+      if ((packet->payload[0] & 0xC0) == 0xC0) {
+          // Long address
+          address = ((packet->payload[0] & 0x3F) << 8) | packet->payload[1];
+      } else {
+          // Short address? Check partition.
+          if ((packet->payload[0] & 0x80) == 0) {
+             address = packet->payload[0];
+          } else {
+             return; // Not a mobile decoder address
+          }
+      }
+
+      OSMutexLock l(&lock_);
+      // Iterate channels and update
+      for (unsigned ch = 0; ch < size_; ++ch) {
+          uint32_t key = (ch << 16) | address;
+          auto it = trackers_.find(key);
+          if (it != trackers_.end()) {
+              it->second.report_loco_addressed();
+              // We do not remove here, let entry() clean up.
+          }
+      }
+  }
   
   Action entry() override {
     auto channel = message()->data()->channel;
@@ -123,6 +157,107 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       }
       return exit();
     }
+
+    // Start processing ch2
+    return call(STATE(process_ch2));
+  }
+
+  Action check_timeouts() {
+      OSMutexLock l(&lock_);
+      // Find tracker with count 0
+      for (auto it = trackers_.begin(); it != trackers_.end(); ++it) {
+          if (it->second.count == 0) {
+              current_timeout_key_ = it->first;
+              trackers_.erase(it); // Remove from map
+              return allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_timeout_event));
+          }
+      }
+      return call(STATE(process_ch1));
+  }
+
+  Action send_timeout_event() {
+      auto* b = get_allocation_result(node_->iface()->global_message_write_flow());
+      unsigned ch = current_timeout_key_ >> 16;
+      uint16_t addr = current_timeout_key_ & 0xFFFF;
+
+      b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(address_to_eventid(
+                         ch, addr, false))); // false = exit
+      b->set_done(n_.reset(this));
+      node_->iface()->global_message_write_flow()->send(b);
+      // Loop back to check for more timeouts
+      return wait_and_call(STATE(check_timeouts));
+  }
+
+  Action process_ch2() {
+      auto& msg = *message()->data();
+      if (msg.channel >= size_) {
+          return call(STATE(check_timeouts));
+      }
+
+      // Check Ch2 validity
+      if (msg.ch2Size > 0) {
+          bool valid = true;
+          for (unsigned i = 0; i < msg.ch2Size; ++i) {
+             if (dcc::railcom_decode[msg.ch2Data[i]] == dcc::RailcomDefs::INV) {
+                 valid = false;
+                 break;
+             }
+          }
+          if (valid) {
+              // Extract address from dccAddress
+              // Note: dccAddress is the address of the packet that triggered the response.
+              uint16_t dccAddr = msg.dccAddress;
+              uint16_t addr = 0;
+              // Decode address same as in handle_dcc_packet
+              uint8_t b0 = dccAddr >> 8;
+              if ((b0 & 0xC0) == 0xC0) {
+                 addr = dccAddr & 0x3FFF;
+              } else if (b0 <= 127 && b0 != 0) {
+                 addr = b0;
+              } else {
+                 valid = false; // Not a mobile address we support
+              }
+
+              if (valid) {
+                  OSMutexLock l(&lock_);
+                  uint32_t key = (msg.channel << 16) | addr;
+                  bool is_new = false;
+                  auto it = trackers_.find(key);
+                  if (it == trackers_.end()) {
+                      is_new = true;
+                      trackers_[key].report_loco_seen();
+                  } else {
+                      it->second.report_loco_seen();
+                  }
+
+                  if (is_new) {
+                      current_timeout_key_ = key; // Reuse this member for new loco key
+                      return allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_ch2_event));
+                  }
+              }
+          }
+      }
+
+      return call(STATE(check_timeouts));
+  }
+
+  Action send_ch2_event() {
+      auto* b = get_allocation_result(node_->iface()->global_message_write_flow());
+      unsigned ch = current_timeout_key_ >> 16;
+      uint16_t addr = current_timeout_key_ & 0xFFFF;
+
+      b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
+                     openlcb::eventid_to_buffer(address_to_eventid(
+                         ch, addr, true))); // true = entry
+      b->set_done(n_.reset(this));
+      node_->iface()->global_message_write_flow()->send(b);
+
+      return wait_and_call(STATE(check_timeouts));
+  }
+
+  Action process_ch1() {
+    auto channel = message()->data()->channel;
     if (channel >= size_ ||
         !channels_[channel].process_packet(*message()->data())) {
       if (debugPort_) {
@@ -262,6 +397,27 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   unsigned size_;
   dcc::RailcomBroadcastDecoder* channels_;
   BarrierNotifiable n_;
+
+  struct LocoTracker {
+    uint8_t count = 0;
+    static constexpr uint8_t MAX_COUNT = 10;
+    void report_loco_seen() {
+      if (count <= MAX_COUNT - 2)
+        count += 2;
+      else
+        count = MAX_COUNT;
+    }
+    bool report_loco_addressed() {
+      if (count > 0) {
+        count--;
+        if (count == 0) return true;
+      }
+      return false;
+    }
+  };
+  std::map<uint32_t, LocoTracker> trackers_;
+  uint32_t current_timeout_key_ = 0;
+  OSMutex lock_;
 };
 
 #endif // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
