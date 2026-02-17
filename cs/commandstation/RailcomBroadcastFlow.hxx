@@ -156,7 +156,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
   Action check_timeouts() {
       OSMutexLock l(&lock_);
-      if (!pending_deletions_) return call(STATE(process_ch1));
+      if (!pending_deletions_) return call_immediately(STATE(process_ch1));
 
       // Find tracker with count 0
       auto it = trackers_.lower_bound(current_timeout_key_); // Start from saved key
@@ -171,7 +171,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       // Reached end, clear flag and reset key
       pending_deletions_ = false;
       current_timeout_key_ = 0;
-      return call(STATE(process_ch1));
+      return call_immediately(STATE(process_ch1));
   }
 
   Action send_timeout_event() {
@@ -191,20 +191,20 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   Action process_ch2() {
       auto& msg = *message()->data();
       if (msg.channel >= size_ || msg.ch2Size == 0) {
-          return call(STATE(check_timeouts));
+          return call_immediately(STATE(check_timeouts));
       }
 
       // Check Ch2 validity
       for (unsigned i = 0; i < msg.ch2Size; ++i) {
          if (dcc::railcom_decode[msg.ch2Data[i]] == dcc::RailcomDefs::INV) {
-             return call(STATE(check_timeouts)); // Garbage
+             return call_immediately(STATE(check_timeouts)); // Garbage
          }
       }
 
       // Extract address from dccAddress
       uint16_t addr = dcc_to_address(msg.dccAddress >> 8, msg.dccAddress & 0xFF);
       if (addr == 0xFFFF) {
-           return call(STATE(check_timeouts)); // Invalid address
+           return call_immediately(STATE(check_timeouts)); // Invalid address
       }
 
       {
@@ -227,7 +227,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
           }
       }
 
-      return call(STATE(check_timeouts));
+      return call_immediately(STATE(check_timeouts));
   }
 
   Action send_ch2_event() {
