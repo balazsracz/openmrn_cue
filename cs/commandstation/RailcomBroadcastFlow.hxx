@@ -190,51 +190,40 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
   Action process_ch2() {
       auto& msg = *message()->data();
-      if (msg.channel >= size_) {
+      if (msg.channel >= size_ || msg.ch2Size == 0) {
           return call(STATE(check_timeouts));
       }
 
       // Check Ch2 validity
-      if (msg.ch2Size > 0) {
-          bool valid = true;
-          for (unsigned i = 0; i < msg.ch2Size; ++i) {
-             if (dcc::railcom_decode[msg.ch2Data[i]] == dcc::RailcomDefs::INV) {
-                 valid = false;
-                 break;
-             }
+      for (unsigned i = 0; i < msg.ch2Size; ++i) {
+         if (dcc::railcom_decode[msg.ch2Data[i]] == dcc::RailcomDefs::INV) {
+             return call(STATE(check_timeouts)); // Garbage
+         }
+      }
+
+      // Extract address from dccAddress
+      uint16_t addr = dcc_to_address(msg.dccAddress >> 8, msg.dccAddress & 0xFF);
+      if (addr == 0xFFFF) {
+           return call(STATE(check_timeouts)); // Invalid address
+      }
+
+      {
+          OSMutexLock l(&lock_);
+          // Address-Major Key: (Address << 16) | Channel
+          uint32_t key = (uint32_t(addr) << 16) | msg.channel;
+          bool is_new = false;
+          auto it = trackers_.find(key);
+          if (it == trackers_.end()) {
+              is_new = true;
+              trackers_[key].report_loco_seen();
+              trackers_[key].report_loco_seen(); // Double count for new entries
+          } else {
+              it->second.report_loco_seen();
           }
-          if (valid) {
-              // Extract address from dccAddress
-              // Note: dccAddress is the address of the packet that triggered the response.
-              uint16_t dccAddr = msg.dccAddress;
-              uint16_t addr = 0;
-              // Decode address same as in handle_dcc_packet
-              uint8_t b0 = dccAddr >> 8;
-              if ((b0 & 0xC0) == 0xC0) {
-                 addr = dccAddr & 0x3FFF;
-              } else if (b0 <= 127 && b0 != 0) {
-                 addr = b0;
-              } else {
-                 valid = false; // Not a mobile address we support
-              }
 
-              if (valid) {
-                  OSMutexLock l(&lock_);
-                  uint32_t key = (msg.channel << 16) | addr;
-                  bool is_new = false;
-                  auto it = trackers_.find(key);
-                  if (it == trackers_.end()) {
-                      is_new = true;
-                      trackers_[key].report_loco_seen();
-                  } else {
-                      it->second.report_loco_seen();
-                  }
-
-                  if (is_new) {
-                      current_timeout_key_ = key; // Reuse this member for new loco key
-                      return allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_ch2_event));
-                  }
-              }
+          if (is_new) {
+              current_timeout_key_ = key; // Reuse this member for new loco key
+              return allocate_and_call(node_->iface()->global_message_write_flow(), STATE(send_ch2_event));
           }
       }
 
