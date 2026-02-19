@@ -93,6 +93,12 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     return channels_[ch].current_address();
   }
 
+  /// @return true if the given channel has any railcom report right now.
+  bool has_railcom_entry(unsigned ch) {
+    return channels_[ch].current_address() != 0 ||
+           (channel_is_empty_ & (1u << ch)) == 0;
+  }
+
   /// Called when a DCC packet is sent to the track.
   /// @param packet The DCC packet that was sent.
   void handle_dcc_packet(const DCCPacket* packet) {
@@ -160,6 +166,9 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     OSMutexLock l(&lock_);
     if (!pending_deletions_) return call_immediately(STATE(entry));
 
+    if (!current_timeout_key_) {
+      new_channel_is_empty_ = (1u << size_) - 1;
+    }
     // See if we need to report a channel empty.
     unsigned last_channel = current_timeout_key_ & 0xffff;
     if (current_timeout_key_ &&
@@ -178,12 +187,16 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         trackers_.erase(it);  // Remove from map
         return allocate_and_call(node_->iface()->global_message_write_flow(),
                                  STATE(send_timeout_event));
+      } else {
+        // This channel is nonempty.
+        new_channel_is_empty_ &= ~(1u << (it->first & 0xffff));
       }
       ++it;
     }
     // Reached end, clear flag and reset key
     pending_deletions_ = false;
     current_timeout_key_ = 0;
+    channel_is_empty_ = new_channel_is_empty_;
     return call_immediately(STATE(entry));
   }
 
@@ -541,6 +554,11 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   /// Bitmask of which channels seem to be empty, but have not yet sent an
   /// "empty" state to the bus.
   uint16_t channel_pending_empty_ = 0;
+
+  /// 1 for each bit where the channel there does not have any ch2 entries.
+  uint16_t channel_is_empty_ = 0xffff;
+  /// Channel is empty that is being computed.
+  uint16_t new_channel_is_empty_ = 0;
 
   /// Mutex protecting the trackers map and associated state.
   OSMutex lock_;
