@@ -173,7 +173,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     unsigned last_channel = current_timeout_key_ & 0xffff;
     if (current_timeout_key_ &&
         (channel_pending_empty_ & (1u << last_channel)) &&
-        (num_loco_in_channel(last_channel) == 0)) {
+        (num_loco_in_channel_locked(last_channel) == 0)) {
       return allocate_and_call(node_->iface()->global_message_write_flow(),
                                STATE(send_channel_empty));
     }
@@ -330,7 +330,8 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     if (decoder.current_address() == 0) {
       // Seems like we're empty. Let's check if there are any other locomotives
       // in this channel.
-      if (num_loco_in_channel(channel) > 0) {
+      OSMutexLock l(&lock_);
+      if (num_loco_in_channel_locked(channel) > 0) {
         // skips sending empty event.
         channel_pending_empty_ |= (1u << channel);
         decoder.lastAddress_ = decoder.current_address();
@@ -342,7 +343,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   }
 
   /// Counts the number of locomotives in a given channel in tracker_.
-  unsigned num_loco_in_channel(unsigned channel) {
+  unsigned num_loco_in_channel_locked(unsigned channel) {
     unsigned count = 0;
     for (const auto& kv : trackers_) {
       if ((kv.first & 0xffff) == channel) {
