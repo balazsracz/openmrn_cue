@@ -335,7 +335,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         // skips sending empty event.
         channel_pending_empty_ |= (1u << channel);
         decoder.lastAddress_ = decoder.current_address();
-        return call_immediately(STATE(finish));
+        return release_and_exit();
       }
     }
     return allocate_and_call(node_->iface()->global_message_write_flow(),
@@ -388,7 +388,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     return wait_and_call(STATE(finish));
   }
 
-  Action finish() { return exit(); }
+  Action finish() { return release_and_exit(); }
 
  private:
   static constexpr uint64_t FEEDBACK_EVENTID_BASE = (0x0680ULL << 48);
