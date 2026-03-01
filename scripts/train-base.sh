@@ -36,5 +36,6 @@ log "$0" "$@"
 
 function sendpkt() {
   echo sending OpenLCB packet "$1"
-  echo "$1" >> /usr/local/google/bracz/train/openlcb
+  echo "$1" >> /dev/tcp/localhost/12021
+ # echo "$1" >> /usr/local/google/bracz/train/openlcb
 }
