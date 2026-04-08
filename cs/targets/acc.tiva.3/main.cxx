@@ -262,13 +262,13 @@ class RailcomBroadcastFlow : public RailcomHubPort {
  public:
   RailcomBroadcastFlow(RailcomHubFlow* parent, Node* node,
                        RailcomHubPort* occupancy_port,
-                       RailcomHubPort* debug_port, unsigned channel_count)
+                       RailcomHubPort* debug_port, unsigned channel_count, const openlcb::EventId* base_events)
       : RailcomHubPort(parent->service()),
         parent_(parent),
         node_(node),
         occupancyPort_(occupancy_port),
         debugPort_(debug_port),
-        size_(channel_count),
+        size_(channel_count), base_events_(base_events),
         channels_(new dcc::RailcomBroadcastDecoder[channel_count]) {
     parent_->register_port(this);
   }
@@ -332,10 +332,8 @@ class RailcomBroadcastFlow : public RailcomHubPort {
   Action finish() { return exit(); }
 
  private:
-  static const uint64_t FEEDBACK_EVENTID_BASE;
   uint64_t address_to_eventid(unsigned channel, uint16_t address) {
-    uint64_t ret = FEEDBACK_EVENTID_BASE;
-    ret |= uint64_t(channel & 0xff) << 48;
+    uint64_t ret = base_events_[channel];
     ret |= address;
     return ret;
   }
@@ -345,12 +343,10 @@ class RailcomBroadcastFlow : public RailcomHubPort {
   RailcomHubPort* occupancyPort_;
   RailcomHubPort* debugPort_;
   unsigned size_;
+  const openlcb::EventId* base_events_;
   dcc::RailcomBroadcastDecoder* channels_;
   BarrierNotifiable n_;
 };
-
-const uint64_t RailcomBroadcastFlow::FEEDBACK_EVENTID_BASE =
-  (0x09ULL << 56) | TractionDefs::NODE_ID_DCC;
 
 
 class FeedbackBasedOccupancy : public RailcomHubPort {
@@ -388,10 +384,18 @@ class FeedbackBasedOccupancy : public RailcomHubPort {
 }
 openlcb::FeedbackBasedOccupancy railcom_occupancy(stack.node(), R_EVENT_ID + 24, 4);
 openlcb::RailcomProxy railcom_proxy(&railcom_hub, stack.node(), &railcom_occupancy);
+
+constexpr openlcb::EventId gen_base_tiva(unsigned i) {
+    return ((0x09ULL << 56) | TractionDefs::NODE_ID_DCC) | (uint64_t(i & 0xff) << 48);
+}
+static const openlcb::EventId railcom_base_events_tiva[4] = {
+    gen_base_tiva(0), gen_base_tiva(1), gen_base_tiva(2), gen_base_tiva(3)
+};
+
 // TODO(balazs.racz) reenable this
 //openlcb::RailcomBroadcastFlow railcom_broadcast(&railcom_hub, &g_node,
 //                                                &railcom_occupancy,
-//                                                &railcom_proxy, 4);
+//                                                &railcom_proxy, 4, railcom_base_events_tiva);
 
 /** Entry point to application.
  * @param argc number of command line arguments

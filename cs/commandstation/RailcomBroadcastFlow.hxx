@@ -58,11 +58,15 @@
 class RailcomBroadcastFlow : public dcc::RailcomHubPort,
                              openlcb::SimpleEventHandler {
  public:
+  /// @param base_events an externally owned array, sized the same as channel_count,
+  /// containing the base event IDs, one for each channel. The array has to stay alive
+  /// as long as the object is in use.
   RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, openlcb::Node* node,
                        dcc::RailcomHubPortInterface* occupancy_port,
                        dcc::RailcomHubPortInterface* overcurrent_port,
                        dcc::RailcomHubPortInterface* debug_port,
-                       unsigned channel_count)
+                       unsigned channel_count,
+                       const openlcb::EventId* base_events)
       : dcc::RailcomHubPort(parent->service()),
         parent_(parent),
         node_(node),
@@ -70,20 +74,28 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         overcurrentPort_(overcurrent_port),
         debugPort_(debug_port),
         size_(channel_count),
+        base_events_(base_events),
         channels_(new dcc::RailcomBroadcastDecoder[channel_count]) {
     parent_->register_port(this);
-    // Registers event handler for range.
-    uint64_t event_base = this->event_base();
-    unsigned mask =
-        openlcb::EventRegistry::align_mask(&event_base, 65536 * size_);
-    openlcb::EventRegistry::instance()->register_handler(
-        EventRegistryEntry(this, event_base), mask);
+    register_events();
   }
 
   ~RailcomBroadcastFlow() {
     openlcb::EventRegistry::instance()->unregister_handler(this);
     parent_->unregister_port(this);
     delete[] channels_;
+  }
+
+  /// Registers the configured events to the node.
+  /// Starts by unregistering all events.
+  void register_events() {
+    openlcb::EventRegistry::instance()->unregister_handler(this);
+    for (unsigned i = 0; i < size_; ++i) {
+      uint64_t event_base = base_events_[i];
+      unsigned mask = openlcb::EventRegistry::align_mask(&event_base, 65536);
+      openlcb::EventRegistry::instance()->register_handler(
+          EventRegistryEntry(this, event_base), mask);
+    }
   }
 
   /// @return the currently valid DCC address, or zero if no valid address
@@ -391,7 +403,6 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   Action finish() { return release_and_exit(); }
 
  private:
-  static constexpr uint64_t FEEDBACK_EVENTID_BASE = (0x0680ULL << 48);
   /// Computes the event ID for a report to send.
   ///
   /// @param channel 0-15, the channel ID for a multichannel detector to use.
@@ -406,8 +417,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   ///
   /// @return event ID to send as event report.
   uint64_t address_to_eventid(unsigned channel, uint16_t address, bool entry) {
-    uint64_t ret = event_base();
-    ret |= uint64_t(channel & 0xf) << 16;
+    uint64_t ret = base_events_[channel];
     // Direction unknown (0xC000 for entry, 0 for exit)
     uint16_t val = entry ? 0xC000 : 0;
     val |= address & 0x3FFF;
@@ -462,21 +472,17 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     }
   }
 
-  /// @return the event base for this node.
-  uint64_t event_base() {
-    uint64_t ret = FEEDBACK_EVENTID_BASE;
-    ret |= ((node_->node_id() >> 24) & 0x0FFFULL) << 40;
-    ret |= (node_->node_id() & 0xFFFFF) << 20;
-    return ret;
-  }
-
   void handle_identify_producer(const EventRegistryEntry& registry_entry,
                                 EventReport* event,
                                 BarrierNotifiable* done) override {
     AutoNotify an(done);
-    uint64_t event_base = this->event_base();
-    if (event->event < event_base) return;
-    unsigned ch = (event->event - event_base) >> 16;
+    unsigned ch = size_;
+    for (unsigned i = 0; i < size_; ++i) {
+      if ((event->event & ~0xFFFFULL) == base_events_[i]) {
+        ch = i;
+        break;
+      }
+    }
     if (ch >= size_) return;
     uint16_t query = event->event & 0xFFFF;
     uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
@@ -493,6 +499,18 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         openlcb::eventid_to_buffer(actual_event), done->new_child());
   }
 
+  struct DeleteNotifiable : public BarrierNotifiable {
+    openlcb::WriteHelper* helper;
+    BarrierNotifiable* child;
+    DeleteNotifiable(openlcb::WriteHelper* h, BarrierNotifiable* c)
+        : helper(h), child(c) {}
+    void notify() override {
+      child->notify();
+      delete helper;
+      delete this;
+    }
+  };
+
   void handle_identify_global(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) override {
@@ -500,11 +518,14 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       return done->notify();
     }
     // We are a producer of these events.
-    uint64_t range = openlcb::EncodeRange(event_base(), size_ * 65536);
-    event->event_write_helper<1>()->WriteAsync(
-        node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
-        done->new_child());
+    for (unsigned i = 0; i < size_; ++i) {
+      uint64_t range = openlcb::EncodeRange(base_events_[i], 65536);
+      auto* helper = new openlcb::WriteHelper();
+      helper->WriteAsync(node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+                         openlcb::WriteHelper::global(),
+                         openlcb::eventid_to_buffer(range),
+                         new DeleteNotifiable(helper, done->new_child()));
+    }
     done->maybe_done();
   }
 
