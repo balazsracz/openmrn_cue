@@ -278,6 +278,8 @@ class RailcomBroadcastFlow : public RailcomHubPort {
     delete[] channels_;
   }
 
+  void register_events() {}
+
   Action entry() override {
     auto channel = message()->data()->channel;
     if (channel == 0xff && occupancyPort_) {

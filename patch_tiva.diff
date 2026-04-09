@@ -1,0 +1,13 @@
+<<<<<<< SEARCH
+  ~RailcomBroadcastFlow() {
+    parent_->unregister_port(this);
+    delete[] channels_;
+  }
+=======
+  ~RailcomBroadcastFlow() {
+    parent_->unregister_port(this);
+    delete[] channels_;
+  }
+
+  void register_events() {}
+>>>>>>> REPLACE

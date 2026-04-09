@@ -94,7 +94,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       uint64_t event_base = base_events_[i];
       unsigned mask = openlcb::EventRegistry::align_mask(&event_base, 65536);
       openlcb::EventRegistry::instance()->register_handler(
-          EventRegistryEntry(this, event_base), mask);
+          EventRegistryEntry(this, event_base, i), mask);
     }
   }
 
@@ -476,13 +476,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
                                 EventReport* event,
                                 BarrierNotifiable* done) override {
     AutoNotify an(done);
-    unsigned ch = size_;
-    for (unsigned i = 0; i < size_; ++i) {
-      if ((event->event & ~0xFFFFULL) == base_events_[i]) {
-        ch = i;
-        break;
-      }
-    }
+    unsigned ch = registry_entry.user_arg;
     if (ch >= size_) return;
     uint16_t query = event->event & 0xFFFF;
     uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
@@ -499,18 +493,6 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         openlcb::eventid_to_buffer(actual_event), done->new_child());
   }
 
-  struct DeleteNotifiable : public BarrierNotifiable {
-    openlcb::WriteHelper* helper;
-    BarrierNotifiable* child;
-    DeleteNotifiable(openlcb::WriteHelper* h, BarrierNotifiable* c)
-        : helper(h), child(c) {}
-    void notify() override {
-      child->notify();
-      delete helper;
-      delete this;
-    }
-  };
-
   void handle_identify_global(const EventRegistryEntry& registry_entry,
                               EventReport* event,
                               BarrierNotifiable* done) override {
@@ -518,14 +500,15 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       return done->notify();
     }
     // We are a producer of these events.
-    for (unsigned i = 0; i < size_; ++i) {
-      uint64_t range = openlcb::EncodeRange(base_events_[i], 65536);
-      auto* helper = new openlcb::WriteHelper();
-      helper->WriteAsync(node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
-                         openlcb::WriteHelper::global(),
-                         openlcb::eventid_to_buffer(range),
-                         new DeleteNotifiable(helper, done->new_child()));
+    unsigned ch = registry_entry.user_arg;
+    if (ch >= size_) {
+      return done->notify();
     }
+    uint64_t range = openlcb::EncodeRange(base_events_[ch], 65536);
+    event->event_write_helper<1>()->WriteAsync(
+        node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
+        openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
+        done->new_child());
     done->maybe_done();
   }
 
