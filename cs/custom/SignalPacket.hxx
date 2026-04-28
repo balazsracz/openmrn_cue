@@ -38,6 +38,7 @@
 #define _BRACZ_CUSTOM_SIGNALPACKET_HXX_
 
 #include "executor/StateFlow.hxx"
+#include "openlcb/Defs.hxx"
 #include "utils/Hub.hxx"
 
 namespace bracz_custom {
