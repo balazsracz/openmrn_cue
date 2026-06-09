@@ -106,7 +106,7 @@ class LocalVariableReference : public VariableReference {
   }
 
   /// Print the variable representation to the sebug string.
-  void debug_print(std::string* output) {
+  void debug_print(std::string* output) override {
     output->append(name_);
   }
 
