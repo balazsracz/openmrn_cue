@@ -35,10 +35,12 @@
 #ifndef _LOGIC_VARIABLE_HXX_
 #define _LOGIC_VARIABLE_HXX_
 
-#include <string>
-#include <memory>
-#include <functional>
 #include <limits.h>
+
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
 
 namespace logic {
 
