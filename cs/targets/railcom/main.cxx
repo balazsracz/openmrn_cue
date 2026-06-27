@@ -528,8 +528,17 @@ int appl_main(int argc, char* argv[]) {
 
   RailcomDefs::setup_debouncer_opts(overcurrent_debouncer_opts);
   
+  static openlcb::EventId railcom_base_events[6];
+  for (unsigned i = 0; i < 6; ++i) {
+    uint64_t ret = 0x0680ULL << 48;
+    ret |= ((__application_node_id >> 24) & 0x0FFFULL) << 40;
+    ret |= (__application_node_id & 0xFFFFF) << 20;
+    ret |= uint64_t(i & 0xf) << 16;
+    railcom_base_events[i] = ret;
+  }
+
   static RailcomBroadcastFlow railcom_broadcast(
-      &railcom_hub, stack.node(), &occ_decoder, &over_decoder, nullptr, 6);
+      &railcom_hub, stack.node(), &occ_decoder, &over_decoder, nullptr, 6, railcom_base_events);
 
   stack.add_can_port_select("/dev/can0");
   dac_thread.start("dac", 0, 600);
