@@ -49,6 +49,7 @@
 #include "openlcb/EventHandler.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 #include "os/OS.hxx"
+#include "freertos_drivers/common/SimpleLog.hxx"
 
 /// Listens to messages on the railcom hub, and decodes railcom ID1 and ID2
 /// messages coming in channel1 to determine what DCC address decoders are
@@ -114,8 +115,13 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
     // Iterate while the address matches
     while (it != trackers_.end() && ((it->first >> 16) == address)) {
+      uint8_t prev_count = it->second.count;
       if (it->second.report_loco_addressed()) {
         pending_deletions_ = true;
+      }
+      if (prev_count > 0) {
+        uint8_t resulting_count = it->second.count;
+        logRing_.add((uint16_t(0x10 | resulting_count) << 8) | (address & 0xFF));
       }
       ++it;
     }
@@ -239,15 +245,20 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       // Address-Major Key: (Address << 16) | Channel
       uint32_t key = (uint32_t(addr) << 16) | msg.channel;
       bool is_new = false;
+      uint8_t resulting_count = 0;
       auto it = trackers_.find(key);
       if (it == trackers_.end()) {
         is_new = true;
-        trackers_[key].report_loco_seen();
+        auto& tracker = trackers_[key];
+        tracker.report_loco_seen();
         // Double count for new entries
-        trackers_[key].report_loco_seen();
+        tracker.report_loco_seen();
+        resulting_count = tracker.count;
       } else {
         it->second.report_loco_seen();
+        resulting_count = it->second.count;
       }
+      logRing_.add((uint16_t(0x20 | resulting_count) << 8) | (addr & 0xFF));
 
       if (is_new) {
         current_timeout_key_ = key;  // Reuse this member for new loco key
@@ -563,6 +574,8 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
   /// Mutex protecting the trackers map and associated state.
   OSMutex lock_;
+
+  LogRing<uint16_t, 256> logRing_;
 };
 
 #endif  // _BRACZ_CUSTOM_RAILCOMBROADCASTFLOW_HXX_
