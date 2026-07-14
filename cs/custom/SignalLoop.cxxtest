@@ -1,0 +1,144 @@
+#include "utils/async_if_test_helper.hxx"
+#include "custom/SignalLoop.hxx"
+#include "src/base.h"
+#include "os/FakeClock.hxx"
+
+namespace bracz_custom {
+
+class MockSignalBus : public SignalPacketBaseInterface {
+ public:
+  MockSignalBus(Service* s) : SignalPacketBaseInterface(s) {}
+
+  ~MockSignalBus() {
+    clear();
+  }
+
+  void send(Buffer<SignalPacket>* b, unsigned prio = UINT_MAX) override {
+    packets_.push_back(b->data()->payload_);
+    b->data()->resultCode_ = SignalPacket::RESULT_ACK;
+    buffers_.push_back(b);
+  }
+
+  Action entry() override {
+    return exit();
+  }
+
+  void clear() {
+    packets_.clear();
+    std::vector<Buffer<SignalPacket>*> temp;
+    temp.swap(buffers_);
+    for (auto* b : temp) {
+      b->unref();
+    }
+  }
+
+  std::vector<string> packets_;
+  std::vector<Buffer<SignalPacket>*> buffers_;
+};
+
+class SignalLoopTest : public openlcb::AsyncNodeTest {
+ protected:
+  SignalLoopTest()
+      : sigBus_(&g_service),
+        signalLoop_(&sigBus_, node_, 0x0501010114FE0000ULL, 4) {}
+
+  ~SignalLoopTest() {
+    wait();
+  }
+
+  FakeClock clk_;
+  MockSignalBus sigBus_;
+  SignalLoop signalLoop_;
+};
+
+TEST_F(SignalLoopTest, BootSenderTest) {
+  // Wait a bit to let constructor actions process
+  wait();
+  
+  // The immediate boot command is queued. Clear buffers to let it be sent.
+  sigBus_.clear();
+  wait();
+
+  // The boot sender should have triggered and sent the boot command.
+  ASSERT_GE(sigBus_.packets_.size(), 1u);
+  string expected_pkt = {0, 2, SCMD_BOOT};
+  EXPECT_EQ(expected_pkt, sigBus_.packets_[0]);
+  
+  // Clear buffers to let the loop send regular aspect updates and block again.
+  sigBus_.clear();
+  wait();
+
+  // Advance time by 1.5 seconds. No boot command should be scheduled/sent.
+  clk_.advance(MSEC_TO_NSEC(1500));
+  wait();
+  
+  // We allow regular aspect packets to be sent, but not boot packets.
+  for (const auto& p : sigBus_.packets_) {
+    EXPECT_NE(expected_pkt, p);
+  }
+
+  // Advance time by another 0.6 seconds (2.1s total). SCMD_BOOT should be scheduled.
+  clk_.advance(MSEC_TO_NSEC(600));
+  wait(); // Let the timer fire and queue the boot command activity.
+  
+  // Clear buffers to let the scheduled boot command go through.
+  sigBus_.clear();
+  wait();
+  
+  bool has_boot_packet = false;
+  for (const auto& p : sigBus_.packets_) {
+    if (p == expected_pkt) {
+      has_boot_packet = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(has_boot_packet);
+
+  // Clear and wait to fill buffers and block the loop.
+  sigBus_.clear();
+  wait();
+
+  // Pause the signal loop.
+  signalLoop_.disable_loop();
+  wait();
+
+  // Clear buffers. Since the loop is paused, no new aspect updates or timers run.
+  sigBus_.clear();
+  wait();
+
+  // Advance time by 3 seconds. The boot command should NOT be sent.
+  clk_.advance(SEC_TO_NSEC(3));
+  wait();
+  
+  for (const auto& p : sigBus_.packets_) {
+    EXPECT_NE(expected_pkt, p);
+  }
+
+  // Resume the loop.
+  signalLoop_.enable_loop();
+  wait();
+
+  // Advance by another 2.1 seconds, it should schedule the boot command.
+  clk_.advance(MSEC_TO_NSEC(2100));
+  wait(); // Let the timer fire and queue the boot command.
+  
+  // Clear buffers to let the scheduled boot command go through.
+  sigBus_.clear();
+  wait();
+  
+  has_boot_packet = false;
+  for (const auto& p : sigBus_.packets_) {
+    if (p == expected_pkt) {
+      has_boot_packet = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(has_boot_packet);
+
+  // Clean shutdown for exit
+  signalLoop_.disable_loop();
+  wait();
+  sigBus_.clear();
+}
+
+} // namespace bracz_custom

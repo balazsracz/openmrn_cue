@@ -40,6 +40,8 @@
 #include "utils/BusMaster.hxx"
 #include "openlcb/EventHandlerTemplates.hxx"
 #include "custom/SignalPacket.hxx"
+#include "executor/Timer.hxx"
+#include "src/base.h"
 
 namespace bracz_custom {
 
@@ -85,6 +87,53 @@ static constexpr Fixed16 SIGNAL_PRIORITIES[SignalPriorities::NUM_PRIORITIES] = {
     {1, 0},                       // aspect refresh
 };
 
+class BootCommandSender : public SignalBus::Activity, public ::Timer {
+ public:
+  BootCommandSender(ActiveTimers* timers, SignalLoopInterface* loop)
+      : ::Timer(timers), loop_(loop), is_running_(false), is_scheduled_(false) {}
+
+  long long timeout() override {
+    if (loop_->isLoopRunning_) {
+      if (!is_scheduled_) {
+        is_scheduled_ = true;
+        loop_->get_bus_master()->schedule_activity(this, SignalPriorities::BUTTON_POLL);
+      }
+      return SEC_TO_NSEC(2);
+    }
+    is_running_ = false;
+    return NONE;
+  }
+
+  void fill_packet(SignalBus::Packet* packet) override {
+    is_scheduled_ = false;
+    auto& s = packet->data()->payload_;
+    s.clear();
+    s.push_back(0); // broadcast address
+    s.push_back(2); // len
+    s.push_back(SCMD_BOOT); // cmd
+  }
+
+  void ensure_started() {
+    if (!is_running_) {
+      is_running_ = true;
+      start(0);
+    }
+  }
+
+  void stop_timer() {
+    if (is_running_) {
+      cancel();
+      is_running_ = false;
+      is_scheduled_ = false;
+    }
+  }
+
+ private:
+  SignalLoopInterface* loop_;
+  bool is_running_;
+  bool is_scheduled_;
+};
+
 class SignalLoop : public StateFlowBase,
                    private openlcb::ByteRangeEventC,
                    public SignalLoopInterface,
@@ -102,7 +151,7 @@ class SignalLoop : public StateFlowBase,
              uint64_t event_base, int num_signals)
       : StateFlowBase(node->iface()),
         ByteRangeEventC(node, event_base, backingStore_ = static_cast<uint8_t*>(
-                                              malloc(num_signals * 2)),
+                                               malloc(num_signals * 2)),
                         num_signals * 2),
         bus_(bus),
         numSignals_(num_signals),
@@ -111,6 +160,7 @@ class SignalLoop : public StateFlowBase,
         waiting_(0),
         paused_(0),
         timer_(this),
+        bootSender_(node->iface()->executor()->active_timers(), this),
         busMaster_(node->iface(), bus, /*idle=*/this, 3)
   {
     memset(backingStore_, 0, num_signals * 2);
@@ -124,9 +174,13 @@ class SignalLoop : public StateFlowBase,
     busMaster_.set_policy((unsigned)SignalPriorities::NUM_PRIORITIES,
                           SIGNAL_PRIORITIES);
     busMaster_.schedule_activity(this, SignalPriorities::ASPECT_REFRESH);
+    bootSender_.ensure_started();
   }
 
-  ~SignalLoop() { free(backingStore_); }
+  ~SignalLoop() {
+    bootSender_.stop_timer();
+    free(backingStore_);
+  }
 
   /// Fills in a buffer for a signal update packet.
   void prep_update_packet(Buffer<SignalPacket>* b, uint8_t address,
@@ -205,12 +259,14 @@ class SignalLoop : public StateFlowBase,
     paused_ = 0;
     isLoopRunning_ = true;
     busMaster_.resume();
+    bootSender_.ensure_started();
   }
 
   void disable_loop() OVERRIDE {
     paused_ = 1;
     isLoopRunning_ = false;
     busMaster_.pause();
+    bootSender_.stop_timer();
   }
 
   SignalBus::Master* get_bus_master() override {
@@ -231,6 +287,7 @@ class SignalLoop : public StateFlowBase,
   BarrierNotifiable n_;
   StateFlowTimer timer_;
 
+  BootCommandSender bootSender_;
   SignalBus::Master busMaster_;
 };
 
