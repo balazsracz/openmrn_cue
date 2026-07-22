@@ -490,18 +490,63 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     unsigned ch = (event->event - event_base) >> 16;
     if (ch >= size_) return;
     uint16_t query = event->event & 0xFFFF;
-    uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
-    uint64_t actual_event = address_to_eventid(ch, actual, true);
-    if (query != actual) {
-      event->event_write_helper<1>()->WriteAsync(
-          node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
-          openlcb::WriteHelper::global(),
-          openlcb::eventid_to_buffer(event->event), done->new_child());
+
+    OSMutexLock l(&lock_);
+
+    if (query == 0) {
+      // Query for the base: report all currently present locomotives in this channel.
+      uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
+      if (actual != 0 && actual != 0xFFFF) {
+        uint64_t actual_event = address_to_eventid(ch, actual, true);
+        Buffer<openlcb::GenMessage> *b;
+        node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
+        b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+                         node_->node_id(),
+                         openlcb::eventid_to_buffer(actual_event));
+        b->set_done(done->new_child());
+        node_->iface()->global_message_write_flow()->send(b);
+      }
+
+      // Report all active Channel 2 trackers
+      for (const auto& pair : trackers_) {
+        unsigned tracker_ch = pair.first & 0xFFFF;
+        if (tracker_ch == ch) {
+          uint16_t addr = pair.first >> 16;
+          uint64_t actual_event = address_to_eventid(ch, addr, true);
+          Buffer<openlcb::GenMessage> *b;
+          node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
+          b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+                           node_->node_id(),
+                           openlcb::eventid_to_buffer(actual_event));
+          b->set_done(done->new_child());
+          node_->iface()->global_message_write_flow()->send(b);
+        }
+      }
+    } else {
+      // Query for a specific address
+      bool found = false;
+      uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
+      if (actual == query) {
+        found = true;
+      } else {
+        uint32_t key = (uint32_t(query) << 16) | ch;
+        auto it = trackers_.find(key);
+        if (it != trackers_.end() && it->second.count > 0) {
+          found = true;
+        }
+      }
+
+      uint64_t query_event = address_to_eventid(ch, query, true);
+      Buffer<openlcb::GenMessage> *b;
+      node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
+      b->data()->reset(
+          found ? openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID
+                : openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
+          node_->node_id(),
+          openlcb::eventid_to_buffer(query_event));
+      b->set_done(done->new_child());
+      node_->iface()->global_message_write_flow()->send(b);
     }
-    event->event_write_helper<2>()->WriteAsync(
-        node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-        openlcb::WriteHelper::global(),
-        openlcb::eventid_to_buffer(actual_event), done->new_child());
   }
 
   void handle_identify_global(const EventRegistryEntry& registry_entry,
