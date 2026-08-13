@@ -39,3 +39,13 @@ function sendpkt() {
   echo "$1" >> /dev/tcp/localhost/12021
  # echo "$1" >> /usr/local/google/bracz/train/openlcb
 }
+
+# Sends an openlcb packet, but assumes that at toplevel script we have already
+# done the following:
+#
+# exec 4>>/dev/tcp/localhost/12021
+function sendpkt4() {
+  echo sending OpenLCB packet "$1"
+  echo "$1" >&4
+ # echo "$1" >> /usr/local/google/bracz/train/openlcb
+}
