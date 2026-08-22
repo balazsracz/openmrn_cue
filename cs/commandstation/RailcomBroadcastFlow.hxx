@@ -123,11 +123,9 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   /// @param channel the channel number.
   /// @return the default event ID base.
   static uint64_t default_event_id(openlcb::NodeID node_id, unsigned channel) {
-    uint64_t ret = FEEDBACK_EVENTID_BASE;
-    ret |= ((node_id >> 24) & 0x0FFFULL) << 40;
-    ret |= (node_id & 0xFFFFF) << 20;
-    ret |= uint64_t(channel & 0xf) << 16;
-    return ret;
+    extern uint64_t default_railcom_event_id(openlcb::NodeID node_id,
+                                             unsigned channel);
+    return default_railcom_event_id(node_id, channel);
   }
 
   /// @return the currently valid DCC address, or zero if no valid address
