@@ -49,8 +49,10 @@ class MspM0SignalReceiver {
   static constexpr unsigned MAX_PACKET_LEN = 36;
   
   void hw_init() {
-    DL_CRC_enablePower(CRC);
     DL_CRC_reset(CRC);
+    DL_CRC_enablePower(CRC);
+    while (DL_CRC_isPowerEnabled(CRC) != true) {
+    }
     DL_CRC_init(CRC, DL_CRC_16_POLYNOMIAL, DL_CRC_BIT_NOT_REVERSED,
                 DL_CRC_INPUT_ENDIANESS_LITTLE_ENDIAN,
                 DL_CRC_OUTPUT_BYTESWAP_DISABLED);
