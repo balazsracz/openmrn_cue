@@ -39,6 +39,7 @@
 
 #include "executor/StateFlow.hxx"
 #include "openlcb/Defs.hxx"
+#include "utils/Crc.hxx"
 #include "utils/Hub.hxx"
 
 namespace bracz_custom {
@@ -69,6 +70,47 @@ struct SignalPacket {
 
   /// If we received returned data, this is that data.
   string responsePayload_;
+
+  /// Tracks whether CRC has already been added to payload_.
+  bool hasCrc_{false};
+
+  /// Tracks whether CRC should be skipped for this packet.
+  bool skipCrc_{false};
+
+  /// Returns true if CRC has been added to payload_.
+  bool has_crc() const {
+    return hasCrc_;
+  }
+
+  /// Instructs the packet flow to skip adding CRC to payload_.
+  void skip_crc() {
+    skipCrc_ = true;
+  }
+
+  /// Returns true if CRC addition should be skipped for this packet.
+  bool is_crc_skipped() const {
+    return skipCrc_;
+  }
+
+  /// Adds CRC to payload_ according to specification:
+  /// 1. Increments length byte (payload_[1]) by 2.
+  /// 2. Computes CRC-16-CCITT over payload_ (Address byte, updated Length byte,
+  ///    Command byte, and Payload bytes).
+  /// 3. Appends the 16-bit CRC (High Byte, Low Byte) to payload_.
+  /// Ignores the call if CRC has already been added, if CRC is set to be skipped,
+  /// or if payload is too short.
+  void add_crc() {
+    if (hasCrc_ || skipCrc_ || payload_.size() < 2) return;
+    payload_[1] = static_cast<char>(static_cast<uint8_t>(payload_[1]) + 2);
+    Crc16CCITT crc;
+    for (size_t i = 0; i < payload_.size(); ++i) {
+      crc.update(static_cast<uint8_t>(payload_[i]));
+    }
+    uint16_t crc_val = crc.get();
+    payload_.push_back(static_cast<char>((crc_val >> 8) & 0xFF));
+    payload_.push_back(static_cast<char>(crc_val & 0xFF));
+    hasCrc_ = true;
+  }
 };
 
 typedef StateFlow<Buffer<SignalPacket>, QList<1> > SignalPacketBaseInterface;
@@ -120,6 +162,7 @@ class SignalPacketBase : public SignalPacketBaseInterface {
  private:
   Action entry() OVERRIDE {
     if (message()->data()->payload_.empty()) return release_and_exit();
+    message()->data()->add_crc();
     return call_immediately(STATE(wait_for_tx_empty));
   }
 

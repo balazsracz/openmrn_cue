@@ -46,9 +46,15 @@
 
 class MspM0SignalReceiver {
  public:
-  static constexpr unsigned MAX_PACKET_LEN = 32;
+  static constexpr unsigned MAX_PACKET_LEN = 36;
   
   void hw_init() {
+    DL_CRC_enablePower(CRC);
+    DL_CRC_reset(CRC);
+    DL_CRC_init(CRC, DL_CRC_16_POLYNOMIAL, DL_CRC_BIT_NOT_REVERSED,
+                DL_CRC_INPUT_ENDIANESS_LITTLE_ENDIAN,
+                DL_CRC_OUTPUT_BYTESWAP_DISABLED);
+
     static const DL_UART_Main_ClockConfig gUART_0ClockConfig = {
         .clockSel = DL_UART_MAIN_CLOCK_BUSCLK,
         .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1};
@@ -87,8 +93,15 @@ class MspM0SignalReceiver {
         // Address byte.
         size_ = 0;
         address_ = d & 0xff;
-      } else if (size_ < MAX_PACKET_LEN) {
-        packet_[size_++] = d & 0xff;
+        is_validated_ = 0;
+      } else {
+        uint8_t sz = size_;
+        if (!is_validated_ && sz < MAX_PACKET_LEN) {
+          if (sz == 0 || sz < packet_[0]) {
+            packet_[sz] = d & 0xff;
+            size_ = sz + 1;
+          }
+        }
       }
     }
   }
@@ -97,10 +110,33 @@ class MspM0SignalReceiver {
     microsleep(32);
     DL_UART_transmitData(SIG_UART, 0x55);
   }
-  
-  /// @return true if we have received a complete packet.
+
+  /// @return true if we have received a complete and CRC-valid packet.
   bool is_full() {
-    return size_ >= 1 && size_ >= packet_[0];
+    if (is_validated_) {
+      return true;
+    }
+    uint8_t sz = size_;
+    uint8_t l_prime = packet_[0];
+    if (sz >= 4 && sz >= l_prime && l_prime >= 4) {
+      DL_CRC_setSeed16(CRC, 0xFFFF);
+      DL_CRC_feedData8(CRC, address_);
+      uint8_t crc_bytes = l_prime - 2;
+      for (uint8_t i = 0; i < crc_bytes; ++i) {
+        DL_CRC_feedData8(CRC, packet_[i]);
+      }
+      uint16_t computed = DL_CRC_getResult16(CRC);
+      uint16_t expected =
+          (uint16_t(packet_[crc_bytes]) << 8) | packet_[crc_bytes + 1];
+      if (computed == expected) {
+        packet_[0] -= 2;
+        size_ = sz - 2;
+        is_validated_ = 1;
+        return true;
+      }
+      clear();
+    }
+    return false;
   }
 
   uint8_t address() {
@@ -119,6 +155,7 @@ class MspM0SignalReceiver {
   
   void clear() {
     size_ = 0;
+    is_validated_ = 0;
   }
 
   /// @return the raw data in the packet. Offset [0] is the size, offset [1] is
@@ -126,10 +163,11 @@ class MspM0SignalReceiver {
   uint8_t* data() {
     return packet_;
   }
-  
+
   uint8_t address_; 
+  uint8_t size_ : 7;
+  uint8_t is_validated_ : 1;
   uint8_t packet_[MAX_PACKET_LEN];
-  uint8_t size_ = 0;
 };  // class MspM0SignalReceiver
 
 #endif  // _CUSTOM_MSPM0SIGNALRECEIVER_HXX_

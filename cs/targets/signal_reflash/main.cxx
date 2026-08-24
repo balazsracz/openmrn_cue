@@ -95,12 +95,16 @@ bool binfile = false;
 bool resume_after = true;
 bool retry_flash = false;
 bool checksum = false;
+bool nocrc = false;
+bool ping_mode = false;
+bool check_bootloader_mode = false;
+bool reboot_mode = false;
 
 
 void usage(const char *e) {
   fprintf(stderr,
           "Usage: %s ([-i destination_host] [-p port] | [-d device_path]) "
-          "(-n nodeid | -a alias) [-k] [-r] [-c] [-R] [-b] -f filename -s signal_address -o offset\n",
+          "(-n nodeid | -a alias) [-k] [-r] [-c] [-C] [-R] [-b] [-P] [-B] [-X] [-f filename] -s signal_address [-o offset]\n",
           e);
   fprintf(stderr,
           "Connects to an openlcb bus and sends a datagram to a "
@@ -125,7 +129,15 @@ void usage(const char *e) {
   fprintf(stderr,
           "\n-c adds checksum to the flash datagrams.\n");
   fprintf(stderr,
+          "\n-C sends packets without CRC (legacy CRC-less protocol).\n");
+  fprintf(stderr,
           "\n-R enables retries of flash datagrams that were not ACKed.\n");
+  fprintf(stderr,
+          "\n-P sends SCMD_PING and checks if target signal_address ACKs.\n");
+  fprintf(stderr,
+          "\n-B sends SCMD_CHECK_BOOTLOADER and checks if target signal_address ACKs.\n");
+  fprintf(stderr,
+          "\n-X sends SCMD_RESET (reboot) to target signal_address.\n");
   fprintf(stderr, "\nfilename contains the binary to flash in HEX format.\n");
   fprintf(stderr,
           "\n-b means the filename is a binary file.\n");
@@ -139,7 +151,7 @@ void usage(const char *e) {
 
 void parse_args(int argc, char *argv[]) {
   int opt;
-  while ((opt = getopt(argc, argv, "hi:p:d:n:a:g:f:s:o:kbrRc")) >= 0) {
+  while ((opt = getopt(argc, argv, "hi:p:d:n:a:g:f:s:o:kbrRcCPBX")) >= 0) {
     switch (opt) {
       case 'h':
         usage(argv[0]);
@@ -168,6 +180,9 @@ void parse_args(int argc, char *argv[]) {
       case 'c':
         checksum = true;
         break;
+      case 'C':
+        nocrc = true;
+        break;
       case 'r':
         resume_after = false;
         break;
@@ -183,12 +198,24 @@ void parse_args(int argc, char *argv[]) {
       case 'k':
         noreset = true;
         break;
+      case 'P':
+        ping_mode = true;
+        break;
+      case 'B':
+        check_bootloader_mode = true;
+        break;
+      case 'X':
+        reboot_mode = true;
+        break;
       default:
         fprintf(stderr, "Unknown option %c\n", opt);
         usage(argv[0]);
     }
   }
-  if (!filename || (!destination_nodeid && !destination_alias)) {
+  if (!ping_mode && !check_bootloader_mode && !reboot_mode && !filename) {
+    usage(argv[0]);
+  }
+  if (!destination_nodeid && !destination_alias) {
     usage(argv[0]);
   }
 }
@@ -228,13 +255,13 @@ void send_signal_dg(uint8_t cmd, const string& arg = "") {
 }
 
 void send_packet(const string &packet) {
-  send_signal_dg(CMD_SIGNALPACKET, packet);
+  send_signal_dg(nocrc ? CMD_SIGNALPACKET_NOCRC : CMD_SIGNALPACKET, packet);
 }
 
 bool send_packet_with_ack(const string &packet, unsigned timeout_msec) {
   string dg;
   dg.push_back(0x2F);
-  dg.push_back(CMD_SIGNALPACKET_WITH_ACK);
+  dg.push_back(nocrc ? CMD_SIGNALPACKET_NOCRC_WITH_ACK : CMD_SIGNALPACKET_WITH_ACK);
   dg.push_back((timeout_msec >> 8) & 0xff);
   dg.push_back((timeout_msec >> 0) & 0xff);
   dg += packet;
@@ -417,7 +444,54 @@ int appl_main(int argc, char *argv[]) {
   while (!g_node.is_initialized()) usleep(10000);
   LOG(INFO, "Node initialized.");
 
+  if (ping_mode) {
+    string s;
+    s.push_back(signal_address);
+    s.push_back(2);
+    s.push_back(SCMD_PING);
+    bool ok = send_packet_with_ack(s, 200);
+    if (ok) {
+      LOG(INFO, "Address 0x%02x: PING ACK", signal_address);
+      printf("Address 0x%02x: PING ACK\n", signal_address);
+      exit(0);
+    } else {
+      LOG(LEVEL_ERROR, "Address 0x%02x: PING NO ACK", signal_address);
+      printf("Address 0x%02x: PING NO ACK\n", signal_address);
+      exit(1);
+    }
+  }
+
+  if (check_bootloader_mode) {
+    string s;
+    s.push_back(signal_address);
+    s.push_back(2);
+    s.push_back(SCMD_CHECK_BOOTLOADER);
+    bool ok = send_packet_with_ack(s, 200);
+    if (ok) {
+      LOG(INFO, "Address 0x%02x: CHECK_BOOTLOADER ACK (New bootloader applied)", signal_address);
+      printf("Address 0x%02x: CHECK_BOOTLOADER ACK (New bootloader applied)\n", signal_address);
+      exit(0);
+    } else {
+      LOG(LEVEL_ERROR, "Address 0x%02x: CHECK_BOOTLOADER NO ACK (New bootloader not applied or invalid)", signal_address);
+      printf("Address 0x%02x: CHECK_BOOTLOADER NO ACK (New bootloader not applied or invalid)\n", signal_address);
+      exit(1);
+    }
+  }
+
+  if (reboot_mode) {
+    string s;
+    s.push_back(signal_address);
+    s.push_back(3);
+    s.push_back(SCMD_RESET);
+    s.push_back(0x55);
+    send_packet(s);
+    LOG(INFO, "Address 0x%02x: Sent RESET (reboot) command.", signal_address);
+    printf("Address 0x%02x: RESET (reboot) sent\n", signal_address);
+    exit(0);
+  }
+
   string hex = read_file_to_string(filename);
+
 
   string payload;
   if (binfile) {
