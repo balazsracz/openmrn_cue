@@ -140,6 +140,13 @@ class FindManyTrainTestBase : public TrainDbTest {
   TrainNodeCacheOutput output_;
   TrainNodeInfoCache trainCache_{&secondNode_, &remoteClient_, &output_};
 
+  /// Helper method for invoking result_callback from test fixture.
+  /// @param state event state
+  /// @param node target node ID
+  void send_result(openlcb::EventState state, openlcb::NodeID node) {
+    trainCache_.result_callback(state, node);
+  }
+
   StrictMock<MockNotifiable> mockNotifiable_;
   //openlcb::ConfigUpdateFlow cfgflow{ifCan_.get()};
 };
@@ -661,6 +668,89 @@ TEST_F(FindManyTrainTestBase, ScrollToPendingSearchRefill) {
   EXPECT_NE(get_results_map().find(ids[20]), get_results_map().end());
 }
 
+/**
+ * Test verifying that receiving a PRODUCER_IDENTIFIED result_callback for a node
+ * already present in the cache does NOT set resultSetChanged_ to 1 and does NOT
+ * restart do_iter() to trigger redundant SNIP queries over CAN.
+ */
+TEST_F(FindManyTrainTestBase, DuplicateAnnouncementDoesNotTriggerSnipStorm) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(7, false, DCC_ANY);
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(1u, get_results_map().size());
+  openlcb::NodeID existing_node = get_results_map().begin()->first;
+
+  // Now simulate a duplicate PRODUCER_IDENTIFIED broadcast for the node already in cache.
+  clear_expect(true);
+  // No CAN packets (SNIP requests) should be written!
+  EXPECT_CALL(canBus_, mwrite(_)).Times(0);
+  send_result(openlcb::EventState::VALID, existing_node);
+  wait();
+}
+
+/**
+ * Test verifying that SNIP requests are rate-limited to 30 seconds per node.
+ * If a node does not answer a SNIP query, snipInFlight_ blocks duplicate SNIP
+ * queries within the 30-second window.
+ */
+TEST_F(FindManyTrainTestBase, SnipRequestRateLimitedTo30Seconds) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(7, false, DCC_ANY);
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(1u, get_results_map().size());
+  openlcb::NodeID existing_node = get_results_map().begin()->first;
+
+  // Manually clear hasNodeName_ and set snipInFlight_ with a recent timestamp (<30s).
+  auto it = get_results_map().find(existing_node);
+  ASSERT_NE(it, get_results_map().end());
+  it->second->hasNodeName_ = 0;
+  it->second->snipInFlight_ = 1;
+  it->second->lastSnipTime_ = (NSEC_TO_SEC(os_get_time_monotonic())) & 0x3FFFFFFF;
+
+  // Now trigger an iteration. Since snipInFlight_ is 1 and elapsed time is <30s, no SNIP query should be sent.
+  clear_expect(true);
+  EXPECT_CALL(canBus_, mwrite(_)).Times(0);
+  send_result(openlcb::EventState::VALID, 0x06010000CFFF99ULL);
+  wait();
+}
+
+/**
+ * Test verifying that after 30 seconds expire without a SNIP reply, snipInFlight_
+ * resets and a single retry SNIP query is permitted.
+ */
+TEST_F(FindManyTrainTestBase, SnipRequestRetriedAfter30SecondTimeout) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(7, false, DCC_ANY);
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(1u, get_results_map().size());
+  openlcb::NodeID existing_node = get_results_map().begin()->first;
+
+  // Set snipInFlight_ with a timestamp older than 30 seconds (e.g. 35s ago).
+  auto it = get_results_map().find(existing_node);
+  ASSERT_NE(it, get_results_map().end());
+  it->second->hasNodeName_ = 0;
+  it->second->snipInFlight_ = 1;
+  uint32_t now_sec = NSEC_TO_SEC(os_get_time_monotonic()) & 0x3FFFFFFF;
+  it->second->lastSnipTime_ = (now_sec - 35) & 0x3FFFFFFF;
+
+  // Trigger iteration: since >30s have passed, timeout expires and a single retry SNIP request is sent.
+  clear_expect(true);
+  expect_any_packet();
+  send_result(openlcb::EventState::VALID, 0x06010000CFFF99ULL);
+  wait();
+  EXPECT_EQ(1u, it->second->snipInFlight_);
+}
 
 } // namespace commandstation
+
+
 

@@ -237,17 +237,28 @@ class TrainNodeInfoCache : public StateFlowBase {
   friend class FindManyTrainTestBase;
 
   struct TrainNodeInfo {
-    TrainNodeInfo() : hasNodeName_(0) {}
+    TrainNodeInfo() : hasNodeName_(0), snipInFlight_(0), lastSnipTime_(0) {}
     TrainNodeInfo(TrainNodeInfo&& other)
-        : name_(std::move(other.name_)), hasNodeName_(other.hasNodeName_) {}
+        : name_(std::move(other.name_)),
+          hasNodeName_(other.hasNodeName_),
+          snipInFlight_(other.snipInFlight_),
+          lastSnipTime_(other.lastSnipTime_) {}
     TrainNodeInfo& operator=(TrainNodeInfo&& other) {
       name_ = std::move(other.name_);
       hasNodeName_ = other.hasNodeName_;
+      snipInFlight_ = other.snipInFlight_;
+      lastSnipTime_ = other.lastSnipTime_;
       return *this;
     }
     string name_;
+    /// 1 if node name or description has been populated from SNIP response.
     unsigned hasNodeName_ : 1;
+    /// 1 if a SNIP query (MTI_IDENT_INFO_REQUEST) is currently in-flight.
+    unsigned snipInFlight_ : 1;
+    /// Monotonic timestamp in seconds (mod 2^30) when the last SNIP query was sent.
+    unsigned lastSnipTime_ : 30;
   };
+
 
   typedef std::map<openlcb::NodeID, std::shared_ptr<TrainNodeInfo> > NodeCacheMap;
   //typedef std::map<openlcb::NodeID, TrainNodeInfo> NodeCacheMap;
@@ -377,23 +388,47 @@ class TrainNodeInfoCache : public StateFlowBase {
     return call_immediately(STATE(iter_results));
   }
 
+  /// Helper returning the current monotonic time in seconds wrapped to 30 bits.
+  static uint32_t now_sec_30() {
+    return NSEC_TO_SEC(os_get_time_monotonic()) & 0x3FFFFFFF;
+  }
+
+  /// Timeout in seconds before retrying an un-responded in-flight SNIP request.
+  static constexpr uint32_t kSnipTimeoutSec = 30;
+
   Action iter_results() {
     auto it = trainNodes_.nodes_.lower_bound(lookupIt_);
+    uint32_t now = now_sec_30();
     while (it != trainNodes_.nodes_.end()) {
       if (it->second->hasNodeName_) {
         // Nothing to look up.
         ++it;
         continue;
-      } else {
-        lookupIt_ = it->first;
-        return allocate_and_call(node_->iface()->addressed_message_write_flow(),
-                                 STATE(send_query));
       }
+      if (it->second->snipInFlight_) {
+        uint32_t elapsed = (now - it->second->lastSnipTime_) & 0x3FFFFFFF;
+        if (elapsed < kSnipTimeoutSec) {
+          // Request is still in-flight and within timeout window; skip to next node
+          ++it;
+          continue;
+        } else {
+          // 30s timeout expired; allow re-querying
+          it->second->snipInFlight_ = 0;
+        }
+      }
+      lookupIt_ = it->first;
+      return allocate_and_call(node_->iface()->addressed_message_write_flow(),
+                               STATE(send_query));
     }
     return call_immediately(STATE(iter_done));
   }
 
   Action send_query() {
+    auto it = trainNodes_.nodes_.find(lookupIt_);
+    if (it != trainNodes_.nodes_.end()) {
+      it->second->snipInFlight_ = 1;
+      it->second->lastSnipTime_ = now_sec_30();
+    }
     auto* b =
         get_allocation_result(node_->iface()->addressed_message_write_flow());
     b->data()->reset(openlcb::Defs::MTI_IDENT_INFO_REQUEST, node_->node_id(),
@@ -402,6 +437,7 @@ class TrainNodeInfoCache : public StateFlowBase {
     node_->iface()->addressed_message_write_flow()->send(b);
     return wait_and_call(STATE(send_query_done));
   }
+
 
   Action send_query_done() {
     ++lookupIt_;
@@ -435,13 +471,12 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// Adds a new search result to a result list.
   /// @param list is the resultset to add to
   /// @param node isthe new node id
-  /// @param forced_new if true, increments the result count when the new node
-  /// is clipped, if false, only increments result count if node is not
-  /// clipped.
-  void add_to_list(ResultList* list, openlcb::NodeID node) {
+  /// @return true if a new node entry was added to list->nodes_, false if node
+  /// was already present or clipped outside range.
+  bool add_to_list(ResultList* list, openlcb::NodeID node) {
     if (list->nodes_.find(node) != list->nodes_.end()) {
       // We already have this node, good.
-      return;
+      return false;
     }
     bool add_node = false;
     // Everything that's within the existing range of the map<> is always
@@ -481,25 +516,8 @@ class TrainNodeInfoCache : public StateFlowBase {
       if (node > maxResult_ && node > list->previousMaxNode_) {
         list->newClippedAtBottom_++;
       }
+      return false;
     }
-    /*
-    if (node < minResult_) {
-      if (!forced_new) return;
-      // Outside of the search range -- ignore.
-      list->numResults_++;
-      list->resultsClippedAtTop_++;
-      if (list->resultOffset_ >= 0) {
-        ++list->resultOffset_;
-      }
-      return;
-    }
-    if (node > maxResult_) {
-      if (!forced_new) return;
-      // Outside of the search range -- ignore.
-      list->numResults_++;
-      list->resultsClippedAtBottom_++;
-      return;
-      }*/
 
     // Check if we need to evict something from the cache.
     while (list->nodes_.size() > cacheMaxSize_) {
@@ -526,6 +544,7 @@ class TrainNodeInfoCache : public StateFlowBase {
         }
       }
     }
+    return true;
   }
 
   
@@ -533,10 +552,11 @@ class TrainNodeInfoCache : public StateFlowBase {
   /// search query. Called on the openlcb executor.
   void result_callback(openlcb::EventState state, openlcb::NodeID node) {
     if (!node) return; // some error occured.
-    add_to_list(&trainNodes_, node);
-    resultSetChanged_ = 1;
+    if (add_to_list(&trainNodes_, node)) {
+      resultSetChanged_ = 1;
+    }
 
-    if (is_terminated()) {
+    if (is_terminated() && resultSetChanged_) {
       LOG(INFO, "restarting flow for additional results");
       start_flow(STATE(do_iter));
     }
@@ -566,10 +586,12 @@ class TrainNodeInfoCache : public StateFlowBase {
       LOG(INFO, "SNIP response for unknown node");
       return;
     }
+    it->second->snipInFlight_ = 0;
     if (it->second->hasNodeName_) {
       // we already have a name.
       return;
     }
+
     const auto& payload = b->data()->payload;
     openlcb::SnipDecodedData decoded_data;
     openlcb::decode_snip_response(payload, &decoded_data);
