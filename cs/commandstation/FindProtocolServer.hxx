@@ -121,10 +121,16 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     //
     // b->set_done(done->new_child());
     b->data()->reset(event->event, event->src_node);
+    unsigned prio = 0;
     if (event->event == IS_TRAIN_EVENT) {
       pendingIsTrain_ = true;
+      prio = PRIO_ALLTRAIN;
+    } else if ((event->event & & FindProtocolDefs::ALLOCATE) == 0) {
+      prio = PRIO_SEARCH;
+    } else {
+      prio = PRIO_ALLOC;
     }
-    flow_.send(b);
+    flow_.send(b, prio);
   };
 
   // For testing.
@@ -138,6 +144,12 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     IS_TRAIN_EVENT = openlcb::TractionDefs::IS_TRAIN_EVENT,
     USER_ARG_FIND = 1,
     USER_ARG_ISTRAIN = 2,
+
+    // Priorities used for the find protocol flow.
+    PRIO_ALLTRAIN = 2,
+    PRIO_SEARCH = 1,
+    PRIO_ALLOC = 0,
+    NUM_PRIO = 3,
   };
   struct Request {
     void reset(openlcb::EventId event, openlcb::NodeHandle src) {
@@ -148,9 +160,9 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     openlcb::NodeHandle src_;
   };
 
-  class FindProtocolFlow : public StateFlow<Buffer<Request>, QList<1> > {
+  class FindProtocolFlow : public StateFlow<Buffer<Request>, QList<NUM_PRIO> > {
    public:
-    using Base = StateFlow<Buffer<Request>, QList<1> >;
+    using Base = StateFlow<Buffer<Request>, QList<NUM_PRIO> >;
 
     FindProtocolFlow(FindProtocolServer *parent)
         : StateFlow(parent->service()), parent_(parent) {}
