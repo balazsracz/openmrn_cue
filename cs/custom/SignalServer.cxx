@@ -53,10 +53,12 @@ StateFlowBase::Action SignalServer::entry() {
     return respond_reject(openlcb::Defs::ERROR_INVALID_ARGS_MESSAGE_TOO_SHORT);
   uint8_t cmd = payload()[1];
   switch (cmd) {
-    case CMD_SIGNALPACKET: {
+    case CMD_SIGNALPACKET:
+    case CMD_SIGNALPACKET_NOCRC: {
       return allocate_and_call(signalbus_, STATE(send_signalpacket));
     }
-    case CMD_SIGNALPACKET_WITH_ACK: {
+    case CMD_SIGNALPACKET_WITH_ACK:
+    case CMD_SIGNALPACKET_NOCRC_WITH_ACK: {
       if (size() < 4) {
         return respond_reject(
             openlcb::Defs::ERROR_INVALID_ARGS_MESSAGE_TOO_SHORT);
@@ -78,6 +80,9 @@ StateFlowBase::Action SignalServer::entry() {
 
 StateFlowBase::Action SignalServer::send_signalpacket() {
   auto* b = get_allocation_result(signalbus_);
+  if (payload()[1] == CMD_SIGNALPACKET_NOCRC) {
+    b->data()->skip_crc();
+  }
   b->data()->payload_.assign((char*)(payload() + 2), size() - 2);
   b->set_done(bn_.reset(this));
   signalbus_->send(b);
@@ -87,6 +92,9 @@ StateFlowBase::Action SignalServer::send_signalpacket() {
 StateFlowBase::Action SignalServer::send_signalpacket_with_ack() {
   BufferPtr<SignalPacket> b(get_allocation_result(signalbus_));
   busPacket_.reset(b->ref());
+  if (payload()[1] == CMD_SIGNALPACKET_NOCRC_WITH_ACK) {
+    b->data()->skip_crc();
+  }
   b->data()->payload_.assign((char*)(payload() + 4), size() - 4);
   uint16_t timeout = openlcb::data_to_error(payload() + 2);
   b->data()->responseTimeoutMsec_ = timeout;
