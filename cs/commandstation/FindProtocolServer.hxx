@@ -125,7 +125,7 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     if (event->event == IS_TRAIN_EVENT) {
       pendingIsTrain_ = true;
       prio = PRIO_ALLTRAIN;
-    } else if ((event->event & & FindProtocolDefs::ALLOCATE) == 0) {
+    } else if ((event->event & FindProtocolDefs::ALLOCATE) == 0) {
       prio = PRIO_SEARCH;
     } else {
       prio = PRIO_ALLOC;
