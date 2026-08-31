@@ -197,18 +197,14 @@ class TrainNodeInfoCache : public StateFlowBase {
 
     update_ui_output(flags, refill_min_node, refill_max_node);
 
-    if ((flags & FLAGS_NEED_REFILL_CACHE) && !pendingSearch_) {
+    if (flags & FLAGS_NEED_REFILL_CACHE) {
       minResult_ = refill_min_node;
       maxResult_ = refill_max_node;
-      /// @todo maybe we have a race condition here, when there is a pending
-      /// search; we will not modify the min/max and somehow assume that the
-      /// results of the pending search will be okay. How do we distinguish the
-      /// case when the pending search needs to be repeated?
-      
-      // We invoke search here, which is an asynchronous operation. The
-      // expectation is that the caller will refresh their display before we
-      // actually get around to killing the state vectors.
-      invoke_paginate();
+      if (!pendingSearch_) {
+        invoke_paginate();
+      } else {
+        needSearch_ = 1;
+      }
     }
     return flags;
   }
@@ -615,7 +611,25 @@ class TrainNodeInfoCache : public StateFlowBase {
     LOG(VERBOSE, "tgt = %u", (unsigned)targetNodeId_ & 0xffffu);
     auto it = trainNodes_.nodes_.lower_bound(targetNodeId_);
     if (it == trainNodes_.nodes_.end() || it->first != targetNodeId_) {
-      flags |= FLAGS_TARGET_NOT_FOUND;
+      flags |= FLAGS_TARGET_NOT_FOUND | FLAGS_NEED_REFILL_CACHE;
+      if (targetNodeId_ > trainNodes_.max_node()) {
+        refill_min_node = targetNodeId_;
+      } else if (targetNodeId_ < trainNodes_.min_node()) {
+        refill_max_node = targetNodeId_;
+      }
+      if (targetNodeId_ != kMinNode) {
+        topNodeId_ = 0;
+        output_->entry_names.clear();
+        return;
+      }
+    }
+    if (it == trainNodes_.nodes_.end()) {
+      if (trainNodes_.nodes_.empty()) {
+        topNodeId_ = 0;
+        output_->entry_names.clear();
+        return;
+      }
+      it = std::prev(trainNodes_.nodes_.end());
     }
     LOG(VERBOSE, "it = %u", (unsigned)it->first & 0xffffu);
     auto itt = it;

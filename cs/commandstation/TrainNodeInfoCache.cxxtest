@@ -610,9 +610,57 @@ TEST_F(FindManyTrainTestBase, ScrollToTestEmpty) {
   EXPECT_EQ(0u, get_results_map().size());
   EXPECT_EQ(0u, trainCache_.num_results());
   
-  EXPECT_EQ(0 + trainCache_.FLAGS_TARGET_NOT_FOUND, trainCache_.scroll_to(0, 4, 2));
+  EXPECT_EQ(trainCache_.FLAGS_TARGET_NOT_FOUND | trainCache_.FLAGS_NEED_REFILL_CACHE, trainCache_.scroll_to(0, 4, 2));
   EXPECT_EQ(0u, get_results_map().size());
   EXPECT_EQ(0u, trainCache_.num_results());
 }
 
+/**
+ * Regression test for issue where TrainNodeInfoCache::scroll_to() ignored
+ * FLAGS_NEED_REFILL_CACHE when pendingSearch_ was true. When fast scrolling,
+ * a second scroll_to call for a new target window would arrive while a search
+ * was still in-flight. Because pendingSearch_ was true, scroll_to skipped
+ * updating minResult_/maxResult_ and did not set needSearch_ = 1. When the
+ * first search completed, search_done() saw needSearch_ == 0 and went idle,
+ * leaving the newly requested scroll target range unfetched and the cache
+ * incomplete.
+ */
+TEST_F(FindManyTrainTestBase, ScrollToPendingSearchRefill) {
+  auto b = get_buffer_deleter(remoteClient_.alloc());
+  b->data()->reset(3, false, DCCMODE_DEFAULT);
+
+  expect_any_packet();
+  trainCache_.reset_search(std::move(b), &mockNotifiable_);
+  EXPECT_CALL(mockNotifiable_, notify()).Times(AtLeast(1));
+  wait_for_search();
+  EXPECT_EQ(16u, get_results_map().size());
+  EXPECT_EQ(25u, trainCache_.num_results());
+
+  vector<openlcb::NodeID> ids;
+  for (int i = 0; i < 25; ++i) {
+    ids.push_back(0x06010000C000ULL | (3000 + i));
+  }
+
+  // First scroll to border, which triggers a refill search (pendingSearch_ becomes true).
+  clear_expect(true);
+  EXPECT_CALL(canBus_, mwrite(_)).Times(AtLeast(40));
+  unsigned flags1 = trainCache_.scroll_to(ids[11], 4, 1);
+  EXPECT_TRUE(flags1 & trainCache_.FLAGS_NEED_REFILL_CACHE);
+
+  // Now, BEFORE waiting for search to complete (while pendingSearch_ is true),
+  // perform a second scroll to ids[20] which requires a further refill range.
+  unsigned flags2 = trainCache_.scroll_to(ids[20], 4, 2);
+  EXPECT_TRUE(flags2 & trainCache_.FLAGS_NEED_REFILL_CACHE);
+
+  // Wait for all background searches to finish.
+  wait_for_search();
+  clear_expect(true);
+
+  // Verify that the second scroll request for ids[20] was NOT dropped and that
+  // node ids[20] is present in the results map.
+  EXPECT_NE(get_results_map().find(ids[20]), get_results_map().end());
+}
+
+
 } // namespace commandstation
+
