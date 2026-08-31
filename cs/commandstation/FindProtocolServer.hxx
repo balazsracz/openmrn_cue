@@ -145,7 +145,8 @@ class FindProtocolServer : public openlcb::SimpleEventHandler {
     USER_ARG_FIND = 1,
     USER_ARG_ISTRAIN = 2,
 
-    // Priorities used for the find protocol flow.
+    // Priorities used for the find protocol flow. These are for a stateflow
+    // priority lists, so lower number is higher priority.
     PRIO_ALLTRAIN = 2,
     PRIO_SEARCH = 1,
     PRIO_ALLOC = 0,
