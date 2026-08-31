@@ -251,9 +251,12 @@ class TrainNodeInfoCache : public StateFlowBase {
       return *this;
     }
     string name_;
+    /// 1 if node name or description has been populated from SNIP response.
     unsigned hasNodeName_ : 1;
+    /// 1 if a SNIP query (MTI_IDENT_INFO_REQUEST) is currently in-flight.
     unsigned snipInFlight_ : 1;
-    unsigned lastSnipTime_ : 30; // Monotonic timestamp in seconds (mod 2^30)
+    /// Monotonic timestamp in seconds (mod 2^30) when the last SNIP query was sent.
+    unsigned lastSnipTime_ : 30;
   };
 
 
@@ -385,9 +388,12 @@ class TrainNodeInfoCache : public StateFlowBase {
     return call_immediately(STATE(iter_results));
   }
 
+  /// Helper returning the current monotonic time in seconds wrapped to 30 bits.
   static uint32_t now_sec_30() {
     return NSEC_TO_SEC(os_get_time_monotonic()) & 0x3FFFFFFF;
   }
+
+  /// Timeout in seconds before retrying an un-responded in-flight SNIP request.
   static constexpr uint32_t kSnipTimeoutSec = 30;
 
   Action iter_results() {

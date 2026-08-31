@@ -140,6 +140,9 @@ class FindManyTrainTestBase : public TrainDbTest {
   TrainNodeCacheOutput output_;
   TrainNodeInfoCache trainCache_{&secondNode_, &remoteClient_, &output_};
 
+  /// Helper method for invoking result_callback from test fixture.
+  /// @param state event state
+  /// @param node target node ID
   void send_result(openlcb::EventState state, openlcb::NodeID node) {
     trainCache_.result_callback(state, node);
   }
