@@ -722,6 +722,12 @@ class ConfiguredRailcomBroadcastFlow : public RailcomBroadcastFlow,
         uint32_t offset_i = eventCh0_.offset() + i * stride;
         openlcb::EventConfigEntry entry(offset_i);
         uint64_t event_id = entry.read(fd);
+        uint8_t first_byte = event_id >> 56;
+        if (first_byte == 0 || first_byte == 0xff) {
+          // Invalid value, need to factory reset it.
+          event_id = default_event_id(node_->node_id(), i);
+          entry.write(fd, event_id);
+        }
         set_event_id(i, event_id);
       }
 
