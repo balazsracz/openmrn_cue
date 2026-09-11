@@ -20,7 +20,9 @@
 
 // ==== Signal handler flow definitions
 #define CMD_SIGNALPACKET 0x10   // arg1... the signal packet (arg1=address arg2=len arg3... = payload. the payload has to be one less bytes than len). Maximum length value is 12.
+#define CMD_SIGNALPACKET_NOCRC 0x11   // arg1... the signal packet without CRC added.
 #define CMD_SIGNALPACKET_WITH_ACK 0x12   // arg1,arg2 = timeout msec (big endian) arg3... the signal packet (arg3=address arg4=len arg5... = payload. the payload has to be one less bytes than len). Maximum length value is 12.
+#define CMD_SIGNALPACKET_NOCRC_WITH_ACK 0x13   // arg1,arg2 = timeout msec (big endian) arg3... signal packet without CRC added.
 
 #define CMD_SIGNAL_PAUSE 0x18
 #define CMD_SIGNAL_RESUME 0x19
@@ -42,6 +44,7 @@
 #define SCMD_INONE 0x11  // arg: input number. ACK-ed if the given input number is true.
 
 #define SCMD_BOOT 0x12 // exit bootloader and start app. No ack.
+#define SCMD_CHECK_BOOTLOADER 0x13 // Check if new bootloader is present and valid. ACK-ed if valid at boot.
 
 #define SCMD_DISPLAY 0x18 // For screens. arg: text (UTF8) to display. Max packet len 16. Always ACK-ed when it is received without error.
 
