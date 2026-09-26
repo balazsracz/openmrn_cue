@@ -65,11 +65,31 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   using Direction = dcc::RailcomDirection;
 
  public:
+  /// Constructor.
+  /// @param parent parent railcom hub flow.
+  /// @param node the openlcb node.
+  /// @param occupancy_port Optional downstream port (or nullptr). Messages on
+  /// channel 0xFD carry track occupancy bitmasks (ch1Data[0]), which this flow
+  /// uses to track occupancy and trigger empty-channel events. If non-null, the
+  /// occupancy message is forwarded to this port (e.g., an occupancy decoder or
+  /// FeedbackBasedOccupancy handler). If nullptr, the message is released.
+  /// @param overcurrent_port Optional downstream port (or nullptr). Messages on
+  /// channel 0xFE represent overcurrent events. If non-null, they are forwarded
+  /// to this port (e.g., an overcurrent handler). If nullptr, the message is
+  /// released.
+  /// @param debug_port Optional downstream port (or nullptr). Unhandled packets
+  /// or packets that fail Channel 1 RailCom decoding are forwarded here for
+  /// logging and diagnostics. If nullptr, they are released.
+  /// @param channel_count the number of channels.
+  /// @param is_command_station true if running on a command station (decays
+  /// confidence directly from track feedback packets).
+  /// @param register_handlers true to register OpenLCB event handlers.
   RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, openlcb::Node* node,
                        dcc::RailcomHubPortInterface* occupancy_port,
                        dcc::RailcomHubPortInterface* overcurrent_port,
                        dcc::RailcomHubPortInterface* debug_port,
                        unsigned channel_count,
+                       bool is_command_station = false,
                        bool register_handlers = true)
       : dcc::RailcomHubPort(parent->service()),
         parent_(parent),
@@ -78,7 +98,8 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         overcurrentPort_(overcurrent_port),
         debugPort_(debug_port),
         size_(channel_count),
-        channels_(new dcc::RailcomBroadcastDecoder[channel_count]) {
+        channels_(new dcc::RailcomBroadcastDecoder[channel_count]),
+        isCommandStation_(is_command_station) {
     eventIds_ = new uint64_t[channel_count];
     for (unsigned i = 0; i < size_; ++i) {
       eventIds_[i] = default_event_id(node_->node_id(), i);
@@ -142,10 +163,9 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
            (channel_is_empty_ & (1u << ch)) == 0;
   }
 
-  /// Called when a DCC packet is sent to the track.
-  /// @param packet The DCC packet that was sent.
-  void handle_dcc_packet(const DCCPacket* packet) {
-    uint16_t address = dcc_to_address(packet->payload[0], packet->payload[1]);
+  /// Decays confidence of locomotive trackers for an addressed DCC packet.
+  /// @param address 14-bit DCC address according to 9.2.1.1.
+  void decay_loco_addressed(uint16_t address) {
     if (address == 0xFFFF) return;  // Not a valid/supported mobile address
 
     OSMutexLock l(&lock_);
@@ -167,6 +187,16 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       }
       ++it;
     }
+  }
+
+  /// Called when a DCC packet is sent to the track.
+  /// Ignored in command station mode, where confidence decay is driven directly
+  /// by feedback packets from the track.
+  /// @param packet The DCC packet that was sent.
+  void handle_dcc_packet(const DCCPacket* packet) {
+    if (isCommandStation_) return;
+    uint16_t address = dcc_to_address(packet->payload[0], packet->payload[1]);
+    decay_loco_addressed(address);
   }
 
   Action entry() override {
@@ -265,7 +295,23 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
   Action process_ch2() {
     auto& msg = *message()->data();
-    if (msg.channel >= size_ || msg.ch2Size == 0) {
+    if (msg.channel >= size_) {
+      return call_immediately(STATE(process_ch1));
+    }
+
+    // Extract address from dccAddress
+    uint16_t addr = dcc_to_address(msg.dccAddress >> 8, msg.dccAddress & 0xFF);
+
+    if (isCommandStation_ && addr != 0xFFFF) {
+      if (size_ == 1 || msg.channel <= lastDecayedChannel_ ||
+          msg.feedbackKey != lastDecayedFeedbackKey_) {
+        lastDecayedFeedbackKey_ = msg.feedbackKey;
+        lastDecayedChannel_ = msg.channel;
+        decay_loco_addressed(addr);
+      }
+    }
+
+    if (msg.ch2Size == 0) {
       return call_immediately(STATE(process_ch1));
     }
 
@@ -276,8 +322,6 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       }
     }
 
-    // Extract address from dccAddress
-    uint16_t addr = dcc_to_address(msg.dccAddress >> 8, msg.dccAddress & 0xFF);
     if (addr == 0xFFFF) {
       return call_immediately(STATE(process_ch1));  // Invalid address
     }
@@ -472,16 +516,10 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   Action finish() { return release_and_exit(); }
 
  private:
-  /// Computes the event ID for a report to send.
+  /// Converts a DCC address and track direction to an Event ID for RailCom reporting.
   ///
   /// @param channel 0-15, the channel ID for a multichannel detector to use.
-  /// @param address DCC address, the concatenation of ID1 and ID2 values.
-  /// @param entry true for entry, false for exit.
-  ///
-  /// Converts a DCC address to an Event ID for RailCom reporting.
-  ///
-  /// @param channel 0-15, the channel ID for a multichannel detector to use.
-  /// @param address 14-bit DCC address 9.2.1.1 format.
+  /// @param address 14-bit DCC address in 9.2.1.1 format.
   /// @param dir Direction to encode (EXIT=0x0000, WEST=0x4000, EAST=0x8000, UNKNOWN=0xC000).
   ///
   /// @return event ID to send as event report.
@@ -492,6 +530,13 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     return ret;
   }
 
+  /// Backwards-compatible helper to encode DCC address and entry/exit status into an event ID.
+  ///
+  /// @param channel 0-15, the channel ID for a multichannel detector to use.
+  /// @param address 14-bit DCC address in 9.2.1.1 format.
+  /// @param entry true for entry (UNKNOWN direction), false for exit.
+  ///
+  /// @return event ID to send as event report.
   uint64_t address_to_eventid(unsigned channel, uint16_t address, bool entry) {
     return address_to_eventid(channel, address, entry ? Direction::UNKNOWN : Direction::EXIT);
   }
@@ -699,8 +744,12 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   /// Tracks the presence confidence of a single locomotive on a specific
   /// channel.
   struct LocoTracker {
+    /// Confidence count. Incremented when replies are received, decremented
+    /// when the locomotive is addressed without receiving a reply.
     uint8_t count = 0;
+    /// Maximum confidence count.
     static constexpr uint8_t MAX_COUNT = 10;
+    /// Last detected track orientation for this locomotive.
     Direction direction = Direction::UNKNOWN;
 
     /// Called when a RailCom reply is received.
@@ -744,7 +793,16 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   /// Mutex protecting the trackers map and associated state.
   OSMutex lock_;
 
+  /// Ring buffer logging recent tracker confidence and address updates for debugging.
   LogRing<uint16_t, 256> logRing_;
+
+  /// True if this flow runs on a command station (decays confidence directly from
+  /// track feedback packets rather than DCC receiver handle_dcc_packet).
+  bool isCommandStation_{false};
+  /// Feedback channel of the last feedback packet that triggered a decay.
+  uint8_t lastDecayedChannel_{0xFF};
+  /// Feedback key of the last feedback packet that triggered a decay.
+  uintptr_t lastDecayedFeedbackKey_{0};
 };
 
 class ConfiguredRailcomBroadcastFlow : public RailcomBroadcastFlow,
@@ -753,9 +811,18 @@ class ConfiguredRailcomBroadcastFlow : public RailcomBroadcastFlow,
   /// Constructor.
   /// @param parent parent railcom hub flow.
   /// @param node the openlcb node.
-  /// @param occupancy_port port for occupancy reports.
-  /// @param overcurrent_port port for overcurrent reports.
-  /// @param debug_port port for debug reports.
+  /// @param occupancy_port Optional downstream port (or nullptr). Messages on
+  /// channel 0xFD carry track occupancy bitmasks (ch1Data[0]), which this flow
+  /// uses to track occupancy and trigger empty-channel events. If non-null, the
+  /// occupancy message is forwarded to this port (e.g., an occupancy decoder or
+  /// FeedbackBasedOccupancy handler). If nullptr, the message is released.
+  /// @param overcurrent_port Optional downstream port (or nullptr). Messages on
+  /// channel 0xFE represent overcurrent events. If non-null, they are forwarded
+  /// to this port (e.g., an overcurrent handler). If nullptr, the message is
+  /// released.
+  /// @param debug_port Optional downstream port (or nullptr). Unhandled packets
+  /// or packets that fail Channel 1 RailCom decoding are forwarded here for
+  /// logging and diagnostics. If nullptr, they are released.
   /// @param channel_count the number of channels.
   /// @param event_ch0 configuration entry representing the event ID for the
   /// first channel (channel 0).
@@ -763,6 +830,8 @@ class ConfiguredRailcomBroadcastFlow : public RailcomBroadcastFlow,
   /// second channel (channel 1). These are the eventids for the first TWO
   /// channels. The rest are deduced by the stride between these two. If there
   /// is only one channel, give that entry twice.
+  /// @param is_command_station true if running on a command station (decays
+  /// confidence directly from track feedback packets).
   ConfiguredRailcomBroadcastFlow(dcc::RailcomHubFlow* parent,
                                  openlcb::Node* node,
                                  dcc::RailcomHubPortInterface* occupancy_port,
@@ -770,9 +839,11 @@ class ConfiguredRailcomBroadcastFlow : public RailcomBroadcastFlow,
                                  dcc::RailcomHubPortInterface* debug_port,
                                  unsigned channel_count,
                                  const openlcb::EventConfigEntry& event_ch0,
-                                 const openlcb::EventConfigEntry& event_ch1)
+                                 const openlcb::EventConfigEntry& event_ch1,
+                                 bool is_command_station = false)
       : RailcomBroadcastFlow(parent, node, occupancy_port, overcurrent_port,
-                             debug_port, channel_count, false),
+                             debug_port, channel_count, is_command_station,
+                             false),
         eventCh0_(event_ch0),
         eventCh1_(event_ch1) {}
 
