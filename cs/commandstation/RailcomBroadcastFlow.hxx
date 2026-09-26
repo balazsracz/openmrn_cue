@@ -62,6 +62,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
                              openlcb::SimpleEventHandler {
  public:
   static constexpr uint64_t FEEDBACK_EVENTID_BASE = (0x0680ULL << 48);
+  using Direction = dcc::RailcomDirection;
 
  public:
   RailcomBroadcastFlow(dcc::RailcomHubFlow* parent, openlcb::Node* node,
@@ -255,7 +256,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
     b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      openlcb::eventid_to_buffer(
-                         address_to_eventid(ch, addr, false)));  // false = exit
+                         address_to_eventid(ch, addr, Direction::EXIT)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
     // Loop back to check for more timeouts
@@ -286,6 +287,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       // Address-Major Key: (Address << 16) | Channel
       uint32_t key = (uint32_t(addr) << 16) | msg.channel;
       bool is_new = false;
+      bool dir_changed = false;
       uint8_t resulting_count = 0;
       auto it = trackers_.find(key);
       if (it == trackers_.end()) {
@@ -295,13 +297,23 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         // Double count for new entries
         tracker.report_loco_seen();
         resulting_count = tracker.count;
+        if (msg.haveCh2Dir) {
+          tracker.direction = msg.ch2Dir ? Direction::WEST : Direction::EAST;
+        }
       } else {
         it->second.report_loco_seen();
         resulting_count = it->second.count;
+        if (msg.haveCh2Dir) {
+          Direction new_dir = msg.ch2Dir ? Direction::WEST : Direction::EAST;
+          if (it->second.direction != new_dir) {
+            it->second.direction = new_dir;
+            dir_changed = true;
+          }
+        }
       }
       logRing_.add((uint16_t(0x20 | resulting_count) << 8) | (addr & 0xFF));
 
-      if (is_new) {
+      if (is_new || dir_changed) {
         current_timeout_key_ = key;  // Reuse this member for new loco key
         return allocate_and_call(node_->iface()->global_message_write_flow(),
                                  STATE(send_ch2_event));
@@ -316,10 +328,18 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         get_allocation_result(node_->iface()->global_message_write_flow());
     unsigned ch = current_timeout_key_ & 0xffff;
     uint16_t addr = current_timeout_key_ >> 16;
+    Direction dir = Direction::UNKNOWN;
+    {
+      OSMutexLock l(&lock_);
+      auto it = trackers_.find(current_timeout_key_);
+      if (it != trackers_.end()) {
+        dir = it->second.direction;
+      }
+    }
 
     b->data()->reset(openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
                      openlcb::eventid_to_buffer(
-                         address_to_eventid(ch, addr, true)));  // true = entry
+                         address_to_eventid(ch, addr, dir)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
 
@@ -339,6 +359,12 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     }
     auto& decoder = channels_[channel];
     if (decoder.current_address() == decoder.lastAddress_) {
+      if (decoder.current_address() != 0 &&
+          decoder.current_direction() != decoder.last_direction()) {
+        // Address is unchanged, but direction became known or changed.
+        return allocate_and_call(node_->iface()->global_message_write_flow(),
+                                 STATE(send_event));
+      }
       return release_and_exit();
     }
     // Checks if last address has channel2 reports.
@@ -370,7 +396,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
     b->data()->reset(
         openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
-        openlcb::eventid_to_buffer(address_to_eventid(channel, addr, false)));
+        openlcb::eventid_to_buffer(address_to_eventid(channel, addr, Direction::EXIT)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
     return wait_and_call(STATE(prepare_ch1_on));
@@ -387,6 +413,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         // skips sending empty event.
         channel_pending_empty_ |= (1u << channel);
         decoder.lastAddress_ = decoder.current_address();
+        decoder.set_last_direction(Direction::UNKNOWN);
         return release_and_exit();
       }
     }
@@ -416,7 +443,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
     b->data()->reset(
         openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
-        openlcb::eventid_to_buffer(address_to_eventid(channel, addr, true)));
+        openlcb::eventid_to_buffer(address_to_eventid(channel, addr, Direction::UNKNOWN)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
     channel_pending_empty_ &= ~(1u << channel);
@@ -430,12 +457,14 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     auto* b =
         get_allocation_result(node_->iface()->global_message_write_flow());
     uint16_t addr = railcom_id12_to_address(decoder.current_address());
+    Direction dir = decoder.current_direction();
     b->data()->reset(
         openlcb::Defs::MTI_EVENT_REPORT, node_->node_id(),
-        openlcb::eventid_to_buffer(address_to_eventid(channel, addr, true)));
+        openlcb::eventid_to_buffer(address_to_eventid(channel, addr, dir)));
     b->set_done(n_.reset(this));
     node_->iface()->global_message_write_flow()->send(b);
     decoder.lastAddress_ = decoder.current_address();
+    decoder.set_last_direction(dir);
     release();
     return wait_and_call(STATE(finish));
   }
@@ -453,16 +482,18 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   ///
   /// @param channel 0-15, the channel ID for a multichannel detector to use.
   /// @param address 14-bit DCC address 9.2.1.1 format.
-  /// @param entry true for entry, false for exit.
+  /// @param dir Direction to encode (EXIT=0x0000, WEST=0x4000, EAST=0x8000, UNKNOWN=0xC000).
   ///
   /// @return event ID to send as event report.
-  uint64_t address_to_eventid(unsigned channel, uint16_t address, bool entry) {
+  uint64_t address_to_eventid(unsigned channel, uint16_t address, Direction dir) {
     uint64_t ret = eventIds_[channel];
-    // Direction unknown (0xC000 for entry, 0 for exit)
-    uint16_t val = entry ? 0xC000 : 0;
-    val |= address & 0x3FFF;
+    uint16_t val = (static_cast<uint16_t>(dir) << 14) | (address & 0x3FFF);
     ret |= val;
     return ret;
+  }
+
+  uint64_t address_to_eventid(unsigned channel, uint16_t address, bool entry) {
+    return address_to_eventid(channel, address, entry ? Direction::UNKNOWN : Direction::EXIT);
   }
 
   /// Helper to decode a DCC address from the first two bytes of a
@@ -524,16 +555,20 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
     if (query == 0) {
       // Query for the base: report all currently present locomotives in this channel.
-      uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
-      if (actual != 0 && actual != 0xFFFF) {
-        uint64_t actual_event = address_to_eventid(ch, actual, true);
-        Buffer<openlcb::GenMessage> *b;
-        node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
-        b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-                         node_->node_id(),
-                         openlcb::eventid_to_buffer(actual_event));
-        b->set_done(done->new_child());
-        node_->iface()->global_message_write_flow()->send(b);
+      uint16_t actual = 0;
+      if (channels_[ch].lastAddress_ != 0) {
+        actual = railcom_id12_to_address(channels_[ch].lastAddress_);
+        if (actual != 0 && actual != 0xFFFF) {
+          Direction dir = channels_[ch].last_direction();
+          uint64_t actual_event = address_to_eventid(ch, actual, dir);
+          Buffer<openlcb::GenMessage> *b;
+          node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
+          b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+                           node_->node_id(),
+                           openlcb::eventid_to_buffer(actual_event));
+          b->set_done(done->new_child());
+          node_->iface()->global_message_write_flow()->send(b);
+        }
       }
 
       // Report all active Channel 2 trackers
@@ -541,7 +576,8 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         unsigned tracker_ch = pair.first & 0xFFFF;
         if (tracker_ch == ch) {
           uint16_t addr = pair.first >> 16;
-          uint64_t actual_event = address_to_eventid(ch, addr, true);
+          if (actual != 0 && actual == addr) continue;
+          uint64_t actual_event = address_to_eventid(ch, addr, pair.second.direction);
           Buffer<openlcb::GenMessage> *b;
           node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
           b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
@@ -554,20 +590,49 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     } else {
       // Query for a specific address
       bool found = false;
+      Direction actual_dir = Direction::UNKNOWN;
       uint16_t query_addr = query & 0x3FFF;
       uint16_t query_state = query & 0xC000;
-      uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
-      if (actual == query_addr) {
-        found = true;
-      } else {
-        uint32_t key = (uint32_t(query_addr) << 16) | ch;
-        auto it = trackers_.find(key);
-        if (it != trackers_.end() && it->second.count > 0) {
+      if (channels_[ch].lastAddress_ != 0) {
+        uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
+        if (actual == query_addr) {
           found = true;
+          actual_dir = channels_[ch].last_direction();
+        }
+      }
+      uint32_t key = (uint32_t(query_addr) << 16) | ch;
+      auto it = trackers_.find(key);
+      if (it != trackers_.end() && it->second.count > 0) {
+        found = true;
+        if (actual_dir == Direction::UNKNOWN) {
+          actual_dir = it->second.direction;
         }
       }
 
-      bool is_valid = (found == (query_state != 0));
+      bool is_valid = false;
+      bool emit_second_valid = false;
+
+      if (!found) {
+        // Not present: valid for exit query (0x0000), invalid for presence queries
+        is_valid = (query_state == 0);
+      } else {
+        // Present: invalid for exit query (0x0000)
+        if (query_state == 0) {
+          is_valid = false;
+        } else if (query_state == 0xC000) {
+          // Query with direction unknown
+          is_valid = true;
+          if (actual_dir != Direction::UNKNOWN) {
+            emit_second_valid = true;
+          }
+        } else if (query_state == 0x4000) {
+          // Query for West
+          is_valid = (actual_dir == Direction::WEST);
+        } else if (query_state == 0x8000) {
+          // Query for East
+          is_valid = (actual_dir == Direction::EAST);
+        }
+      }
 
       Buffer<openlcb::GenMessage> *b;
       node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
@@ -578,6 +643,18 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
           openlcb::eventid_to_buffer(event->event));
       b->set_done(done->new_child());
       node_->iface()->global_message_write_flow()->send(b);
+
+      if (emit_second_valid) {
+        uint64_t actual_event = address_to_eventid(ch, query_addr, actual_dir);
+        Buffer<openlcb::GenMessage> *b2;
+        node_->iface()->global_message_write_flow()->pool()->alloc(&b2, nullptr);
+        b2->data()->reset(
+            openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+            node_->node_id(),
+            openlcb::eventid_to_buffer(actual_event));
+        b2->set_done(done->new_child());
+        node_->iface()->global_message_write_flow()->send(b2);
+      }
     }
   }
 
@@ -624,6 +701,7 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
   struct LocoTracker {
     uint8_t count = 0;
     static constexpr uint8_t MAX_COUNT = 10;
+    Direction direction = Direction::UNKNOWN;
 
     /// Called when a RailCom reply is received.
     void report_loco_seen() {
