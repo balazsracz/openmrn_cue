@@ -578,7 +578,8 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     if ((address & CONSIST_ADDRESS_BIT) == CONSIST_ADDRESS_BIT) {
       return (address & 0x7F) | (dcc::Defs::ADR_CONSIST_SHORT << 8);
     } else if ((address & ~0xC000) > 127 ||
-               ((address & ~LONG_ADDRESS_MASK) == LONG_ADDRESS_BIT)) {
+               ((address & ~LONG_ADDRESS_MASK) == LONG_ADDRESS_BIT) ||
+               ((address & ~LONG_ADDRESS_MASK) == 0xC000)) {
       // Long address
       return std::min((unsigned)address & LONG_ADDRESS_MASK,
                       (unsigned)dcc::DccLongAddress::ADDRESS_MAX);
@@ -598,40 +599,68 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
 
     OSMutexLock l(&lock_);
 
+    auto send_msg = [&](openlcb::Defs::MTI mti, uint64_t ev) {
+      Buffer<openlcb::GenMessage> *b;
+      node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
+      b->data()->reset(mti, node_->node_id(), openlcb::eventid_to_buffer(ev));
+      b->set_done(done->new_child());
+      node_->iface()->global_message_write_flow()->send(b);
+    };
+
     if (query == 0) {
       // Query for the base: report all currently present locomotives in this channel.
-      uint16_t actual = 0;
+
+      // True if locomotive address 0 (long address 0) is observed among active locomotives.
+      bool loco_zero_seen = false;
+      // Direction of locomotive 0 if seen (defaults to EXIT when not present).
+      Direction loco_zero_state = Direction::EXIT;
+
+      // 1. Iterate and respond with all currently active locomotives.
+
+      // True if Channel 1 (broadcast) currently has a valid decoded locomotive.
+      bool have_ch1 = false;
+      // 14-bit DCC address in 9.2.1.1 format decoded from Channel 1 RailCom ID1/ID2 bytes.
+      uint16_t ch1_loco_addr_dcc9211 = 0xFFFF;
       if (channels_[ch].lastAddress_ != 0) {
-        actual = railcom_id12_to_address(channels_[ch].lastAddress_);
-        if (actual != 0 && actual != 0xFFFF) {
+        ch1_loco_addr_dcc9211 = railcom_id12_to_address(channels_[ch].lastAddress_);
+        if (ch1_loco_addr_dcc9211 != 0xFFFF) {
+          have_ch1 = true;
           Direction dir = channels_[ch].last_direction();
-          uint64_t actual_event = address_to_eventid(ch, actual, dir);
-          Buffer<openlcb::GenMessage> *b;
-          node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
-          b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-                           node_->node_id(),
-                           openlcb::eventid_to_buffer(actual_event));
-          b->set_done(done->new_child());
-          node_->iface()->global_message_write_flow()->send(b);
+          uint64_t actual_event = address_to_eventid(ch, ch1_loco_addr_dcc9211, dir);
+          send_msg(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID, actual_event);
+          if ((ch1_loco_addr_dcc9211 & 0x3FFF) == 0) {
+            loco_zero_seen = true;
+            loco_zero_state = dir;
+          }
         }
       }
 
       // Report all active Channel 2 trackers
       for (const auto& pair : trackers_) {
         unsigned tracker_ch = pair.first & 0xFFFF;
-        if (tracker_ch == ch) {
-          uint16_t addr = pair.first >> 16;
-          if (actual != 0 && actual == addr) continue;
-          uint64_t actual_event = address_to_eventid(ch, addr, pair.second.direction);
-          Buffer<openlcb::GenMessage> *b;
-          node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
-          b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-                           node_->node_id(),
-                           openlcb::eventid_to_buffer(actual_event));
-          b->set_done(done->new_child());
-          node_->iface()->global_message_write_flow()->send(b);
+        if (tracker_ch == ch && pair.second.count > 0) {
+          // 14-bit DCC address in 9.2.1.1 format stored in tracker key.
+          uint16_t tracker_loco_addr_dcc9211 = pair.first >> 16;
+          if (have_ch1 && ch1_loco_addr_dcc9211 == tracker_loco_addr_dcc9211) continue;
+          Direction dir = pair.second.direction;
+          uint64_t actual_event = address_to_eventid(ch, tracker_loco_addr_dcc9211, dir);
+          send_msg(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID, actual_event);
+          if ((tracker_loco_addr_dcc9211 & 0x3FFF) == 0) {
+            loco_zero_seen = true;
+            loco_zero_state = dir;
+          }
         }
       }
+
+      // 2. Respond with producer identified 0 (valid if long address 0 is not present in the block, invalid if present)
+      bool is_valid = !loco_zero_seen || (loco_zero_state == Direction::EXIT);
+      send_msg(is_valid ? openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID
+                        : openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
+               event->event);
+
+      // 3. Respond with producer range identified for the entire 64k range
+      uint64_t range = openlcb::EncodeRange(eventIds_[ch], 65536);
+      send_msg(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE, range);
     } else {
       // Query for a specific address
       bool found = false;
@@ -639,8 +668,10 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       uint16_t query_addr = query & 0x3FFF;
       uint16_t query_state = query & 0xC000;
       if (channels_[ch].lastAddress_ != 0) {
-        uint16_t actual = railcom_id12_to_address(channels_[ch].lastAddress_);
-        if (actual == query_addr) {
+        // 14-bit DCC address in 9.2.1.1 format decoded from Channel 1 RailCom ID1/ID2 bytes.
+        uint16_t ch1_loco_addr_dcc9211 =
+            railcom_id12_to_address(channels_[ch].lastAddress_);
+        if (ch1_loco_addr_dcc9211 == query_addr) {
           found = true;
           actual_dir = channels_[ch].last_direction();
         }
@@ -679,26 +710,13 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
         }
       }
 
-      Buffer<openlcb::GenMessage> *b;
-      node_->iface()->global_message_write_flow()->pool()->alloc(&b, nullptr);
-      b->data()->reset(
-          is_valid ? openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID
-                   : openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
-          node_->node_id(),
-          openlcb::eventid_to_buffer(event->event));
-      b->set_done(done->new_child());
-      node_->iface()->global_message_write_flow()->send(b);
+      send_msg(is_valid ? openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID
+                        : openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
+               event->event);
 
       if (emit_second_valid) {
         uint64_t actual_event = address_to_eventid(ch, query_addr, actual_dir);
-        Buffer<openlcb::GenMessage> *b2;
-        node_->iface()->global_message_write_flow()->pool()->alloc(&b2, nullptr);
-        b2->data()->reset(
-            openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
-            node_->node_id(),
-            openlcb::eventid_to_buffer(actual_event));
-        b2->set_done(done->new_child());
-        node_->iface()->global_message_write_flow()->send(b2);
+        send_msg(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID, actual_event);
       }
     }
   }
