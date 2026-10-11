@@ -636,9 +636,11 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       }
 
       // Report all active Channel 2 trackers
+      bool have_trackers = false;
       for (const auto& pair : trackers_) {
         unsigned tracker_ch = pair.first & 0xFFFF;
         if (tracker_ch == ch && pair.second.count > 0) {
+          have_trackers = true;
           // 14-bit DCC address in 9.2.1.1 format stored in tracker key.
           uint16_t tracker_loco_addr_dcc9211 = pair.first >> 16;
           if (have_ch1 && ch1_loco_addr_dcc9211 == tracker_loco_addr_dcc9211) continue;
@@ -658,7 +660,14 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
                         : openlcb::Defs::MTI_PRODUCER_IDENTIFIED_INVALID,
                event->event);
 
-      // 3. Respond with producer range identified for the entire 64k range
+      // 3. In case there are no locomotives, emit producer identified valid for the F800 event
+      // to notify consumers that they should clear the state.
+      if (!have_ch1 && !have_trackers) {
+        send_msg(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+                 eventIds_[ch] | 0xF800);
+      }
+
+      // 4. Respond with producer range identified for the entire 64k range
       uint64_t range = openlcb::EncodeRange(eventIds_[ch], 65536);
       send_msg(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE, range);
     } else {
@@ -667,21 +676,43 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
       Direction actual_dir = Direction::UNKNOWN;
       uint16_t query_addr = query & 0x3FFF;
       uint16_t query_state = query & 0xC000;
-      if (channels_[ch].lastAddress_ != 0) {
-        // 14-bit DCC address in 9.2.1.1 format decoded from Channel 1 RailCom ID1/ID2 bytes.
-        uint16_t ch1_loco_addr_dcc9211 =
-            railcom_id12_to_address(channels_[ch].lastAddress_);
-        if (ch1_loco_addr_dcc9211 == query_addr) {
-          found = true;
-          actual_dir = channels_[ch].last_direction();
+      if (query_addr == 0x3800) {
+        // Special case: 0x3800 is the "track is empty" address.
+        // It is considered present (found) if and only if there are NO locomotives in the block.
+        bool have_locos = false;
+        if (channels_[ch].lastAddress_ != 0) {
+          uint16_t addr = railcom_id12_to_address(channels_[ch].lastAddress_);
+          if (addr != 0xFFFF) {
+            have_locos = true;
+          }
         }
-      }
-      uint32_t key = (uint32_t(query_addr) << 16) | ch;
-      auto it = trackers_.find(key);
-      if (it != trackers_.end() && it->second.count > 0) {
-        found = true;
-        if (actual_dir == Direction::UNKNOWN) {
-          actual_dir = it->second.direction;
+        if (!have_locos) {
+          for (const auto& pair : trackers_) {
+            if ((pair.first & 0xFFFF) == ch && pair.second.count > 0) {
+              have_locos = true;
+              break;
+            }
+          }
+        }
+        found = !have_locos;
+        actual_dir = Direction::UNKNOWN;
+      } else {
+        if (channels_[ch].lastAddress_ != 0) {
+          // 14-bit DCC address in 9.2.1.1 format decoded from Channel 1 RailCom ID1/ID2 bytes.
+          uint16_t ch1_loco_addr_dcc9211 =
+              railcom_id12_to_address(channels_[ch].lastAddress_);
+          if (ch1_loco_addr_dcc9211 == query_addr) {
+            found = true;
+            actual_dir = channels_[ch].last_direction();
+          }
+        }
+        uint32_t key = (uint32_t(query_addr) << 16) | ch;
+        auto it = trackers_.find(key);
+        if (it != trackers_.end() && it->second.count > 0) {
+          found = true;
+          if (actual_dir == Direction::UNKNOWN) {
+            actual_dir = it->second.direction;
+          }
         }
       }
 
@@ -727,12 +758,39 @@ class RailcomBroadcastFlow : public dcc::RailcomHubPort,
     if (event->dst_node && event->dst_node != node_) {
       return done->notify();
     }
+    unsigned ch = registry_entry.user_arg;
     // We are a producer of these events.
     uint64_t range = openlcb::EncodeRange(registry_entry.event, 65536);
     event->event_write_helper<1>()->WriteAsync(
         node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_RANGE,
         openlcb::WriteHelper::global(), openlcb::eventid_to_buffer(range),
         done->new_child());
+
+    bool have_locos = false;
+    if (ch < size_) {
+      OSMutexLock l(&lock_);
+      if (channels_[ch].lastAddress_ != 0) {
+        uint16_t addr = railcom_id12_to_address(channels_[ch].lastAddress_);
+        if (addr != 0xFFFF) {
+          have_locos = true;
+        }
+      }
+      if (!have_locos) {
+        for (const auto& pair : trackers_) {
+          if ((pair.first & 0xFFFF) == ch && pair.second.count > 0) {
+            have_locos = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!have_locos) {
+      event->event_write_helper<2>()->WriteAsync(
+          node_, openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID,
+          openlcb::WriteHelper::global(),
+          openlcb::eventid_to_buffer(registry_entry.event | 0xF800),
+          done->new_child());
+    }
     done->maybe_done();
   }
 
